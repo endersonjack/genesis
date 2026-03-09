@@ -1,4 +1,7 @@
-<header class="topbar">
+<header class="topbar"
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            style="background-color: {{ request.empresa_ativa.cor_tema }}; border-bottom: none;"
+        {% endif %}>
     <div class="topbar-left">
         <button class="btn btn-outline-secondary d-lg-none" id="openSidebarBtn" type="button">
             <i class="bi bi-list"></i>
@@ -9,8 +12,16 @@
         </button>
 
         <div>
-            <h4 class="page-title mb-0">{% block page_title %}Painel{% endblock %}</h4>
-            <small class="text-muted">Bem-vindo ao Genesis ERP</small>
+            <h4 class="page-title mb-0 text-white">Painel</h4>
+            {% if request.empresa_ativa %}
+                <small class="topbar-company text-white">
+                    Empresa ativa: <strong>{{ request.empresa_ativa }}</strong>
+                </small>
+            {% else %}
+                <small class="topbar-company text-white">
+                    Nenhuma empresa selecionada
+                </small>
+            {% endif %}
         </div>
     </div>
 

@@ -7,6 +7,7 @@ class Empresa(models.Model):
     cnpj = models.CharField(max_length=18, unique=True)
     email = models.EmailField(blank=True)
     telefone = models.CharField(max_length=20, blank=True)
+    cor_tema = models.CharField(max_length=7, default='#0d6efd', help_text='Cor em hexadecimal. Ex: #0d6efd')
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 

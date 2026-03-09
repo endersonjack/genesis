@@ -129,9 +129,13 @@ body {
     /* transition: margin-left 0.3s ease;  */  /* efeito de deslizar o sidebar*/
 }
 
+
+
+
+
 .topbar {
     height: 78px;
-    background: #fff;
+    background: #0d6efd;
     border-bottom: 1px solid #e5e7eb;
     padding: 1rem 1.25rem;
     display: flex;
@@ -143,12 +147,31 @@ body {
     z-index: 1030;
 }
 
-.topbar-left,
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.topbar-company {
+    opacity: 0.95;
+    font-size: 0.92rem;
 }
+
+.topbar .btn-outline-secondary {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+
+.topbar .btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #fff;
+    color: #fff;
+}
+
+.topbar .user-box {
+    background: rgba(255, 255, 255, 0.92);
+    border: none;
+}
+
+
+
+
+
 
 .page-title {
     font-weight: 700;
