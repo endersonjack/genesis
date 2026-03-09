@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Selecionar empresa</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <select name="empresa_id" required>
+            <option value="">Selecione</option>
+            {% for vinculo in vinculos %}
+                <option value="{{ vinculo.empresa.id }}">
+                    {{ vinculo.empresa }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Entrar</button>
+    </form>
+{% endblock %}

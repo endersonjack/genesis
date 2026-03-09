@@ -1,0 +1,28 @@
+<header class="topbar">
+    <div class="topbar-left">
+        <button class="btn btn-outline-secondary d-lg-none" id="openSidebarBtn" type="button">
+            <i class="bi bi-list"></i>
+        </button>
+
+        <button class="btn btn-outline-secondary d-none d-lg-inline-flex" id="toggleSidebarDesktopBtn" type="button">
+            <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+
+        <div>
+            <h4 class="page-title mb-0">{% block page_title %}Painel{% endblock %}</h4>
+            <small class="text-muted">Bem-vindo ao Genesis ERP</small>
+        </div>
+    </div>
+
+    <div class="topbar-right">
+        <div class="user-box">
+            <div class="user-avatar">
+                <i class="bi bi-person"></i>
+            </div>
+            <div class="user-info">
+                <strong>{{ request.user }}</strong>
+                <small class="text-muted">Usuário logado</small>
+            </div>
+        </div>
+    </div>
+</header>

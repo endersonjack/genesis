@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="fw-bold mb-1">Dashboard</h2>
+    <p class="text-muted mb-0">
+        Visão geral da empresa
+        {% if request.empresa_ativa %}
+            <strong>{{ request.empresa_ativa }}</strong>
+        {% endif %}
+    </p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card dashboard-card card-primary h-100">
+            <div class="card-body">
+                <div class="card-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+                <p class="card-label">Funcionários</p>
+                <h3 class="card-value">24</h3>
+                <small class="text-muted">Total cadastrados</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card dashboard-card card-success h-100">
+            <div class="card-body">
+                <div class="card-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <p class="card-label">Receitas</p>
+                <h3 class="card-value">R$ 18.450</h3>
+                <small class="text-muted">Mês atual</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card dashboard-card card-warning h-100">
+            <div class="card-body">
+                <div class="card-icon">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <p class="card-label">Despesas</p>
+                <h3 class="card-value">R$ 9.270</h3>
+                <small class="text-muted">Contas a pagar</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card dashboard-card card-danger h-100">
+            <div class="card-body">
+                <div class="card-icon">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <p class="card-label">Itens em alerta</p>
+                <h3 class="card-value">8</h3>
+                <small class="text-muted">Estoque baixo</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-8">
+        <div class="card content-card h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h5 class="mb-1">Resumo operacional</h5>
+                <p class="text-muted small mb-0">Visão rápida dos principais módulos</p>
+            </div>
+            <div class="card-body pt-3">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="mini-panel">
+                            <div class="mini-panel-icon bg-primary-subtle text-primary">
+                                <i class="bi bi-person-badge"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">RH</h6>
+                                <p class="mb-0 text-muted small">Controle de funcionários, cargos e setores.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="mini-panel">
+                            <div class="mini-panel-icon bg-success-subtle text-success">
+                                <i class="bi bi-bank"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Financeiro</h6>
+                                <p class="mb-0 text-muted small">Acompanhamento de receitas, despesas e fluxo.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="mini-panel">
+                            <div class="mini-panel-icon bg-warning-subtle text-warning">
+                                <i class="bi bi-boxes"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Estoque</h6>
+                                <p class="mb-0 text-muted small">Entrada, saída, controle mínimo e inventário.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="mini-panel">
+                            <div class="mini-panel-icon bg-info-subtle text-info">
+                                <i class="bi bi-bar-chart"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Indicadores</h6>
+                                <p class="mb-0 text-muted small">Painéis estratégicos por empresa e módulo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card content-card h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h5 class="mb-1">Atividades recentes</h5>
+                <p class="text-muted small mb-0">Últimas movimentações do sistema</p>
+            </div>
+            <div class="card-body pt-3">
+                <div class="activity-item">
+                    <div class="activity-dot bg-primary"></div>
+                    <div>
+                        <strong>Novo funcionário</strong>
+                        <p class="mb-0 text-muted small">Cadastro realizado no módulo RH.</p>
+                    </div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-dot bg-success"></div>
+                    <div>
+                        <strong>Recebimento lançado</strong>
+                        <p class="mb-0 text-muted small">Entrada financeira confirmada.</p>
+                    </div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-dot bg-warning"></div>
+                    <div>
+                        <strong>Produto com estoque baixo</strong>
+                        <p class="mb-0 text-muted small">Verifique necessidade de reposição.</p>
+                    </div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-dot bg-danger"></div>
+                    <div>
+                        <strong>Conta próxima do vencimento</strong>
+                        <p class="mb-0 text-muted small">Acompanhe o financeiro da empresa.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

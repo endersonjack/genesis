@@ -1,0 +1,80 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="brand-box">
+            <div class="brand-icon">
+                <i class="bi bi-building"></i>
+            </div>
+            <div class="brand-text">
+                <h5 class="brand-title mb-0">Genesis ERP</h5>
+                <small class="brand-subtitle">Gestão empresarial</small>
+            </div>
+        </div>
+
+        <button class="btn btn-sm btn-light d-lg-none" id="closeSidebarBtn" type="button">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="sidebar-body">
+        <div class="company-card">
+            <small class="text-uppercase text-muted d-block mb-1 company-label">Empresa ativa</small>
+            <strong class="company-name">
+                {% if request.empresa_ativa %}
+                    {{ request.empresa_ativa }}
+                {% else %}
+                    Nenhuma selecionada
+                {% endif %}
+            </strong>
+        </div>
+
+        <nav class="menu-section">
+            <p class="menu-title">Principal</p>
+
+            <a href="{% url 'dashboard_home' %}" class="menu-link active">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="#" class="menu-link">
+                <i class="bi bi-people"></i>
+                <span>RH</span>
+            </a>
+
+            <a href="#" class="menu-link">
+                <i class="bi bi-cash-stack"></i>
+                <span>Financeiro</span>
+            </a>
+
+            <a href="#" class="menu-link">
+                <i class="bi bi-box-seam"></i>
+                <span>Estoque</span>
+            </a>
+        </nav>
+
+        <nav class="menu-section">
+            <p class="menu-title">Sistema</p>
+
+            <a href="{% url 'selecionar_empresa' %}" class="menu-link">
+                <i class="bi bi-buildings"></i>
+                <span>Trocar empresa</span>
+            </a>
+
+            {% if request.usuario_admin_empresa or request.user.is_superuser %}
+                <a href="/admin/" class="menu-link">
+                    <i class="bi bi-gear"></i>
+                    <span>Admin</span>
+                </a>
+            {% endif %}
+
+            <form method="post" action="{% url 'logout' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="menu-link text-danger border-0 bg-transparent w-100 text-start">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Sair</span>
+                </button>
+            </form>
+        </nav>
+    </div>
+</aside>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
