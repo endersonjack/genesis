@@ -1,0 +1,636 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .rh-form-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .rh-form-card + .rh-form-card {
+        margin-top: 1.25rem;
+    }
+
+    .rh-form-card .card-header {
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #334155;
+        {% endif %}
+        color: #fff;
+        border-bottom: none;
+        padding: 1rem 1.25rem;
+    }
+
+    .rh-form-card .card-header h5 {
+        margin-bottom: .2rem;
+        font-weight: 700;
+    }
+
+    .rh-form-card .card-header p {
+        margin-bottom: 0;
+        color: rgba(255,255,255,.85);
+    }
+
+    .rh-form-card .card-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .rh-form-card .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: .45rem;
+    }
+
+    .required-star {
+        color: #dc3545;
+        font-weight: 700;
+        margin-left: 2px;
+    }
+
+    .rh-form-card .form-control,
+    .rh-form-card .form-select {
+        border: 1px solid #cbd5e1;
+        min-height: 46px;
+        border-radius: .8rem;
+        background: #fff;
+    }
+
+    .rh-form-card textarea.form-control {
+        min-height: 110px;
+    }
+
+    .rh-form-card .form-control:focus,
+    .rh-form-card .form-select:focus {
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#334155{% endif %};
+        box-shadow: 0 0 0 0.18rem rgba(13, 110, 253, 0.12);
+    }
+
+    .dependente-box {
+        border: 1px solid #dbe4ee;
+        border-radius: 1rem;
+        background: #ffffff;
+        padding: 1rem;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+
+    .page-top-actions .btn {
+        min-height: 44px;
+        border-radius: .8rem;
+    }
+
+    .form-errors-box {
+        border-radius: .9rem;
+        border: 1px solid #f1b0b7;
+    }
+
+    #add-dependente-btn {
+        border-radius: .75rem;
+        font-weight: 600;
+    }
+
+    .remove-dependente-btn {
+        border-radius: .7rem;
+    }
+</style>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4 page-top-actions">
+        <div>
+            <h2 class="fw-bold mb-1">{{ titulo }}</h2>
+            <p class="text-muted mb-0">
+                Preencha os dados do funcionário
+                {% if request.empresa_ativa %}
+                    para <strong>{{ request.empresa_ativa }}</strong>
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row gap-2">
+            <a href="{% url 'rh:lista_funcionarios' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i> Salvar
+            </button>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header">
+            <h5>Controle</h5>
+            <p class="small">Informações principais do cadastro</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">
+                        Matrícula{% if form.matricula.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.matricula }}
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label">
+                        Foto{% if form.foto.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.foto }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header">
+            <h5>Dados pessoais</h5>
+            <p class="small">Identificação e contato do colaborador</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-xl-6">
+                    <label class="form-label">
+                        Nome{% if form.nome.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.nome }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        CPF{% if form.cpf.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.cpf }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        RG{% if form.rg.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.rg }}
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        CNH{% if form.cnh.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.cnh }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Categoria CNH{% if form.categoria_cnh.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.categoria_cnh }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Nacionalidade{% if form.nacionalidade.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.nacionalidade }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Data de nascimento{% if form.data_nascimento.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.data_nascimento }}
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">
+                        Endereço completo{% if form.endereco_completo.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.endereco_completo }}
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Telefone 1{% if form.telefone_1.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.telefone_1 }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Telefone 2{% if form.telefone_2.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.telefone_2 }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Estado civil{% if form.estado_civil.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.estado_civil }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Sexo{% if form.sexo.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.sexo }}
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">
+                        Nome da mãe{% if form.nome_mae.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.nome_mae }}
+                </div>
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">
+                        Nome do pai{% if form.nome_pai.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.nome_pai }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header">
+            <h5>Dados contratuais</h5>
+            <p class="small">Informações de vínculo e lotação</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-6">
+                    <label class="form-label">
+                        Cargo{% if form.cargo.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.cargo }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-6">
+                    <label class="form-label">
+                        Lotação{% if form.lotacao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.lotacao }}
+                </div>
+
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Situação atual{% if form.situacao_atual.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.situacao_atual }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Data de admissão{% if form.data_admissao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.data_admissao }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Início prorrogação{% if form.inicio_prorrogacao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.inicio_prorrogacao }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Fim prorrogação{% if form.fim_prorrogacao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.fim_prorrogacao }}
+                </div>
+
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Tipo de contrato{% if form.tipo_contrato.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.tipo_contrato }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Salário{% if form.salario.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.salario }}
+                </div>
+                <div class="col-12 col-md-2 col-xl-2">
+                    <label class="form-label">
+                        Adicional{% if form.adicional.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.adicional }}
+                </div>
+                <div class="col-12 col-md-2 col-xl-2">
+                    <label class="form-label">
+                        Último exame{% if form.data_ultimo_exame.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.data_ultimo_exame }}
+                </div>
+                <div class="col-12 col-md-2 col-xl-2">
+                    <label class="form-label">
+                        Responsável{% if form.responsavel.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.responsavel }}
+                </div>
+
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Data demissão{% if form.data_demissao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.data_demissao }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Tipo de demissão{% if form.tipo_demissao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.tipo_demissao }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Início afastamento{% if form.inicio_afastamento.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.inicio_afastamento }}
+                </div>
+                <div class="col-12 col-md-3 col-xl-3">
+                    <label class="form-label">
+                        Fim afastamento{% if form.fim_afastamento.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.fim_afastamento }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header">
+            <h5>Dados bancários</h5>
+            <p class="small">Informações para pagamento</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Banco{% if form.banco.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.banco }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-2">
+                    <label class="form-label">
+                        Agência{% if form.agencia.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.agencia }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Tipo de conta{% if form.tipo_conta.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.tipo_conta }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-2">
+                    <label class="form-label">
+                        Operação{% if form.operacao.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.operacao }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-2">
+                    <label class="form-label">
+                        Número da conta{% if form.numero_conta.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.numero_conta }}
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">
+                        Tipo PIX{% if form.tipo_pix.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.tipo_pix }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-5">
+                    <label class="form-label">
+                        PIX{% if form.pix.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.pix }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5>Dependentes</h5>
+                <p class="small">Cadastre filhos e outros dependentes</p>
+            </div>
+            <button type="button" class="btn btn-light btn-sm" id="add-dependente-btn">
+                <i class="bi bi-plus-circle me-1"></i> Adicionar dependente
+            </button>
+        </div>
+        <div class="card-body">
+            {{ formset.management_form }}
+
+            <div id="dependentes-container" class="row g-3">
+                {% for dependente_form in formset %}
+                    <div class="col-12 dependente-form-item">
+                        <div class="dependente-box">
+                            {% for hidden in dependente_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+
+                            <div class="row g-3">
+                                <div class="col-12 col-lg-4">
+                                    <label class="form-label">
+                                        Nome{% if dependente_form.nome.field.required %}<span class="required-star">*</span>{% endif %}
+                                    </label>
+                                    {{ dependente_form.nome }}
+                                </div>
+                                <div class="col-12 col-md-4 col-lg-3">
+                                    <label class="form-label">
+                                        Data de nascimento{% if dependente_form.data_nascimento.field.required %}<span class="required-star">*</span>{% endif %}
+                                    </label>
+                                    {{ dependente_form.data_nascimento }}
+                                </div>
+                                <div class="col-12 col-md-4 col-lg-3">
+                                    <label class="form-label">
+                                        CPF{% if dependente_form.cpf.field.required %}<span class="required-star">*</span>{% endif %}
+                                    </label>
+                                    {{ dependente_form.cpf }}
+                                </div>
+                                <div class="col-12 col-md-4 col-lg-2">
+                                    <label class="form-label">
+                                        Parentesco{% if dependente_form.parentesco.field.required %}<span class="required-star">*</span>{% endif %}
+                                    </label>
+                                    {{ dependente_form.parentesco }}
+                                </div>
+
+                                {% if dependente_form.DELETE %}
+                                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div class="form-check mt-2">
+                                            {{ dependente_form.DELETE }}
+                                            <label class="form-check-label ms-1">Remover dependente</label>
+                                        </div>
+
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-dependente-btn">
+                                            <i class="bi bi-x-circle me-1"></i> Remover bloco
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <template id="dependente-empty-form-template">
+                <div class="col-12 dependente-form-item">
+                    <div class="dependente-box">
+                        {% for hidden in formset.empty_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-4">
+                                <label class="form-label">
+                                    Nome{% if formset.empty_form.nome.field.required %}<span class="required-star">*</span>{% endif %}
+                                </label>
+                                {{ formset.empty_form.nome }}
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-3">
+                                <label class="form-label">
+                                    Data de nascimento{% if formset.empty_form.data_nascimento.field.required %}<span class="required-star">*</span>{% endif %}
+                                </label>
+                                {{ formset.empty_form.data_nascimento }}
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-3">
+                                <label class="form-label">
+                                    CPF{% if formset.empty_form.cpf.field.required %}<span class="required-star">*</span>{% endif %}
+                                </label>
+                                {{ formset.empty_form.cpf }}
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-2">
+                                <label class="form-label">
+                                    Parentesco{% if formset.empty_form.parentesco.field.required %}<span class="required-star">*</span>{% endif %}
+                                </label>
+                                {{ formset.empty_form.parentesco }}
+                            </div>
+
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-dependente-btn">
+                                    <i class="bi bi-x-circle me-1"></i> Remover bloco
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="card rh-form-card">
+        <div class="card-header">
+            <h5>Outras informações</h5>
+            <p class="small">Campos complementares do colaborador</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-4">
+                    <label class="form-label">
+                        E-social{% if form.e_social.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.e_social }}
+                </div>
+                <div class="col-12 col-md-6 col-xl-2 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        {{ form.analfabeto }}
+                        <label class="form-check-label ms-1">Analfabeto</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">
+                        Observações{% if form.observacoes.field.required %}<span class="required-star">*</span>{% endif %}
+                    </label>
+                    {{ form.observacoes }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if form.errors or formset.errors %}
+        <div class="alert alert-danger form-errors-box">
+            Corrija os campos destacados antes de salvar.
+        </div>
+    {% endif %}
+
+    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-4">
+        <a href="{% url 'rh:lista_funcionarios' %}" class="btn btn-outline-secondary">
+            Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const addBtn = document.getElementById('add-dependente-btn');
+    const container = document.getElementById('dependentes-container');
+    const template = document.getElementById('dependente-empty-form-template');
+    const totalForms = document.getElementById('id_dependentes-TOTAL_FORMS') ||
+                       document.querySelector('input[name$="-TOTAL_FORMS"]');
+
+    function updateElementIndex(element, prefix, index) {
+        const regex = new RegExp(prefix + '-(\\d+|__prefix__)-');
+        if (element.name) element.name = element.name.replace(regex, prefix + '-' + index + '-');
+        if (element.id) element.id = element.id.replace(regex, prefix + '-' + index + '-');
+        if (element.htmlFor) element.htmlFor = element.htmlFor.replace(regex, prefix + '-' + index + '-');
+    }
+
+    function getFormPrefix() {
+        const anyInput = container.querySelector('input, select, textarea');
+        if (!anyInput || !anyInput.name) return 'dependentes';
+        return anyInput.name.split('-')[0];
+    }
+
+    addBtn.addEventListener('click', function () {
+        const prefix = getFormPrefix();
+        const formCount = parseInt(totalForms.value, 10);
+        const clone = template.content.cloneNode(true);
+
+        clone.querySelectorAll('input, select, textarea, label').forEach(el => {
+            updateElementIndex(el, prefix, formCount);
+
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = false;
+                } else if (el.type !== 'hidden') {
+                    el.value = '';
+                }
+            }
+
+            if (el.tagName === 'SELECT') {
+                el.selectedIndex = 0;
+            }
+        });
+
+        container.appendChild(clone);
+        totalForms.value = formCount + 1;
+    });
+
+    container.addEventListener('click', function (e) {
+        const removeBtn = e.target.closest('.remove-dependente-btn');
+        if (!removeBtn) return;
+
+        const item = removeBtn.closest('.dependente-form-item');
+        if (!item) return;
+
+        const deleteInput = item.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+        if (deleteInput) {
+            deleteInput.checked = true;
+            item.style.display = 'none';
+        } else {
+            item.remove();
+
+            const prefix = getFormPrefix();
+            const items = container.querySelectorAll('.dependente-form-item');
+            items.forEach((formItem, index) => {
+                formItem.querySelectorAll('input, select, textarea, label').forEach(el => {
+                    updateElementIndex(el, prefix, index);
+                });
+            });
+
+            totalForms.value = items.length;
+        }
+    });
+});
+</script>
+{% endblock %}

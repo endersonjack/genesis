@@ -13,15 +13,33 @@
 
         <div>
             <h4 class="page-title mb-0 text-white">Painel</h4>
+
             {% if request.empresa_ativa %}
                 <small class="topbar-company text-white">
-                    Empresa ativa: <strong>{{ request.empresa_ativa }}</strong>
+                    Empresa ativa: 
+                    <strong>{{ request.empresa_ativa }}</strong>
+
+                    <a href="{% url 'selecionar_empresa' %}"
+                       class="btn btn-sm btn-light ms-2 py-0 px-2"
+                       title="Trocar empresa">
+
+                        <i class="bi bi-arrow-repeat"></i>
+                    </a>
+
                 </small>
             {% else %}
                 <small class="topbar-company text-white">
                     Nenhuma empresa selecionada
+
+                    <a href="{% url 'selecionar_empresa' %}"
+                       class="btn btn-sm btn-light ms-2 py-0 px-2">
+
+                        Selecionar empresa
+                    </a>
+
                 </small>
             {% endif %}
+
         </div>
     </div>
 

@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ funcionario.nome }} | RH | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            Dados do Funcionário
+        </h2>
+        <p class="text-muted mb-0">
+            Visualização completa do cadastro do colaborador
+        </p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'rh:lista_funcionarios' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+        <a href="{% url 'rh:editar_funcionario' funcionario.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil-square me-1"></i> Editar
+        </a>
+        <a href="{% url 'rh:excluir_funcionario' funcionario.pk %}" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir
+        </a>
+        <button onclick="window.print()" class="btn btn-secondary">
+            <i class="bi bi-printer me-1"></i> Imprimir
+        </button>
+    </div>
+</div>
+
+<style>
+    .rh-sheet {
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+        padding: 1rem;
+    }
+
+    .rh-block {
+        border: 1px solid #cfd8e3;
+        border-radius: .85rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    .rh-block-title {
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+            color: #fff;
+        {% else %}
+            background: #334155;
+            color: #fff;
+        {% endif %}
+        padding: .75rem 1rem;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: .2px;
+        border-bottom: 2px solid rgba(0,0,0,0.08);
+    }
+
+    .rh-photo-box {
+        min-height: 220px;
+        border: 1px solid #cfd8e3;
+        border-radius: .85rem;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .rh-photo-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .rh-cell {
+        border-right: 1px solid #e3e8ef;
+        border-bottom: 1px solid #e3e8ef;
+        padding: .45rem .8rem;
+        min-height: 58px;
+        background: #fcfdff;
+    }
+
+    .rh-cell:last-child {
+        border-right: none;
+    }
+
+    .rh-row:last-child .rh-cell {
+        border-bottom: none;
+    }
+
+    .rh-label {
+        display: block;
+        font-size: .82rem;
+        color: #64748b;
+        margin-bottom: .15rem;
+        line-height: 1.1;
+    }
+
+    .rh-value {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 1rem;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+
+    .rh-value.muted {
+        font-weight: 500;
+        color: #6b7280;
+    }
+
+    .dependente-item {
+        border: 1px solid #e2e8f0;
+        border-radius: .75rem;
+        padding: .9rem;
+        background: #f8fafc;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: .35rem .75rem;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .status-ativo { background: #dcfce7; color: #166534; }
+    .status-admitido { background: #dbeafe; color: #1d4ed8; }
+    .status-afastado { background: #fef3c7; color: #92400e; }
+    .status-ferias { background: #cffafe; color: #0f766e; }
+    .status-demitido { background: #fee2e2; color: #b91c1c; }
+
+    @media print {
+        .topbar,
+        .sidebar,
+        .btn,
+        .mobile-bottom-nav,
+        .print-hide {
+            display: none !important;
+        }
+
+        .main-content,
+        .content-wrapper,
+        .container-fluid {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        .rh-sheet {
+            box-shadow: none;
+            border-radius: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #fff !important;
+        }
+    }
+</style>
+
+<div class="rh-sheet">
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-2">
+            <div class="rh-photo-box">
+                {% if funcionario.foto %}
+                    <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}">
+                {% else %}
+                    <div class="text-center text-muted px-3">
+                        <i class="bi bi-person fs-1 d-block mb-2"></i>
+                        <span>Sem foto</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-10">
+            <div class="rh-block mb-0">
+                <div class="rh-block-title">Dados Pessoais</div>
+
+                <div class="container-fluid px-0">
+                    <div class="row g-0 rh-row">
+                        <div class="col-12 col-md-8 rh-cell">
+                            <span class="rh-label">Nome</span>
+                            <div class="rh-value">{{ funcionario.nome|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">CPF</span>
+                            <div class="rh-value">{{ funcionario.cpf|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">Matrícula</span>
+                            <div class="rh-value">{{ funcionario.matricula|default:"-" }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-0 rh-row">
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">RG</span>
+                            <div class="rh-value">{{ funcionario.rg|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">CNH</span>
+                            <div class="rh-value">{{ funcionario.cnh|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">Categoria CNH</span>
+                            <div class="rh-value">{{ funcionario.categoria_cnh|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-3 rh-cell">
+                            <span class="rh-label">Nacionalidade</span>
+                            <div class="rh-value">{{ funcionario.nacionalidade|default:"-" }}</div>
+                        </div>
+                        <div class="col-12 col-md-3 rh-cell">
+                            <span class="rh-label">Data de nascimento</span>
+                            <div class="rh-value">
+                                {% if funcionario.data_nascimento %}
+                                    {{ funcionario.data_nascimento|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-0 rh-row">
+                        <div class="col-12 col-md-7 rh-cell">
+                            <span class="rh-label">Endereço completo</span>
+                            <div class="rh-value">{{ funcionario.endereco_completo|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-3 rh-cell">
+                            <span class="rh-label">Telefone 1</span>
+                            <div class="rh-value">{{ funcionario.telefone_1|default:"-" }}</div>
+                        </div>
+                        <div class="col-6 col-md-2 rh-cell">
+                            <span class="rh-label">Telefone 2</span>
+                            <div class="rh-value">{{ funcionario.telefone_2|default:"-" }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-0 rh-row">
+                        <div class="col-12 col-md-3 rh-cell">
+                            <span class="rh-label">Estado civil</span>
+                            <div class="rh-value">
+                                {% if funcionario.estado_civil %}
+                                    {{ funcionario.get_estado_civil_display }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3 rh-cell">
+                            <span class="rh-label">Sexo</span>
+                            <div class="rh-value">
+                                {% if funcionario.sexo %}
+                                    {{ funcionario.get_sexo_display }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3 rh-cell">
+                            <span class="rh-label">Nome da mãe</span>
+                            <div class="rh-value">{{ funcionario.nome_mae|default:"-" }}</div>
+                        </div>
+                        <div class="col-12 col-md-3 rh-cell">
+                            <span class="rh-label">Nome do pai</span>
+                            <div class="rh-value">{{ funcionario.nome_pai|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rh-block">
+        <div class="rh-block-title">Dados Contratuais</div>
+
+        <div class="container-fluid px-0">
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">Cargo</span>
+                    <div class="rh-value">{{ funcionario.cargo|default:"-" }}</div>
+                </div>
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">Lotação</span>
+                    <div class="rh-value">{{ funcionario.lotacao|default:"-" }}</div>
+                </div>
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">Situação atual</span>
+                    <div class="rh-value">
+                        {% if funcionario.situacao_atual == 'ativo' %}
+                            <span class="status-badge status-ativo">Ativo</span>
+                        {% elif funcionario.situacao_atual == 'admitido' %}
+                            <span class="status-badge status-admitido">Admitido</span>
+                        {% elif funcionario.situacao_atual == 'afastado' %}
+                            <span class="status-badge status-afastado">Afastado</span>
+                        {% elif funcionario.situacao_atual == 'ferias' %}
+                            <span class="status-badge status-ferias">Férias</span>
+                        {% elif funcionario.situacao_atual == 'demitido' %}
+                            <span class="status-badge status-demitido">Demitido</span>
+                        {% else %}
+                            {{ funcionario.get_situacao_atual_display|default:"-" }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Data de admissão</span>
+                    <div class="rh-value">
+                        {% if funcionario.data_admissao %}
+                            {{ funcionario.data_admissao|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Início prorrogação</span>
+                    <div class="rh-value">
+                        {% if funcionario.inicio_prorrogacao %}
+                            {{ funcionario.inicio_prorrogacao|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Fim prorrogação</span>
+                    <div class="rh-value">
+                        {% if funcionario.fim_prorrogacao %}
+                            {{ funcionario.fim_prorrogacao|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Tipo de contrato</span>
+                    <div class="rh-value">{{ funcionario.tipo_contrato|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Salário</span>
+                    <div class="rh-value">{{ funcionario.salario|default:"0.00" }}</div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Adicional</span>
+                    <div class="rh-value">{{ funcionario.adicional|default:"0.00" }}</div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Último exame</span>
+                    <div class="rh-value">
+                        {% if funcionario.data_ultimo_exame %}
+                            {{ funcionario.data_ultimo_exame|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Responsável</span>
+                    <div class="rh-value">{{ funcionario.responsavel|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Data de demissão</span>
+                    <div class="rh-value">
+                        {% if funcionario.data_demissao %}
+                            {{ funcionario.data_demissao|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Tipo de demissão</span>
+                    <div class="rh-value">
+                        {% if funcionario.tipo_demissao %}
+                            {{ funcionario.get_tipo_demissao_display }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Início afastamento</span>
+                    <div class="rh-value">
+                        {% if funcionario.inicio_afastamento %}
+                            {{ funcionario.inicio_afastamento|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Fim afastamento</span>
+                    <div class="rh-value">
+                        {% if funcionario.fim_afastamento %}
+                            {{ funcionario.fim_afastamento|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rh-block">
+        <div class="rh-block-title">Dados Bancários</div>
+
+        <div class="container-fluid px-0">
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-3 rh-cell">
+                    <span class="rh-label">Banco</span>
+                    <div class="rh-value">{{ funcionario.banco|default:"-" }}</div>
+                </div>
+                <div class="col-6 col-md-2 rh-cell">
+                    <span class="rh-label">Agência</span>
+                    <div class="rh-value">{{ funcionario.agencia|default:"-" }}</div>
+                </div>
+                <div class="col-6 col-md-2 rh-cell">
+                    <span class="rh-label">Tipo de conta</span>
+                    <div class="rh-value">
+                        {% if funcionario.tipo_conta %}
+                            {{ funcionario.get_tipo_conta_display }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 rh-cell">
+                    <span class="rh-label">Operação</span>
+                    <div class="rh-value">{{ funcionario.operacao|default:"-" }}</div>
+                </div>
+                <div class="col-6 col-md-3 rh-cell">
+                    <span class="rh-label">Número da conta</span>
+                    <div class="rh-value">{{ funcionario.numero_conta|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="row g-0 rh-row">
+                <div class="col-6 col-md-3 rh-cell">
+                    <span class="rh-label">Tipo PIX</span>
+                    <div class="rh-value">
+                        {% if funcionario.tipo_pix %}
+                            {{ funcionario.get_tipo_pix_display }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-6 col-md-9 rh-cell">
+                    <span class="rh-label">PIX</span>
+                    <div class="rh-value">{{ funcionario.pix|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rh-block">
+        <div class="rh-block-title">Dependentes</div>
+
+        <div class="p-3">
+            {% if funcionario.dependentes.all %}
+                <div class="row g-3">
+                    {% for dependente in funcionario.dependentes.all %}
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="dependente-item h-100">
+                                <div class="mb-2">
+                                    <span class="rh-label">Nome</span>
+                                    <div class="rh-value">{{ dependente.nome|default:"-" }}</div>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="rh-label">Parentesco</span>
+                                    <div class="rh-value">{{ dependente.get_parentesco_display|default:"-" }}</div>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="rh-label">CPF</span>
+                                    <div class="rh-value">{{ dependente.cpf|default:"-" }}</div>
+                                </div>
+                                <div>
+                                    <span class="rh-label">Data de nascimento</span>
+                                    <div class="rh-value">
+                                        {% if dependente.data_nascimento %}
+                                            {{ dependente.data_nascimento|date:"d/m/Y" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="rh-value muted">Sem dependentes cadastrados.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="rh-block mb-0">
+        <div class="rh-block-title">Outras Informações</div>
+
+        <div class="container-fluid px-0">
+            <div class="row g-0 rh-row">
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">E-Social</span>
+                    <div class="rh-value">{{ funcionario.e_social|default:"-" }}</div>
+                </div>
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">Analfabeto</span>
+                    <div class="rh-value">
+                        {% if funcionario.analfabeto %}
+                            Sim
+                        {% else %}
+                            Não
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 rh-cell">
+                    <span class="rh-label">Data de cadastro</span>
+                    <div class="rh-value">
+                        {% if funcionario.criado_em %}
+                            {{ funcionario.criado_em|date:"d/m/Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-0 rh-row">
+                <div class="col-12 rh-cell">
+                    <span class="rh-label">Observações</span>
+                    <div class="rh-value {% if not funcionario.observacoes %}muted{% endif %}">
+                        {{ funcionario.observacoes|default:"-"|linebreaksbr }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

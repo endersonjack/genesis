@@ -26,4 +26,4 @@ def selecionar_empresa(request):
 
     return render(request, 'usuarios/selecionar_empresa.html', {
         'vinculos': vinculos
-    })
+    }) 

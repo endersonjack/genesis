@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir lotação | RH{% endblock %}
+
+{% block content %}
+<style>
+    .rh-delete-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .rh-delete-card .top {
+        padding: 1.2rem 1.25rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #334155;
+        {% endif %}
+    }
+
+    .rh-delete-card .body {
+        padding: 1.5rem;
+        background: #f8fafc;
+    }
+
+    .rh-info-box {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1rem 1.1rem;
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+        <div class="rh-delete-card">
+            <div class="top">
+                <h4 class="mb-0">Excluir lotação</h4>
+            </div>
+
+            <div class="body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-trash text-danger" style="font-size: 3rem;"></i>
+                </div>
+
+                <h5 class="fw-bold mb-2">Confirma a exclusão?</h5>
+                <p class="text-muted mb-4">
+                    Você está prestes a excluir a lotação
+                    <strong>{{ lotacao.nome }}</strong>.
+                </p>
+
+                <div class="rh-info-box text-start mb-4">
+                    <div class="small text-muted mb-1">Lotação</div>
+                    <div class="fw-semibold">{{ lotacao.nome }}</div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center">
+                        <a href="{% url 'rh:lista_lotacoes' %}" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>
+                            Confirmar exclusão
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -35,10 +35,11 @@
                 <span>Dashboard</span>
             </a>
 
-            <a href="#" class="menu-link">
-                <i class="bi bi-people"></i>
-                <span>RH</span>
-            </a>
+            <a href="{% url 'rh:dashboard_rh' %}"
+   class="menu-link {% if '/rh/' in request.path %}active{% endif %}">
+    <i class="bi bi-people"></i>
+    <span>RH</span>
+</a>
 
             <a href="#" class="menu-link">
                 <i class="bi bi-cash-stack"></i>

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Cargos | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .rh-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .rh-card-header {
+        padding: 1rem 1.25rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #334155;
+        {% endif %}
+    }
+
+    .rh-card-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .rh-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        background: #fff;
+        color: #64748b;
+    }
+</style>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Cargos</h2>
+        <p class="text-muted mb-0">
+            Gerencie os cargos da empresa
+            {% if request.empresa_ativa %}
+                <strong>{{ request.empresa_ativa }}</strong>
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+        <a href="{% url 'rh:criar_cargo' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Novo cargo
+        </a>
+    </div>
+</div>
+
+<div class="rh-card">
+    <div class="rh-card-header">
+        <h5 class="mb-0">Lista de cargos</h5>
+    </div>
+    <div class="rh-card-body">
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-12 col-md-8 col-lg-6">
+                <label class="form-label">Buscar cargo</label>
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Digite o nome do cargo">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search me-1"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        {% if cargos %}
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Cargo</th>
+                            <th>Funcionários vinculados</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cargo in cargos %}
+                            <tr>
+                                <td class="fw-semibold">{{ cargo.nome }}</td>
+                                <td>{{ cargo.total_funcionarios }}</td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{% url 'rh:editar_cargo' cargo.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                        <a href="{% url 'rh:excluir_cargo' cargo.pk %}" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="rh-empty">
+                <i class="bi bi-briefcase fs-1 d-block mb-3"></i>
+                <h5 class="fw-semibold">Nenhum cargo encontrado</h5>
+                <p class="mb-3">Cadastre o primeiro cargo para começar a organizar o RH.</p>
+                <a href="{% url 'rh:criar_cargo' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Cadastrar cargo
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
