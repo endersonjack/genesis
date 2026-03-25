@@ -1,0 +1,1 @@
+web: gunicorn genesis.wsgi --log-file -
