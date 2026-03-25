@@ -96,7 +96,7 @@ else:
             'PORT': config('DB_PORT', default='5432'),
         }
     }
-    
+
 # Validação de senha
 AUTH_PASSWORD_VALIDATORS = [
     {
