@@ -6,6 +6,13 @@ from .models import (
     Banco,
     Funcionario,
     Dependente,
+    FeriasFuncionario,
+    AfastamentoFuncionario,
+    ASOFuncionario,
+    CertificadoFuncionario,
+    PCMSOFuncionario,
+    AtestadoLicencaFuncionario,
+    OcorrenciaSaudeFuncionario,
 )
 
 
@@ -14,21 +21,59 @@ class DependenteInline(admin.TabularInline):
     extra = 1
 
 
+class FeriasFuncionarioInline(admin.TabularInline):
+    model = FeriasFuncionario
+    extra = 1
+
+
+class AfastamentoFuncionarioInline(admin.TabularInline):
+    model = AfastamentoFuncionario
+    extra = 1
+
+
+class ASOFuncionarioInline(admin.TabularInline):
+    model = ASOFuncionario
+    extra = 1
+
+
+class CertificadoFuncionarioInline(admin.TabularInline):
+    model = CertificadoFuncionario
+    extra = 1
+
+
+class PCMSOFuncionarioInline(admin.TabularInline):
+    model = PCMSOFuncionario
+    extra = 1
+
+
+class AtestadoLicencaFuncionarioInline(admin.TabularInline):
+    model = AtestadoLicencaFuncionario
+    extra = 1
+
+
+class OcorrenciaSaudeFuncionarioInline(admin.TabularInline):
+    model = OcorrenciaSaudeFuncionario
+    extra = 1
+
+
 @admin.register(Funcionario)
 class FuncionarioAdmin(admin.ModelAdmin):
     list_display = (
         'nome',
         'cpf',
+        'pis',
         'empresa',
         'matricula',
         'cargo',
         'lotacao',
         'situacao_atual',
         'data_admissao',
+        'data_demissao',
     )
     search_fields = (
         'nome',
         'cpf',
+        'pis',
         'rg',
         'matricula',
     )
@@ -38,6 +83,8 @@ class FuncionarioAdmin(admin.ModelAdmin):
         'cargo',
         'lotacao',
         'tipo_contrato',
+        'contribuinte_sindical',
+        'recebe_vale_transporte',
         'analfabeto',
     )
     autocomplete_fields = (
@@ -47,13 +94,21 @@ class FuncionarioAdmin(admin.ModelAdmin):
         'tipo_contrato',
         'banco',
     )
-    inlines = [DependenteInline]
+    inlines = [
+        DependenteInline,
+        FeriasFuncionarioInline,
+        AfastamentoFuncionarioInline,
+        ASOFuncionarioInline,
+        CertificadoFuncionarioInline,
+        PCMSOFuncionarioInline,
+        AtestadoLicencaFuncionarioInline,
+        OcorrenciaSaudeFuncionarioInline,
+    ]
 
     fieldsets = (
         ('Controle', {
             'fields': (
                 'empresa',
-                'id_erp',
                 'matricula',
                 'foto',
             )
@@ -61,9 +116,8 @@ class FuncionarioAdmin(admin.ModelAdmin):
         ('Dados Pessoais', {
             'fields': (
                 'nome',
-                'cpf',
-                'rg',
-                'cnh',
+                ('cpf', 'pis'),
+                ('rg', 'cnh'),
                 'categoria_cnh',
                 'nacionalidade',
                 'data_nascimento',
@@ -73,18 +127,27 @@ class FuncionarioAdmin(admin.ModelAdmin):
                 ('nome_mae', 'nome_pai'),
             )
         }),
-        ('Dados Contratuais', {
+        ('Admissão', {
             'fields': (
                 'tipo_contrato',
-                'data_admissao',
+                ('data_admissao', 'situacao_atual'),
                 ('inicio_prorrogacao', 'fim_prorrogacao'),
-                'situacao_atual',
-                ('inicio_afastamento', 'fim_afastamento'),
-                ('data_demissao', 'tipo_demissao'),
-                ('cargo'),
-                'lotacao',
+                ('cargo', 'lotacao'),
                 ('salario', 'adicional'),
+                ('recebe_vale_transporte', 'valor_vale_transporte'),
+                'contribuinte_sindical',
                 ('data_ultimo_exame', 'responsavel'),
+            )
+        }),
+        ('Demissão', {
+            'fields': (
+                ('tipo_demissao', 'data_demissao'),
+                'tipo_aviso',
+                ('data_inicio_aviso', 'data_fim_aviso'),
+                'anexo_aviso',
+                'precisa_exame_demissional',
+                'rescisao_assinada',
+                'observacoes_demissao',
             )
         }),
         ('Dados Bancários', {
@@ -130,3 +193,70 @@ class LotacaoAdmin(admin.ModelAdmin):
 class BancoAdmin(admin.ModelAdmin):
     list_display = ('codigo', 'nome')
     search_fields = ('codigo', 'nome')
+
+
+@admin.register(FeriasFuncionario)
+class FeriasFuncionarioAdmin(admin.ModelAdmin):
+    list_display = (
+        'funcionario',
+        'periodo_aquisitivo_inicio',
+        'periodo_aquisitivo_fim',
+        'gozo_inicio',
+        'gozo_fim',
+        'teve_abono_pecuniario',
+    )
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
+    list_filter = ('teve_abono_pecuniario',)
+
+
+@admin.register(AfastamentoFuncionario)
+class AfastamentoFuncionarioAdmin(admin.ModelAdmin):
+    list_display = (
+        'funcionario',
+        'tipo',
+        'data_afastamento',
+        'previsao_retorno',
+    )
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
+    list_filter = ('tipo',)
+
+
+@admin.register(ASOFuncionario)
+class ASOFuncionarioAdmin(admin.ModelAdmin):
+    list_display = ('funcionario', 'tipo', 'data')
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
+    list_filter = ('tipo', 'data')
+
+
+@admin.register(CertificadoFuncionario)
+class CertificadoFuncionarioAdmin(admin.ModelAdmin):
+    list_display = ('funcionario', 'tipo', 'data')
+    search_fields = ('funcionario__nome', 'funcionario__cpf', 'tipo')
+    list_filter = ('data',)
+
+
+@admin.register(PCMSOFuncionario)
+class PCMSOFuncionarioAdmin(admin.ModelAdmin):
+    list_display = ('funcionario', 'data_vencimento')
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
+    list_filter = ('data_vencimento',)
+
+
+@admin.register(AtestadoLicencaFuncionario)
+class AtestadoLicencaFuncionarioAdmin(admin.ModelAdmin):
+    list_display = (
+        'funcionario',
+        'tipo',
+        'data',
+        'periodo_inicio',
+        'periodo_fim',
+    )
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
+    list_filter = ('tipo', 'data')
+
+
+@admin.register(OcorrenciaSaudeFuncionario)
+class OcorrenciaSaudeFuncionarioAdmin(admin.ModelAdmin):
+    list_display = ('funcionario', 'tipo', 'origem', 'data')
+    search_fields = ('funcionario__nome', 'funcionario__cpf', 'descricao')
+    list_filter = ('tipo', 'origem', 'data')

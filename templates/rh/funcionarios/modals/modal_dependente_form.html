@@ -1,0 +1,90 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title mb-1">{{ titulo_modal }}</h5>
+        <small class="text-muted text-uppercase">{{ funcionario.nome }}</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    class="section-modal-form"
+    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_dependente' funcionario.pk item.pk %}{% else %}{% url 'rh:modal_adicionar_dependente' funcionario.pk %}{% endif %}"
+    hx-target="#dependentes-lista"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-people"></i>
+                    Dados do dependente
+                </div>
+
+                <div class="form-grid">
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.nome.id_for_label }}">
+                            Nome
+                        </label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}
+                            <div class="field-error">{{ form.nome.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.parentesco.id_for_label }}">
+                            Parentesco
+                        </label>
+                        {{ form.parentesco }}
+                        {% if form.parentesco.errors %}
+                            <div class="field-error">{{ form.parentesco.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.data_nascimento.id_for_label }}">
+                            Data de nascimento
+                        </label>
+                        {{ form.data_nascimento }}
+                        {% if form.data_nascimento.errors %}
+                            <div class="field-error">{{ form.data_nascimento.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.cpf.id_for_label }}">
+                            CPF
+                        </label>
+                        {{ form.cpf }}
+                        {% if form.cpf.errors %}
+                            <div class="field-error">{{ form.cpf.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

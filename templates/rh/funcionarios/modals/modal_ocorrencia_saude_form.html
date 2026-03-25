@@ -1,0 +1,101 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title mb-1">{{ titulo_modal }}</h5>
+        <small class="text-muted text-uppercase">{{ funcionario.nome }}</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    enctype="multipart/form-data"
+    class="section-modal-form"
+    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_ocorrencia_saude' funcionario.pk item.pk %}{% else %}{% url 'rh:modal_adicionar_ocorrencia_saude' funcionario.pk %}{% endif %}"
+    hx-target="#ocorrencias-saude-lista"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Dados da ocorrência
+                </div>
+
+                <div class="form-grid">
+                    <div class="span-4">
+                        <label class="modal-soft-label" for="{{ form.tipo.id_for_label }}">
+                            Tipo
+                        </label>
+                        {{ form.tipo }}
+                        {% if form.tipo.errors %}
+                            <div class="field-error">{{ form.tipo.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-4">
+                        <label class="modal-soft-label" for="{{ form.origem.id_for_label }}">
+                            Origem
+                        </label>
+                        {{ form.origem }}
+                        {% if form.origem.errors %}
+                            <div class="field-error">{{ form.origem.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-4">
+                        <label class="modal-soft-label" for="{{ form.data.id_for_label }}">
+                            Data
+                        </label>
+                        {{ form.data }}
+                        {% if form.data.errors %}
+                            <div class="field-error">{{ form.data.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-12">
+                        <label class="modal-soft-label" for="{{ form.descricao.id_for_label }}">
+                            Descrição
+                        </label>
+                        {{ form.descricao }}
+                        {% if form.descricao.errors %}
+                            <div class="field-error">{{ form.descricao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="span-12">
+                        <label class="modal-soft-label" for="{{ form.anexo.id_for_label }}">
+                            Anexo
+                        </label>
+                        {{ form.anexo }}
+                        {% if form.anexo.errors %}
+                            <div class="field-error">{{ form.anexo.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

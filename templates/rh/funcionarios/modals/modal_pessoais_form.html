@@ -1,0 +1,209 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Editar dados pessoais</h5>
+        <small class="text-muted">Atualize as informações principais do colaborador</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'rh:modal_editar_pessoais' funcionario.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    enctype="multipart/form-data"
+    class="section-modal-form">
+
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+        <div class="modal-section-wrap">
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-person-badge"></i>
+                    Identificação
+                </div>
+
+                <div class="modal-photo-panel">
+                    <div class="modal-photo-thumb">
+                        {% if funcionario.foto %}
+                            <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}">
+                        {% else %}
+                            <div class="modal-photo-empty">
+                                <i class="bi bi-person"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="modal-photo-side">
+                        <div class="modal-photo-meta">
+                            <strong>{{ funcionario.nome|default:"Funcionário" }}</strong>
+                            <small>Atualize, substitua ou remova a foto do colaborador</small>
+                        </div>
+
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-7">
+                                <label class="modal-soft-label">Nova foto</label>
+                                {{ form.foto }}
+                                {% if form.foto.errors %}<div class="field-error">{{ form.foto.errors|join:", " }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-5">
+                                {% if form.foto.clear_checkbox %}
+                                    <div class="photo-remove-box">
+                                        <label class="photo-remove-label">
+                                            {{ form.foto.clear_checkbox }}
+                                            <span>Excluir foto atual</span>
+                                        </label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="modal-soft-label">Matrícula</label>
+                        {{ form.matricula }}
+                        {% if form.matricula.errors %}<div class="field-error">{{ form.matricula.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-9">
+                        <label class="modal-soft-label">Nome</label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}<div class="field-error">{{ form.nome.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">CPF</label>
+                        {{ form.cpf }}
+                        {% if form.cpf.errors %}<div class="field-error">{{ form.cpf.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">RG</label>
+                        {{ form.rg }}
+                        {% if form.rg.errors %}<div class="field-error">{{ form.rg.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">PIS</label>
+                        {{ form.pis }}
+                        {% if form.pis.errors %}<div class="field-error">{{ form.pis.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-person-lines-fill"></i>
+                    Informações civis
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Data de nascimento</label>
+                        {{ form.data_nascimento }}
+                        {% if form.data_nascimento.errors %}<div class="field-error">{{ form.data_nascimento.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Sexo</label>
+                        {{ form.sexo }}
+                        {% if form.sexo.errors %}<div class="field-error">{{ form.sexo.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Estado civil</label>
+                        {{ form.estado_civil }}
+                        {% if form.estado_civil.errors %}<div class="field-error">{{ form.estado_civil.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Nacionalidade</label>
+                        {{ form.nacionalidade }}
+                        {% if form.nacionalidade.errors %}<div class="field-error">{{ form.nacionalidade.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">CNH</label>
+                        {{ form.cnh }}
+                        {% if form.cnh.errors %}<div class="field-error">{{ form.cnh.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Categoria CNH</label>
+                        {{ form.categoria_cnh }}
+                        {% if form.categoria_cnh.errors %}<div class="field-error">{{ form.categoria_cnh.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-telephone"></i>
+                    Contato e família
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Telefone 1</label>
+                        {{ form.telefone_1 }}
+                        {% if form.telefone_1.errors %}<div class="field-error">{{ form.telefone_1.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Telefone 2</label>
+                        {{ form.telefone_2 }}
+                        {% if form.telefone_2.errors %}<div class="field-error">{{ form.telefone_2.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Nome da mãe</label>
+                        {{ form.nome_mae }}
+                        {% if form.nome_mae.errors %}<div class="field-error">{{ form.nome_mae.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Nome do pai</label>
+                        {{ form.nome_pai }}
+                        {% if form.nome_pai.errors %}<div class="field-error">{{ form.nome_pai.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-geo-alt"></i>
+                    Endereço
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="modal-soft-label">Endereço completo</label>
+                        {{ form.endereco_completo }}
+                        {% if form.endereco_completo.errors %}<div class="field-error">{{ form.endereco_completo.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar alterações
+        </button>
+    </div>
+</form>

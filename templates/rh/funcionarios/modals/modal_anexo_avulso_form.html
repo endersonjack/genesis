@@ -1,0 +1,71 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title mb-1">{{ titulo_modal }}</h5>
+        <small class="text-muted text-uppercase">{{ funcionario.nome }}</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    enctype="multipart/form-data"
+    class="section-modal-form"
+    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_anexo_avulso' funcionario.pk item.pk %}{% else %}{% url 'rh:modal_adicionar_anexo_avulso' funcionario.pk %}{% endif %}"
+    hx-target="#anexos-avulsos-lista"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-paperclip"></i>
+                    Dados do anexo
+                </div>
+
+                <div class="form-grid">
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.titulo.id_for_label }}">Título</label>
+                        {{ form.titulo }}
+                        {% if form.titulo.errors %}<div class="field-error">{{ form.titulo.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="span-6">
+                        <label class="modal-soft-label" for="{{ form.data_documento.id_for_label }}">Data do documento</label>
+                        {{ form.data_documento }}
+                        {% if form.data_documento.errors %}<div class="field-error">{{ form.data_documento.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="span-12">
+                        <label class="modal-soft-label" for="{{ form.arquivo.id_for_label }}">Arquivo</label>
+                        {{ form.arquivo }}
+                        {% if form.arquivo.errors %}<div class="field-error">{{ form.arquivo.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="span-12">
+                        <label class="modal-soft-label" for="{{ form.descricao.id_for_label }}">Descrição</label>
+                        {{ form.descricao }}
+                        {% if form.descricao.errors %}<div class="field-error">{{ form.descricao.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

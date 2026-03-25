@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+
+{% block title %}Buscar Funcionários | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .search-shell {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 1.25rem;
+    }
+
+    .search-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .search-card-header {
+        padding: 1rem 1.25rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #334155;
+        {% endif %}
+    }
+
+    .search-card-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .stats-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 220px);
+    gap: 1rem;
+}
+
+    .stat-box {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .9rem;
+        padding: 1rem;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: .88rem;
+        margin-bottom: .35rem;
+    }
+
+    .stat-value {
+        font-size: 1.7rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1;
+    }
+
+    .table-rh tbody tr {
+        cursor: pointer;
+        transition: .15s ease;
+    }
+
+   .table-rh tbody tr {
+    cursor: pointer;
+    transition: .18s ease;
+}
+
+.table-rh tbody tr:hover {
+    background: #eff6ff;
+    transform: translateX(2px);
+}
+
+.table-rh tbody tr:hover td {
+    color: #0f172a;
+}
+
+.table-rh tbody tr:hover td.fw-semibold {
+    color: #2563eb;
+}
+
+    .status-pill {
+        display: inline-flex;
+        padding: .3rem .7rem;
+        border-radius: 999px;
+        font-size: .8rem;
+        font-weight: 700;
+    }
+
+    .status-admitido { background: #dbeafe; color: #1d4ed8; }
+    .status-afastado { background: #fef3c7; color: #92400e; }
+    .status-ferias { background: #cffafe; color: #0f766e; }
+    .status-demitido { background: #fee2e2; color: #b91c1c; }
+    .status-inativo { background: #e5e7eb; color: #374151; }
+    .status-terceirizado { background: #ede9fe; color: #6d28d9; }
+    .status-outro { background: #f3f4f6; color: #374151; }
+
+    .filter-divider {
+        border-top: 1px solid #e2e8f0;
+        margin: 1rem 0;
+    }
+
+    @media (max-width: 575.98px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+td:first-child, th:first-child {
+    text-align: center;
+}
+
+.nome-hover {
+    transition: .18s ease;
+}
+
+.table-rh tbody tr:hover .nome-hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+</style>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Buscar Funcionários</h2>
+        <p class="text-muted mb-0">Pesquisa completa de colaboradores da empresa selecionada.</p>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+
+    </div>
+</div>
+
+<div class="search-shell">
+    <div class="search-card">
+        <div class="search-card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Filtros</h5>
+
+    <button type="submit" form="form-busca-funcionarios" class="btn btn-light btn-sm rounded-circle" title="Buscar">
+        <i class="bi bi-search"></i>
+    </button>
+</div>
+
+        <div class="search-card-body">
+            <form method="get" class="d-grid gap-3" id="form-busca-funcionarios">
+                <div>
+                    <label class="form-label">Busca geral</label>
+                    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control"
+                           placeholder="Nome, CPF, PIS, matrícula, RG">
+                </div>
+
+                <div>
+                    <label class="form-label">Cargo</label>
+                    <select name="cargo" class="form-select">
+                        <option value="">Todos</option>
+                        {% for cargo in cargos %}
+                            <option value="{{ cargo.id }}" {% if request.GET.cargo == cargo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cargo.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Lotação</label>
+                    <select name="lotacao" class="form-select">
+                        <option value="">Todas</option>
+                        {% for lotacao in lotacoes %}
+                            <option value="{{ lotacao.id }}" {% if request.GET.lotacao == lotacao.id|stringformat:"s" %}selected{% endif %}>
+                                {{ lotacao.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Situação</label>
+                    <select name="situacao" class="form-select">
+                        <option value="">Todas</option>
+                        {% for valor, rotulo in status_choices %}
+                            <option value="{{ valor }}" {% if request.GET.situacao == valor %}selected{% endif %}>
+                                {{ rotulo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Tipo de contrato</label>
+                    <select name="tipo_contrato" class="form-select">
+                        <option value="">Todos</option>
+                        {% for tipo in tipos_contrato %}
+                            <option value="{{ tipo.id }}" {% if request.GET.tipo_contrato == tipo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ tipo.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label">Admissão de</label>
+                        <input type="date" name="admissao_de" value="{{ request.GET.admissao_de }}" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Admissão até</label>
+                        <input type="date" name="admissao_ate" value="{{ request.GET.admissao_ate }}" class="form-control">
+                    </div>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label">Demissão de</label>
+                        <input type="date" name="demissao_de" value="{{ request.GET.demissao_de }}" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Demissão até</label>
+                        <input type="date" name="demissao_ate" value="{{ request.GET.demissao_ate }}" class="form-control">
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" name="aviso_ativo" id="id_aviso_ativo"
+                           {% if request.GET.aviso_ativo == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_aviso_ativo">Em aviso ativo</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" name="em_ferias" id="id_em_ferias"
+                           {% if request.GET.em_ferias == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_em_ferias">Em férias agora</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" name="afastado" id="id_afastado"
+                           {% if request.GET.afastado == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_afastado">Somente afastados</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" name="sem_cargo" id="id_sem_cargo"
+                           {% if request.GET.sem_cargo == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_sem_cargo">Sem cargo</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" name="sem_lotacao" id="id_sem_lotacao"
+                           {% if request.GET.sem_lotacao == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="id_sem_lotacao">Sem lotação</label>
+                </div>
+
+                <div class="d-flex gap-2 pt-2">
+    <a href="{% url 'rh:buscar_funcionarios' %}" class="btn btn-outline-secondary w-100">
+        Limpar filtros
+    </a>
+</div>
+            </form>
+        </div>
+    </div>
+
+    <div class="search-card">
+        <div class="search-card-header">
+            <h5 class="mb-0">Resultados</h5>
+        </div>
+
+        <div class="search-card-body">
+            
+
+            <div class="table-responsive">
+                <table class="table align-middle table-rh">
+                    <thead>
+                        <tr>
+                            <th style="width:60px;">#</th>
+                            <th>Nome</th>
+                            <th>Matrícula</th>
+                            <th>CPF</th>
+                            <th>Cargo</th>
+                            <th>Lotação</th>
+                            <th>Situação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for funcionario in funcionarios %}
+                            <tr onclick="window.location='{% url 'rh:detalhes_funcionario' funcionario.pk %}'">
+            
+                                <td class="text-muted fw-bold">
+                                    {{ forloop.counter }}
+                                </td>
+
+                                <td class="fw-semibold nome-hover">{{ funcionario.nome }}</td>
+                                <td>{{ funcionario.matricula|default:"—" }}</td>
+                                <td>{{ funcionario.cpf|default:"—" }}</td>
+                                <td>{{ funcionario.cargo|default:"—" }}</td>
+                                <td>{{ funcionario.lotacao|default:"—" }}</td>
+
+                                <td>
+                                    <span class="status-pill status-{{ funcionario.situacao_atual }}">
+                                        {{ funcionario.get_situacao_atual_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    Nenhum funcionário encontrado com os filtros informados.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="stats-grid mb-3">
+                <div class="stat-box">
+                    <div class="stat-label">Resultados</div>
+                    <div class="stat-value">{{ total_resultados }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

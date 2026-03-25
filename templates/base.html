@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'css/topbar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/funcionarios/topo.css' %}">
+    <link rel="stylesheet" href="{% static 'css/funcionarios/menu.css' %}">
+    <link rel="stylesheet" href="{% static 'css/funcionarios/secao.css' %}">
+    <link rel="stylesheet" href="{% static 'css/funcionarios/modal_edicao.css' %}">
+    <link rel="stylesheet" href="{% static 'css/funcionarios/detalhes.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -48,6 +53,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/extra.js' %}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

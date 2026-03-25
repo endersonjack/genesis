@@ -1,0 +1,143 @@
+<section class="section-panel" data-panel="pessoais" id="sec-pessoais">
+    <div class="section-card">
+        <div class="section-card-header">
+            <div>
+                <h5>Dados pessoais</h5>
+                <small>Informações principais do colaborador</small>
+            </div>
+
+            <div class="section-header-actions">
+                <button
+                    type="button"
+                    class="btn btn-light btn-sm"
+                    hx-get="{% url 'rh:modal_editar_pessoais' funcionario.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">
+                    <i class="bi bi-pencil-square me-1"></i> Editar seção
+                </button>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+            <div class="modal-section-wrap">
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-person-badge"></i>
+                        Identificação
+                    </div>
+
+                    <div class="info-grid">
+    <div class="info-box span-3 hover-card">
+        <span class="info-label">Matrícula</span>
+        <div class="info-value">{{ funcionario.matricula|default:"—" }}</div>
+    </div>
+
+    <div class="info-box span-9 hover-card">
+        <span class="info-label">Nome</span>
+        <div class="info-value">{{ funcionario.nome|default:"—" }}</div>
+    </div>
+
+    <div class="info-box span-4 hover-card">
+        <span class="info-label">CPF</span>
+        <div class="info-value">{{ funcionario.cpf|default:"—" }}</div>
+    </div>
+
+    <div class="info-box span-4 hover-card">
+        <span class="info-label">RG</span>
+        <div class="info-value">{{ funcionario.rg|default:"—" }}</div>
+    </div>
+
+    <div class="info-box span-4 hover-card">
+        <span class="info-label">PIS</span>
+        <div class="info-value">{{ funcionario.pis|default:"—" }}</div>
+    </div>
+</div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-person-lines-fill"></i>
+                        Informações civis
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Data de nascimento</span>
+                            <div class="info-value">{{ funcionario.data_nascimento|date:"d/m/Y"|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Sexo</span>
+                            <div class="info-value">{{ funcionario.get_sexo_display|default:funcionario.sexo|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Estado civil</span>
+                            <div class="info-value">{{ funcionario.get_estado_civil_display|default:funcionario.estado_civil|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Nacionalidade</span>
+                            <div class="info-value">{{ funcionario.nacionalidade|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">CNH</span>
+                            <div class="info-value">{{ funcionario.cnh|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Categoria CNH</span>
+                            <div class="info-value">{{ funcionario.categoria_cnh|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-telephone"></i>
+                        Contato e família
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Telefone 1</span>
+                            <div class="info-value">{{ funcionario.telefone_1|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Telefone 2</span>
+                            <div class="info-value">{{ funcionario.telefone_2|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Nome da mãe</span>
+                            <div class="info-value">{{ funcionario.nome_mae|default:"—" }}</div>
+                        </div>
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Nome do pai</span>
+                            <div class="info-value">{{ funcionario.nome_pai|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-geo-alt"></i>
+                        Endereço
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-12 hover-card">
+                            <span class="info-label">Endereço completo</span>
+                            <div class="info-value muted">{{ funcionario.endereco_completo|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>

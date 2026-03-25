@@ -1,0 +1,158 @@
+<section class="section-panel" data-panel="admissao" id="sec-admissao">
+    <div class="section-card">
+
+        <div class="section-card-header">
+            <div>
+                <h5>Admissão</h5>
+                <small>Dados de contratação e vínculo</small>
+            </div>
+
+            <div class="section-header-actions">
+                <button
+                    type="button"
+                    class="btn btn-light btn-sm"
+                    hx-get="{% url 'rh:modal_editar_admissao' funcionario.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">
+                    <i class="bi bi-pencil-square me-1"></i> Editar seção
+                </button>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+
+            <div class="modal-section-wrap">
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-briefcase"></i>
+                        Vínculo
+                    </div>
+
+                    <div class="info-grid">
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Situação atual</span>
+                            <div class="info-value">
+                                {{ funcionario.get_situacao_atual_display|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Data de admissão</span>
+                            <div class="info-value">
+                                {{ funcionario.data_admissao|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Tipo de contrato</span>
+                            <div class="info-value">
+                                {{ funcionario.tipo_contrato|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Início da prorrogação</span>
+                            <div class="info-value">
+                                {{ funcionario.inicio_prorrogacao|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Fim da prorrogação</span>
+                            <div class="info-value">
+                                {{ funcionario.fim_prorrogacao|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-diagram-3"></i>
+                        Cargo e lotação
+                    </div>
+
+                    <div class="info-grid">
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Cargo</span>
+                            <div class="info-value">
+                                {{ funcionario.cargo|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-6 hover-card">
+                            <span class="info-label">Lotação</span>
+                            <div class="info-value">
+                                {{ funcionario.lotacao|default:"—" }}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-cash-stack"></i>
+                        Remuneração
+                    </div>
+
+                    <div class="info-grid">
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Salário</span>
+                            <div class="info-value">
+                                R$ {{ funcionario.salario|default:"0,00" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Adicional</span>
+                            <div class="info-value">
+                                R$ {{ funcionario.adicional|default:"0,00" }}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-bus-front"></i>
+                        Benefícios e encargos
+                    </div>
+
+                    <div class="info-grid">
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Recebe vale transporte</span>
+                            <div class="info-value">
+                                {% if funcionario.recebe_vale_transporte %}Sim{% else %}Não{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Valor do vale transporte</span>
+                            <div class="info-value">
+                                R$ {{ funcionario.valor_vale_transporte|default:"0,00" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Contribuinte sindical</span>
+                            <div class="info-value">
+                                {% if funcionario.contribuinte_sindical %}Sim{% else %}Não{% endif %}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</section>

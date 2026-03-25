@@ -1,56 +1,69 @@
 <header class="topbar"
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            style="background-color: {{ request.empresa_ativa.cor_tema }}; border-bottom: none;"
-        {% endif %}>
-    <div class="topbar-left">
-        <button class="btn btn-outline-secondary d-lg-none" id="openSidebarBtn" type="button">
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+        style="background-color: {{ request.empresa_ativa.cor_tema }}; border-bottom: none;"
+    {% endif %}
+>
+    <div class="topbar-left d-flex align-items-center gap-2">
+        <!-- MOBILE -->
+        <button
+            class="btn btn-light d-lg-none"
+            id="openSidebarBtn"
+            type="button"
+            aria-label="Abrir menu"
+            style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;"
+        >
             <i class="bi bi-list"></i>
         </button>
 
-        <button class="btn btn-outline-secondary d-none d-lg-inline-flex" id="toggleSidebarDesktopBtn" type="button">
-            <i class="bi bi-layout-sidebar-inset"></i>
+        <!-- DESKTOP -->
+        <button
+            class="btn btn-light d-none d-lg-flex"
+            id="toggleSidebarDesktopBtn"
+            type="button"
+            aria-label="Recolher ou expandir menu"
+            title="Recolher / expandir menu"
+            style="width: 42px; height: 42px; align-items: center; justify-content: center; flex: 0 0 42px;"
+        >
+            <i class="bi bi-layout-sidebar-inset fs-5"></i>
         </button>
 
-        <div>
-            <h4 class="page-title mb-0 text-white">Painel</h4>
+        <div class="d-flex flex-column">
+            <h4 class="page-title mb-0 text-white fw-semibold">Painel</h4>
 
             {% if request.empresa_ativa %}
-                <small class="topbar-company text-white">
-                    Empresa ativa: 
+                <small class="topbar-company text-white d-flex align-items-center gap-2 flex-wrap">
+                    <span>Empresa ativa:</span>
                     <strong>{{ request.empresa_ativa }}</strong>
 
                     <a href="{% url 'selecionar_empresa' %}"
-                       class="btn btn-sm btn-light ms-2 py-0 px-2"
+                       class="btn btn-sm btn-light py-0 px-2"
                        title="Trocar empresa">
-
                         <i class="bi bi-arrow-repeat"></i>
                     </a>
-
                 </small>
             {% else %}
-                <small class="topbar-company text-white">
-                    Nenhuma empresa selecionada
-
+                <small class="topbar-company text-white d-flex align-items-center gap-2 flex-wrap">
+                    <span>Nenhuma empresa selecionada</span>
                     <a href="{% url 'selecionar_empresa' %}"
-                       class="btn btn-sm btn-light ms-2 py-0 px-2">
-
+                       class="btn btn-sm btn-light py-0 px-2">
                         Selecionar empresa
                     </a>
-
                 </small>
             {% endif %}
-
         </div>
     </div>
 
-    <div class="topbar-right">
-        <div class="user-box">
-            <div class="user-avatar">
-                <i class="bi bi-person"></i>
+    <div class="topbar-right d-flex align-items-center">
+        <div class="user-box d-flex align-items-center gap-2 px-3 py-2 rounded-pill"
+             style="background: rgba(255,255,255,0.18);">
+            <div class="user-avatar d-flex align-items-center justify-content-center"
+                 style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.22);">
+                <i class="bi bi-person text-white"></i>
             </div>
-            <div class="user-info">
-                <strong>{{ request.user }}</strong>
-                <small class="text-muted">Usuário logado</small>
+
+            <div class="user-info d-flex flex-column">
+                <strong class="text-white">{{ request.user }}</strong>
+                <small class="text-white-50">Usuário logado</small>
             </div>
         </div>
     </div>

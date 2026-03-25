@@ -1,0 +1,95 @@
+<section class="section-panel" data-panel="anexos">
+    <div class="section-card">
+        <div class="section-card-header">
+            <div>
+                <h5>Anexos</h5>
+                <small>Arquivos do sistema e anexos avulsos do funcionário</small>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+            <div class="mb-4">
+                <div class="section-card-header px-0 pt-0">
+                    <div>
+                        <h6 class="mb-1">Arquivos do sistema</h6>
+                        <small>Arquivos vinculados a outras seções do cadastro</small>
+                    </div>
+                </div>
+
+                <div class="record-grid">
+                    {% for item in anexos_sistema_list %}
+                        <a href="{{ item.arquivo_url }}"
+                           target="_blank"
+                           class="record-card hover-card text-decoration-none text-reset linked-file-card"
+                           data-open-section="{{ item.section }}"
+                           {% if item.health_tab %}data-open-health-tab="{{ item.health_tab }}"{% endif %}>
+                            <div class="record-card-header">
+                                <div class="w-100">
+                                    <div class="record-title-line d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                        <div>
+                                            <h6 class="mb-1">{{ item.titulo }}</h6>
+                                            <small>{{ item.origem }}</small>
+                                        </div>
+                                        <span class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-arrow-up-right-square me-1"></i> Abrir
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-grid">
+                                <div class="info-box span-4 hover-card">
+                                    <span class="info-label">Origem</span>
+                                    <div class="info-value">{{ item.origem }}</div>
+                                </div>
+
+                                <div class="info-box span-4 hover-card">
+                                    <span class="info-label">Data</span>
+                                    <div class="info-value">{{ item.data|date:"d/m/Y"|default:"—" }}</div>
+                                </div>
+
+                                <div class="info-box span-4 hover-card">
+                                    <span class="info-label">Arquivo</span>
+                                    <div class="info-value">{{ item.arquivo_nome }}</div>
+                                </div>
+                            </div>
+                        </a>
+                    {% empty %}
+                        <div class="empty-state">
+                            Nenhum arquivo vinculado encontrado.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <div class="section-card-header px-0 pt-0">
+                    <div>
+                        <h6 class="mb-1">Outros arquivos</h6>
+                        <small>Anexos livres não vinculados às seções do sistema</small>
+                    </div>
+
+                    <div class="section-header-actions">
+                        <button
+                            type="button"
+                            class="btn btn-light btn-sm"
+                            hx-get="{% url 'rh:modal_adicionar_anexo_avulso' funcionario.pk %}"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML">
+                            <i class="bi bi-plus-circle me-1"></i> Adicionar
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    id="anexos-avulsos-lista"
+                    hx-get="{% url 'rh:anexos_avulsos_lista' funcionario.pk %}"
+                    hx-trigger="load">
+                    <div class="py-4 text-center text-muted">
+                        Carregando anexos avulsos...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

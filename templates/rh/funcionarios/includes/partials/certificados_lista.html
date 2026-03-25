@@ -1,0 +1,75 @@
+{% if certificados_list %}
+    <div class="record-grid">
+        {% for item in certificados_list %}
+            <div class="record-card hover-card">
+                <div class="record-card-header">
+                    <div class="w-100">
+                        <div class="record-title-line d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <h6 class="mb-1">
+                                    Certificado {{ item.get_tipo_display|default:item.tipo|default:"—" }} ({{ forloop.counter }})
+                                </h6>
+                                <small>
+                                    {{ item.get_tipo_display|default:item.tipo|default:"Certificado" }}
+                                </small>
+                            </div>
+
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    class="btn btn-light btn-sm"
+                                    hx-get="{% url 'rh:modal_editar_certificado' funcionario.pk item.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-danger btn-sm"
+                                    hx-get="{% url 'rh:modal_excluir_certificado' funcionario.pk item.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML">
+                                    <i class="bi bi-trash me-1"></i> Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-box span-4 hover-card">
+                        <span class="info-label">Tipo</span>
+                        <div class="info-value">
+                            {{ item.get_tipo_display|default:item.tipo|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div class="info-box span-4 hover-card">
+                        <span class="info-label">Data</span>
+                        <div class="info-value">
+                            {{ item.data|date:"d/m/Y"|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div class="info-box span-4 hover-card">
+                        <span class="info-label">Anexo</span>
+                        <div class="info-value">
+                            {% if item.anexo %}
+                                <a href="{{ item.anexo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-paperclip me-1"></i> Ver arquivo
+                                </a>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        Nenhum certificado cadastrado.
+    </div>
+{% endif %}

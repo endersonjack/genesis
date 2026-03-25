@@ -4,473 +4,666 @@
 
 {% block content %}
 <style>
-    .rh-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-        margin-bottom: 1.5rem;
-    }
-
-    .rh-summary-card,
-    .rh-panel,
-    .rh-quick-card {
+    .rh-board-card {
         border: 1px solid #d9e2ec;
-        border-radius: 1rem;
+        border-radius: 1.25rem;
         background: #fff;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-    }
-
-    .rh-summary-card {
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
         overflow: hidden;
         height: 100%;
     }
 
-    .rh-summary-card .top {
-        padding: 1rem 1.1rem .75rem;
+    .rh-board-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .rh-board-title {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .rh-board-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: #fff;
         {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: linear-gradient(135deg, {{ request.empresa_ativa.cor_tema }} 0%, {{ request.empresa_ativa.cor_tema }}dd 100%);
+            background: {{ request.empresa_ativa.cor_tema }};
         {% else %}
-            background: linear-gradient(135deg, #334155 0%, #475569 100%);
+            background: #2563eb;
         {% endif %}
     }
 
-    .rh-summary-card .body {
-        padding: 1rem 1.1rem;
+    .rh-board-body {
+        padding: 1.25rem;
         background: #f8fafc;
     }
 
-    .rh-summary-label {
-        font-size: .92rem;
-        opacity: .95;
+    .mini-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .mini-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1rem;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        display: flex;
+        flex-direction: column;
+        min-height: 190px;
+    }
+
+    .mini-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-bottom: .75rem;
+    }
+
+    .mini-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+
+    .mini-card-icon.total {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .mini-card-icon.ferias {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .mini-card-icon.experiencia {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .mini-card-icon.aviso {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+
+    .mini-card-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        color: #0f172a;
+        margin-bottom: .35rem;
+    }
+
+    .mini-card-title {
+        font-weight: 700;
+        color: #0f172a;
         margin-bottom: .2rem;
     }
 
-    .rh-summary-value {
-        font-size: 2rem;
-        line-height: 1;
-        font-weight: 800;
-    }
-
-    .rh-summary-sub {
+    .mini-card-desc {
         color: #64748b;
-        font-size: .9rem;
+        font-size: .92rem;
+        line-height: 1.45;
+        flex-grow: 1;
     }
 
-    .rh-panel {
-        overflow: hidden;
-        height: 100%;
-    }
-
-    .rh-panel-header {
-        padding: .95rem 1.1rem;
-        color: #fff;
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: {{ request.empresa_ativa.cor_tema }};
-        {% else %}
-            background: #334155;
-        {% endif %}
-    }
-
-    .rh-panel-header h5 {
-        margin: 0;
+    .mini-card .btn {
+        margin-top: 1rem;
+        border-radius: .85rem;
         font-weight: 700;
     }
 
-    .rh-panel-body {
-        padding: 1.1rem;
+
+    /* CALENDÁRIO */
+    .calendar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .9rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .calendar-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        text-transform: none;
+    }
+
+    .calendar-wrap {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .calendar-weekday,
+    .calendar-day {
+        min-height: 96px;
+        border-right: 1px solid #e5edf5;
+        border-bottom: 1px solid #e5edf5;
+        padding: .45rem;
+        background: #fff;
+    }
+
+    .calendar-weekday {
+        min-height: auto;
+        font-weight: 800;
+        color: #64748b;
+        text-align: center;
+        padding: .7rem .35rem;
         background: #f8fafc;
     }
 
-    .rh-quick-card {
-        padding: 1rem;
-        text-decoration: none;
-        display: block;
-        color: inherit;
+    .calendar-grid > div:nth-child(7n) {
+        border-right: none;
+    }
+
+    .calendar-day {
+        cursor: pointer;
         transition: .2s ease;
-        height: 100%;
     }
 
-    .rh-quick-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    .calendar-day:hover {
+        background: #fff7ed;
     }
 
-    .rh-quick-icon {
-        width: 54px;
-        height: 54px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.35rem;
-        color: #fff;
-        margin-bottom: .8rem;
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: {{ request.empresa_ativa.cor_tema }};
-        {% else %}
-            background: #334155;
-        {% endif %}
+    .calendar-day.has-event {
+        background: #fff3e6;
     }
 
-    .rh-mini-stat {
-        border: 1px solid #dbe4ee;
-        border-radius: .9rem;
-        background: #fff;
-        padding: .85rem 1rem;
-        height: 100%;
+    .calendar-day.has-event:hover {
+        background: #ffe8cc;
     }
 
-    .rh-mini-stat .value {
-        font-size: 1.35rem;
+    .calendar-number {
+        font-size: .95rem;
         font-weight: 800;
-        color: #0f172a;
-        line-height: 1;
+        color: #334155;
+        margin-bottom: .35rem;
     }
 
-    .rh-mini-stat .label {
-        color: #64748b;
-        font-size: .92rem;
-        margin-top: .35rem;
+    .calendar-day.today {
+        box-shadow: inset 0 0 0 2px #2563eb;
     }
 
-    .rh-badge-soft {
+    .calendar-day.today .calendar-number {
+        color: #2563eb;
+    }
+
+    .day-icons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .3rem;
+    }
+
+    .day-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
         display: inline-flex;
         align-items: center;
-        border-radius: 999px;
-        padding: .35rem .75rem;
-        font-size: .82rem;
-        font-weight: 700;
-        background: #e2e8f0;
-        color: #334155;
+        justify-content: center;
+        font-size: .8rem;
+        font-weight: 800;
+        border: 1px solid transparent;
     }
 
-    .rh-list-item {
-        padding: .8rem .95rem;
+    .day-icon.ferias_inicio {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .day-icon.ferias_volta {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .day-icon.experiencia_45,
+    .day-icon.fim_prorrogacao {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .day-icon.fim_aviso {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+
+    .day-icon.exame {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .calendar-empty {
+        background: #fcfcfd;
+        cursor: default;
+    }
+
+    .legend-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem 1rem;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .legend-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .8rem;
+    }
+
+    .legend-dot.ferias_inicio {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .legend-dot.ferias_volta {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .legend-dot.experiencia_45 {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .legend-dot.fim_aviso {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+
+    .legend-dot.exame {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .calendar-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .calendar-actions .btn {
+        border-radius: .9rem;
+        font-weight: 700;
+        min-width: 180px;
+    }
+
+    .day-modal-list {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .day-modal-item {
         border: 1px solid #e2e8f0;
         border-radius: .9rem;
+        padding: .9rem 1rem;
         background: #fff;
     }
 
-    .rh-list-item + .rh-list-item {
-        margin-top: .7rem;
+    .day-modal-item-title {
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .2rem;
     }
 
-    .rh-empty {
-        border: 1px dashed #cbd5e1;
-        border-radius: .9rem;
-        padding: 1.2rem;
-        text-align: center;
+    .day-modal-item-sub {
         color: #64748b;
-        background: #fff;
+        font-size: .92rem;
+        margin-bottom: .75rem;
     }
 
-    .table-rh th {
-        font-size: .86rem;
-        color: #64748b;
-        font-weight: 700;
+     .day-modal-item-sub .legend-dot {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
     }
 
-    .table-rh td {
-        vertical-align: middle;
+    @media (max-width: 767.98px) {
+        .calendar-weekday,
+        .calendar-day {
+            min-height: 72px;
+            padding: .35rem;
+        }
+
+        .calendar-number {
+            font-size: .85rem;
+        }
+
+        .day-icon {
+            width: 20px;
+            height: 20px;
+            font-size: .7rem;
+        }
+
+        .calendar-actions .btn {
+            width: 100%;
+        }
     }
+    
+.day-icon.lembrete,
+.legend-dot.lembrete {
+    background: #ffe4e6;
+    color: #be123c;
+}
+.destaque-item-lembrete {
+    border-left-color: #be123c;
+}
+    
 </style>
 
-<div class="rh-page-header">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">Dashboard RH</h2>
-        <p class="text-muted mb-0">
-            Indicadores e acessos rápidos do setor de recursos humanos
-            {% if request.empresa_ativa %}
-                de <strong>{{ request.empresa_ativa }}</strong>
-            {% endif %}
-        </p>
+        <p class="text-muted mb-0">Visão geral da empresa selecionada.</p>
     </div>
-
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'rh:lista_funcionarios' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-list-ul me-1"></i> Funcionários
-        </a>
-        <a href="{% url 'rh:criar_funcionario' %}" class="btn btn-primary">
-            <i class="bi bi-person-plus me-1"></i> Novo funcionário
-        </a>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="rh-summary-card">
-            <div class="top">
-                <div class="rh-summary-label">Total de funcionários</div>
-                <div class="rh-summary-value">{{ total_funcionarios }}</div>
-            </div>
-            <div class="body">
-                <div class="rh-summary-sub">Base geral cadastrada no RH</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="rh-summary-card">
-            <div class="top">
-                <div class="rh-summary-label">Ativos</div>
-                <div class="rh-summary-value">{{ total_ativos }}</div>
-            </div>
-            <div class="body">
-                <div class="rh-summary-sub">Funcionários em atividade</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="rh-summary-card">
-            <div class="top">
-                <div class="rh-summary-label">Admitidos</div>
-                <div class="rh-summary-value">{{ total_admitidos }}</div>
-            </div>
-            <div class="body">
-                <div class="rh-summary-sub">Status admitido</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="rh-summary-card">
-            <div class="top">
-                <div class="rh-summary-label">Férias</div>
-                <div class="rh-summary-value">{{ total_ferias }}</div>
-            </div>
-            <div class="body">
-                <div class="rh-summary-sub">Em gozo de férias</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="rh-summary-card">
-            <div class="top">
-                <div class="rh-summary-label">Afastados</div>
-                <div class="rh-summary-value">{{ total_afastados }}</div>
-            </div>
-            <div class="body">
-                <div class="rh-summary-sub">Necessitam acompanhamento</div>
-            </div>
-        </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'rh:buscar_funcionarios' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-search me-1"></i> Buscar
+</a>
+        <button
+    type="button"
+    class="btn btn-primary"
+    hx-get="{% url 'rh:modal_novo_funcionario_rapido' %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-bs-toggle="modal"
+    data-bs-target="#modalPadrao">
+    <i class="bi bi-person-plus me-1"></i> Novo funcionário
+</button>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-xl-4">
-        <a href="{% url 'rh:lista_funcionarios' %}" class="rh-quick-card">
-            <div class="rh-quick-icon">
-                <i class="bi bi-people"></i>
+<div class="row g-4">
+    <div class="col-12 col-xl-5">
+        <div class="rh-board-card">
+            <div class="rh-board-header">
+                <h3 class="rh-board-title">
+                    <span class="rh-board-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </span>
+                    FUNCIONÁRIOS
+                </h3>
             </div>
-            <h6 class="fw-bold mb-1">Funcionários</h6>
-            <p class="text-muted mb-0">Visualizar, editar e gerenciar cadastros.</p>
-        </a>
-    </div>
 
-    <div class="col-12 col-md-6 col-xl-4">
-        <a href="{% url 'rh:lista_cargos' %}" class="rh-quick-card">
-            <div class="rh-quick-icon">
-                <i class="bi bi-briefcase"></i>
-            </div>
-            <h6 class="fw-bold mb-1">Cargos</h6>
-            <p class="text-muted mb-0">Cadastrar e organizar funções da empresa.</p>
-        </a>
-    </div>
+            <div class="rh-board-body">
+                <div class="mini-cards-grid">
+                    <div class="mini-card">
+                        <div class="mini-card-top">
+                            <span class="mini-card-icon total">
+                                <i class="bi bi-people-fill"></i>
+                            </span>
+                        </div>
+                        <div class="mini-card-value">{{ total_funcionarios }}</div>
+                        <div class="mini-card-title">Todos</div>
+                        <div class="mini-card-desc">
+                            Total de funcionários cadastrados na empresa ativa.
+                        </div>
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=todos" class="btn btn-outline-primary">
+                            Ver todos
+                        </a>
+                    </div>
 
-    <div class="col-12 col-md-6 col-xl-4">
-        <a href="{% url 'rh:lista_lotacoes' %}" class="rh-quick-card">
-            <div class="rh-quick-icon">
-                <i class="bi bi-building"></i>
-            </div>
-            <h6 class="fw-bold mb-1">Lotações</h6>
-            <p class="text-muted mb-0">Gerenciar locais e alocações do RH.</p>
-        </a>
-    </div>
-</div>
+                    <div class="mini-card">
+                        <div class="mini-card-top">
+                            <span class="mini-card-icon ferias">
+                                <i class="bi bi-sun-fill"></i>
+                            </span>
+                        </div>
+                        <div class="mini-card-value">{{ total_ferias }}</div>
+                        <div class="mini-card-title">Em Férias</div>
+                        <div class="mini-card-desc">
+                            Funcionários atualmente em gozo de férias.
+                        </div>
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=ferias" class="btn btn-outline-primary">
+                            Ver todos
+                        </a>
+                    </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-8">
-        <div class="rh-panel">
-            <div class="rh-panel-header">
-                <h5>Funcionários por cargo</h5>
-            </div>
-            <div class="rh-panel-body">
-                {% if cargos_resumo %}
-                    <div class="row g-3">
-                        {% for item in cargos_resumo %}
-                            <div class="col-12 col-md-6">
-                                <div class="rh-mini-stat">
-                                    <div class="d-flex justify-content-between align-items-center gap-3">
-                                        <div>
-                                            <div class="value">{{ item.total }}</div>
-                                            <div class="label">
-                                                {{ item.cargo__nome|default:"Sem cargo definido" }}
-                                            </div>
-                                        </div>
-                                        <span class="rh-badge-soft">Cargo</span>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
+                    <div class="mini-card">
+                        <div class="mini-card-top">
+                            <span class="mini-card-icon experiencia">
+                                <i class="bi bi-hourglass-split"></i>
+                            </span>
+                        </div>
+                        <div class="mini-card-value">{{ total_experiencia }}</div>
+                        <div class="mini-card-title">Em Experiência</div>
+                        <div class="mini-card-desc">
+                            Inclui quem vai prorrogar e quem já está em prorrogação.
+                        </div>
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=experiencia" class="btn btn-outline-primary">
+                            Ver todos
+                        </a>
                     </div>
-                {% else %}
-                    <div class="rh-empty">
-                        Nenhum cargo com funcionários vinculados até o momento.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 
-    <div class="col-12 col-lg-4">
-        <div class="rh-panel h-100">
-            <div class="rh-panel-header">
-                <h5>Dados importantes</h5>
-            </div>
-            <div class="rh-panel-body">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ total_cargos }}</div>
-                            <div class="label">Cargos cadastrados</div>
+                    <div class="mini-card">
+                        <div class="mini-card-top">
+                            <span class="mini-card-icon aviso">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </span>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ total_lotacoes }}</div>
-                            <div class="label">Lotações cadastradas</div>
+                        <div class="mini-card-value">{{ total_aviso }}</div>
+                        <div class="mini-card-title">Em Aviso</div>
+                        <div class="mini-card-desc">
+                            Funcionários com aviso ativo e data final definida.
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ sem_cargo }}</div>
-                            <div class="label">Funcionários sem cargo</div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ sem_lotacao }}</div>
-                            <div class="label">Funcionários sem lotação</div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ sem_cpf }}</div>
-                            <div class="label">Funcionários sem CPF informado</div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rh-mini-stat">
-                            <div class="value">{{ total_demitidos }}</div>
-                            <div class="label">Demitidos</div>
-                        </div>
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=aviso" class="btn btn-outline-primary">
+                            Ver todos
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="col-12 col-xl-7">
+        <div class="rh-board-card">
+            <div class="rh-board-header">
+                <h3 class="rh-board-title">
+                    <span class="rh-board-icon">
+                        <i class="bi bi-calendar3"></i>
+                    </span>
+                    AVISOS
+                </h3>
+            </div>
+
+            <div class="rh-board-body">
+
+
+                <div class="calendar-head">
+    <h4 class="calendar-title">Calendário — {{ mes_nome }} / {{ ano }}</h4>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6">
-        <div class="rh-panel h-100">
-            <div class="rh-panel-header">
-                <h5>Admissões recentes</h5>
-            </div>
-            <div class="rh-panel-body">
-                {% if admitidos_recentes %}
-                    <div class="table-responsive">
-                        <table class="table table-rh align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Funcionário</th>
-                                    <th>Cargo</th>
-                                    <th>Admissão</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for funcionario in admitidos_recentes %}
-                                    <tr>
-                                        <td>
-                                            <a href="{% url 'rh:detalhar_funcionario' funcionario.pk %}" class="text-decoration-none fw-semibold">
-                                                {{ funcionario.nome }}
-                                            </a>
-                                        </td>
-                                        <td>{{ funcionario.cargo|default:"-" }}</td>
-                                        <td>{{ funcionario.data_admissao|date:"d/m/Y" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="rh-empty">
-                        Nenhuma admissão registrada.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+<div class="calendar-wrap">
+    <div class="calendar-grid">
+        {% for nome_dia in nomes_dias %}
+            <div class="calendar-weekday">{{ nome_dia }}</div>
+        {% endfor %}
 
-    <div class="col-12 col-lg-6">
-        <div class="rh-panel h-100">
-            <div class="rh-panel-header">
-                <h5>Aniversariantes do mês</h5>
-            </div>
-            <div class="rh-panel-body">
-                {% if aniversariantes_mes %}
-                    {% for funcionario in aniversariantes_mes %}
-                        <div class="rh-list-item d-flex justify-content-between align-items-center gap-3">
-                            <div>
-                                <div class="fw-semibold">{{ funcionario.nome }}</div>
-                                <small class="text-muted">{{ funcionario.cargo|default:"Sem cargo" }}</small>
-                            </div>
-                            <span class="rh-badge-soft">
-                                {{ funcionario.data_nascimento|date:"d/m" }}
-                            </span>
+        {% for semana in calendario_semanas %}
+            {% for dia in semana %}
+                {% if dia.numero %}
+                    <div class="calendar-day {% if dia.is_today %}today{% endif %} {% if dia.tem_evento %}has-event{% endif %}"
+                         {% if dia.tem_evento %}
+                             data-bs-toggle="modal"
+                             data-bs-target="#modalDia{{ dia.numero }}"
+                         {% endif %}>
+                        <div class="calendar-number">{{ dia.numero }}</div>
+
+                        <div class="day-icons">
+                            {% for evento in dia.eventos|slice:":4" %}
+                                <span class="day-icon {{ evento.tipo }}" title="{{ evento.label }} - {{ evento.funcionario_nome }}">
+                                    {% if evento.tipo == 'ferias_inicio' %}
+                                        <i class="bi bi-sun-fill"></i>
+                                    {% elif evento.tipo == 'ferias_volta' %}
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    {% elif evento.tipo == 'experiencia_45' or evento.tipo == 'fim_prorrogacao' %}
+                                        <i class="bi bi-hourglass-split"></i>
+                                    {% elif evento.tipo == 'fim_aviso' %}
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                    {% elif evento.tipo == 'exame' %}
+                                        <i class="bi bi-heart-pulse-fill"></i>
+                                    {% elif evento.tipo == 'lembrete' %}
+                                        <i class="bi bi-bell-fill"></i>
+                                    {% endif %}
+                                </span>
+                            {% endfor %}
                         </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="rh-empty">
-                        Nenhum aniversariante neste mês.
                     </div>
+                {% else %}
+                    <div class="calendar-day calendar-empty"></div>
                 {% endif %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="legend-list">
+    <span class="legend-item">
+        <span class="legend-dot ferias_inicio"><i class="bi bi-sun-fill"></i></span>
+        Férias
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot ferias_volta"><i class="bi bi-arrow-counterclockwise"></i></span>
+        Volta de férias
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot experiencia_45"><i class="bi bi-hourglass-split"></i></span>
+        Experiência / prorrogação
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot fim_aviso"><i class="bi bi-exclamation-triangle-fill"></i></span>
+        Aviso
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot exame"><i class="bi bi-heart-pulse-fill"></i></span>
+        Exames
+    </span>
+</div>
+
+<div class="calendar-actions">
+    <button type="button" class="btn btn-outline-secondary" disabled>
+        <i class="bi bi-calendar-week me-1"></i> Detalhar por Semana
+    </button>
+
+    <a href="{% url 'rh:calendario_rh' %}" class="btn btn-primary">
+        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir calendário completo
+    </a>
+</div>
+
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-12">
-        <div class="rh-panel">
-            <div class="rh-panel-header">
-                <h5>Funcionários por lotação</h5>
-            </div>
-            <div class="rh-panel-body">
-                {% if lotacoes_resumo %}
-                    <div class="row g-3">
-                        {% for item in lotacoes_resumo %}
-                            <div class="col-12 col-md-6 col-xl-3">
-                                <div class="rh-mini-stat">
-                                    <div class="value">{{ item.total }}</div>
-                                    <div class="label">
-                                        {{ item.lotacao__nome|default:"Sem lotação" }}
+{% for semana in calendario_semanas %}
+    {% for dia in semana %}
+        {% if dia.numero and dia.tem_evento %}
+            <div class="modal fade" id="modalDia{{ dia.numero }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">
+                                Avisos do dia {{ dia.numero }} de {{ mes_nome }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+
+                        <div class="modal-body bg-light">
+                            <div class="day-modal-list">
+                                {% for evento in dia.eventos %}
+
+                                    <div class="day-modal-item">
+                                        <div class="day-modal-item-title">
+                                            {{ evento.funcionario_nome|default:"Funcionário" }}
+                                        </div>
+
+                                        <div class="day-modal-item-sub d-flex align-items-center gap-2 flex-wrap">
+                                            <span class="legend-dot {{ evento.tipo }}">
+                                                {% if evento.tipo == 'ferias_inicio' %}
+                                                    <i class="bi bi-sun-fill"></i>
+                                                {% elif evento.tipo == 'ferias_volta' %}
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                {% elif evento.tipo == 'experiencia_45' or evento.tipo == 'fim_prorrogacao' %}
+                                                    <i class="bi bi-hourglass-split"></i>
+                                                {% elif evento.tipo == 'fim_aviso' %}
+                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                {% elif evento.tipo == 'exame' %}
+                                                    <i class="bi bi-heart-pulse-fill"></i>
+                                                {% elif evento.tipo == 'lembrete' %}
+                                                    <i class="bi bi-bell-fill"></i>
+                                                {% endif %}
+                                            </span>
+
+                                            <span>{{ evento.label }}</span>
+                                        </div>
+
+                                        {% if evento.detalhe_url %}
+                                            <a href="{{ evento.detalhe_url }}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-person-vcard me-1"></i> Detalhar
+                                            </a>
+                                        {% endif %}
                                     </div>
-                                </div>
+
+
+                                {% endfor %}
                             </div>
-                        {% endfor %}
+                        </div>
                     </div>
-                {% else %}
-                    <div class="rh-empty">
-                        Nenhuma lotação com funcionários vinculados.
-                    </div>
-                {% endif %}
+                </div>
             </div>
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" id="modal-content">
+            <!-- conteúdo carregado via HTMX -->
         </div>
     </div>
 </div>

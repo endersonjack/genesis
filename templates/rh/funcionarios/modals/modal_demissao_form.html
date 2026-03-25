@@ -1,0 +1,260 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Editar demissão</h5>
+        <small class="text-muted">Atualize os dados de desligamento do colaborador</small>
+    </div>
+
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'rh:modal_editar_demissao' funcionario.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    enctype="multipart/form-data"
+    class="section-modal-form">
+
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <style>
+            .demissao-alert-box {
+                display: flex;
+                align-items: flex-start;
+                gap: .85rem;
+                border-radius: 16px;
+                padding: 1rem;
+                border: 1px solid;
+                margin-bottom: 1rem;
+            }
+
+            .demissao-alert-icon {
+                font-size: 1.2rem;
+                line-height: 1;
+                margin-top: .1rem;
+                flex-shrink: 0;
+            }
+
+            .demissao-alert-content {
+                display: flex;
+                flex-direction: column;
+                gap: .2rem;
+            }
+
+            .demissao-alert-content strong {
+                font-size: .96rem;
+            }
+
+            .demissao-alert-content small {
+                color: inherit;
+                opacity: .95;
+                line-height: 1.45;
+            }
+
+            .demissao-alert-danger {
+                background: #fef2f2;
+                border-color: #fca5a5;
+                color: #991b1b;
+            }
+
+            .demissao-alert-danger .demissao-alert-icon {
+                color: #dc2626;
+            }
+
+            .demissao-alert-ok {
+                background: #ecfdf5;
+                border-color: #86efac;
+                color: #166534;
+            }
+
+            .demissao-alert-ok .demissao-alert-icon {
+                color: #16a34a;
+            }
+
+            .demissao-alert-neutral {
+                background: #eff6ff;
+                border-color: #93c5fd;
+                color: #1d4ed8;
+            }
+
+            .demissao-alert-neutral .demissao-alert-icon {
+                color: #2563eb;
+            }
+
+            .field-highlight-danger input,
+            .field-highlight-danger select,
+            .field-highlight-danger textarea,
+            .field-highlight-danger .form-control,
+            .field-highlight-danger .form-select {
+                border-color: #fca5a5 !important;
+                background: #fff7f7 !important;
+                box-shadow: 0 0 0 0.18rem rgba(220, 38, 38, 0.08) !important;
+            }
+        </style>
+
+        <div class="modal-section-wrap">
+
+            <div class="demissao-alert-box
+                {% if exame_info_indisponivel %}
+                    demissao-alert-neutral
+                {% elif precisa_exame_demissional %}
+                    demissao-alert-danger
+                {% else %}
+                    demissao-alert-ok
+                {% endif %}">
+
+                <div class="demissao-alert-icon">
+                    {% if exame_info_indisponivel %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% elif precisa_exame_demissional %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% endif %}
+                </div>
+
+                <div class="demissao-alert-content">
+                    <strong>
+                        {% if exame_info_indisponivel %}
+                            Não foi possível calcular a exigência do exame demissional
+                        {% elif precisa_exame_demissional %}
+                            Exame demissional necessário
+                        {% else %}
+                            Exame demissional não obrigatório
+                        {% endif %}
+                    </strong>
+
+                    <small>
+                        Funcionário admitido em
+                        <strong>{{ funcionario.data_admissao|date:"d/m/Y"|default:"não informado" }}</strong>.
+
+                        {% if exame_info_indisponivel %}
+                            Cadastre a data de admissão e informe a data de demissão para aplicar corretamente a regra dos 90 dias.
+                        {% elif precisa_exame_demissional %}
+                            Como o período de trabalho ultrapassa 90 dias, é necessário realizar exame demissional.
+                        {% else %}
+                            Como o período é inferior a 90 dias, o exame demissional não é obrigatório.
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Desligamento
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Tipo de demissão</label>
+                        {{ form.tipo_demissao }}
+                        {% if form.tipo_demissao.errors %}
+                            <div class="field-error">{{ form.tipo_demissao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4 {% if precisa_exame_demissional %}field-highlight-danger{% endif %}">
+                        <label class="modal-soft-label">Data de demissão</label>
+                        {{ form.data_demissao }}
+                        {% if form.data_demissao.errors %}
+                            <div class="field-error">{{ form.data_demissao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Rescisão assinada</label>
+                        {{ form.rescisao_assinada }}
+                        {% if form.rescisao_assinada.errors %}
+                            <div class="field-error">{{ form.rescisao_assinada.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Aviso prévio
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Tipo de aviso</label>
+                        {{ form.tipo_aviso }}
+                        {% if form.tipo_aviso.errors %}
+                            <div class="field-error">{{ form.tipo_aviso.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Data início aviso</label>
+                        {{ form.data_inicio_aviso }}
+                        {% if form.data_inicio_aviso.errors %}
+                            <div class="field-error">{{ form.data_inicio_aviso.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Data fim aviso</label>
+                        {{ form.data_fim_aviso }}
+                        {% if form.data_fim_aviso.errors %}
+                            <div class="field-error">{{ form.data_fim_aviso.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="modal-soft-label">Anexo do aviso</label>
+                        {{ form.anexo_aviso }}
+                        {% if form.anexo_aviso.errors %}
+                            <div class="field-error">{{ form.anexo_aviso.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-chat-left-text"></i>
+                    Observações
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="modal-soft-label">Observações</label>
+                        {{ form.observacoes_demissao }}
+                        {% if form.observacoes_demissao.errors %}
+                            <div class="field-error">{{ form.observacoes_demissao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i>
+            Salvar alterações
+        </button>
+    </div>
+</form>

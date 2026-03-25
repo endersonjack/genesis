@@ -1,0 +1,205 @@
+.employee-sticky-top {
+    position: sticky;
+    top: 78px;
+    z-index: 1025;
+    background: #f3f4f6;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.employee-top-summary {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+}
+
+.employee-summary-left h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.employee-summary-left p {
+    margin: .2rem 0 0;
+    color: #64748b;
+    font-size: .95rem;
+}
+
+.employee-summary-center {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.employee-photo-box {
+    width: 100px;
+    height: 100px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #dbe2ea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.employee-photo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.employee-photo-empty {
+    color: #94a3b8;
+    font-size: 2rem;
+}
+
+.employee-profile-info {
+    min-width: 0;
+}
+
+.employee-profile-info h2 {
+    margin-bottom: .25rem;
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.resume-text {
+    color: #64748b;
+    margin-bottom: .7rem;
+    font-size: .95rem;
+}
+
+.employee-profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+}
+
+.meta-badge {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    border-radius: 999px;
+    padding: .45rem .85rem;
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.employee-summary-actions {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: .35rem .8rem;
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.status-ativo {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-admitido {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-afastado {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-ferias {
+    background: #cffafe;
+    color: #0f766e;
+}
+
+.status-demitido {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.employee-top-summary.employee-top-summary-demitido {
+    background: #fef2f2 !important;
+    border: 1px solid #fca5a5 !important;
+    box-shadow: 0 10px 30px rgba(220, 38, 38, 0.08) !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .employee-summary-left h1,
+.employee-top-summary.employee-top-summary-demitido .employee-profile-info h2 {
+    color: #991b1b !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .employee-summary-left p,
+.employee-top-summary.employee-top-summary-demitido .resume-text {
+    color: #b91c1c !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .employee-photo-box {
+    background: #fff5f5 !important;
+    border-color: #fca5a5 !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .meta-badge {
+    background: #fff7f7 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .meta-badge *,
+.employee-top-summary.employee-top-summary-demitido .meta-badge span,
+.employee-top-summary.employee-top-summary-demitido .meta-badge strong {
+    color: inherit !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .employee-summary-actions .btn-outline-secondary {
+    background: #fff7f7 !important;
+    border-color: #fca5a5 !important;
+    color: #991b1b !important;
+}
+
+.employee-top-summary.employee-top-summary-demitido .employee-summary-actions .btn-outline-secondary:hover {
+    background: #fee2e2 !important;
+    border-color: #f87171 !important;
+    color: #7f1d1d !important;
+}
+
+.meta-refresh-btn {
+    cursor: pointer;
+    transition: all .18s ease;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.meta-refresh-btn:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+}
+
+.meta-refresh-btn i {
+    margin-right: 6px;
+}

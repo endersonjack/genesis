@@ -1,0 +1,89 @@
+<form 
+    method="post"
+    hx-post="{% if lembrete %}{% url 'rh:editar_lembrete_rh' lembrete.pk %}{% else %}{% url 'rh:criar_lembrete_rh' %}{% endif %}"
+    hx-target="#lembretes-lista"
+    hx-swap="outerHTML"
+    hx-on="htmx:afterRequest: window.location.reload()"> 
+
+    {% csrf_token %}
+
+    <div class="modal-header">
+        <h5 class="modal-title fw-bold">
+            {% if lembrete %}Editar{% else %}Novo{% endif %} Lembrete
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+
+    <div class="modal-body">
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Funcionário</label>
+                {{ form.funcionario }}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Data</label>
+                {{ form.data }}
+            </div>
+
+            <div class="col-12">
+    <label class="form-label fw-bold text-dark">
+        <i class="bi bi-pencil-fill me-1"></i> Título
+    </label>
+    {{ form.titulo }}
+</div>
+
+<div class="col-md-6">
+    <label class="form-label text-muted small">
+        Tipo
+    </label>
+    {{ form.tipo }}
+</div>
+
+            <div class="col-md-6">
+                <label class="form-label">Cor</label>
+                <input type="color" name="cor" value="{{ form.instance.cor|default:'#dc2626' }}" class="form-control form-control-color">
+            </div>
+
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check form-switch">
+                    {{ form.concluido }}
+                    <label class="form-check-label fw-bold text-success">
+                        Concluído
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descrição</label>
+                {{ form.descricao }}
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal-footer d-flex justify-content-between">
+
+        {% if lembrete %}
+            <button
+                hx-post="{% url 'rh:excluir_lembrete_rh' lembrete.pk %}"
+                hx-target="#lembretes-lista"
+                hx-confirm="Deseja excluir este lembrete?"
+                hx-on="htmx:afterRequest: window.location.reload()"
+                class="btn btn-danger">
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary">
+                Salvar
+            </button>
+        </div>
+
+    </div>
+</form>

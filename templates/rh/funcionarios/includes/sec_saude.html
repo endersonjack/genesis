@@ -1,0 +1,40 @@
+<section class="section-panel" data-panel="saude">
+    <div class="section-card">
+        <div class="section-card-header">
+            <div>
+                <h5>Saúde</h5>
+                <small>ASO, certificados, PCMSO, atestados e ocorrências</small>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+            <div class="subtab-nav mb-3">
+                <button type="button" class="subtab-btn active" data-subtab="aso">ASO</button>
+                <button type="button" class="subtab-btn" data-subtab="certificados">Certificados</button>
+                <button type="button" class="subtab-btn" data-subtab="pcmso">PCMSO</button>
+                <button type="button" class="subtab-btn" data-subtab="atestados">Atestados / Licenças</button>
+                <button type="button" class="subtab-btn" data-subtab="ocorrencias">Ocorrências</button>
+            </div>
+
+            <div class="subtab-panel active" data-subtab-panel="aso">
+                {% include "rh/funcionarios/includes/sec_saude_aso.html" %}
+            </div>
+
+            <div class="subtab-panel" data-subtab-panel="certificados">
+                {% include "rh/funcionarios/includes/sec_saude_certificados.html" %}
+            </div>
+
+            <div class="subtab-panel" data-subtab-panel="pcmso">
+                {% include "rh/funcionarios/includes/sec_saude_pcmso.html" %}
+            </div>
+
+            <div class="subtab-panel" data-subtab-panel="atestados">
+                {% include "rh/funcionarios/includes/sec_saude_atestados.html" %}
+            </div>
+
+            <div class="subtab-panel" data-subtab-panel="ocorrencias">
+                {% include "rh/funcionarios/includes/sec_saude_ocorrencias.html" %}
+            </div>
+        </div>
+    </div>
+</section>

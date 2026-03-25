@@ -1,0 +1,115 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Editar dados bancários</h5>
+        <small class="text-muted">Atualize as informações de pagamento</small>
+    </div>
+
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'rh:modal_editar_bancarios' funcionario.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    class="section-modal-form">
+
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-bank"></i>
+                    Conta bancária
+                </div>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Banco</label>
+                        {{ form.banco }}
+                        {% if form.banco.errors %}
+                            <div class="field-error">{{ form.banco.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="modal-soft-label">Agência</label>
+                        {{ form.agencia }}
+                        {% if form.agencia.errors %}
+                            <div class="field-error">{{ form.agencia.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="modal-soft-label">Operação</label>
+                        {{ form.operacao }}
+                        {% if form.operacao.errors %}
+                            <div class="field-error">{{ form.operacao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Tipo de conta</label>
+                        {{ form.tipo_conta }}
+                        {% if form.tipo_conta.errors %}
+                            <div class="field-error">{{ form.tipo_conta.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Número da conta</label>
+                        {{ form.numero_conta }}
+                        {% if form.numero_conta.errors %}
+                            <div class="field-error">{{ form.numero_conta.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Tipo PIX</label>
+                        {{ form.tipo_pix }}
+                        {% if form.tipo_pix.errors %}
+                            <div class="field-error">{{ form.tipo_pix.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="modal-soft-label">Chave PIX</label>
+                        {{ form.pix }}
+                        {% if form.pix.errors %}
+                            <div class="field-error">{{ form.pix.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i>
+            Salvar alterações
+        </button>
+    </div>
+</form>

@@ -1,0 +1,181 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Editar admissão</h5>
+        <small class="text-muted">Atualize vínculo, cargo, remuneração e benefícios</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'rh:modal_editar_admissao' funcionario.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    enctype="multipart/form-data"
+    class="section-modal-form">
+
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-briefcase"></i>
+                    Vínculo
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Situação atual</label>
+                        {{ form.situacao_atual }}
+                        {% if form.situacao_atual.errors %}
+                            <div class="field-error">{{ form.situacao_atual.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Data de admissão</label>
+                        {{ form.data_admissao }}
+                        {% if form.data_admissao.errors %}
+                            <div class="field-error">{{ form.data_admissao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Tipo de contrato</label>
+                        {{ form.tipo_contrato }}
+                        {% if form.tipo_contrato.errors %}
+                            <div class="field-error">{{ form.tipo_contrato.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Início da prorrogação</label>
+                        {{ form.inicio_prorrogacao }}
+                        {% if form.inicio_prorrogacao.errors %}
+                            <div class="field-error">{{ form.inicio_prorrogacao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Fim da prorrogação</label>
+                        {{ form.fim_prorrogacao }}
+                        {% if form.fim_prorrogacao.errors %}
+                            <div class="field-error">{{ form.fim_prorrogacao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-diagram-3"></i>
+                    Cargo e lotação
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Cargo</label>
+                        {{ form.cargo }}
+                        {% if form.cargo.errors %}
+                            <div class="field-error">{{ form.cargo.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Lotação</label>
+                        {{ form.lotacao }}
+                        {% if form.lotacao.errors %}
+                            <div class="field-error">{{ form.lotacao.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-cash-stack"></i>
+                    Remuneração
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Salário</label>
+                        {{ form.salario }}
+                        {% if form.salario.errors %}
+                            <div class="field-error">{{ form.salario.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Adicional</label>
+                        {{ form.adicional }}
+                        {% if form.adicional.errors %}
+                            <div class="field-error">{{ form.adicional.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-bus-front"></i>
+                    Benefícios e encargos
+                </div>
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Recebe vale transporte</label>
+                        <div class="boolean-field-box">
+                            {{ form.recebe_vale_transporte }}
+                        </div>
+                        {% if form.recebe_vale_transporte.errors %}
+                            <div class="field-error">{{ form.recebe_vale_transporte.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Valor do vale transporte</label>
+                        {{ form.valor_vale_transporte }}
+                        {% if form.valor_vale_transporte.errors %}
+                            <div class="field-error">{{ form.valor_vale_transporte.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Contribuinte sindical</label>
+                        <div class="boolean-field-box">
+                            {{ form.contribuinte_sindical }}
+                        </div>
+                        {% if form.contribuinte_sindical.errors %}
+                            <div class="field-error">{{ form.contribuinte_sindical.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar alterações
+        </button>
+    </div>
+</form>

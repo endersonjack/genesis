@@ -1,0 +1,90 @@
+<section class="section-panel" data-panel="bancarios" id="sec-bancarios">
+    <div class="section-card">
+
+        <div class="section-card-header">
+            <div>
+                <h5>Dados bancários</h5>
+                <small>Informações para pagamento</small>
+            </div>
+
+            <div class="section-header-actions">
+                <button
+                    type="button"
+                    class="btn btn-light btn-sm"
+                    hx-get="{% url 'rh:modal_editar_bancarios' funcionario.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">
+                    <i class="bi bi-pencil-square me-1"></i> Editar seção
+                </button>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+
+            <div class="modal-section-wrap">
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-bank"></i>
+                        Conta bancária
+                    </div>
+
+                    <div class="info-grid">
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Banco</span>
+                            <div class="info-value">
+                                {{ funcionario.banco|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Agência</span>
+                            <div class="info-value">
+                                {{ funcionario.agencia|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Operação</span>
+                            <div class="info-value">
+                                {{ funcionario.operacao|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Tipo de conta</span>
+                            <div class="info-value">
+                                {{ funcionario.get_tipo_conta_display|default:funcionario.tipo_conta|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Conta</span>
+                            <div class="info-value">
+                                {{ funcionario.numero_conta|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Tipo PIX</span>
+                            <div class="info-value">
+                                {{ funcionario.get_tipo_pix_display|default:funcionario.tipo_pix|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-12 hover-card">
+                            <span class="info-label">Chave PIX</span>
+                            <div class="info-value">
+                                {{ funcionario.pix|default:"—" }}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</section>

@@ -1,0 +1,28 @@
+<div class="section-card border-0 shadow-none">
+    <div class="section-card-header px-0 pt-0">
+        <div>
+            <h6 class="mb-1">ASO</h6>
+            <small>Atestados de saúde ocupacional do funcionário</small>
+        </div>
+
+        <div class="section-header-actions">
+            <button
+                type="button"
+                class="btn btn-light btn-sm"
+                hx-get="{% url 'rh:modal_adicionar_aso' funcionario.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML">
+                <i class="bi bi-plus-circle me-1"></i> Adicionar
+            </button>
+        </div>
+    </div>
+
+    <div
+        id="aso-lista"
+        hx-get="{% url 'rh:aso_lista' funcionario.pk %}"
+        hx-trigger="load">
+        <div class="py-4 text-center text-muted">
+            Carregando registros de ASO...
+        </div>
+    </div>
+</div>

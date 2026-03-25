@@ -1,51 +1,81 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const body = document.body;
-    const sidebar = document.getElementById("sidebar");
-    const openBtn = document.getElementById("openSidebarBtn");
-    const closeBtn = document.getElementById("closeSidebarBtn");
-    const backdrop = document.getElementById("sidebarBackdrop");
-    const desktopToggleBtn = document.getElementById("toggleSidebarDesktopBtn");
+// lógica de abrir, fechar e salvar o estado da sidebar.
 
-    function openSidebar() {
-        if (sidebar) sidebar.classList.add("show");
-        if (backdrop) backdrop.classList.add("show");
+document.addEventListener('DOMContentLoaded', function () {
+    const appWrapper = document.querySelector('.app-wrapper');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+    const toggleSidebarDesktopBtn = document.getElementById('toggleSidebarDesktopBtn');
+
+    if (!appWrapper || !sidebar) return;
+
+    const DESKTOP_BREAKPOINT = 992;
+    const STORAGE_KEY = 'genesis_sidebar_collapsed';
+
+    function isDesktop() {
+        return window.innerWidth >= DESKTOP_BREAKPOINT;
     }
 
-    function closeSidebar() {
-        if (sidebar) sidebar.classList.remove("show");
-        if (backdrop) backdrop.classList.remove("show");
+    function openMobileSidebar() {
+        sidebar.classList.add('mobile-open');
+        backdrop?.classList.add('show');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeMobileSidebar() {
+        sidebar.classList.remove('mobile-open');
+        backdrop?.classList.remove('show');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function applyDesktopState() {
+        const collapsed = localStorage.getItem(STORAGE_KEY) === 'true';
+        appWrapper.classList.toggle('sidebar-collapsed', collapsed);
     }
 
     function toggleDesktopSidebar() {
-        body.classList.toggle("sidebar-collapsed");
-
-        if (body.classList.contains("sidebar-collapsed")) {
-            localStorage.setItem("sidebarCollapsed", "true");
-        } else {
-            localStorage.setItem("sidebarCollapsed", "false");
-        }
+        const willCollapse = !appWrapper.classList.contains('sidebar-collapsed');
+        appWrapper.classList.toggle('sidebar-collapsed', willCollapse);
+        localStorage.setItem(STORAGE_KEY, willCollapse ? 'true' : 'false');
     }
 
-    if (window.innerWidth >= 992) {
-        const savedState = localStorage.getItem("sidebarCollapsed");
-        if (savedState === "true") {
-            body.classList.add("sidebar-collapsed");
-        }
+    if (isDesktop()) {
+        applyDesktopState();
+        closeMobileSidebar();
+    } else {
+        appWrapper.classList.remove('sidebar-collapsed');
+        closeMobileSidebar();
     }
 
-    if (openBtn) openBtn.addEventListener("click", openSidebar);
-    if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
-    if (backdrop) backdrop.addEventListener("click", closeSidebar);
-    if (desktopToggleBtn) desktopToggleBtn.addEventListener("click", toggleDesktopSidebar);
+    openSidebarBtn?.addEventListener('click', function () {
+        if (isDesktop()) return;
+        openMobileSidebar();
+    });
 
-    window.addEventListener("resize", function () {
-        if (window.innerWidth < 992) {
-            body.classList.remove("sidebar-collapsed");
+    closeSidebarBtn?.addEventListener('click', function () {
+        closeMobileSidebar();
+    });
+
+    backdrop?.addEventListener('click', function () {
+        closeMobileSidebar();
+    });
+
+    toggleSidebarDesktopBtn?.addEventListener('click', function () {
+        if (!isDesktop()) return;
+        toggleDesktopSidebar();
+    });
+
+    window.addEventListener('resize', function () {
+        if (isDesktop()) {
+            applyDesktopState();
+            closeMobileSidebar();
         } else {
-            const savedState = localStorage.getItem("sidebarCollapsed");
-            if (savedState === "true") {
-                body.classList.add("sidebar-collapsed");
-            }
+            appWrapper.classList.remove('sidebar-collapsed');
+            closeMobileSidebar();
         }
     });
 });
+
+// FIM lógica de abrir, fechar e salvar o estado da sidebar.

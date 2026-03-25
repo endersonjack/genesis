@@ -1,0 +1,167 @@
+<section class="section-panel" data-panel="demissao" id="sec-demissao">
+    <div class="section-card">
+        <div class="section-card-header">
+            <div>
+                <h5>Demissão</h5>
+                <small>Dados de desligamento e aviso prévio</small>
+            </div>
+
+            <div class="section-header-actions">
+                <button
+                    class="btn btn-light btn-sm"
+                    hx-get="{% url 'rh:modal_editar_demissao' funcionario.pk %}"
+                    hx-target="#modal-content"
+                    hx-trigger="click">
+                    <i class="bi bi-pencil-square me-1"></i> Editar seção
+                </button>
+            </div>
+        </div>
+
+        <div class="section-card-body">
+
+            <div class="demissao-alert-box
+                {% if exame_info_indisponivel %}
+                    demissao-alert-neutral
+                {% elif precisa_exame_demissional %}
+                    demissao-alert-danger
+                {% else %}
+                    demissao-alert-ok
+                {% endif %}">
+
+                <div class="demissao-alert-icon">
+                    {% if exame_info_indisponivel %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% elif precisa_exame_demissional %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% endif %}
+                </div>
+
+                <div class="demissao-alert-content">
+                    <strong>
+                        {% if exame_info_indisponivel %}
+                            Não foi possível calcular a exigência do exame demissional
+                        {% elif precisa_exame_demissional %}
+                            Exame demissional necessário
+                        {% else %}
+                            Exame demissional não obrigatório
+                        {% endif %}
+                    </strong>
+
+                    <small>
+                        Funcionário admitido em
+                        <strong>{{ funcionario.data_admissao|date:"d/m/Y"|default:"não informado" }}</strong>.
+
+                        {% if exame_info_indisponivel %}
+                            Cadastre a data de admissão e informe a data de demissão para aplicar corretamente a regra dos 90 dias.
+                        {% elif precisa_exame_demissional %}
+                            Como o período de trabalho ultrapassa 90 dias, é necessário realizar exame demissional.
+                        {% else %}
+                            Como o período é inferior a 90 dias, o exame demissional não é obrigatório.
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-section-wrap">
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Desligamento
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Tipo de demissão</span>
+                            <div class="info-value">
+                                {{ funcionario.get_tipo_demissao_display|default:funcionario.tipo_demissao|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Data da demissão</span>
+                            <div class="info-value">
+                                {{ funcionario.data_demissao|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Rescisão assinada</span>
+                            <div class="info-value">
+                                {% if funcionario.rescisao_assinada %}
+                                    <a href="{{ funcionario.rescisao_assinada.url }}" target="_blank" class="text-decoration-none">
+                                        Ver arquivo
+                                    </a>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-file-earmark-text"></i>
+                        Aviso prévio
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Tipo de aviso</span>
+                            <div class="info-value">
+                                {{ funcionario.get_tipo_aviso_display|default:funcionario.tipo_aviso|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Data início aviso</span>
+                            <div class="info-value">
+                                {{ funcionario.data_inicio_aviso|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-4 hover-card">
+                            <span class="info-label">Data fim aviso</span>
+                            <div class="info-value">
+                                {{ funcionario.data_fim_aviso|date:"d/m/Y"|default:"—" }}
+                            </div>
+                        </div>
+
+                        <div class="info-box span-12 hover-card">
+                            <span class="info-label">Anexo do aviso</span>
+                            <div class="info-value">
+                                {% if funcionario.anexo_aviso %}
+                                    <a href="{{ funcionario.anexo_aviso.url }}" target="_blank" class="text-decoration-none">
+                                        Ver arquivo
+                                    </a>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-block">
+                    <div class="modal-block-title">
+                        <i class="bi bi-chat-left-text"></i>
+                        Observações
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box span-12 hover-card">
+                            <span class="info-label">Observações da demissão</span>
+                            <div class="info-value muted">
+                                {{ funcionario.observacoes_demissao|default:"—" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,96 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Editar outros dados</h5>
+        <small class="text-muted">Atualize as informações complementares do colaborador</small>
+    </div>
+
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'rh:modal_editar_outros' funcionario.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    class="section-modal-form">
+
+    {% csrf_token %}
+
+    <div class="modal-body section-modal-body">
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="modal-section-wrap">
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-info-circle"></i>
+                    Informações complementares
+                </div>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">eSocial</label>
+                        {{ form.e_social }}
+                        {% if form.e_social.errors %}
+                            <div class="field-error">{{ form.e_social.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="modal-soft-label">Analfabeto</label>
+                        <div class="boolean-field-box">
+                            {{ form.analfabeto }}
+                        </div>
+                        {% if form.analfabeto.errors %}
+                            <div class="field-error">{{ form.analfabeto.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="modal-block">
+                <div class="modal-block-title">
+                    <i class="bi bi-chat-left-text"></i>
+                    Observações
+                </div>
+
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="modal-soft-label">Observações gerais</label>
+                        {{ form.observacoes }}
+                        {% if form.observacoes.errors %}
+                            <div class="field-error">{{ form.observacoes.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-footer modal-footer-fixed">
+        <button type="button"
+        class="btn btn-outline-secondary btn-clean"
+        onclick="limparFormulario(this)"
+        title="Limpar todos os campos">
+         <i class="bi bi-eraser"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i>
+            Salvar alterações
+        </button>
+    </div>
+</form>

@@ -1,0 +1,74 @@
+{% if dependentes_list %}
+    <div class="record-grid">
+        {% for item in dependentes_list %}
+            <div class="record-card hover-card">
+                <div class="record-card-header">
+                    <div class="w-100">
+                        <div class="record-title-line d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <h6 class="mb-1">Dependente {{ forloop.counter }}</h6>
+                                <small>
+                                    {{ item.get_parentesco_display|default:"Dependente" }}
+                                </small>
+                            </div>
+
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    class="btn btn-light btn-sm"
+                                    hx-get="{% url 'rh:modal_editar_dependente' funcionario.pk item.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-danger btn-sm"
+                                    hx-get="{% url 'rh:modal_excluir_dependente' funcionario.pk item.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML">
+                                    <i class="bi bi-trash me-1"></i> Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-box span-6 hover-card">
+                        <span class="info-label">Nome</span>
+                        <div class="info-value">
+                            {{ item.nome|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div class="info-box span-3 hover-card">
+                        <span class="info-label">Data de nascimento</span>
+                        <div class="info-value">
+                            {{ item.data_nascimento|date:"d/m/Y"|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div class="info-box span-3 hover-card">
+                        <span class="info-label">CPF</span>
+                        <div class="info-value">
+                            {{ item.cpf|default:"—" }}
+                        </div>
+                    </div>
+
+                    <div class="info-box span-4 hover-card">
+                        <span class="info-label">Parentesco</span>
+                        <div class="info-value">
+                            {{ item.get_parentesco_display|default:"—" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        Nenhum dependente cadastrado.
+    </div>
+{% endif %}

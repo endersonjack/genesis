@@ -1,0 +1,27 @@
+<div class="d-flex flex-column gap-2" id="lembretes-lista">
+    {% for item in lembretes %}
+        <div class="reminder-card d-flex justify-content-between align-items-center">
+            <div>
+                <div class="reminder-card-title d-flex align-items-center gap-2">
+                    <span class="legend-dot lembrete">
+                        <i class="bi bi-bell-fill"></i>
+                    </span>
+                    {{ item.titulo }}
+                </div>
+
+                <div class="small text-muted">
+                    {{ item.data|date:"d/m/Y" }}
+                </div>
+            </div>
+
+            <button
+                class="btn btn-sm btn-outline-primary"
+                hx-get="{% url 'rh:editar_lembrete_rh' item.pk %}"
+                hx-target="#modal-content"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    {% endfor %}
+</div>
