@@ -78,9 +78,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Banco de dados
 DATABASE_URL = config('DATABASE_URL', default='').strip()
 
-if DATABASE_URL and '://' in DATABASE_URL and not DATABASE_URL.startswith('://'):
+if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+        )
     }
 else:
     DATABASES = {
@@ -93,6 +96,7 @@ else:
             'PORT': config('DB_PORT', default='5432'),
         }
     }
+    
 # Validação de senha
 AUTH_PASSWORD_VALIDATORS = [
     {
