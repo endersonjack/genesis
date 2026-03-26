@@ -295,16 +295,8 @@ class Funcionario(TimeStampedModel):
         verbose_name = 'Funcionário'
         verbose_name_plural = 'Funcionários'
         ordering = ['nome']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['empresa', 'matricula'],
-                name='unique_matricula_por_empresa'
-            ),
-            models.UniqueConstraint(
-                fields=['empresa', 'cpf'],
-                name='unique_cpf_por_empresa'
-            ),
-        ]
+        constraints = []
+        
 
     def __str__(self):
         return self.nome
