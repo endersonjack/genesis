@@ -393,7 +393,84 @@
 .destaque-item-lembrete {
     border-left-color: #be123c;
 }
-    
+
+
+.rh-top-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.rh-top-btn {
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    min-height: 46px;
+    padding: .78rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: .95rem;
+    line-height: 1;
+    transition: all .2s ease;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.rh-top-btn i {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.rh-top-btn-light {
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid #dbe4ee;
+}
+
+.rh-top-btn-light:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.rh-top-btn-primary {
+    color: #fff;
+    border: 1px solid transparent;
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+        background: {{ request.empresa_ativa.cor_tema }};
+    {% else %}
+        background: #2563eb;
+    {% endif %}
+}
+
+.rh-top-btn-primary:hover {
+    color: #fff;
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
+.rh-top-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.15);
+}
+
+@media (max-width: 767.98px) {
+    .rh-top-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .rh-top-btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
 </style>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -401,20 +478,29 @@
         <h2 class="fw-bold mb-1">Dashboard RH</h2>
         <p class="text-muted mb-0">Visão geral da empresa selecionada.</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a href="{% url 'rh:buscar_funcionarios' %}" class="btn btn-outline-secondary">
-    <i class="bi bi-search me-1"></i> Buscar
-</a>
+
+    <div class="rh-top-actions">
+        <a href="{% url 'rh:buscar_funcionarios' %}" class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-search"></i>
+            <span>Buscar</span>
+        </a>
+
+        <a href="#" class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-sliders"></i>
+            <span>Controles</span>
+        </a>
+
         <button
-    type="button"
-    class="btn btn-primary"
-    hx-get="{% url 'rh:modal_novo_funcionario_rapido' %}"
-    hx-target="#modal-content"
-    hx-swap="innerHTML"
-    data-bs-toggle="modal"
-    data-bs-target="#modalPadrao">
-    <i class="bi bi-person-plus me-1"></i> Novo funcionário
-</button>
+            type="button"
+            class="rh-top-btn rh-top-btn-primary"
+            hx-get="{% url 'rh:modal_novo_funcionario_rapido' %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-person-plus"></i>
+            <span>Novo funcionário</span>
+        </button>
     </div>
 </div>
 

@@ -1,20 +1,5 @@
 from django.contrib import admin
-from .models import (
-    Cargo,
-    TipoContrato,
-    Lotacao,
-    Banco,
-    Funcionario,
-    Dependente,
-    FeriasFuncionario,
-    AfastamentoFuncionario,
-    ASOFuncionario,
-    CertificadoFuncionario,
-    PCMSOFuncionario,
-    AtestadoLicencaFuncionario,
-    OcorrenciaSaudeFuncionario,
-)
-
+from .models import *
 
 class DependenteInline(admin.TabularInline):
     model = Dependente

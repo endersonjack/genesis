@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'financeiro',
     'estoque',
     'auditoria',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
