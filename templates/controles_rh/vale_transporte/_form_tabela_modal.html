@@ -1,0 +1,105 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">
+        {% if modo == 'editar' and tabela and tabela.pk %}
+            Editar Tabela de VT
+        {% else %}
+            Nova Tabela de VT
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% if modo == 'editar' and tabela and tabela.pk %}{% url 'controles_rh:editar_tabela_vt' tabela.pk %}{% else %}{% url 'controles_rh:criar_tabela_vt' competencia.pk %}{% endif %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="alert alert-light border mb-3">
+            <div class="fw-bold mb-1">Competência</div>
+            <div>{{ competencia.referencia }} — {{ competencia.empresa }}</div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
+                    {{ form.nome.label }}
+                </label>
+                {{ form.nome }}
+                {% if form.nome.help_text %}
+                    <div class="form-text">{{ form.nome.help_text }}</div>
+                {% endif %}
+                {% if form.nome.errors %}
+                    <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">
+                    {{ form.descricao.label }}
+                </label>
+                {{ form.descricao }}
+                {% if form.descricao.help_text %}
+                    <div class="form-text">{{ form.descricao.help_text }}</div>
+                {% endif %}
+                {% if form.descricao.errors %}
+                    <div class="text-danger small mt-1">{{ form.descricao.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.ordem.id_for_label }}">
+                    {{ form.ordem.label }}
+                </label>
+                {{ form.ordem }}
+                {% if form.ordem.help_text %}
+                    <div class="form-text">{{ form.ordem.help_text }}</div>
+                {% endif %}
+                {% if form.ordem.errors %}
+                    <div class="text-danger small mt-1">{{ form.ordem.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    {{ form.ativa }}
+                    <label class="form-check-label fw-semibold" for="{{ form.ativa.id_for_label }}">
+                        {{ form.ativa.label }}
+                    </label>
+                </div>
+                {% if form.ativa.errors %}
+                    <div class="text-danger small mt-1 w-100">{{ form.ativa.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    {{ form.fechada }}
+                    <label class="form-check-label fw-semibold" for="{{ form.fechada.id_for_label }}">
+                        {{ form.fechada.label }}
+                    </label>
+                </div>
+                {% if form.fechada.errors %}
+                    <div class="text-danger small mt-1 w-100">{{ form.fechada.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

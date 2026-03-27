@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}VT - {{ tabela.nome }} | Genesis ERP{% endblock %}
+
+{% block content %}
+
+<style>
+    .summary-card,
+    .table-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+
+    .summary-body,
+    .table-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .summary-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .summary-title {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .15rem;
+    }
+
+    .summary-subtitle {
+        color: #64748b;
+        margin: 0;
+    }
+
+    .summary-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .summary-actions .btn {
+        border-radius: .9rem;
+        font-weight: 700;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: .85rem;
+    }
+
+    .summary-box {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .9rem;
+        padding: .9rem 1rem;
+    }
+
+    .summary-label {
+        color: #64748b;
+        font-size: .8rem;
+        font-weight: 700;
+        margin-bottom: .2rem;
+    }
+
+    .summary-value {
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .table-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .table-responsive {
+        border-radius: 1rem;
+        overflow-x: auto;
+    }
+
+    
+
+.vt-table {
+    margin-bottom: 0;
+    vertical-align: middle;
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* HEADER */
+.vt-table thead th {
+    background: #eff6ff;
+    color: #0f172a;
+    font-weight: 800;
+    border-bottom: 1px solid #dbe4ee;
+    white-space: nowrap;
+}
+
+/* COLUNA # */
+.vt-table th.col-num,
+.vt-table td.col-num {
+    width: 40px;
+    min-width: 40px;
+    max-width: 50px;
+    text-align: center;
+    padding-left: .5rem;
+    padding-right: .5rem;
+}
+
+/* NOME (PRIORIDADE ALTA) */
+.vt-table th.col-nome,
+.vt-table td.col-nome {
+    width: 220px;
+}
+
+/* FUNÇÃO */
+.vt-table th.col-funcao,
+.vt-table td.col-funcao {
+    width: 140px;
+}
+
+/* ENDEREÇO */
+.vt-table th.col-endereco,
+.vt-table td.col-endereco {
+    width: 220px;
+}
+
+/* VALOR (FIXO) */
+.vt-table th.col-valor,
+.vt-table td.col-valor {
+    width: 110px;
+    white-space: nowrap;
+}
+
+/* PIX (PRIORIDADE MÉDIA) */
+.vt-table th.col-pix,
+.vt-table td.col-pix {
+    width: 180px;
+}
+
+/* TIPO PIX */
+.vt-table th.col-tipo,
+.vt-table td.col-tipo {
+    width: 120px;
+}
+
+/* BANCO */
+.vt-table th.col-banco,
+.vt-table td.col-banco {
+    width: 140px;
+}
+
+/* AÇÕES */
+.vt-table th.col-acoes,
+.vt-table td.col-acoes {
+    width: 110px;
+}
+
+/* ELLIPSIS */
+.ellipsis-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* MONEY */
+.money {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+
+
+
+
+
+    .money {
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .ellipsis-cell {
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ellipsis-cell.wide {
+        max-width: 260px;
+    }
+
+    .ellipsis-cell.small {
+        max-width: 120px;
+    }
+
+    .empty-box {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+</style>
+<div class="summary-card mb-4">
+    <div class="summary-body">
+        <div class="summary-top">
+            <div>
+                <div class="summary-title">{{ tabela.nome }}</div>
+                <p class="summary-subtitle">
+                    Competência {{ competencia.referencia }} — {{ competencia.empresa }}
+                </p>
+            </div>
+
+            <div class="summary-actions">
+                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                </a>
+
+                <button
+                    type="button"
+                    class="btn btn-outline-primary"
+                    hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
+                    <i class="bi bi-pencil-square me-1"></i> Editar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
+                    <i class="bi bi-trash me-1"></i> Excluir
+                </button>
+            </div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-box">
+                <div class="summary-label">Competência</div>
+                <div class="summary-value">{{ competencia.referencia }}</div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-label">Total de itens</div>
+                <div class="summary-value">{{ total_itens }}</div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-label">Total geral</div>
+                <div class="summary-value">R$ {{ total_valor|floatformat:2 }}</div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-label">Status</div>
+                <div class="summary-value">
+                    {% if tabela.fechada %}
+                        Fechada
+                    {% elif tabela.ativa %}
+                        Ativa
+                    {% else %}
+                        Inativa
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if tabela.descricao %}
+            <div class="mt-3 text-muted">
+                <strong>Descrição:</strong> {{ tabela.descricao }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="table-card">
+    
+<div class="table-header">
+    <h3 class="table-title">Itens da Tabela de Vale Transporte</h3>
+
+    <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        hx-get="{% url 'controles_rh:adicionar_item_vt' tabela.pk %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        data-bs-toggle="modal"
+        data-bs-target="#modalPadrao">
+        <i class="bi bi-plus-circle me-1"></i> Adicionar linha
+    </button>
+</div>
+
+    
+
+    <div class="table-body">
+        {% if itens %}
+            <div class="table-responsive">
+                <table class="table vt-table align-middle">
+                    
+
+<thead>
+    <tr>
+        <th class="col-num">#</th>
+        <th class="col-nome">Nome</th>
+        <th class="col-funcao">Função</th>
+        <th class="col-endereco">Endereço</th>
+        <th class="col-valor">Valor</th>
+        <th class="col-pix">Pix</th>
+        <th class="col-tipo">Tipo</th>
+        <th class="col-banco">Banco</th>
+        <th class="text-end col-acoes">Ações</th>
+    </tr>
+</thead>
+
+                    
+<tbody>
+    {% for item in itens %}
+        <tr>
+            <td class="col-num">{{ forloop.counter }}</td>
+
+            <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
+                {{ item.nome_exibicao }}
+            </td>
+
+            <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-' }}">
+                {{ item.funcao|default:"-" }}
+            </td>
+
+            <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-' }}">
+                {{ item.endereco|default:"-" }}
+            </td>
+
+            <td class="col-valor money">
+                R$ {{ item.valor_pagar|floatformat:2 }}
+            </td>
+
+            <td class="col-pix ellipsis-cell" title="{{ item.pix|default:'-' }}">
+                {{ item.pix|default:"-" }}
+            </td>
+
+            <td class="col-tipo ellipsis-cell" title="{{ item.get_tipo_pix_display|default:'-' }}">
+                {{ item.get_tipo_pix_display|default:"-" }}
+            </td>
+
+            <td class="col-banco ellipsis-cell" title="{{ item.banco|default:'-' }}">
+                {{ item.banco|default:"-" }}
+            </td>
+
+            <td class="text-end col-acoes">
+                <div class="d-flex gap-2 justify-content-end flex-wrap">
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        hx-get="{% url 'controles_rh:editar_item_vt' item.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        hx-get="{% url 'controles_rh:excluir_item_vt' item.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+</tbody>
+
+
+
+                </div>
+            </td>
+        </tr>
+   
+</tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-box">
+                <div class="mb-2">
+                    <i class="bi bi-bus-front fs-1"></i>
+                </div>
+                <div class="fw-bold mb-1">Nenhum item encontrado</div>
+                <div>Os itens da tabela ainda não foram gerados.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" id="modal-content">
+            <!-- conteúdo HTMX -->
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,179 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">
+        {% if modo == 'editar' and item and item.pk %}
+            Editar Linha de VT
+        {% else %}
+            Nova Linha de VT
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_vt' item.pk %}{% else %}{% url 'controles_rh:adicionar_item_vt' tabela.pk %}{% endif %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="alert alert-light border mb-3">
+            <div class="fw-bold mb-1">Tabela</div>
+            <div>{{ tabela.nome }} — {{ competencia.referencia }}</div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">
+                    {{ form.funcionario.label }}
+                </label>
+                {{ form.funcionario }}
+                {% if form.funcionario.errors %}
+                    <div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
+                    {{ form.nome.label }}
+                </label>
+                {{ form.nome }}
+                {% if form.nome.help_text %}<div class="form-text">{{ form.nome.help_text }}</div>{% endif %}
+                {% if form.nome.errors %}
+                    <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">
+                    {{ form.funcao.label }}
+                </label>
+                {{ form.funcao }}
+                {% if form.funcao.help_text %}<div class="form-text">{{ form.funcao.help_text }}</div>{% endif %}
+                {% if form.funcao.errors %}
+                    <div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">
+                    {{ form.endereco.label }}
+                </label>
+                {{ form.endereco }}
+                {% if form.endereco.help_text %}<div class="form-text">{{ form.endereco.help_text }}</div>{% endif %}
+                {% if form.endereco.errors %}
+                    <div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.valor_pagar.id_for_label }}">
+                    {{ form.valor_pagar.label }}
+                </label>
+                {{ form.valor_pagar }}
+                {% if form.valor_pagar.errors %}
+                    <div class="text-danger small mt-1">{{ form.valor_pagar.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.tipo_pix.id_for_label }}">
+                    {{ form.tipo_pix.label }}
+                </label>
+                {{ form.tipo_pix }}
+                {% if form.tipo_pix.errors %}
+                    <div class="text-danger small mt-1">{{ form.tipo_pix.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.banco.id_for_label }}">
+                    {{ form.banco.label }}
+                </label>
+                {{ form.banco }}
+                {% if form.banco.errors %}
+                    <div class="text-danger small mt-1">{{ form.banco.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.pix.id_for_label }}">
+                    {{ form.pix.label }}
+                </label>
+                {{ form.pix }}
+                {% if form.pix.errors %}
+                    <div class="text-danger small mt-1">{{ form.pix.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    {{ form.ativo }}
+                    <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">
+                        {{ form.ativo.label }}
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.observacao.id_for_label }}">
+                    {{ form.observacao.label }}
+                </label>
+                {{ form.observacao }}
+                {% if form.observacao.errors %}
+                    <div class="text-danger small mt-1">{{ form.observacao.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {{ form.funcionarios_data|json_script:"funcionarios-data" }}
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const funcionarioSelect = document.getElementById("{{ form.funcionario.id_for_label }}");
+    const nomeInput = document.getElementById("{{ form.nome.id_for_label }}");
+    const funcaoInput = document.getElementById("{{ form.funcao.id_for_label }}");
+    const enderecoInput = document.getElementById("{{ form.endereco.id_for_label }}");
+    const valorInput = document.getElementById("{{ form.valor_pagar.id_for_label }}");
+    const pixInput = document.getElementById("{{ form.pix.id_for_label }}");
+    const tipoPixInput = document.getElementById("{{ form.tipo_pix.id_for_label }}");
+    const bancoInput = document.getElementById("{{ form.banco.id_for_label }}");
+
+    const dataEl = document.getElementById("funcionarios-data");
+    if (!funcionarioSelect || !dataEl) return;
+
+    const funcionariosData = JSON.parse(dataEl.textContent || "{}");
+
+    funcionarioSelect.addEventListener("change", function () {
+        const selectedId = this.value;
+        if (!selectedId || !funcionariosData[selectedId]) return;
+
+        const dados = funcionariosData[selectedId];
+
+        if (nomeInput) nomeInput.value = dados.nome || "";
+        if (funcaoInput) funcaoInput.value = dados.funcao || "";
+        if (enderecoInput) enderecoInput.value = dados.endereco || "";
+        if (valorInput && dados.valor_vale_transporte !== undefined) valorInput.value = dados.valor_vale_transporte || "";
+        if (pixInput) pixInput.value = dados.pix || "";
+        if (tipoPixInput) tipoPixInput.value = dados.tipo_pix || "";
+        if (bancoInput) bancoInput.value = dados.banco || "";
+    });
+})();
+</script>

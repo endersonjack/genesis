@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestão RH | Genesis ERP{% endblock %}
+
+{% block content %}
+
+<style>
+.home-card {
+    background: #fff;
+    border: 1px solid #d9e2ec;
+    border-radius: 1.25rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+.home-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5edf5;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.home-card-title {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 0;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #0f172a;
+}
+
+.home-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+        background: {{ request.empresa_ativa.cor_tema }};
+    {% else %}
+        background: #2563eb;
+    {% endif %}
+}
+
+.home-card-body {
+    padding: 1.25rem;
+    background: #f8fafc;
+}
+
+.home-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.home-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: .25rem;
+}
+
+.home-subtitle {
+    color: #64748b;
+    margin: 0;
+}
+
+.home-actions {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.home-actions .btn {
+    border-radius: .9rem;
+    font-weight: 700;
+}
+
+.header-filters {
+    display: flex;
+    align-items: end;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    min-width: 160px;
+}
+
+.filter-label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #64748b;
+    margin: 0;
+}
+
+.filter-select {
+    border-radius: .8rem;
+    min-height: 42px;
+    font-weight: 600;
+}
+
+.competencia-list {
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+}
+
+.competencia-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+.competencia-item-left {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.competencia-head {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .2rem;
+}
+
+.competencia-ref {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+.competencia-meta {
+    color: #64748b;
+    font-size: .92rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: .35rem .75rem;
+    font-size: .78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.status-aberta {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-fechada {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.competencia-item-right {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+
+.competencia-item-right .btn {
+    border-radius: .8rem;
+    font-weight: 700;
+}
+
+.empty-state {
+    background: #fff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 1rem;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: #64748b;
+}
+
+.empty-state-icon {
+    font-size: 2rem;
+    margin-bottom: .5rem;
+    color: #94a3b8;
+}
+
+@media (max-width: 991.98px) {
+    .home-card-header {
+        align-items: stretch;
+    }
+
+    .header-filters {
+        width: 100%;
+    }
+
+    .filter-group {
+        flex: 1 1 180px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .home-actions {
+        width: 100%;
+    }
+
+    .home-actions .btn {
+        width: 100%;
+    }
+
+    .filter-group {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    .competencia-item {
+        align-items: stretch;
+    }
+
+    .competencia-item-right {
+        width: 100%;
+    }
+
+    .competencia-item-right .btn {
+        flex: 1 1 auto;
+    }
+}
+</style>
+
+<div class="home-header">
+    <div>
+        <h2 class="home-title">Gestão RH</h2>
+        <p class="home-subtitle">
+            Gerencie as competências da empresa ativa.
+        </p>
+    </div>
+
+    <div class="home-actions">
+        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            hx-get="{% url 'controles_rh:criar_competencia' %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-plus-circle me-1"></i> Nova competência
+        </button>
+    </div>
+</div>
+
+<div class="home-card">
+    <div class="home-card-header">
+        <h3 class="home-card-title">
+            <span class="home-card-icon">
+                <i class="bi bi-calendar3"></i>
+            </span>
+            COMPETÊNCIAS RH
+        </h3>
+
+        <form method="get" class="header-filters">
+            <div class="filter-group">
+                <label class="filter-label" for="ano">Filtrar por ano</label>
+                <select name="ano" id="ano" class="form-select filter-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if filtro_ano == ano|stringformat:"s" %}selected{% endif %}>
+                            {{ ano }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="status">Situação</label>
+                <select name="status" id="status" class="form-select filter-select" onchange="this.form.submit()">
+                    <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
+                    <option value="fechada" {% if filtro_status == 'fechada' %}selected{% endif %}>Fechada</option>
+                    <option value="todas" {% if filtro_status == 'todas' %}selected{% endif %}>Todas</option>
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <div class="home-card-body">
+        {% if competencias %}
+            <div class="competencia-list">
+                {% for competencia in competencias %}
+                    <div class="competencia-item">
+                        <div class="competencia-item-left">
+                            <div class="competencia-head">
+                                <div class="competencia-ref">Competência {{ competencia.referencia }}</div>
+
+                                {% if competencia.fechada %}
+                                    <span class="status-badge status-fechada">Fechada</span>
+                                {% else %}
+                                    <span class="status-badge status-aberta">Aberta</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="competencia-meta">
+                                {{ competencia.titulo|default:"Competência RH" }}
+                                {% if competencia.empresa %}
+                                    — {{ competencia.empresa }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="competencia-item-right">
+                            <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye me-1"></i> Abrir
+                            </a>
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                hx-get="{% url 'controles_rh:editar_competencia' competencia.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-danger btn-sm"
+                                hx-get="{% url 'controles_rh:excluir_competencia' competencia.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-calendar3"></i>
+                </div>
+                <div class="fw-bold mb-2">Nenhuma competência encontrada</div>
+                <div class="mb-3">Ajuste os filtros ou crie uma nova competência.</div>
+
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    hx-get="{% url 'controles_rh:criar_competencia' %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
+                    <i class="bi bi-plus-circle me-1"></i> Nova competência
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" id="modal-content">
+            <!-- conteúdo carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}
