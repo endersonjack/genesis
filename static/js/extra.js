@@ -39,6 +39,30 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         el.setAttribute('aria-busy', 'false');
     }
 
+    /**
+     * Enquanto o overlay de loading está ativo, modais abertos ficavam visíveis
+     * (por baixo ou piscando) até o HX-Refresh — fecha e limpa backdrop na hora.
+     */
+    function hideBootstrapModalsBeforeHtmxLoading() {
+        if (window.bootstrap && bootstrap.Modal) {
+            document.querySelectorAll('.modal.show').forEach(function (modalEl) {
+                var inst = bootstrap.Modal.getInstance(modalEl);
+                if (inst) {
+                    inst.hide();
+                }
+                modalEl.classList.remove('show');
+                modalEl.setAttribute('aria-hidden', 'true');
+                modalEl.style.display = 'none';
+            });
+        }
+        document.querySelectorAll('.modal-backdrop').forEach(function (b) {
+            b.remove();
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+
     function showGlobalHtmxLoading() {
         if (hideTimer) {
             clearTimeout(hideTimer);
@@ -49,6 +73,7 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         if (!el) return;
         if (loadingCount === 1) {
             showStartedAt = Date.now();
+            hideBootstrapModalsBeforeHtmxLoading();
         }
         applyShow(el);
     }
@@ -74,8 +99,35 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         }, wait);
     }
 
-    document.addEventListener('htmx:beforeRequest', showGlobalHtmxLoading);
-    document.addEventListener('htmx:afterRequest', hideGlobalHtmxLoading);
+    function eltSkipsGlobalLoading(elt) {
+        return !!(elt && elt.closest && elt.closest('[data-no-global-loading]'));
+    }
+
+    document.addEventListener('htmx:beforeRequest', function (evt) {
+        if (eltSkipsGlobalLoading(evt.detail.elt)) {
+            return;
+        }
+        showGlobalHtmxLoading();
+    });
+    document.addEventListener('htmx:afterRequest', function (evt) {
+        if (eltSkipsGlobalLoading(evt.detail.elt)) {
+            return;
+        }
+        hideGlobalHtmxLoading();
+    });
+
+    /** Zera contador e esconde overlay (ex.: ao fechar modal após hx-get leve) */
+    window.resetGlobalHtmxLoading = function () {
+        loadingCount = 0;
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+        var el = getLoadingEl();
+        if (el) {
+            applyHide(el);
+        }
+    };
 })();
 
 // Toasts globais (Django messages) renderizados no `templates/base.html`
@@ -133,6 +185,104 @@ async function refreshGenesisToasts() {
 document.body.addEventListener('htmx:afterRequest', function () {
     refreshGenesisToasts();
 });
+
+/**
+ * Copia texto para a área de transferência (Clipboard API ou fallback execCommand).
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+function copyTextToClipboard(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ta.setSelectionRange(0, text.length);
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) {
+                resolve();
+            } else {
+                reject(new Error('execCommand'));
+            }
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+/**
+ * Toast no canto (mesmo estilo dos Django messages), sem round-trip ao servidor.
+ * @param {string} message
+ * @param {'success'|'error'|'warning'|'info'} [variant]
+ */
+function showGenesisClientToast(message, variant) {
+    if (!window.bootstrap || !bootstrap.Toast) {
+        window.alert(message);
+        return;
+    }
+    var container = document.getElementById('genesis-toast-container');
+    if (!container) {
+        window.alert(message);
+        return;
+    }
+    var v = variant || 'success';
+    var bgClass = 'text-bg-success';
+    if (v === 'error') {
+        bgClass = 'text-bg-danger';
+    } else if (v === 'warning') {
+        bgClass = 'text-bg-warning';
+    } else if (v === 'info') {
+        bgClass = 'text-bg-primary';
+    }
+
+    var el = document.createElement('div');
+    el.className = 'toast align-items-end border-0 js-genesis-toast ' + bgClass;
+    el.setAttribute('role', 'alert');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.setAttribute('data-bs-delay', '4200');
+    el.setAttribute('data-bs-autohide', 'true');
+
+    var header = document.createElement('div');
+    header.className = 'toast-header border-0 bg-transparent';
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close btn-close-white ms-auto m-auto';
+    closeBtn.setAttribute('data-bs-dismiss', 'toast');
+    closeBtn.setAttribute('aria-label', 'Fechar');
+    header.appendChild(closeBtn);
+
+    var body = document.createElement('div');
+    body.className = 'toast-body';
+    body.textContent = message;
+
+    el.appendChild(header);
+    el.appendChild(body);
+    container.appendChild(el);
+
+    var toast = new bootstrap.Toast(el, {
+        autohide: true,
+        delay: 4200,
+    });
+    el.addEventListener('hidden.bs.toast', function onHidden() {
+        el.removeEventListener('hidden.bs.toast', onHidden);
+        el.remove();
+    });
+    toast.show();
+}
+
+window.copyTextToClipboard = copyTextToClipboard;
+window.showGenesisClientToast = showGenesisClientToast;
 
 function limparFormulario(btn) {
     if (!confirm('Deseja realmente limpar todos os campos?')) return;

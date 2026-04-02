@@ -11,6 +11,12 @@ OK - Atualizaçãoe e avisos aparecem do lado inferior diretior da tela, acima d
 Melhor o template do Toast pra que o X fique no canto superior direito
 
 
+Loading HTMX
+Adionar todos os botoes via HTMX para o Loading funcionar
+
+
 CONTROLE - VALE TRANSPORTE
 
+Observações não está salvando ou mostrar os salvos
 Adiciona em Branco, Completo ou copiar de outro
+OK - Botão de Copiar PIX, e dar Feedback no Toast

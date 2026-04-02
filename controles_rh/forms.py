@@ -193,7 +193,11 @@ class ValeTransporteItemPagamentoForm(BaseStyledModelForm):
         fields = ['valor_pago', 'data_pagamento']
         widgets = {
             'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            'data_pagamento': forms.DateInput(attrs={'type': 'date'}),
+            # type="date" exige value em ISO (YYYY-MM-DD); locale pt-BR quebrava o valor inicial
+            'data_pagamento': forms.DateInput(
+                attrs={'type': 'date'},
+                format='%Y-%m-%d',
+            ),
         }
         labels = {
             'valor_pago': 'Valor pago',
@@ -206,6 +210,9 @@ class ValeTransporteItemPagamentoForm(BaseStyledModelForm):
         self.fields['valor_pago'].required = False
         self.fields['data_pagamento'].required = False
         self.fields['data_pagamento'].help_text = 'Opcional.'
+        dp = self.fields['data_pagamento']
+        dp.widget.format = '%Y-%m-%d'
+        dp.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
 
 
 class ValeTransporteItemForm(BaseStyledModelForm):
@@ -229,7 +236,11 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'observacao': forms.Textarea(attrs={'rows': 2}),
             'valor_pagar': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            'data_pagamento': forms.DateInput(attrs={'type': 'date'}),
+            # type="date" exige value ISO (YYYY-MM-DD)
+            'data_pagamento': forms.DateInput(
+                attrs={'type': 'date'},
+                format='%Y-%m-%d',
+            ),
         }
         labels = {
             'funcionario': 'Funcionário',
@@ -253,6 +264,12 @@ class ValeTransporteItemForm(BaseStyledModelForm):
 
         self.fields['funcionario'].required = False
         self.fields['observacao'].required = False
+
+        if 'data_pagamento' in self.fields:
+            dp = self.fields['data_pagamento']
+            dp.widget.format = '%Y-%m-%d'
+            dp.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
+            dp.help_text = 'Opcional. Data do último pagamento registrado.'
 
         if self.tabela:
             empresa = self.tabela.competencia.empresa
@@ -283,8 +300,6 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         self.fields['funcao'].help_text = 'Pode ser alterada manualmente.'
         self.fields['endereco'].help_text = 'Pode ser alterado manualmente.'
         self.fields['valor_pago'].help_text = 'Informe o quanto já foi pago nesta linha; a linha fica verde quando o valor pago cobre o valor a pagar.'
-        if 'data_pagamento' in self.fields:
-            self.fields['data_pagamento'].help_text = 'Opcional. Data do último pagamento registrado.'
 
     def save(self, commit=True):
         instance = super().save(commit=False)

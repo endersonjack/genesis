@@ -184,18 +184,14 @@ def exportar_tabela_vt_pdf(request, pk):
         fontSize=11,
         spaceAfter=6,
     )
+    # Tabela em duas linhas por item: (1) #, nome, valores, PIX  (2) demais campos mesclados
     headers = [
         '#',
         'Nome',
-        'Função',
-        'Endereço',
         'Vlr pagar',
         'Vlr pago',
         'Saldo',
-        'Dt pag.',
         'Pix',
-        'Tipo',
-        'Banco',
     ]
 
     desc_txt = (tabela.descricao or '').strip() or '—'
@@ -236,40 +232,76 @@ def exportar_tabela_vt_pdf(request, pk):
         ],
     ]
 
+    nome_para_style = ParagraphStyle(
+        'vt_nom',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7,
+        leading=8,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    pix_para_style = ParagraphStyle(
+        'pixcell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7,
+        leading=7,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    detalhe_para_style = ParagraphStyle(
+        'vt_det',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=6,
+        leading=7,
+        spaceBefore=0,
+        spaceAfter=0,
+        textColor=colors.HexColor('#475569'),
+    )
+
     data_rows = [headers]
+    table_spans = []
+
     for n, item in enumerate(_itens_export(tabela), start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_s = '—'
         else:
             saldo_s = f'{item.saldo:.2f}'.replace('.', ',')
-        data_rows.append(
-            [
-                str(n),
-                (item.nome_exibicao or '')[:40],
-                (item.funcao or '—')[:24],
-                (item.endereco or '—')[:28],
-                f'{item.valor_pagar or 0:.2f}'.replace('.', ','),
-                f'{item.valor_pago or 0:.2f}'.replace('.', ','),
-                saldo_s,
-                _row_data_pagamento(item),
-                (item.pix or '—')[:22],
-                (item.get_tipo_pix_display() or '—')[:12],
-                (item.banco or '—')[:14],
-            ]
+        pix_full = item.pix or '—'
+        pix_cell = Paragraph(xml_escape(pix_full), pix_para_style)
+        nome_cell = Paragraph(xml_escape(item.nome_exibicao or '—'), nome_para_style)
+
+        main_row = [
+            str(n),
+            nome_cell,
+            f'{item.valor_pagar or 0:.2f}'.replace('.', ','),
+            f'{item.valor_pago or 0:.2f}'.replace('.', ','),
+            saldo_s,
+            pix_cell,
+        ]
+        data_rows.append(main_row)
+
+        det_txt = (
+            f'<b>Função:</b> {xml_escape(item.funcao or "—")} &nbsp;|&nbsp; '
+            f'<b>Endereço:</b> {xml_escape(item.endereco or "—")}<br/>'
+            f'<b>Dt.pag.:</b> {xml_escape(_row_data_pagamento(item))} &nbsp;|&nbsp; '
+            f'<b>Tipo:</b> {xml_escape(item.get_tipo_pix_display() or "—")} &nbsp;|&nbsp; '
+            f'<b>Banco:</b> {xml_escape(item.banco or "—")}'
         )
+        det_cell = Paragraph(det_txt, detalhe_para_style)
+        detail_row_idx = len(data_rows)
+        data_rows.append(['', det_cell, '', '', '', ''])
+        table_spans.append(('SPAN', (1, detail_row_idx), (5, detail_row_idx)))
 
     data_rows.append(
         [
             'TOTAIS',
             '',
-            '',
-            '',
             _fmt_br_decimal(resumo['total_a_pagar']),
             _fmt_br_decimal(resumo['total_valor_pago']),
             _fmt_br_decimal(resumo['saldo_a_pagar']),
-            '',
-            '',
-            '',
             '',
         ]
     )
@@ -315,25 +347,41 @@ def exportar_tabela_vt_pdf(request, pk):
     story.append(Spacer(1, 5 * mm))
 
     last_idx = len(data_rows) - 1
-    table = Table(data_rows, repeatRows=1)
+    # 6 colunas, soma 273mm — nome e PIX com Paragraph (quebra de linha)
+    _cw = (8, 52, 24, 24, 22, 143)
+    table = Table(data_rows, colWidths=[w * mm for w in _cw], repeatRows=1)
     pdf_style = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#dbeafe')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 7),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (2, 1), (4, last_idx - 1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+        ('VALIGN', (0, 1), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#cbd5e1')),
         ('BACKGROUND', (0, last_idx), (-1, last_idx), colors.HexColor('#e0f2fe')),
         ('FONTNAME', (0, last_idx), (-1, last_idx), 'Helvetica-Bold'),
+        ('ALIGN', (2, last_idx), (4, last_idx), 'RIGHT'),
     ]
+    for span_cmd in table_spans:
+        pdf_style.append(span_cmd)
     if last_idx > 1:
         pdf_style.append(
             (
                 'ROWBACKGROUNDS',
                 (0, 1),
                 (-1, last_idx - 1),
-                [colors.white, colors.HexColor('#f8fafc')],
+                [
+                    colors.white,
+                    colors.white,
+                    colors.HexColor('#f8fafc'),
+                    colors.HexColor('#f8fafc'),
+                ],
             )
         )
     table.setStyle(TableStyle(pdf_style))

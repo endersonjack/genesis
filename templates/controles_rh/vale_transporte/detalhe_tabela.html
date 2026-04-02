@@ -218,7 +218,32 @@
     .vt-table th.col-data-pagamento,
     .vt-table td.col-data-pagamento { width: 118px; }
     .vt-table th.col-pix,
-    .vt-table td.col-pix { width: 150px; }
+    .vt-table td.col-pix { width: 220px; min-width: 180px; }
+
+    /* PIX + ícone copiar em fluxo inline (ícone colado ao texto) */
+    .vt-pix-cell {
+        min-width: 0;
+        font-size: .9rem;
+        line-height: 1.25;
+    }
+
+    .vt-pix-cell .pix-text {
+        display: inline;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .vt-pix-cell .btn-pix-copy {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        vertical-align: middle;
+        margin-left: 0.15rem;
+        padding: 0 0.2rem;
+        min-width: 1.5rem;
+        line-height: 1;
+        font-size: 0.85rem;
+    }
     .vt-table th.col-tipo,
     .vt-table td.col-tipo { width: 110px; }
     .vt-table th.col-banco,
@@ -488,13 +513,10 @@
                             <tr
                                 class="{{ item.classe_linha_pagamento }} vt-row-clickable"
                                 data-item-id="{{ item.pk }}"
+                                data-vt-edit-url="{% url 'controles_rh:editar_item_vt' item.pk %}"
                                 role="button"
                                 tabindex="0"
-                                title="Clique para editar esta linha"
-                                hx-get="{% url 'controles_rh:editar_item_vt' item.pk %}"
-                                hx-target="#modal-content"
-                                hx-swap="innerHTML"
-                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                title="Clique para editar esta linha">
                                 <td class="col-num">{{ forloop.counter }}</td>
                                 <td class="col-drag" onclick="event.stopPropagation()">
                                     <span class="vt-drag-handle" title="Arrastar para reordenar">
@@ -520,7 +542,7 @@
                                             type="button"
                                             class="btn btn-outline-secondary btn-sm btn-pago-edit"
                                             title="Alterar valor pago e data"
-                                            onclick="event.stopPropagation()"
+                                            data-no-global-loading
                                             hx-get="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
                                             hx-target="#modal-pagamento-vt-content"
                                             hx-swap="innerHTML"
@@ -547,8 +569,16 @@
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
-                                <td class="col-pix ellipsis-cell" title="{{ item.pix|default:'-' }}">
-                                    {{ item.pix|default:"-" }}
+                                <td class="col-pix" title="{{ item.pix|default:'-' }}">
+                                    <div class="vt-pix-cell">
+                                        <span class="pix-text">{{ item.pix|default:"-" }}</span>{% if item.pix %}<button
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm btn-pix-copy"
+                                                title="Copiar chave PIX"
+                                                data-pix="{{ item.pix|escape }}"
+                                                hx-ignore
+                                                aria-label="Copiar chave PIX"><i class="bi bi-clipboard"></i></button>{% endif %}
+                                    </div>
                                 </td>
                                 <td class="col-tipo ellipsis-cell" title="{{ item.get_tipo_pix_display|default:'-' }}">
                                     {{ item.get_tipo_pix_display|default:"-" }}
@@ -593,6 +623,31 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
+    /* Não chamar resetGlobalHtmxLoading aqui: ao fechar modais no início do HTMX,
+       hidden.bs.modal dispararia e apagaria o overlay de loading que acabou de abrir. */
+    function cleanupModalBackdropIfNoneOpen() {
+        window.setTimeout(function () {
+            if (document.querySelector('.modal.show')) {
+                return;
+            }
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) {
+                el.remove();
+            });
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }, 0);
+    }
+
+    var modalPagVt = document.getElementById('modalPagamentoVt');
+    if (modalPagVt) {
+        modalPagVt.addEventListener('hidden.bs.modal', cleanupModalBackdropIfNoneOpen);
+    }
+    var modalPadraoEl = document.getElementById('modalPadrao');
+    if (modalPadraoEl) {
+        modalPadraoEl.addEventListener('hidden.bs.modal', cleanupModalBackdropIfNoneOpen);
+    }
+
     const table = document.getElementById('vt-table-main');
     const tbody = document.getElementById('vt-sortable-tbody');
     const tabelaId = table && table.dataset.tabelaId;
@@ -751,12 +806,74 @@
 
     requestAnimationFrame(syncHorizontalScrollbars);
 
+    function openVtEditarLinhaModal(tr) {
+        var url = tr.getAttribute('data-vt-edit-url');
+        if (!url) return;
+        var modalContent = document.getElementById('modal-content');
+        var modalPadrao = document.getElementById('modalPadrao');
+        if (!modalContent || !modalPadrao) return;
+        fetch(url, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'HX-Request': 'true',
+            },
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Falha ao carregar');
+                return r.text();
+            })
+            .then(function (html) {
+                modalContent.innerHTML = html;
+                if (window.bootstrap) {
+                    bootstrap.Modal.getOrCreateInstance(modalPadrao).show();
+                }
+            })
+            .catch(function () {
+                window.location.reload();
+            });
+    }
+
     if (tbody) {
+        /* Clique na linha abre "Editar linha" — sem hx na <tr> para não conflitar com o lápis de valor (htmx na linha disparava os dois modais) */
+        tbody.addEventListener('click', function (e) {
+            if (e.target.closest('.btn-pago-edit, .btn-pix-copy, .vt-drag-handle, .col-drag')) {
+                return;
+            }
+            var tr = e.target.closest('tr[data-vt-edit-url]');
+            if (!tr || !tbody.contains(tr)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openVtEditarLinhaModal(tr);
+        });
+
         tbody.querySelectorAll('tr.vt-row-clickable').forEach(function (tr) {
             tr.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter' || e.target !== tr) return;
                 e.preventDefault();
                 tr.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            });
+        });
+
+        /* Copiar PIX: listener no botão (bubble) — o <tr> não recebe o clique; delegação no tbody falhava com onclick stopPropagation no botão */
+        tbody.querySelectorAll('.btn-pix-copy').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var text = btn.getAttribute('data-pix');
+                if (!text) return;
+                var copyFn = window.copyTextToClipboard;
+                var toastFn = window.showGenesisClientToast;
+                if (typeof copyFn !== 'function' || typeof toastFn !== 'function') {
+                    window.prompt('Copie a chave PIX:', text);
+                    return;
+                }
+                copyFn(text).then(function () {
+                    toastFn('PIX copiado para a área de transferência.', 'success');
+                }).catch(function () {
+                    toastFn('Não foi possível copiar automaticamente. Use o diálogo abaixo.', 'warning');
+                    window.prompt('Copie a chave PIX:', text);
+                });
             });
         });
     }
