@@ -58,6 +58,12 @@
         gap: 1rem;
     }
 
+    @media (min-width: 1200px) {
+        .mini-cards-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
     .mini-card {
         background: #fff;
         border: 1px solid #e2e8f0;
@@ -66,7 +72,7 @@
         box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
         display: flex;
         flex-direction: column;
-        min-height: 190px;
+        min-height: 0;
     }
 
     .mini-card-top {
@@ -129,7 +135,7 @@
     }
 
     .mini-card .btn {
-        margin-top: 1rem;
+        margin-top: .75rem;
         border-radius: .85rem;
         font-weight: 700;
     }
@@ -394,6 +400,195 @@
     border-left-color: #be123c;
 }
 
+.destaques-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.destaques-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1rem;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+.destaques-card-title {
+    margin: 0 0 .8rem 0;
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+.destaques-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+
+.destaque-item {
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: .85rem;
+    background: #f8fafc;
+    padding: .65rem .8rem;
+}
+
+.destaque-item-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.destaque-item-link:hover .destaque-item {
+    background: #eef2f7;
+    border-color: #cbd5e1;
+}
+
+.destaque-item-meta {
+    font-size: .82rem;
+    color: #64748b;
+    margin-bottom: .2rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    flex-wrap: wrap;
+}
+
+.destaque-item-titulo {
+    font-size: .92rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.destaque-item-sub {
+    font-size: .84rem;
+    color: #475569;
+    margin-top: .2rem;
+}
+
+.destaque-item.ferias_inicio { border-left-color: #b45309; }
+.destaque-item.ferias_volta { border-left-color: #15803d; }
+.destaque-item.experiencia_45,
+.destaque-item.fim_prorrogacao { border-left-color: #dc2626; }
+.destaque-item.fim_aviso { border-left-color: #ea580c; }
+.destaque-item.exame { border-left-color: #1d4ed8; }
+.destaque-item.lembrete { border-left-color: #be123c; }
+
+.destaque-vazio {
+    color: #64748b;
+    font-size: .92rem;
+}
+
+.destaques-dia-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.destaques-dia-titulo {
+    font-size: .86rem;
+    font-weight: 800;
+    color: #334155;
+    padding: .35rem .55rem;
+    background: #eef2f7;
+    border: 1px solid #dbe4ee;
+    border-radius: .7rem;
+}
+
+.avisos-data-header {
+    font-size: .9rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.aniversariantes-card {
+    margin-top: 1rem;
+}
+
+.aniversariantes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+}
+
+.aniversariante-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .85rem;
+    background: #f8fafc;
+    padding: .6rem .8rem;
+}
+
+.aniversariante-main {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+}
+
+.aniversariante-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffedd5;
+    color: #c2410c;
+    flex: 0 0 34px;
+}
+
+.destaque-item-link:hover .aniversariante-item {
+    background: #eef2f7;
+    border-color: #cbd5e1;
+}
+
+.aniversariante-info {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.aniversariante-cargo {
+    color: #64748b;
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.aniversariante-dia {
+    color: #64748b;
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.avisos-view-switch {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.avisos-view-switch .btn {
+    border-radius: .85rem;
+    font-weight: 700;
+}
+
+.avisos-view-switch .btn.active {
+    color: #fff;
+    border-color: transparent;
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+        background: {{ request.empresa_ativa.cor_tema }};
+    {% else %}
+        background: #2563eb;
+    {% endif %}
+}
+
+.destaques-view {
+    width: 100%;
+}
+
 
 .rh-top-actions {
     display: flex;
@@ -469,6 +664,10 @@
         flex: 1 1 100%;
         width: 100%;
     }
+
+    .destaques-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 </style>
@@ -505,7 +704,7 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-12 col-xl-5">
+    <div class="col-12 col-xl-8">
         <div class="rh-board-card">
             <div class="rh-board-header">
                 <h3 class="rh-board-title">
@@ -582,11 +781,49 @@
                         </a>
                     </div>
                 </div>
+                <div class="destaques-card aniversariantes-card">
+                    <h5 class="destaques-card-title">Aniversariantes de {{ mes_nome }}</h5>
+                    <div class="aniversariantes-lista">
+                        {% for pessoa in aniversariantes_mes %}
+                            {% if pessoa.detalhe_url %}
+                                <a href="{{ pessoa.detalhe_url }}" class="destaque-item-link">
+                                    <div class="aniversariante-item">
+                                        <div class="aniversariante-main">
+                                            <span class="aniversariante-icon">
+                                                <i class="bi bi-cake2-fill"></i>
+                                            </span>
+                                            <div>
+                                                <div class="aniversariante-info">{{ pessoa.nome }}</div>
+                                                <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
+                                                <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            {% else %}
+                                <div class="aniversariante-item">
+                                    <div class="aniversariante-main">
+                                        <span class="aniversariante-icon">
+                                            <i class="bi bi-cake2-fill"></i>
+                                        </span>
+                                        <div>
+                                            <div class="aniversariante-info">{{ pessoa.nome }}</div>
+                                            <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
+                                            <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% empty %}
+                            <div class="destaque-vazio">Nenhum aniversariante neste mês.</div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-xl-7">
+    <div class="col-12 col-xl-4">
         <div class="rh-board-card">
             <div class="rh-board-header">
                 <h3 class="rh-board-title">
@@ -595,91 +832,97 @@
                     </span>
                     AVISOS
                 </h3>
+                <span class="avisos-data-header">Hoje: {{ hoje|date:"d/m/Y" }}</span>
             </div>
 
             <div class="rh-board-body">
 
 
                 <div class="calendar-head">
-    <h4 class="calendar-title">Calendário — {{ mes_nome }} / {{ ano }}</h4>
-</div>
+                    <div class="avisos-view-switch">
+                        <button type="button" class="btn btn-outline-secondary btn-sm active" data-view-target="dia">
+                            Por Dia
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
+                            Por Semana
+                        </button>
+                        <a href="{% url 'rh:calendario_rh' %}" class="btn btn-outline-primary btn-sm">
+                            Ver calendário
+                        </a>
+                    </div>
+                </div>
 
-<div class="calendar-wrap">
-    <div class="calendar-grid">
-        {% for nome_dia in nomes_dias %}
-            <div class="calendar-weekday">{{ nome_dia }}</div>
-        {% endfor %}
-
-        {% for semana in calendario_semanas %}
-            {% for dia in semana %}
-                {% if dia.numero %}
-                    <div class="calendar-day {% if dia.is_today %}today{% endif %} {% if dia.tem_evento %}has-event{% endif %}"
-                         {% if dia.tem_evento %}
-                             data-bs-toggle="modal"
-                             data-bs-target="#modalDia{{ dia.numero }}"
-                         {% endif %}>
-                        <div class="calendar-number">{{ dia.numero }}</div>
-
-                        <div class="day-icons">
-                            {% for evento in dia.eventos|slice:":4" %}
-                                <span class="day-icon {{ evento.tipo }}" title="{{ evento.label }} - {{ evento.funcionario_nome }}">
-                                    {% if evento.tipo == 'ferias_inicio' %}
-                                        <i class="bi bi-sun-fill"></i>
-                                    {% elif evento.tipo == 'ferias_volta' %}
-                                        <i class="bi bi-arrow-counterclockwise"></i>
-                                    {% elif evento.tipo == 'experiencia_45' or evento.tipo == 'fim_prorrogacao' %}
-                                        <i class="bi bi-hourglass-split"></i>
-                                    {% elif evento.tipo == 'fim_aviso' %}
-                                        <i class="bi bi-exclamation-triangle-fill"></i>
-                                    {% elif evento.tipo == 'exame' %}
-                                        <i class="bi bi-heart-pulse-fill"></i>
-                                    {% elif evento.tipo == 'lembrete' %}
-                                        <i class="bi bi-bell-fill"></i>
-                                    {% endif %}
-                                </span>
+                <div id="avisos-view-dia" class="destaques-view">
+                    <div class="destaques-card">
+                        <h5 class="destaques-card-title">Destaques do Dia</h5>
+                        <div class="destaques-lista">
+                            {% for evento in destaques_dia %}
+                                {% if evento.detalhe_url %}
+                                    <a href="{{ evento.detalhe_url }}" class="destaque-item-link">
+                                        <div class="destaque-item {{ evento.tipo }}">
+                                            <div class="destaque-item-meta">
+                                                <i class="bi bi-calendar-event"></i>
+                                                {{ evento.data|date:"d/m/Y" }}
+                                            </div>
+                                            <div class="destaque-item-titulo">{{ evento.label }}</div>
+                                            <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+                                        </div>
+                                    </a>
+                                {% else %}
+                                    <div class="destaque-item {{ evento.tipo }}">
+                                        <div class="destaque-item-meta">
+                                            <i class="bi bi-calendar-event"></i>
+                                            {{ evento.data|date:"d/m/Y" }}
+                                        </div>
+                                        <div class="destaque-item-titulo">{{ evento.label }}</div>
+                                        <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+                                    </div>
+                                {% endif %}
+                            {% empty %}
+                                <div class="destaque-vazio">Nenhum aviso para hoje.</div>
                             {% endfor %}
                         </div>
                     </div>
-                {% else %}
-                    <div class="calendar-day calendar-empty"></div>
-                {% endif %}
-            {% endfor %}
-        {% endfor %}
-    </div>
-</div>
+                </div>
 
-<div class="legend-list">
-    <span class="legend-item">
-        <span class="legend-dot ferias_inicio"><i class="bi bi-sun-fill"></i></span>
-        Férias
-    </span>
-    <span class="legend-item">
-        <span class="legend-dot ferias_volta"><i class="bi bi-arrow-counterclockwise"></i></span>
-        Volta de férias
-    </span>
-    <span class="legend-item">
-        <span class="legend-dot experiencia_45"><i class="bi bi-hourglass-split"></i></span>
-        Experiência / prorrogação
-    </span>
-    <span class="legend-item">
-        <span class="legend-dot fim_aviso"><i class="bi bi-exclamation-triangle-fill"></i></span>
-        Aviso
-    </span>
-    <span class="legend-item">
-        <span class="legend-dot exame"><i class="bi bi-heart-pulse-fill"></i></span>
-        Exames
-    </span>
-</div>
-
-<div class="calendar-actions">
-    <button type="button" class="btn btn-outline-secondary" disabled>
-        <i class="bi bi-calendar-week me-1"></i> Detalhar por Semana
-    </button>
-
-    <a href="{% url 'rh:calendario_rh' %}" class="btn btn-primary">
-        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir calendário completo
-    </a>
-</div>
+                <div id="avisos-view-semana" class="destaques-view d-none">
+                    <div class="destaques-card">
+                        <h5 class="destaques-card-title">Destaques da Semana</h5>
+                        <div class="destaques-lista">
+                            {% regroup destaques_semana by data as destaques_semana_por_dia %}
+                            {% for dia in destaques_semana_por_dia %}
+                                <div class="destaques-dia-grupo">
+                                    <div class="destaques-dia-titulo">{{ dia.grouper|date:"d/m/Y" }}</div>
+                                    {% for evento in dia.list %}
+                                        {% if evento.detalhe_url %}
+                                            <a href="{{ evento.detalhe_url }}" class="destaque-item-link">
+                                                <div class="destaque-item {{ evento.tipo }}">
+                                                    <div class="destaque-item-meta">
+                                                        <i class="bi bi-calendar-week"></i>
+                                                        {{ evento.data|date:"d/m/Y" }}
+                                                    </div>
+                                                    <div class="destaque-item-titulo">{{ evento.label }}</div>
+                                                    <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+                                                </div>
+                                            </a>
+                                        {% else %}
+                                            <div class="destaque-item {{ evento.tipo }}">
+                                                <div class="destaque-item-meta">
+                                                    <i class="bi bi-calendar-week"></i>
+                                                    {{ evento.data|date:"d/m/Y" }}
+                                                </div>
+                                                <div class="destaque-item-titulo">{{ evento.label }}</div>
+                                                <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% empty %}
+                                <div class="destaque-vazio">Nenhum aviso para esta semana.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -753,4 +996,30 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const switcher = document.querySelector(".avisos-view-switch");
+    if (!switcher) return;
+
+    const buttons = switcher.querySelectorAll("[data-view-target]");
+    const viewDia = document.getElementById("avisos-view-dia");
+    const viewSemana = document.getElementById("avisos-view-semana");
+
+    buttons.forEach((button) => {
+        button.addEventListener("click", function () {
+            const target = button.getAttribute("data-view-target");
+            buttons.forEach((b) => b.classList.remove("active"));
+            button.classList.add("active");
+
+            if (target === "dia") {
+                viewDia.classList.remove("d-none");
+                viewSemana.classList.add("d-none");
+            } else {
+                viewSemana.classList.remove("d-none");
+                viewDia.classList.add("d-none");
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

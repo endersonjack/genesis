@@ -3,6 +3,8 @@
 {% block title %}Calendário RH | Genesis ERP{% endblock %}
 
 {% block content %}
+{% now "n" as mes_atual %}
+{% now "Y" as ano_atual %}
 <style>
     .calendar-page-card {
         border: 1px solid #d9e2ec;
@@ -32,6 +34,23 @@
         display: flex;
         gap: .75rem;
         flex-wrap: wrap;
+    }
+
+    .calendar-top-actions .btn,
+    .calendar-page-card .btn,
+    .modal .btn {
+        border-radius: .9rem;
+        font-weight: 700;
+    }
+
+    .calendar-top-actions .btn:not(.btn-sm),
+    .calendar-page-card .btn:not(.btn-sm),
+    .modal .btn:not(.btn-sm) {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
     }
 
     .calendar-wrap {
@@ -101,6 +120,19 @@
         display: flex;
         flex-wrap: wrap;
         gap: .3rem;
+    }
+
+    .day-more {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        padding: .1rem .45rem;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #334155;
+        font-size: .72rem;
+        font-weight: 700;
+        line-height: 1;
     }
 
     .day-icon,
@@ -260,7 +292,13 @@
         <p class="text-muted mb-0">Visualização mensal completa das situações e alertas dos funcionários.</p>
     </div>
 
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-2 flex-wrap calendar-top-actions">
+        <button
+            class="btn btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#modalLembretes">
+            <i class="bi bi-bell me-1"></i> Lembretes
+        </button>
         <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar ao dashboard
         </a>
@@ -268,63 +306,7 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-12 col-xl-4">
-        <div class="calendar-page-card">
-            <div class="calendar-page-header">
-                <div>
-                    <h4 class="mb-1 fw-bold">Lembretes</h4>
-                    <small class="text-muted">Alertas manuais do calendário</small>
-                </div>
-
-                <button
-    class="btn btn-primary btn-sm"
-    hx-get="{% url 'rh:criar_lembrete_rh' %}"
-    hx-target="#modal-content"
-    data-bs-toggle="modal"
-    data-bs-target="#modalPadrao">
-    <i class="bi bi-plus-circle me-1"></i> Novo
-</button>
-            </div>
-
-            <div class="calendar-page-body">
-                
-                <div class="d-flex flex-column gap-2" id="lembretes-lista">
-    {% for item in lembretes %}
-        <div class="reminder-card d-flex justify-content-between align-items-center">
-            <div>
-                <div class="reminder-card-title d-flex align-items-center gap-2">
-                    <span class="legend-dot lembrete">
-                        <i class="bi bi-bell-fill"></i>
-                    </span>
-                    {{ item.titulo }}
-                </div>
-
-                <div class="small text-muted">
-                    {{ item.data|date:"d/m/Y" }}
-                </div>
-            </div>
-
-            <button
-                class="btn btn-sm btn-outline-primary"
-                hx-get="{% url 'rh:editar_lembrete_rh' item.pk %}"
-                hx-target="#modal-content"
-                hx-trigger="click"
-                data-bs-toggle="modal"
-                data-bs-target="#modalPadrao">
-                <i class="bi bi-eye"></i>
-            </button>
-        </div>
-    {% empty %}
-        <div class="text-muted">Nenhum lembrete cadastrado.</div>
-    {% endfor %}
-</div>
-
-
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-xl-8">
+    <div class="col-12">
         <div class="calendar-page-card">
             <div class="calendar-page-header">
                 <div>
@@ -335,6 +317,9 @@
                 <div class="calendar-nav">
                     <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_anterior }}&ano={{ ano_anterior }}" class="btn btn-outline-secondary">
                         <i class="bi bi-chevron-left me-1"></i> Mês anterior
+                    </a>
+                    <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_atual }}&ano={{ ano_atual }}" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-check me-1"></i> Mês atual
                     </a>
                     <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_proximo }}&ano={{ ano_proximo }}" class="btn btn-outline-secondary">
                         Próximo mês <i class="bi bi-chevron-right ms-1"></i>
@@ -397,6 +382,11 @@
                                                     {% endif %}
                                                 </span>
                                             {% endfor %}
+                                            {% if dia.eventos|length > 6 %}
+                                                <span class="day-more" title="{{ dia.eventos|length|add:'-6' }} avisos além dos exibidos">
+                                                    <i class="bi bi-plus-lg"></i> {{ dia.eventos|length|add:'-6' }} avisos
+                                                </span>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 {% else %}
@@ -407,72 +397,6 @@
                     </div>
                 </div>
 
-                <div class="legend-list">
-                    <span class="legend-item">
-                        <span class="legend-dot admissao"><i class="bi bi-box-arrow-in-right"></i></span>
-                        Admissão
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot demissao"><i class="bi bi-box-arrow-right"></i></span>
-                        Demissão
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot inicio_aviso"><i class="bi bi-megaphone-fill"></i></span>
-                        Início do aviso
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot fim_aviso"><i class="bi bi-exclamation-triangle-fill"></i></span>
-                        Fim do aviso
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot inicio_prorrogacao"><i class="bi bi-play-circle-fill"></i></span>
-                        Início da prorrogação
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot fim_prorrogacao"><i class="bi bi-stop-circle-fill"></i></span>
-                        Fim da prorrogação
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot experiencia_45"><i class="bi bi-hourglass-split"></i></span>
-                        45 dias / experiência
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot ferias_inicio"><i class="bi bi-sun-fill"></i></span>
-                        Início de férias
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot ferias_volta"><i class="bi bi-arrow-counterclockwise"></i></span>
-                        Volta de férias
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot afastamento"><i class="bi bi-person-dash-fill"></i></span>
-                        Afastamento
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot retorno_afastamento"><i class="bi bi-person-check-fill"></i></span>
-                        Retorno afastamento
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot aso"><i class="bi bi-heart-pulse-fill"></i></span>
-                        Exames / ASO
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot alerta_exame"><i class="bi bi-clipboard2-pulse-fill"></i></span>
-                        Alerta renovação exame
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot pcmso"><i class="bi bi-file-earmark-medical-fill"></i></span>
-                        PCMSO
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot feriado"><i class="bi bi-flag-fill"></i></span>
-                        Feriado
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot lembrete"><i class="bi bi-bell-fill"></i></span>
-                        Lembrete
-                    </span>
-                </div>
             </div>
         </div>
     </div>
@@ -547,9 +471,11 @@
                                         {% endif %}
 
                                         {% if evento.detalhe_url %}
-                                            <a href="{{ evento.detalhe_url }}" class="btn btn-sm btn-primary">
-                                                <i class="bi bi-person-vcard me-1"></i> Detalhar
-                                            </a>
+                                            <div class="d-flex justify-content-end">
+                                                <a href="{{ evento.detalhe_url }}" class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-person-vcard me-1"></i> Detalhar
+                                                </a>
+                                            </div>
                                         {% endif %}
                                     </div>
                                 {% endfor %}
@@ -563,6 +489,34 @@
 {% endfor %}
 
 
+
+<div class="modal fade" id="modalLembretes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0">Lembretes</h5>
+                    <small class="text-muted">Visualize, edite e exclua lembretes do calendário</small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button
+                        class="btn btn-primary btn-sm"
+                        hx-get="{% url 'rh:criar_lembrete_rh' %}"
+                        hx-target="#modal-content"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-plus-circle me-1"></i> Novo
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+            </div>
+
+            <div class="modal-body bg-light">
+                {% include "rh/partials/lembretes_lista.html" %}
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="modalPadrao" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">

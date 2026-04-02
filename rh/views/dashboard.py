@@ -379,7 +379,7 @@ def calendario_rh(request):
 
     lembretes = LembreteRH.objects.filter(
         empresa=empresa_ativa
-    ).select_related("funcionario").order_by("data", "titulo")[:12]
+    ).select_related("funcionario").order_by("data", "titulo")
 
     context = {
         "ano": ano,
@@ -575,6 +575,49 @@ def dashboard_rh(request):
             key=lambda e: (e["label"], e["funcionario_nome"]),
         )
 
+    # Destaques listados para leitura rápida na dashboard
+    destaques_dia = []
+    for evento in eventos_por_dia.get(hoje.day, []):
+        destaques_dia.append(
+            {
+                "data": hoje,
+                **evento,
+            }
+        )
+
+    inicio_semana = hoje - timedelta(days=(hoje.weekday() + 1) % 7)  # domingo
+    fim_semana = inicio_semana + timedelta(days=6)
+    destaques_semana = []
+
+    for dia_numero, eventos in eventos_por_dia.items():
+        data_evento = date(ano, mes, dia_numero)
+        if inicio_semana <= data_evento <= fim_semana:
+            for evento in eventos:
+                destaques_semana.append(
+                    {
+                        "data": data_evento,
+                        **evento,
+                    }
+                )
+
+    destaques_semana.sort(
+        key=lambda e: (e["data"], e["label"], e["funcionario_nome"])
+    )
+
+    aniversariantes_mes = []
+    for func in funcionarios.filter(data_nascimento__isnull=False):
+        if func.data_nascimento.month == hoje.month:
+            aniversariantes_mes.append(
+                {
+                    "nome": func.nome,
+                    "cargo": func.cargo.nome if func.cargo else "",
+                    "dia": func.data_nascimento.day,
+                    "detalhe_url": reverse("rh:detalhes_funcionario", args=[func.pk]),
+                }
+            )
+
+    aniversariantes_mes.sort(key=lambda item: (item["dia"], item["nome"]))
+
     nomes_meses = {
         1: "Janeiro",
         2: "Fevereiro",
@@ -620,6 +663,9 @@ def dashboard_rh(request):
 
         "calendario_semanas": calendario_semanas,
         "eventos_por_dia": eventos_por_dia,
+        "destaques_dia": destaques_dia,
+        "destaques_semana": destaques_semana,
+        "aniversariantes_mes": aniversariantes_mes,
 
         "exames_proximos": exames_proximos[:8],
         "ferias_ativas": ferias_ativas_qs[:8],
