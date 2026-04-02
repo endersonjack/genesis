@@ -1,46 +1,54 @@
-// lógica de abrir, fechar e salvar o estado da sidebar.
+// Abrir, fechar e persistir estado da sidebar (localStorage + reapós navegação HTMX).
 
-document.addEventListener('DOMContentLoaded', function () {
-    const appWrapper = document.querySelector('.app-wrapper');
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
+const DESKTOP_BREAKPOINT = 992;
+const STORAGE_KEY = 'genesis_sidebar_collapsed';
 
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-    const toggleSidebarDesktopBtn = document.getElementById('toggleSidebarDesktopBtn');
+function isDesktop() {
+    return window.innerWidth >= DESKTOP_BREAKPOINT;
+}
 
-    if (!appWrapper || !sidebar) return;
+function getSidebarElements() {
+    return {
+        appWrapper: document.querySelector('.app-wrapper'),
+        sidebar: document.getElementById('sidebar'),
+        backdrop: document.getElementById('sidebarBackdrop'),
+    };
+}
 
-    const DESKTOP_BREAKPOINT = 992;
-    const STORAGE_KEY = 'genesis_sidebar_collapsed';
+function openMobileSidebar() {
+    const { sidebar, backdrop } = getSidebarElements();
+    if (!sidebar) return;
+    sidebar.classList.add('mobile-open');
+    backdrop?.classList.add('show');
+    document.body.classList.add('overflow-hidden');
+}
 
-    function isDesktop() {
-        return window.innerWidth >= DESKTOP_BREAKPOINT;
-    }
+function closeMobileSidebar() {
+    const { sidebar, backdrop } = getSidebarElements();
+    if (!sidebar) return;
+    sidebar.classList.remove('mobile-open');
+    backdrop?.classList.remove('show');
+    document.body.classList.remove('overflow-hidden');
+}
 
-    function openMobileSidebar() {
-        sidebar.classList.add('mobile-open');
-        backdrop?.classList.add('show');
-        document.body.classList.add('overflow-hidden');
-    }
+function applyDesktopState() {
+    const { appWrapper } = getSidebarElements();
+    if (!appWrapper) return;
+    const collapsed = localStorage.getItem(STORAGE_KEY) === 'true';
+    appWrapper.classList.toggle('sidebar-collapsed', collapsed);
+}
 
-    function closeMobileSidebar() {
-        sidebar.classList.remove('mobile-open');
-        backdrop?.classList.remove('show');
-        document.body.classList.remove('overflow-hidden');
-    }
+function toggleDesktopSidebar() {
+    const { appWrapper } = getSidebarElements();
+    if (!appWrapper) return;
+    const willCollapse = !appWrapper.classList.contains('sidebar-collapsed');
+    appWrapper.classList.toggle('sidebar-collapsed', willCollapse);
+    localStorage.setItem(STORAGE_KEY, willCollapse ? 'true' : 'false');
+}
 
-    function applyDesktopState() {
-        const collapsed = localStorage.getItem(STORAGE_KEY) === 'true';
-        appWrapper.classList.toggle('sidebar-collapsed', collapsed);
-    }
-
-    function toggleDesktopSidebar() {
-        const willCollapse = !appWrapper.classList.contains('sidebar-collapsed');
-        appWrapper.classList.toggle('sidebar-collapsed', willCollapse);
-        localStorage.setItem(STORAGE_KEY, willCollapse ? 'true' : 'false');
-    }
-
+function syncSidebarAfterNavigation() {
+    const { appWrapper } = getSidebarElements();
+    if (!appWrapper) return;
     if (isDesktop()) {
         applyDesktopState();
         closeMobileSidebar();
@@ -48,26 +56,41 @@ document.addEventListener('DOMContentLoaded', function () {
         appWrapper.classList.remove('sidebar-collapsed');
         closeMobileSidebar();
     }
+}
 
-    openSidebarBtn?.addEventListener('click', function () {
-        if (isDesktop()) return;
-        openMobileSidebar();
-    });
+(function bindSidebarHandlersOnce() {
+    if (window.__genesisSidebarHandlersBound) return;
+    window.__genesisSidebarHandlersBound = true;
 
-    closeSidebarBtn?.addEventListener('click', function () {
-        closeMobileSidebar();
-    });
+    document.addEventListener('click', function (e) {
+        const openBtn = e.target.closest('#openSidebarBtn');
+        const closeBtn = e.target.closest('#closeSidebarBtn');
+        const toggleBtn = e.target.closest('#toggleSidebarDesktopBtn');
+        const backdrop = e.target.closest('#sidebarBackdrop');
 
-    backdrop?.addEventListener('click', function () {
-        closeMobileSidebar();
-    });
-
-    toggleSidebarDesktopBtn?.addEventListener('click', function () {
-        if (!isDesktop()) return;
-        toggleDesktopSidebar();
+        if (toggleBtn && isDesktop()) {
+            e.preventDefault();
+            toggleDesktopSidebar();
+            return;
+        }
+        if (openBtn && !isDesktop()) {
+            e.preventDefault();
+            openMobileSidebar();
+            return;
+        }
+        if (closeBtn) {
+            e.preventDefault();
+            closeMobileSidebar();
+            return;
+        }
+        if (backdrop) {
+            closeMobileSidebar();
+        }
     });
 
     window.addEventListener('resize', function () {
+        const { appWrapper } = getSidebarElements();
+        if (!appWrapper) return;
         if (isDesktop()) {
             applyDesktopState();
             closeMobileSidebar();
@@ -76,6 +99,16 @@ document.addEventListener('DOMContentLoaded', function () {
             closeMobileSidebar();
         }
     });
-});
 
-// FIM lógica de abrir, fechar e salvar o estado da sidebar.
+    // Qualquer swap HTMX (incl. hx-target="body") pode substituir sidebar/topbar; não usar
+    // evt.detail.target === document.body — o alvo nem sempre coincide com document.body.
+    document.addEventListener('htmx:afterSettle', function () {
+        syncSidebarAfterNavigation();
+    });
+})();
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncSidebarAfterNavigation);
+} else {
+    syncSidebarAfterNavigation();
+}

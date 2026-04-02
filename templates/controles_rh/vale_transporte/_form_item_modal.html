@@ -1,5 +1,36 @@
-<div class="modal-header">
-    <h5 class="modal-title fw-bold">
+<style>
+    .vt-modal-form .vt-form-section {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.65rem;
+        padding: 0.85rem 1rem;
+        background: #fafbfc;
+    }
+    .vt-modal-form .vt-form-section-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 800;
+        margin-bottom: 0.65rem;
+        padding-bottom: 0.35rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .vt-modal-form .form-label {
+        font-size: 0.82rem;
+        margin-bottom: 0.25rem;
+    }
+    .vt-modal-form .form-control,
+    .vt-modal-form .form-select {
+        font-size: 0.9rem;
+    }
+    .vt-modal-form .vt-context-bar {
+        font-size: 0.88rem;
+        border-radius: 0.5rem;
+    }
+</style>
+
+<div class="modal-header py-2 px-3">
+    <h5 class="modal-title fw-bold mb-0">
         {% if modo == 'editar' and item and item.pk %}
             Editar Linha de VT
         {% else %}
@@ -10,124 +41,130 @@
 </div>
 
 <form
+    class="vt-modal-form"
     method="post"
     hx-post="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_vt' item.pk %}{% else %}{% url 'controles_rh:adicionar_item_vt' tabela.pk %}{% endif %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}
 
-    <div class="modal-body">
-        <div class="alert alert-light border mb-3">
-            <div class="fw-bold mb-1">Tabela</div>
-            <div>{{ tabela.nome }} — {{ competencia.referencia }}</div>
+    <div class="modal-body px-3 py-2">
+        <div class="alert alert-light border vt-context-bar py-2 px-3 mb-3 mb-md-2">
+            <span class="text-muted me-2">Tabela</span>
+            <span class="fw-semibold text-dark">{{ tabela.nome }}</span>
+            <span class="text-muted mx-2">·</span>
+            <span class="text-muted">Competência</span>
+            <span class="fw-semibold text-dark">{{ competencia.referencia }}</span>
         </div>
 
         <div class="row g-3">
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">
-                    {{ form.funcionario.label }}
-                </label>
-                {{ form.funcionario }}
-                {% if form.funcionario.errors %}
-                    <div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>
-                {% endif %}
+            <div class="col-12 col-lg-6">
+                <div class="vt-form-section h-100">
+                    <div class="vt-form-section-title">Identificação</div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">{{ form.funcionario.label }}</label>
+                            {{ form.funcionario }}
+                            {% if form.funcionario.errors %}
+                                <div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                            {{ form.nome }}
+                            {% if form.nome.help_text %}<div class="form-text small">{{ form.nome.help_text }}</div>{% endif %}
+                            {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">{{ form.funcao.label }}</label>
+                            {{ form.funcao }}
+                            {% if form.funcao.help_text %}<div class="form-text small">{{ form.funcao.help_text }}</div>{% endif %}
+                            {% if form.funcao.errors %}<div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ form.ativo }}
+                                <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
-                    {{ form.nome.label }}
-                </label>
-                {{ form.nome }}
-                {% if form.nome.help_text %}<div class="form-text">{{ form.nome.help_text }}</div>{% endif %}
-                {% if form.nome.errors %}
-                    <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">
-                    {{ form.funcao.label }}
-                </label>
-                {{ form.funcao }}
-                {% if form.funcao.help_text %}<div class="form-text">{{ form.funcao.help_text }}</div>{% endif %}
-                {% if form.funcao.errors %}
-                    <div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">
-                    {{ form.endereco.label }}
-                </label>
-                {{ form.endereco }}
-                {% if form.endereco.help_text %}<div class="form-text">{{ form.endereco.help_text }}</div>{% endif %}
-                {% if form.endereco.errors %}
-                    <div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-4">
-                <label class="form-label fw-semibold" for="{{ form.valor_pagar.id_for_label }}">
-                    {{ form.valor_pagar.label }}
-                </label>
-                {{ form.valor_pagar }}
-                {% if form.valor_pagar.errors %}
-                    <div class="text-danger small mt-1">{{ form.valor_pagar.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-4">
-                <label class="form-label fw-semibold" for="{{ form.tipo_pix.id_for_label }}">
-                    {{ form.tipo_pix.label }}
-                </label>
-                {{ form.tipo_pix }}
-                {% if form.tipo_pix.errors %}
-                    <div class="text-danger small mt-1">{{ form.tipo_pix.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-4">
-                <label class="form-label fw-semibold" for="{{ form.banco.id_for_label }}">
-                    {{ form.banco.label }}
-                </label>
-                {{ form.banco }}
-                {% if form.banco.errors %}
-                    <div class="text-danger small mt-1">{{ form.banco.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.pix.id_for_label }}">
-                    {{ form.pix.label }}
-                </label>
-                {{ form.pix }}
-                {% if form.pix.errors %}
-                    <div class="text-danger small mt-1">{{ form.pix.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 d-flex align-items-end">
-                <div class="form-check mb-2">
-                    {{ form.ativo }}
-                    <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">
-                        {{ form.ativo.label }}
-                    </label>
+            <div class="col-12 col-lg-6">
+                <div class="vt-form-section h-100">
+                    <div class="vt-form-section-title">Localização</div>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                            {{ form.endereco }}
+                            {% if form.endereco.help_text %}<div class="form-text small">{{ form.endereco.help_text }}</div>{% endif %}
+                            {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.observacao.id_for_label }}">
-                    {{ form.observacao.label }}
-                </label>
-                {{ form.observacao }}
-                {% if form.observacao.errors %}
-                    <div class="text-danger small mt-1">{{ form.observacao.errors|join:", " }}</div>
-                {% endif %}
+                <div class="vt-form-section">
+                    <div class="vt-form-section-title">Valores e pagamento</div>
+                    <div class="row g-2 g-lg-3">
+                        <div class="col-6 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ form.valor_pagar.id_for_label }}">{{ form.valor_pagar.label }}</label>
+                            {{ form.valor_pagar }}
+                            {% if form.valor_pagar.errors %}<div class="text-danger small mt-1">{{ form.valor_pagar.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-6 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ form.valor_pago.id_for_label }}">{{ form.valor_pago.label }}</label>
+                            {{ form.valor_pago }}
+                            {% if form.valor_pago.help_text %}<div class="form-text small">{{ form.valor_pago.help_text }}</div>{% endif %}
+                            {% if form.valor_pago.errors %}<div class="text-danger small mt-1">{{ form.valor_pago.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
+                            {{ form.data_pagamento }}
+                            {% if form.data_pagamento.help_text %}<div class="form-text small">{{ form.data_pagamento.help_text }}</div>{% endif %}
+                            {% if form.data_pagamento.errors %}<div class="text-danger small mt-1">{{ form.data_pagamento.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="vt-form-section">
+                    <div class="vt-form-section-title">Dados bancários / Pix</div>
+                    <div class="row g-2 g-lg-3 align-items-start">
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <label class="form-label fw-semibold" for="{{ form.tipo_pix.id_for_label }}">{{ form.tipo_pix.label }}</label>
+                            {{ form.tipo_pix }}
+                            {% if form.tipo_pix.errors %}<div class="text-danger small mt-1">{{ form.tipo_pix.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <label class="form-label fw-semibold" for="{{ form.banco.id_for_label }}">{{ form.banco.label }}</label>
+                            {{ form.banco }}
+                            {% if form.banco.errors %}<div class="text-danger small mt-1">{{ form.banco.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-12 col-lg-7">
+                            <label class="form-label fw-semibold" for="{{ form.pix.id_for_label }}">{{ form.pix.label }}</label>
+                            {{ form.pix }}
+                            {% if form.pix.errors %}<div class="text-danger small mt-1">{{ form.pix.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="vt-form-section">
+                    <div class="vt-form-section-title">Observações</div>
+                    <label class="form-label fw-semibold visually-hidden" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
+                    {{ form.observacao }}
+                    {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors|join:", " }}</div>{% endif %}
+                </div>
             </div>
         </div>
 
         {% if form.non_field_errors %}
-            <div class="alert alert-danger mt-3 mb-0">
+            <div class="alert alert-danger mt-3 mb-0 py-2">
                 {{ form.non_field_errors }}
             </div>
         {% endif %}
@@ -135,13 +172,25 @@
         {{ form.funcionarios_data|json_script:"funcionarios-data" }}
     </div>
 
-    <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-            Cancelar
-        </button>
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check2-circle me-1"></i> Salvar
-        </button>
+    <div class="modal-footer py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            {% if modo == 'editar' and item and item.pk %}
+                <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    hx-get="{% url 'controles_rh:excluir_item_vt' item.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">
+                    <i class="bi bi-trash me-1"></i> Excluir linha
+                </button>
+            {% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2 ms-auto">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> Salvar
+            </button>
+        </div>
     </div>
 </form>
 

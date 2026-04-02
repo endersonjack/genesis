@@ -54,7 +54,7 @@
 
     .summary-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: .85rem;
     }
 
@@ -95,125 +95,173 @@
         margin: 0;
     }
 
-    .table-responsive {
+    /* Rolagem horizontal no topo: barra duplicada sincronizada (ver JS) */
+    .vt-table-scroll-bundle {
         border-radius: 1rem;
-        overflow-x: auto;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #fff;
     }
 
-    
+    .vt-hscroll-top {
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 14px;
+        background: #f1f5f9;
+        scrollbar-width: thin;
+    }
 
-.vt-table {
-    margin-bottom: 0;
-    vertical-align: middle;
-    table-layout: fixed;
-    width: 100%;
-}
+    .vt-hscroll-top-inner {
+        height: 1px;
+    }
 
-/* HEADER */
-.vt-table thead th {
-    background: #eff6ff;
-    color: #0f172a;
-    font-weight: 800;
-    border-bottom: 1px solid #dbe4ee;
-    white-space: nowrap;
-}
+    .table-responsive {
+        overflow-x: auto;
+        border-radius: 0;
+        /* barra principal fica só em cima; o conteúdo ainda rola com toque/scroll */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
 
-/* COLUNA # */
-.vt-table th.col-num,
-.vt-table td.col-num {
-    width: 40px;
-    min-width: 40px;
-    max-width: 50px;
-    text-align: center;
-    padding-left: .5rem;
-    padding-right: .5rem;
-}
+    .table-responsive::-webkit-scrollbar {
+        height: 0;
+    }
 
-/* NOME (PRIORIDADE ALTA) */
-.vt-table th.col-nome,
-.vt-table td.col-nome {
-    width: 220px;
-}
+    .vt-table {
+        margin-bottom: 0;
+        vertical-align: middle;
+        table-layout: fixed;
+        width: 100%;
+    }
 
-/* FUNÇÃO */
-.vt-table th.col-funcao,
-.vt-table td.col-funcao {
-    width: 140px;
-}
+    .vt-table thead th {
+        background: #eff6ff;
+        color: #0f172a;
+        font-weight: 800;
+        border-bottom: 1px solid #dbe4ee;
+        white-space: nowrap;
+        position: relative;
+        padding-right: 14px;
+    }
 
-/* ENDEREÇO */
-.vt-table th.col-endereco,
-.vt-table td.col-endereco {
-    width: 220px;
-}
+    .vt-table th .th-label {
+        display: inline-block;
+        padding-right: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
-/* VALOR (FIXO) */
-.vt-table th.col-valor,
-.vt-table td.col-valor {
-    width: 110px;
-    white-space: nowrap;
-}
+    .vt-col-resize {
+        position: absolute;
+        right: 0;
+        top: 2px;
+        bottom: 2px;
+        width: 12px;
+        cursor: col-resize;
+        user-select: none;
+        z-index: 3;
+        border-radius: 4px 0 0 4px;
+        background: rgba(59, 130, 246, 0.14);
+        border-left: 2px solid rgba(37, 99, 235, 0.65);
+        box-shadow: -1px 0 0 rgba(255, 255, 255, 0.5) inset;
+    }
 
-/* PIX (PRIORIDADE MÉDIA) */
-.vt-table th.col-pix,
-.vt-table td.col-pix {
-    width: 180px;
-}
+    .vt-col-resize:hover {
+        background: rgba(59, 130, 246, 0.32);
+        border-left-color: #1d4ed8;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+    }
 
-/* TIPO PIX */
-.vt-table th.col-tipo,
-.vt-table td.col-tipo {
-    width: 120px;
-}
+    .vt-col-resize:active {
+        background: rgba(59, 130, 246, 0.45);
+    }
 
-/* BANCO */
-.vt-table th.col-banco,
-.vt-table td.col-banco {
-    width: 140px;
-}
+    .vt-table th.col-num,
+    .vt-table td.col-num {
+        width: 42px;
+        min-width: 42px;
+        text-align: center;
+    }
 
-/* AÇÕES */
-.vt-table th.col-acoes,
-.vt-table td.col-acoes {
-    width: 110px;
-}
+    .vt-table th.col-drag,
+    .vt-table td.col-drag {
+        width: 40px;
+        min-width: 40px;
+        text-align: center;
+    }
 
-/* ELLIPSIS */
-.ellipsis-cell {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+    .vt-drag-handle {
+        cursor: grab;
+        color: #94a3b8;
+        padding: 2px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-/* MONEY */
-.money {
-    font-weight: 800;
-    white-space: nowrap;
-}
+    .vt-drag-handle:active {
+        cursor: grabbing;
+    }
 
+    .vt-table th.col-nome,
+    .vt-table td.col-nome { width: 200px; }
+    .vt-table th.col-funcao,
+    .vt-table td.col-funcao { width: 130px; }
+    .vt-table th.col-endereco,
+    .vt-table td.col-endereco { width: 200px; }
+    .vt-table th.col-valor,
+    .vt-table td.col-valor { width: 100px; }
+    .vt-table th.col-pago,
+    .vt-table td.col-pago { width: 150px; }
+    .vt-table th.col-saldo,
+    .vt-table td.col-saldo { width: 108px; text-align: right; }
+    .vt-table th.col-data-pagamento,
+    .vt-table td.col-data-pagamento { width: 118px; }
+    .vt-table th.col-pix,
+    .vt-table td.col-pix { width: 150px; }
+    .vt-table th.col-tipo,
+    .vt-table td.col-tipo { width: 110px; }
+    .vt-table th.col-banco,
+    .vt-table td.col-banco { width: 120px; }
 
+    .vt-table tbody tr.vt-row-clickable {
+        cursor: pointer;
+    }
 
+    .vt-table tbody tr.vt-row-clickable td {
+        transition: box-shadow 0.14s ease;
+    }
 
+    .vt-table tbody tr.vt-row-clickable:hover:not(.vt-sortable-ghost) td {
+        box-shadow: inset 0 0 0 9999px rgba(37, 99, 235, 0.12);
+    }
 
+    .vt-table tbody tr.vt-row-clickable:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+    }
+
+    .ellipsis-cell {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
     .money {
         font-weight: 800;
         white-space: nowrap;
     }
 
-    .ellipsis-cell {
-        max-width: 180px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .vt-row-pago-completo td:not(.col-drag):not(.col-num) {
+        background: #ecfdf5;
     }
 
-    .ellipsis-cell.wide {
-        max-width: 260px;
+    .vt-row-pago-parcial td:not(.col-drag):not(.col-num) {
+        background: #fff7ed;
     }
 
-    .ellipsis-cell.small {
-        max-width: 120px;
+    .vt-sortable-ghost {
+        opacity: 0.45;
     }
 
     .empty-box {
@@ -224,7 +272,42 @@
         text-align: center;
         color: #64748b;
     }
+
+    .hint-table-tools {
+        font-size: .78rem;
+        color: #64748b;
+        margin: 0 0 .75rem;
+    }
+
+    .vt-pago-cell {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .35rem;
+        flex-wrap: nowrap;
+    }
+
+    .vt-pago-cell .btn-pago-edit {
+        flex-shrink: 0;
+        padding: .15rem .4rem;
+        line-height: 1;
+    }
+
+    .vt-saldo {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+    }
+
+    .vt-saldo-quitado {
+        color: #15803d;
+    }
+
+    .vt-saldo-pendente {
+        color: #c2410c;
+    }
 </style>
+
 <div class="summary-card mb-4">
     <div class="summary-body">
         <div class="summary-top">
@@ -236,8 +319,20 @@
             </div>
 
             <div class="summary-actions">
-                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}" class="btn btn-outline-secondary">
+                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   class="btn btn-outline-secondary"
+                   hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
                     <i class="bi bi-arrow-left me-1"></i> Voltar
+                </a>
+
+                <a href="{% url 'controles_rh:exportar_tabela_vt_xlsx' tabela.pk %}" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar Excel
+                </a>
+                <a href="{% url 'controles_rh:exportar_tabela_vt_pdf' tabela.pk %}" class="btn btn-outline-danger" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
                 </a>
 
                 <button
@@ -246,8 +341,7 @@
                     hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalPadrao">
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
                     <i class="bi bi-pencil-square me-1"></i> Editar
                 </button>
 
@@ -257,8 +351,7 @@
                     hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalPadrao">
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
                     <i class="bi bi-trash me-1"></i> Excluir
                 </button>
             </div>
@@ -276,19 +369,29 @@
             </div>
 
             <div class="summary-box">
-                <div class="summary-label">Total geral</div>
+                <div class="summary-label">Total a pagar</div>
                 <div class="summary-value">R$ {{ total_valor|floatformat:2 }}</div>
             </div>
 
             <div class="summary-box">
-                <div class="summary-label">Status</div>
+                <div class="summary-label">Total pago</div>
+                <div class="summary-value">R$ {{ total_valor_pago|floatformat:2 }}</div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-label">Saldo à pagar</div>
+                <div class="summary-value {% if saldo_a_pagar > 0 %}vt-saldo-pendente{% else %}vt-saldo-quitado{% endif %}">
+                    R$ {{ saldo_a_pagar|floatformat:2 }}
+                </div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-label">Pagamento (VT)</div>
                 <div class="summary-value">
-                    {% if tabela.fechada %}
-                        Fechada
-                    {% elif tabela.ativa %}
-                        Ativa
+                    {% if tabela.vt_status_efetivo == 'pago_completo' %}
+                        <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
                     {% else %}
-                        Inativa
+                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -303,116 +406,163 @@
 </div>
 
 <div class="table-card">
-    
-<div class="table-header">
-    <h3 class="table-title">Itens da Tabela de Vale Transporte</h3>
+    <div class="table-header">
+        <h3 class="table-title">Itens da Tabela de Vale Transporte</h3>
 
-    <button
-        type="button"
-        class="btn btn-primary btn-sm"
-        hx-get="{% url 'controles_rh:adicionar_item_vt' tabela.pk %}"
-        hx-target="#modal-content"
-        hx-swap="innerHTML"
-        data-bs-toggle="modal"
-        data-bs-target="#modalPadrao">
-        <i class="bi bi-plus-circle me-1"></i> Adicionar linha
-    </button>
-</div>
-
-    
+        <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            hx-get="{% url 'controles_rh:adicionar_item_vt' tabela.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar linha
+        </button>
+    </div>
 
     <div class="table-body">
         {% if itens %}
-            <div class="table-responsive">
-                <table class="table vt-table align-middle">
-                    
-
-<thead>
-    <tr>
-        <th class="col-num">#</th>
-        <th class="col-nome">Nome</th>
-        <th class="col-funcao">Função</th>
-        <th class="col-endereco">Endereço</th>
-        <th class="col-valor">Valor</th>
-        <th class="col-pix">Pix</th>
-        <th class="col-tipo">Tipo</th>
-        <th class="col-banco">Banco</th>
-        <th class="text-end col-acoes">Ações</th>
-    </tr>
-</thead>
-
-                    
-<tbody>
-    {% for item in itens %}
-        <tr>
-            <td class="col-num">{{ forloop.counter }}</td>
-
-            <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
-                {{ item.nome_exibicao }}
-            </td>
-
-            <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-' }}">
-                {{ item.funcao|default:"-" }}
-            </td>
-
-            <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-' }}">
-                {{ item.endereco|default:"-" }}
-            </td>
-
-            <td class="col-valor money">
-                R$ {{ item.valor_pagar|floatformat:2 }}
-            </td>
-
-            <td class="col-pix ellipsis-cell" title="{{ item.pix|default:'-' }}">
-                {{ item.pix|default:"-" }}
-            </td>
-
-            <td class="col-tipo ellipsis-cell" title="{{ item.get_tipo_pix_display|default:'-' }}">
-                {{ item.get_tipo_pix_display|default:"-" }}
-            </td>
-
-            <td class="col-banco ellipsis-cell" title="{{ item.banco|default:'-' }}">
-                {{ item.banco|default:"-" }}
-            </td>
-
-            <td class="text-end col-acoes">
-                <div class="d-flex gap-2 justify-content-end flex-wrap">
-                    <button
-                        type="button"
-                        class="btn btn-outline-primary btn-sm"
-                        hx-get="{% url 'controles_rh:editar_item_vt' item.pk %}"
-                        hx-target="#modal-content"
-                        hx-swap="innerHTML"
-                        data-bs-toggle="modal"
-                        data-bs-target="#modalPadrao">
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-
-                    <button
-                        type="button"
-                        class="btn btn-outline-danger btn-sm"
-                        hx-get="{% url 'controles_rh:excluir_item_vt' item.pk %}"
-                        hx-target="#modal-content"
-                        hx-swap="innerHTML"
-                        data-bs-toggle="modal"
-                        data-bs-target="#modalPadrao">
-                        <i class="bi bi-trash"></i>
-                    </button>
+            <p class="hint-table-tools px-1">
+                <i class="bi bi-arrows-move me-1"></i> Arraste pelo ícone à esquerda para reordenar.
+                <span class="ms-2"><i class="bi bi-hand-index-thumb me-1"></i> Clique na linha para editar.</span>
+                Ajuste a largura das colunas pela borda direita do cabeçalho.
+            </p>
+            <div class="vt-table-scroll-bundle">
+                <div class="vt-hscroll-top" id="vt-hscroll-top" role="presentation">
+                    <div class="vt-hscroll-top-inner" id="vt-hscroll-top-inner"></div>
                 </div>
-            </td>
-        </tr>
-    {% endfor %}
-</tbody>
-
-
-
-                </div>
-            </td>
-        </tr>
-   
-</tbody>
+                <div class="table-responsive" id="vt-hscroll-bottom">
+                <table class="table vt-table align-middle" id="vt-table-main" data-tabela-id="{{ tabela.pk }}">
+                    <thead>
+                        <tr>
+                            <th class="col-num" data-col-idx="1">
+                                <span class="th-label">#</span>
+                            </th>
+                            <th class="col-drag" data-col-idx="2">
+                                <span class="th-label"></span>
+                            </th>
+                            <th class="col-nome" data-col-idx="3">
+                                <span class="th-label">Nome</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-funcao" data-col-idx="4">
+                                <span class="th-label">Função</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-endereco" data-col-idx="5">
+                                <span class="th-label">Endereço</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-valor" data-col-idx="6">
+                                <span class="th-label">Valor</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-pago" data-col-idx="7">
+                                <span class="th-label">Pago</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-saldo" data-col-idx="8">
+                                <span class="th-label">Saldo</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-data-pagamento" data-col-idx="9">
+                                <span class="th-label">Data pagamento</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-pix" data-col-idx="10">
+                                <span class="th-label">Pix</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-tipo" data-col-idx="11">
+                                <span class="th-label">Tipo</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                            <th class="col-banco" data-col-idx="12">
+                                <span class="th-label">Banco</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="vt-sortable-tbody">
+                        {% for item in itens %}
+                            <tr
+                                class="{{ item.classe_linha_pagamento }} vt-row-clickable"
+                                data-item-id="{{ item.pk }}"
+                                role="button"
+                                tabindex="0"
+                                title="Clique para editar esta linha"
+                                hx-get="{% url 'controles_rh:editar_item_vt' item.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <td class="col-num">{{ forloop.counter }}</td>
+                                <td class="col-drag" onclick="event.stopPropagation()">
+                                    <span class="vt-drag-handle" title="Arrastar para reordenar">
+                                        <i class="bi bi-grip-vertical"></i>
+                                    </span>
+                                </td>
+                                <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
+                                    {{ item.nome_exibicao }}
+                                </td>
+                                <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-' }}">
+                                    {{ item.funcao|default:"-" }}
+                                </td>
+                                <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-' }}">
+                                    {{ item.endereco|default:"-" }}
+                                </td>
+                                <td class="col-valor money">
+                                    R$ {{ item.valor_pagar|floatformat:2 }}
+                                </td>
+                                <td class="col-pago">
+                                    <div class="vt-pago-cell">
+                                        <span class="money">R$ {{ item.valor_pago|floatformat:2 }}</span>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-secondary btn-sm btn-pago-edit"
+                                            title="Alterar valor pago e data"
+                                            onclick="event.stopPropagation()"
+                                            hx-get="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
+                                            hx-target="#modal-pagamento-vt-content"
+                                            hx-swap="innerHTML"
+                                            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPagamentoVt'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="col-saldo">
+                                    {% if item.ativo and item.valor_pagar > 0 %}
+                                        {% if item.saldo <= 0 %}
+                                            <span class="vt-saldo vt-saldo-quitado" title="Quitado">R$ {{ item.saldo|floatformat:2 }}</span>
+                                        {% else %}
+                                            <span class="vt-saldo vt-saldo-pendente" title="A pagar">R$ {{ item.saldo|floatformat:2 }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="col-data-pagamento">
+                                    {% if item.data_pagamento %}
+                                        {{ item.data_pagamento|date:"d/m/Y" }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="col-pix ellipsis-cell" title="{{ item.pix|default:'-' }}">
+                                    {{ item.pix|default:"-" }}
+                                </td>
+                                <td class="col-tipo ellipsis-cell" title="{{ item.get_tipo_pix_display|default:'-' }}">
+                                    {{ item.get_tipo_pix_display|default:"-" }}
+                                </td>
+                                <td class="col-banco ellipsis-cell" title="{{ item.banco|default:'-' }}">
+                                    {{ item.banco|default:"-" }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
                 </table>
+                </div>
             </div>
+            {% csrf_token %}
         {% else %}
             <div class="empty-box">
                 <div class="mb-2">
@@ -426,10 +576,191 @@
 </div>
 
 <div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" id="modal-content">
-            <!-- conteúdo HTMX -->
-        </div>
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" id="modal-content"></div>
     </div>
 </div>
+
+<div class="modal fade" id="modalPagamentoVt" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow" id="modal-pagamento-vt-content"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if itens %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+    const table = document.getElementById('vt-table-main');
+    const tbody = document.getElementById('vt-sortable-tbody');
+    const tabelaId = table && table.dataset.tabelaId;
+    const storageKey = tabelaId ? ('vt-col-widths-' + tabelaId) : null;
+    const reorderUrl = "{% url 'controles_rh:reordenar_itens_vt' tabela.pk %}";
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrfInput ? csrfInput.value : '';
+
+    const bottomScroll = document.getElementById('vt-hscroll-bottom');
+    const topScroll = document.getElementById('vt-hscroll-top');
+    const topInner = document.getElementById('vt-hscroll-top-inner');
+
+    function syncHorizontalScrollbars() {
+        if (!bottomScroll || !topScroll || !topInner || !table) return;
+        topInner.style.width = bottomScroll.scrollWidth + 'px';
+        var overflow = bottomScroll.scrollWidth > bottomScroll.clientWidth + 1;
+        topScroll.style.display = overflow ? '' : 'none';
+        topScroll.scrollLeft = bottomScroll.scrollLeft;
+    }
+
+    if (bottomScroll && topScroll && topInner) {
+        bottomScroll.addEventListener('scroll', function () {
+            topScroll.scrollLeft = bottomScroll.scrollLeft;
+        });
+        topScroll.addEventListener('scroll', function () {
+            bottomScroll.scrollLeft = topScroll.scrollLeft;
+        });
+        window.addEventListener('resize', syncHorizontalScrollbars);
+        if (window.ResizeObserver) {
+            try {
+                new ResizeObserver(syncHorizontalScrollbars).observe(bottomScroll);
+                if (table) new ResizeObserver(syncHorizontalScrollbars).observe(table);
+            } catch (e) { /* ignore */ }
+        }
+    }
+
+    function setColumnWidth(colIdx, widthPx) {
+        const min = 36;
+        const w = Math.max(min, Math.round(widthPx));
+        const sel = 'thead th:nth-child(' + colIdx + '), tbody td:nth-child(' + colIdx + ')';
+        table.querySelectorAll(sel).forEach(function (el) {
+            el.style.width = w + 'px';
+            el.style.minWidth = w + 'px';
+            el.style.maxWidth = w + 'px';
+        });
+    }
+
+    function loadWidths() {
+        if (!storageKey || !window.localStorage) return;
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return;
+            const map = JSON.parse(raw);
+            Object.keys(map).forEach(function (k) {
+                const idx = parseInt(k, 10);
+                if (!idx || !map[k]) return;
+                setColumnWidth(idx, map[k]);
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveWidths(map) {
+        if (!storageKey || !window.localStorage) return;
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(map));
+        } catch (e) { /* ignore */ }
+    }
+
+    function refreshRowNumbers() {
+        if (!tbody) return;
+        tbody.querySelectorAll('tr').forEach(function (tr, i) {
+            const numCell = tr.querySelector('.col-num');
+            if (numCell) numCell.textContent = String(i + 1);
+        });
+    }
+
+    function collectWidths() {
+        const map = {};
+        table.querySelectorAll('thead th[data-col-idx]').forEach(function (th) {
+            const idx = parseInt(th.dataset.colIdx, 10);
+            if (!idx) return;
+            map[idx] = th.getBoundingClientRect().width;
+        });
+        return map;
+    }
+
+    loadWidths();
+    requestAnimationFrame(function () {
+        syncHorizontalScrollbars();
+    });
+
+    let resizing = { active: false, colIdx: null, startX: 0, startW: 0 };
+
+    table.querySelectorAll('.vt-col-resize').forEach(function (handle) {
+        handle.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const th = handle.closest('th');
+            if (!th || !th.dataset.colIdx) return;
+            resizing = {
+                active: true,
+                colIdx: parseInt(th.dataset.colIdx, 10),
+                startX: e.clientX,
+                startW: th.getBoundingClientRect().width
+            };
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!resizing.active) return;
+        const dx = e.clientX - resizing.startX;
+        const nw = resizing.startW + dx;
+        setColumnWidth(resizing.colIdx, nw);
+        syncHorizontalScrollbars();
+    });
+
+    document.addEventListener('mouseup', function () {
+        if (!resizing.active) return;
+        resizing.active = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        saveWidths(collectWidths());
+        requestAnimationFrame(syncHorizontalScrollbars);
+    });
+
+    if (tbody && typeof Sortable !== 'undefined') {
+        Sortable.create(tbody, {
+            handle: '.vt-drag-handle',
+            animation: 150,
+            ghostClass: 'vt-sortable-ghost',
+            onEnd: function () {
+                refreshRowNumbers();
+                const ids = Array.prototype.map.call(
+                    tbody.querySelectorAll('tr[data-item-id]'),
+                    function (tr) { return tr.dataset.itemId; }
+                );
+                fetch(reorderUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ ids: ids })
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('Falha ao salvar ordem');
+                    return r.json();
+                }).catch(function () {
+                    window.location.reload();
+                });
+                requestAnimationFrame(syncHorizontalScrollbars);
+            }
+        });
+    }
+
+    requestAnimationFrame(syncHorizontalScrollbars);
+
+    if (tbody) {
+        tbody.querySelectorAll('tr.vt-row-clickable').forEach(function (tr) {
+            tr.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.target !== tr) return;
+                e.preventDefault();
+                tr.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            });
+        });
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}

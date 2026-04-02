@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from controles_rh.forms import CompetenciaForm
 from controles_rh.models import Competencia, ValeTransporteTabela
@@ -70,10 +71,14 @@ def lista_competencias(request):
     elif status == 'fechada':
         competencias = competencias.filter(fechada=True)
 
+    competencias = competencias.annotate(total_tabelas_vt=Count('tabelas_vt')).order_by(
+        '-ano', '-mes', '-id'
+    )
+
     context = {
         'page_title': 'Competências RH',
         'empresa_ativa': empresa_ativa,
-        'competencias': competencias.order_by('-ano', '-mes', '-id'),
+        'competencias': competencias,
         'filtro_mes': mes or '',
         'filtro_ano': ano or '',
         'filtro_status': status or '',
@@ -120,11 +125,19 @@ def criar_competencia(request):
             )
 
             if _is_htmx(request):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
+                url = reverse(
+                    'controles_rh:detalhe_competencia',
+                    kwargs={'ano': competencia.ano, 'mes': competencia.mes},
+                )
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = url
                 return response
 
-            return redirect('controles_rh:detalhe_competencia', pk=competencia.pk)
+            return redirect(
+                'controles_rh:detalhe_competencia',
+                ano=competencia.ano,
+                mes=competencia.mes,
+            )
 
         messages.error(request, 'Não foi possível criar a competência. Revise os campos.')
 
@@ -193,11 +206,19 @@ def editar_competencia(request, pk):
             )
 
             if _is_htmx(request):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
+                url = reverse(
+                    'controles_rh:detalhe_competencia',
+                    kwargs={'ano': competencia.ano, 'mes': competencia.mes},
+                )
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = url
                 return response
 
-            return redirect('controles_rh:detalhe_competencia', pk=competencia.pk)
+            return redirect(
+                'controles_rh:detalhe_competencia',
+                ano=competencia.ano,
+                mes=competencia.mes,
+            )
 
         messages.error(request, 'Não foi possível atualizar a competência. Revise os campos.')
 
@@ -226,11 +247,12 @@ def excluir_competencia(request, pk):
         messages.success(request, f'Competência {referencia} excluída com sucesso.')
 
         if _is_htmx(request):
-            response = HttpResponse(status=204)
-            response['HX-Refresh'] = 'true'
+            # Não usar HX-Refresh: recarregaria a URL atual (ex.: detalhe da competência) e daria 404.
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = reverse('controles_rh:home')
             return response
 
-        return redirect('controles_rh:lista_competencias')
+        return redirect('controles_rh:home')
 
     context = {
         'page_title': f'Excluir Competência {competencia.referencia}',

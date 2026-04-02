@@ -1,0 +1,29 @@
+---
+description: Botões e ações interativas devem usar HTMX (hx-*), alinhado aos modais e CSRF do projeto.
+alwaysApply: true
+---
+
+# HTMX em botões e ações
+
+## Regra
+
+- Ao **criar ou alterar botões** que disparam ações no servidor (abrir modal, salvar via POST parcial, excluir com confirmação, atualizar trecho da página), use **HTMX** (`hx-get`, `hx-post`, `hx-put`, `hx-delete` conforme o caso), **não** dependa só de `onclick` com `fetch` manual nem de submit full-page, salvo exceção explícita abaixo.
+- Ao revisar templates (`*.html`), se encontrar botões de ação que ainda usam apenas navegação tradicional ou JS ad-hoc para o mesmo fim, **converta para HTMX** quando fizer sentido no fluxo atual (modais `#modal-content`, `hx-swap="innerHTML"`, etc.).
+
+## Padrão do projeto (Genesis)
+
+- Modais: `hx-target="#modal-content"`, `hx-swap="innerHTML"`, e `data-bs-toggle="modal"` + `data-bs-target="#modalPadrao"` quando for o modal padrão.
+- Formulários em modal: `method="post"` + `hx-post="{% url ... %}"` com o mesmo alvo; o projeto já envia **CSRF** via `htmx:configRequest` em `static/js/extra.js`.
+- Respostas de sucesso: preferir **`HX-Redirect`** ou recarregar o necessário para **Django messages** + toasts globais, conforme já implementado na base.
+
+## Exceções (não obrigatório HTMX)
+
+- Links que são **navegação inteira de página** (`<a href="...">` para outra rota) sem troca parcial — podem permanecer como link normal.
+- Downloads (`Content-Disposition`, export Excel/PDF) — manter `<a href>` ou submit que force download, se já estiver assim.
+- Ações que **devem** ser GET idempotente só como bookmark — avaliar caso a caso.
+
+## Checklist rápido
+
+- [ ] Atributo `hx-*` no elemento que dispara a ação
+- [ ] `hx-target`/`hx-swap` coerentes com o modal ou área atualizada
+- [ ] Form POST com `{% csrf_token %}` dentro do `<form>`

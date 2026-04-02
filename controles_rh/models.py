@@ -2,6 +2,24 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F
+
+
+STATUS_PAGAMENTO_VT_CHOICES = [
+    ('em_pagamento', 'Em pagamento'),
+    ('pago_completo', 'Pago completo'),
+]
+
+
+def _status_pagamento_vt_de_itens(itens_qs):
+    """
+    Considera apenas itens ativos com valor a pagar > 0.
+    Se algum ainda tiver saldo (valor a pagar > valor pago), retorna em_pagamento.
+    """
+    pendentes = itens_qs.filter(ativo=True).filter(valor_pagar__gt=F('valor_pago'))
+    if pendentes.exists():
+        return 'em_pagamento'
+    return 'pago_completo'
 
 
 class Competencia(models.Model):
@@ -32,6 +50,20 @@ class Competencia(models.Model):
     observacao = models.TextField(
         blank=True,
         verbose_name='Observação'
+    )
+
+    vt_calculo_automatico = models.BooleanField(
+        default=True,
+        verbose_name='Status VT automático',
+        help_text='Quando ativo, o status de pagamento do VT é calculado pelas tabelas e itens.',
+    )
+    vt_status_manual = models.CharField(
+        max_length=20,
+        choices=STATUS_PAGAMENTO_VT_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Status VT manual',
+        help_text='Usado apenas quando o status automático está desligado.',
     )
 
     data_criacao = models.DateTimeField(auto_now_add=True)
@@ -82,6 +114,9 @@ class Competencia(models.Model):
         if self.ano < 2000 or self.ano > 2100:
             errors['ano'] = 'Informe um ano válido.'
 
+        if not self.vt_calculo_automatico and not self.vt_status_manual:
+            errors['vt_status_manual'] = 'Informe o status manual ou reative o cálculo automático.'
+
         if errors:
             raise ValidationError(errors)
 
@@ -90,6 +125,25 @@ class Competencia(models.Model):
             self.titulo = self.get_titulo_padrao()
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def _vt_status_agregado_tabelas(self):
+        tabelas = self.tabelas_vt.all()
+        if not tabelas.exists():
+            return 'pago_completo'
+        for tabela in tabelas:
+            if tabela.vt_status_efetivo == 'em_pagamento':
+                return 'em_pagamento'
+        return 'pago_completo'
+
+    @property
+    def vt_status_efetivo(self):
+        if self.vt_calculo_automatico:
+            return self._vt_status_agregado_tabelas()
+        return self.vt_status_manual or 'em_pagamento'
+
+    @property
+    def vt_status_efetivo_label(self):
+        return dict(STATUS_PAGAMENTO_VT_CHOICES).get(self.vt_status_efetivo, self.vt_status_efetivo)
 
 
 class ValeTransporteTabela(models.Model):
@@ -132,6 +186,20 @@ class ValeTransporteTabela(models.Model):
         verbose_name='Fechada'
     )
 
+    vt_calculo_automatico = models.BooleanField(
+        default=True,
+        verbose_name='Status pagamento automático',
+        help_text='Quando ativo, o status é calculado pelos itens (valores a pagar x pagos).',
+    )
+    vt_status_manual = models.CharField(
+        max_length=20,
+        choices=STATUS_PAGAMENTO_VT_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Status pagamento manual',
+        help_text='Usado apenas quando o cálculo automático está desligado.',
+    )
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
 
@@ -161,6 +229,32 @@ class ValeTransporteTabela(models.Model):
     def total_valor(self):
         total = self.itens.aggregate(total=models.Sum('valor_pagar'))['total']
         return total or Decimal('0.00')
+
+    @property
+    def total_valor_pago(self):
+        total = self.itens.aggregate(total=models.Sum('valor_pago'))['total']
+        return total or Decimal('0.00')
+
+    def clean(self):
+        errors = {}
+        if not self.vt_calculo_automatico and not self.vt_status_manual:
+            errors['vt_status_manual'] = 'Informe o status manual ou reative o cálculo automático.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def vt_status_efetivo(self):
+        if self.vt_calculo_automatico:
+            return _status_pagamento_vt_de_itens(self.itens.all())
+        return self.vt_status_manual or 'em_pagamento'
+
+    @property
+    def vt_status_efetivo_label(self):
+        return dict(STATUS_PAGAMENTO_VT_CHOICES).get(self.vt_status_efetivo, self.vt_status_efetivo)
 
 
 class ValeTransporteItem(models.Model):
@@ -212,6 +306,27 @@ class ValeTransporteItem(models.Model):
         decimal_places=2,
         default=0,
         verbose_name='Valor a pagar'
+    )
+
+    valor_base = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='Valor base',
+        help_text='Valor de referência (espelha o valor a pagar na prática).',
+    )
+
+    valor_pago = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='Valor pago'
+    )
+
+    data_pagamento = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data de pagamento',
     )
 
     pix = models.CharField(
@@ -275,11 +390,34 @@ class ValeTransporteItem(models.Model):
     def competencia(self):
         return self.tabela.competencia
 
+    @property
+    def saldo(self):
+        vp = self.valor_pagar or Decimal('0')
+        pp = self.valor_pago or Decimal('0')
+        return vp - pp
+
+    @property
+    def classe_linha_pagamento(self):
+        if not self.ativo:
+            return ''
+        vp = self.valor_pagar or Decimal('0')
+        if vp <= 0:
+            return ''
+        if self.saldo <= 0:
+            return 'vt-row-pago-completo'
+        return 'vt-row-pago-parcial'
+
     def clean(self):
         errors = {}
 
         if self.valor_pagar is not None and self.valor_pagar < 0:
             errors['valor_pagar'] = 'O valor a pagar não pode ser negativo.'
+
+        if self.valor_pago is not None and self.valor_pago < 0:
+            errors['valor_pago'] = 'O valor pago não pode ser negativo.'
+
+        if self.valor_base is not None and self.valor_base < 0:
+            errors['valor_base'] = 'O valor base não pode ser negativo.'
 
         if self.funcionario_id and self.tabela_id:
             funcionario_empresa_id = getattr(self.funcionario, 'empresa_id', None)
@@ -300,6 +438,9 @@ class ValeTransporteItem(models.Model):
                 self.funcao = str(cargo) if cargo else self.funcao
             if not self.endereco:
                 self.endereco = getattr(self.funcionario, 'endereco_completo', '') or self.endereco
+
+        vp = self.valor_pagar if self.valor_pagar is not None else Decimal('0')
+        self.valor_base = vp
 
         self.full_clean()
         super().save(*args, **kwargs)

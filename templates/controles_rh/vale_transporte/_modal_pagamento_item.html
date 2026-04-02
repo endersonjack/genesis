@@ -1,0 +1,42 @@
+<div class="modal-header py-2">
+    <h5 class="modal-title fw-bold small">Pagamento — {{ item.nome_exibicao }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    action="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
+    hx-post="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
+    hx-target="#modal-pagamento-vt-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body py-3">
+        <div class="mb-3">
+            <label class="form-label fw-semibold mb-1" for="{{ form.valor_pago.id_for_label }}">
+                {{ form.valor_pago.label }}
+            </label>
+            {{ form.valor_pago }}
+            {% if form.valor_pago.errors %}
+                <div class="text-danger small mt-1">{{ form.valor_pago.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-0">
+            <label class="form-label fw-semibold mb-1" for="{{ form.data_pagamento.id_for_label }}">
+                {{ form.data_pagamento.label }}
+            </label>
+            {{ form.data_pagamento }}
+            {% if form.data_pagamento.help_text %}
+                <div class="form-text">{{ form.data_pagamento.help_text }}</div>
+            {% endif %}
+            {% if form.data_pagamento.errors %}
+                <div class="text-danger small mt-1">{{ form.data_pagamento.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal-footer py-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+    </div>
+</form>

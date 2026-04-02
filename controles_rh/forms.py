@@ -1,7 +1,13 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from rh.models import Funcionario
-from .models import Competencia, ValeTransporteItem, ValeTransporteTabela
+from .models import (
+    Competencia,
+    STATUS_PAGAMENTO_VT_CHOICES,
+    ValeTransporteItem,
+    ValeTransporteTabela,
+)
 
 
 class BaseStyledModelForm(forms.ModelForm):
@@ -79,6 +85,27 @@ class CompetenciaForm(BaseStyledModelForm):
         self.fields['titulo'].help_text = 'Opcional. Se vazio, será gerado automaticamente.'
         self.fields['observacao'].required = False
 
+    def clean(self):
+        cleaned_data = super().clean()
+        mes = cleaned_data.get('mes')
+        ano = cleaned_data.get('ano')
+
+        if self.empresa_ativa and mes is not None and ano is not None:
+            qs = Competencia.objects.filter(
+                empresa=self.empresa_ativa,
+                mes=mes,
+                ano=ano,
+            )
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError(
+                    'Já existe competência para este mês e ano nesta empresa.',
+                    code='duplicate_competencia',
+                )
+
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
 
@@ -97,24 +124,19 @@ class ValeTransporteTabelaForm(BaseStyledModelForm):
         fields = [
             'nome',
             'descricao',
-            'ordem',
-            'ativa',
-            'fechada',
+            'vt_calculo_automatico',
+            'vt_status_manual',
         ]
         widgets = {
             'descricao': forms.Textarea(attrs={
                 'rows': 3,
             }),
-            'ordem': forms.NumberInput(attrs={
-                'min': 0,
-            }),
         }
         labels = {
             'nome': 'Nome da tabela',
             'descricao': 'Descrição',
-            'ordem': 'Ordem',
-            'ativa': 'Ativa',
-            'fechada': 'Fechada',
+            'vt_calculo_automatico': 'Calcular status automaticamente pelos itens',
+            'vt_status_manual': 'Status de pagamento (manual)',
         }
 
     def __init__(self, *args, **kwargs):
@@ -123,11 +145,33 @@ class ValeTransporteTabelaForm(BaseStyledModelForm):
         self.apply_bootstrap_classes()
 
         self.fields['descricao'].required = False
-        self.fields['ordem'].required = False
 
         self.fields['nome'].help_text = 'Ex.: VT Escritório, VT Obra A, VT Equipe Externa.'
         self.fields['descricao'].help_text = 'Opcional.'
-        self.fields['ordem'].help_text = 'Use para definir a ordem de exibição.'
+        self.fields['vt_calculo_automatico'].help_text = (
+            'Automático: calcula pelos itens (saldo a pagar × pago). '
+            'Manual: você escolhe o status abaixo, ignorando os valores das linhas.'
+        )
+        self.fields['vt_status_manual'].required = False
+        self.fields['vt_status_manual'].help_text = (
+            'Obrigatório se desmarcar o cálculo automático.'
+        )
+        self.fields['vt_status_manual'].choices = [
+            ('', '— Selecione —'),
+        ] + list(STATUS_PAGAMENTO_VT_CHOICES)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        auto = cleaned_data.get('vt_calculo_automatico')
+        manual = cleaned_data.get('vt_status_manual')
+        if auto is False and not manual:
+            self.add_error(
+                'vt_status_manual',
+                'Selecione o status de pagamento ou marque o modo automático.',
+            )
+        if auto is True:
+            cleaned_data['vt_status_manual'] = None
+        return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -141,6 +185,29 @@ class ValeTransporteTabelaForm(BaseStyledModelForm):
         return instance
 
 
+class ValeTransporteItemPagamentoForm(BaseStyledModelForm):
+    """Modal rápido: apenas valor pago e data de pagamento."""
+
+    class Meta:
+        model = ValeTransporteItem
+        fields = ['valor_pago', 'data_pagamento']
+        widgets = {
+            'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'data_pagamento': forms.DateInput(attrs={'type': 'date'}),
+        }
+        labels = {
+            'valor_pago': 'Valor pago',
+            'data_pagamento': 'Data de pagamento',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['valor_pago'].required = False
+        self.fields['data_pagamento'].required = False
+        self.fields['data_pagamento'].help_text = 'Opcional.'
+
+
 class ValeTransporteItemForm(BaseStyledModelForm):
     class Meta:
         model = ValeTransporteItem
@@ -150,6 +217,8 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'funcao',
             'endereco',
             'valor_pagar',
+            'valor_pago',
+            'data_pagamento',
             'pix',
             'tipo_pix',
             'banco',
@@ -157,8 +226,10 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'ativo',
         ]
         widgets = {
-            'observacao': forms.Textarea(attrs={'rows': 3}),
+            'observacao': forms.Textarea(attrs={'rows': 2}),
             'valor_pagar': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'data_pagamento': forms.DateInput(attrs={'type': 'date'}),
         }
         labels = {
             'funcionario': 'Funcionário',
@@ -166,6 +237,8 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'funcao': 'Função',
             'endereco': 'Endereço',
             'valor_pagar': 'Valor a pagar',
+            'valor_pago': 'Valor pago',
+            'data_pagamento': 'Data de pagamento',
             'pix': 'Chave Pix',
             'tipo_pix': 'Tipo Pix',
             'banco': 'Banco',
@@ -209,6 +282,9 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         self.fields['nome'].help_text = 'Pode ser preenchido automaticamente pelo funcionário ou alterado manualmente.'
         self.fields['funcao'].help_text = 'Pode ser alterada manualmente.'
         self.fields['endereco'].help_text = 'Pode ser alterado manualmente.'
+        self.fields['valor_pago'].help_text = 'Informe o quanto já foi pago nesta linha; a linha fica verde quando o valor pago cobre o valor a pagar.'
+        if 'data_pagamento' in self.fields:
+            self.fields['data_pagamento'].help_text = 'Opcional. Data do último pagamento registrado.'
 
     def save(self, commit=True):
         instance = super().save(commit=False)

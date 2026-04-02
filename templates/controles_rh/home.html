@@ -119,17 +119,34 @@
     gap: .9rem;
 }
 
-.competencia-item {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 1rem;
-    padding: 1rem;
+a.competencia-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.competencia-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1rem;
     box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+a.competencia-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+a.competencia-item:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
 }
 
 .competencia-item-left {
@@ -178,18 +195,6 @@
     color: #991b1b;
 }
 
-.competencia-item-right {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-    flex-wrap: wrap;
-}
-
-.competencia-item-right .btn {
-    border-radius: .8rem;
-    font-weight: 700;
-}
-
 .empty-state {
     background: #fff;
     border: 1px dashed #cbd5e1;
@@ -233,16 +238,8 @@
         min-width: 100%;
     }
 
-    .competencia-item {
+    a.competencia-item {
         align-items: stretch;
-    }
-
-    .competencia-item-right {
-        width: 100%;
-    }
-
-    .competencia-item-right .btn {
-        flex: 1 1 auto;
     }
 }
 </style>
@@ -256,7 +253,12 @@
     </div>
 
     <div class="home-actions">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' %}"
+           class="btn btn-outline-secondary"
+           hx-get="{% url 'rh:dashboard_rh' %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
 
@@ -282,10 +284,16 @@
             COMPETÊNCIAS RH
         </h3>
 
-        <form method="get" class="header-filters">
+        <form method="get"
+              class="header-filters"
+              hx-get="{% url 'controles_rh:home' %}"
+              hx-target="body"
+              hx-swap="innerHTML"
+              hx-push-url="true"
+              hx-trigger="change">
             <div class="filter-group">
                 <label class="filter-label" for="ano">Filtrar por ano</label>
-                <select name="ano" id="ano" class="form-select filter-select" onchange="this.form.submit()">
+                <select name="ano" id="ano" class="form-select filter-select">
                     <option value="">Todos</option>
                     {% for ano in anos_disponiveis %}
                         <option value="{{ ano }}" {% if filtro_ano == ano|stringformat:"s" %}selected{% endif %}>
@@ -297,7 +305,7 @@
 
             <div class="filter-group">
                 <label class="filter-label" for="status">Situação</label>
-                <select name="status" id="status" class="form-select filter-select" onchange="this.form.submit()">
+                <select name="status" id="status" class="form-select filter-select">
                     <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
                     <option value="fechada" {% if filtro_status == 'fechada' %}selected{% endif %}>Fechada</option>
                     <option value="todas" {% if filtro_status == 'todas' %}selected{% endif %}>Todas</option>
@@ -310,7 +318,12 @@
         {% if competencias %}
             <div class="competencia-list">
                 {% for competencia in competencias %}
-                    <div class="competencia-item">
+                    <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                       class="competencia-item"
+                       hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
                         <div class="competencia-item-left">
                             <div class="competencia-head">
                                 <div class="competencia-ref">Competência {{ competencia.referencia }}</div>
@@ -330,34 +343,11 @@
                             </div>
                         </div>
 
-                        <div class="competencia-item-right">
-                            <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-eye me-1"></i> Abrir
-                            </a>
-
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary btn-sm"
-                                hx-get="{% url 'controles_rh:editar_competencia' competencia.pk %}"
-                                hx-target="#modal-content"
-                                hx-swap="innerHTML"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalPadrao">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
-
-                            <button
-                                type="button"
-                                class="btn btn-outline-danger btn-sm"
-                                hx-get="{% url 'controles_rh:excluir_competencia' competencia.pk %}"
-                                hx-target="#modal-content"
-                                hx-swap="innerHTML"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalPadrao">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                        <div class="text-muted small d-none d-md-flex align-items-center gap-1 flex-shrink-0">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                            <span class="visually-hidden">Abrir detalhe</span>
                         </div>
-                    </div>
+                    </a>
                 {% endfor %}
             </div>
         {% else %}

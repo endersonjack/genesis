@@ -35,25 +35,6 @@
         margin-bottom: .15rem;
     }
 
-    .badge-soft {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: .4rem .8rem;
-        font-size: .8rem;
-        font-weight: 800;
-    }
-
-    .badge-open {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-closed {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
     .summary-actions {
         display: flex;
         gap: .75rem;
@@ -83,37 +64,82 @@
         margin: 0;
     }
 
-    .controle-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-        gap: 1rem;
+    .controles-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
     }
 
-    .controle-card {
+    @media (min-width: 992px) {
+        .controles-layout {
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .controles-col-main {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .controles-col-add {
+            flex: 0 0 min(320px, 32%);
+            max-width: 320px;
+        }
+
+        .add-actions-sticky {
+            position: sticky;
+            top: 1rem;
+        }
+    }
+
+    .add-mini-card {
         background: #fff;
         border: 1px solid #e2e8f0;
         border-radius: 1rem;
-        padding: 1rem;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        padding: .85rem 1rem;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
         display: flex;
         flex-direction: column;
-        min-height: 200px;
+        gap: .65rem;
     }
 
-    .controle-top {
+    .add-mini-card-top {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: .85rem;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .controle-top-left {
-        display: flex;
-        align-items: center;
-        gap: .85rem;
+        gap: .65rem;
         min-width: 0;
+    }
+
+    .add-mini-card .controle-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        font-size: 1.15rem;
+        flex: 0 0 40px;
+    }
+
+    .add-mini-title {
+        font-weight: 800;
+        font-size: .95rem;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .add-mini-card .btn {
+        border-radius: .8rem;
+        font-weight: 700;
+        width: 100%;
+    }
+
+    .add-sidebar-heading {
+        font-size: .75rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: .35rem;
     }
 
     .controle-icon {
@@ -147,50 +173,22 @@
         color: #b45309;
     }
 
-    .controle-name {
-        font-weight: 800;
-        font-size: 1.1rem;
-        color: #0f172a;
-        margin: 0;
-        line-height: 1.2;
-    }
-
-    .controle-bottom {
-        margin-top: auto;
-        padding-top: .25rem;
-    }
-
-    .controle-number {
-        font-size: 2rem;
-        font-weight: 800;
-        line-height: 1;
-        color: #0f172a;
-        margin-bottom: .2rem;
-    }
-
-    .controle-number-label {
-        font-size: .85rem;
-        color: #64748b;
-        font-weight: 700;
-        margin-bottom: .9rem;
-    }
-
-    .controle-actions {
-        display: flex;
-        gap: .55rem;
-        flex-wrap: wrap;
-    }
-
-    .controle-actions .btn {
-        border-radius: .8rem;
-        font-weight: 700;
+    .controle-list-item .controle-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        flex: 0 0 42px;
     }
 
     .controle-list {
         display: flex;
         flex-direction: column;
         gap: .75rem;
-        margin-top: 1rem;
+    }
+
+    .controle-list--solo {
+        margin-top: 0;
     }
 
     .controle-list-item {
@@ -200,10 +198,32 @@
         padding: .8rem .9rem;
     }
 
+    a.controle-list-item-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+
+    a.controle-list-item-link:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+
+    a.controle-list-item-link:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+
     .controle-empty {
-        margin-top: 1rem;
         font-size: .9rem;
         color: #64748b;
+    }
+
+    .controle-empty--solo {
+        margin: 0;
+        padding: .35rem 0;
     }
 
     .obs-box {
@@ -216,22 +236,6 @@
     }
 
     @media (max-width: 767.98px) {
-        .controle-top {
-            align-items: stretch;
-        }
-
-        .controle-top-left {
-            width: 100%;
-        }
-
-        .controle-top .controle-actions {
-            width: 100%;
-        }
-
-        .controle-top .controle-actions .btn {
-            width: 100%;
-        }
-
         .summary-actions {
             width: 100%;
         }
@@ -247,16 +251,15 @@
         <div class="summary-top">
             <div>
                 <div class="summary-ref">Competência {{ competencia.referencia }}</div>
-
-                {% if competencia.fechada %}
-                    <span class="badge-soft badge-closed">Fechada</span>
-                {% else %}
-                    <span class="badge-soft badge-open">Aberta</span>
-                {% endif %}
             </div>
 
             <div class="summary-actions">
-                <a href="{% url 'controles_rh:home' %}" class="btn btn-outline-secondary">
+                <a href="{% url 'controles_rh:home' %}"
+                   class="btn btn-outline-secondary"
+                   hx-get="{% url 'controles_rh:home' %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
                     <i class="bi bi-arrow-left me-1"></i> Voltar
                 </a>
 
@@ -266,8 +269,7 @@
                     hx-get="{% url 'controles_rh:editar_competencia' competencia.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalPadrao">
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
                     <i class="bi bi-pencil-square me-1"></i> Editar
                 </button>
 
@@ -277,8 +279,7 @@
                     hx-get="{% url 'controles_rh:excluir_competencia' competencia.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalPadrao">
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
                     <i class="bi bi-trash me-1"></i> Excluir
                 </button>
             </div>
@@ -298,157 +299,113 @@
     </div>
 
     <div class="section-body">
-        <div class="controle-grid">
+        <div class="controles-layout">
 
-            <div class="controle-card">
-                <div class="controle-top">
-                    <div class="controle-top-left">
-                        <span class="controle-icon vt">
-                            <i class="bi bi-bus-front-fill"></i>
-                        </span>
-                        <div class="controle-name">Vale Transporte</div>
-                    </div>
-
-                    <div class="controle-actions">
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-sm"
-                            hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}"
-                            hx-target="#modal-content"
-                            hx-swap="innerHTML"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalPadrao">
-                            <i class="bi bi-plus-circle me-1"></i> Add VT
-                        </button>
-                    </div>
-                </div>
-
-                <div class="controle-bottom">
-                    <!-- <div class="controle-number">{{ total_tabelas_vt }}</div>
-                    <div class="controle-number-label">tabelas cadastradas</div> -->
-
+            <div class="controles-col-main">
                     {% if tabelas_vt %}
-                        <div class="controle-list">
+                        <div class="controle-list controle-list--solo">
                             {% for tabela in tabelas_vt %}
-                                <div class="controle-list-item d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                                    <div>
-                                        <div class="fw-bold text-dark">{{ tabela.nome }}</div>
-                                        <small class="text-muted">
-                                            {% if tabela.descricao %}
-                                                {{ tabela.descricao|truncatechars:60 }}
-                                            {% else %}
-                                                Sem descrição
-                                            {% endif %}
-                                        </small>
+                                <a href="{% url 'controles_rh:detalhe_tabela_vt' tabela.pk %}"
+                                   class="controle-list-item controle-list-item-link"
+                                   hx-get="{% url 'controles_rh:detalhe_tabela_vt' tabela.pk %}"
+                                   hx-target="body"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="true">
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                            <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
+                                                <i class="bi bi-bus-front-fill"></i>
+                                            </span>
+                                            <div class="min-w-0">
+                                            <div class="fw-bold text-dark">{{ tabela.nome }}</div>
+                                            <div class="mt-1">
+                                                {% if tabela.vt_status_efetivo == 'pago_completo' %}
+                                                    <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
+                                                {% else %}
+                                                    <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <small class="text-muted d-block mt-1">
+                                                {% if tabela.descricao %}
+                                                    {{ tabela.descricao|truncatechars:72 }}
+                                                {% else %}
+                                                    Sem descrição
+                                                {% endif %}
+                                            </small>
+                                            </div>
+                                        </div>
+                                        <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
                                     </div>
-
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <a href="{% url 'controles_rh:detalhe_tabela_vt' tabela.pk %}" class="btn btn-outline-primary btn-sm">
-                                            <i class="bi bi-eye me-1"></i>
-                                        </a>
-
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline-secondary btn-sm"
-                                            hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
-                                            hx-target="#modal-content"
-                                            hx-swap="innerHTML"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalPadrao">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline-danger btn-sm"
-                                            hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
-                                            hx-target="#modal-content"
-                                            hx-swap="innerHTML"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalPadrao">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                                </a>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="controle-empty">Nenhuma tabela de VT criada nesta competência.</div>
+                        <p class="controle-empty controle-empty--solo mb-0">Nenhum controle cadastrado nesta competência.</p>
                     {% endif %}
-                </div>
             </div>
 
-            <div class="controle-card">
-                <div class="controle-top">
-                    <div class="controle-top-left">
-                        <span class="controle-icon faltas">
-                            <i class="bi bi-x-circle-fill"></i>
-                        </span>
-                        <div class="controle-name">Faltas</div>
-                    </div>
+            <aside class="controles-col-add" aria-label="Ações de inclusão">
+                <div class="add-actions-sticky">
+                    <div class="add-sidebar-heading">Adicionar</div>
+                    <div class="d-flex flex-column gap-2">
 
-                    <div class="controle-actions">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                            <i class="bi bi-plus-circle me-1"></i> Add Falta
-                        </button>
-                    </div>
-                </div>
+                        <div class="add-mini-card">
+                            <div class="add-mini-card-top">
+                                <span class="controle-icon vt">
+                                    <i class="bi bi-bus-front-fill"></i>
+                                </span>
+                                <p class="add-mini-title mb-0">Vale Transporte</p>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-sm"
+                                hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-plus-circle me-1"></i> Add VT
+                            </button>
+                        </div>
 
-                <div class="controle-bottom">
-                    <!-- <div class="controle-number">{{ total_faltas }}</div>
-                    <div class="controle-number-label">lançamentos</div> -->
+                        <div class="add-mini-card">
+                            <div class="add-mini-card-top">
+                                <span class="controle-icon faltas">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </span>
+                                <p class="add-mini-title mb-0">Faltas</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-plus-circle me-1"></i> Add Falta
+                            </button>
+                        </div>
 
-                    <div class="controle-empty">Nenhum lançamento de falta nesta competência.</div>
-                </div>
-            </div>
+                        <div class="add-mini-card">
+                            <div class="add-mini-card-top">
+                                <span class="controle-icon pagamentos">
+                                    <i class="bi bi-cash-stack"></i>
+                                </span>
+                                <p class="add-mini-title mb-0">Pagamentos</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-plus-circle me-1"></i> Add Pagamento
+                            </button>
+                        </div>
 
-            <div class="controle-card">
-                <div class="controle-top">
-                    <div class="controle-top-left">
-                        <span class="controle-icon pagamentos">
-                            <i class="bi bi-cash-stack"></i>
-                        </span>
-                        <div class="controle-name">Pagamentos</div>
-                    </div>
+                        <div class="add-mini-card">
+                            <div class="add-mini-card-top">
+                                <span class="controle-icon tabelas">
+                                    <i class="bi bi-table"></i>
+                                </span>
+                                <p class="add-mini-title mb-0">Tabelas diversas</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-plus-circle me-1"></i> Add Tabela
+                            </button>
+                        </div>
 
-                    <div class="controle-actions">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                            <i class="bi bi-plus-circle me-1"></i> Add Pagamento
-                        </button>
-                    </div>
-                </div>
-
-                <div class="controle-bottom">
-                    <!-- <div class="controle-number">{{ total_pagamentos }}</div>
-                    <div class="controle-number-label">lançamentos</div> -->
-
-                    <div class="controle-empty">Nenhum pagamento cadastrado nesta competência.</div>
-                </div>
-            </div>
-
-            <div class="controle-card">
-                <div class="controle-top">
-                    <div class="controle-top-left">
-                        <span class="controle-icon tabelas">
-                            <i class="bi bi-table"></i>
-                        </span>
-                        <div class="controle-name">Tabelas Diversas</div>
-                    </div>
-
-                    <div class="controle-actions">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                            <i class="bi bi-plus-circle me-1"></i> Add Tabela
-                        </button>
                     </div>
                 </div>
-
-                <div class="controle-bottom">
-                    <!-- <div class="controle-number">{{ total_tabelas_diversas }}</div>
-                    <div class="controle-number-label">tabelas</div> -->
-
-                    <div class="controle-empty">Nenhuma tabela diversa cadastrada nesta competência.</div>
-                </div>
-            </div>
+            </aside>
 
         </div>
     </div>

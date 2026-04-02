@@ -679,12 +679,22 @@
     </div>
 
     <div class="rh-top-actions">
-        <a href="{% url 'rh:buscar_funcionarios' %}" class="rh-top-btn rh-top-btn-light">
+        <a href="{% url 'rh:buscar_funcionarios' %}"
+           hx-get="{% url 'rh:buscar_funcionarios' %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="rh-top-btn rh-top-btn-light">
             <i class="bi bi-search"></i>
             <span>Buscar</span>
         </a>
 
-        <a href="{% url 'controles_rh:home' %}" class="rh-top-btn rh-top-btn-light">
+        <a href="{% url 'controles_rh:home' %}"
+           hx-get="{% url 'controles_rh:home' %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="rh-top-btn rh-top-btn-light">
             <i class="bi bi-person-gear"></i>
             <span>Gestão de RH</span>
         </a>
@@ -728,7 +738,12 @@
                         <div class="mini-card-desc">
                             Total de funcionários cadastrados na empresa ativa.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=todos" class="btn btn-outline-primary">
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=todos"
+                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=todos"
+                           hx-target="body"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           class="btn btn-outline-primary">
                             Ver todos
                         </a>
                     </div>
@@ -744,7 +759,12 @@
                         <div class="mini-card-desc">
                             Funcionários atualmente em gozo de férias.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=ferias" class="btn btn-outline-primary">
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=ferias"
+                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=ferias"
+                           hx-target="body"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           class="btn btn-outline-primary">
                             Ver todos
                         </a>
                     </div>
@@ -760,7 +780,12 @@
                         <div class="mini-card-desc">
                             Inclui quem vai prorrogar e quem já está em prorrogação.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=experiencia" class="btn btn-outline-primary">
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=experiencia"
+                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=experiencia"
+                           hx-target="body"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           class="btn btn-outline-primary">
                             Ver todos
                         </a>
                     </div>
@@ -776,7 +801,12 @@
                         <div class="mini-card-desc">
                             Funcionários com aviso ativo e data final definida.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=aviso" class="btn btn-outline-primary">
+                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=aviso"
+                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=aviso"
+                           hx-target="body"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           class="btn btn-outline-primary">
                             Ver todos
                         </a>
                     </div>
@@ -786,7 +816,12 @@
                     <div class="aniversariantes-lista">
                         {% for pessoa in aniversariantes_mes %}
                             {% if pessoa.detalhe_url %}
-                                <a href="{{ pessoa.detalhe_url }}" class="destaque-item-link">
+                                <a href="{{ pessoa.detalhe_url }}"
+                                   hx-get="{{ pessoa.detalhe_url }}"
+                                   hx-target="body"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="true"
+                                   class="destaque-item-link">
                                     <div class="aniversariante-item">
                                         <div class="aniversariante-main">
                                             <span class="aniversariante-icon">
@@ -846,7 +881,12 @@
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
                             Por Semana
                         </button>
-                        <a href="{% url 'rh:calendario_rh' %}" class="btn btn-outline-primary btn-sm">
+                        <a href="{% url 'rh:calendario_rh' %}"
+                           hx-get="{% url 'rh:calendario_rh' %}"
+                           hx-target="body"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           class="btn btn-outline-primary btn-sm">
                             Ver calendário
                         </a>
                     </div>
@@ -858,7 +898,12 @@
                         <div class="destaques-lista">
                             {% for evento in destaques_dia %}
                                 {% if evento.detalhe_url %}
-                                    <a href="{{ evento.detalhe_url }}" class="destaque-item-link">
+                                    <a href="{{ evento.detalhe_url }}"
+                                       hx-get="{{ evento.detalhe_url }}"
+                                       hx-target="body"
+                                       hx-swap="innerHTML"
+                                       hx-push-url="true"
+                                       class="destaque-item-link">
                                         <div class="destaque-item {{ evento.tipo }}">
                                             <div class="destaque-item-meta">
                                                 <i class="bi bi-calendar-event"></i>
@@ -895,7 +940,12 @@
                                     <div class="destaques-dia-titulo">{{ dia.grouper|date:"d/m/Y" }}</div>
                                     {% for evento in dia.list %}
                                         {% if evento.detalhe_url %}
-                                            <a href="{{ evento.detalhe_url }}" class="destaque-item-link">
+                                            <a href="{{ evento.detalhe_url }}"
+                                               hx-get="{{ evento.detalhe_url }}"
+                                               hx-target="body"
+                                               hx-swap="innerHTML"
+                                               hx-push-url="true"
+                                               class="destaque-item-link">
                                                 <div class="destaque-item {{ evento.tipo }}">
                                                     <div class="destaque-item-meta">
                                                         <i class="bi bi-calendar-week"></i>
@@ -972,7 +1022,12 @@
                                         </div>
 
                                         {% if evento.detalhe_url %}
-                                            <a href="{{ evento.detalhe_url }}" class="btn btn-sm btn-primary">
+                                            <a href="{{ evento.detalhe_url }}"
+                                               hx-get="{{ evento.detalhe_url }}"
+                                               hx-target="body"
+                                               hx-swap="innerHTML"
+                                               hx-push-url="true"
+                                               class="btn btn-sm btn-primary">
                                                 <i class="bi bi-person-vcard me-1"></i> Detalhar
                                             </a>
                                         {% endif %}

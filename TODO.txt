@@ -1,0 +1,16 @@
+Calendario:
+
+Adicionar busca no calendario (data, eventos ou funcionário)
+Melhorar e destacar a Visualização dos eventos.
+Quando acessar o Detalhar Lembrete via calendário não está abrindo o Modal.
+
+
+Toasts
+
+OK - Atualizaçãoe e avisos aparecem do lado inferior diretior da tela, acima de tudo
+Melhor o template do Toast pra que o X fique no canto superior direito
+
+
+CONTROLE - VALE TRANSPORTE
+
+Adiciona em Branco, Completo ou copiar de outro

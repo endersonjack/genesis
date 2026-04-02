@@ -49,43 +49,52 @@
                 {% endif %}
             </div>
 
-            <div class="col-12 col-md-4">
-                <label class="form-label fw-semibold" for="{{ form.ordem.id_for_label }}">
-                    {{ form.ordem.label }}
+            <div class="col-12">
+                <hr class="my-2">
+                <div class="fw-bold text-secondary small mb-2">Status de pagamento</div>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check mb-2">
+                    {{ form.vt_calculo_automatico }}
+                    <label class="form-check-label fw-semibold" for="{{ form.vt_calculo_automatico.id_for_label }}">
+                        {{ form.vt_calculo_automatico.label }}
+                    </label>
+                </div>
+                {% if form.vt_calculo_automatico.help_text %}
+                    <div class="form-text mb-2">{{ form.vt_calculo_automatico.help_text }}</div>
+                {% endif %}
+                {% if form.vt_calculo_automatico.errors %}
+                    <div class="text-danger small mt-1">{{ form.vt_calculo_automatico.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12" id="wrap-vt-status-manual">
+                <label class="form-label fw-semibold" for="{{ form.vt_status_manual.id_for_label }}">
+                    {{ form.vt_status_manual.label }}
                 </label>
-                {{ form.ordem }}
-                {% if form.ordem.help_text %}
-                    <div class="form-text">{{ form.ordem.help_text }}</div>
+                {{ form.vt_status_manual }}
+                {% if form.vt_status_manual.help_text %}
+                    <div class="form-text">{{ form.vt_status_manual.help_text }}</div>
                 {% endif %}
-                {% if form.ordem.errors %}
-                    <div class="text-danger small mt-1">{{ form.ordem.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-4 d-flex align-items-end">
-                <div class="form-check mb-2">
-                    {{ form.ativa }}
-                    <label class="form-check-label fw-semibold" for="{{ form.ativa.id_for_label }}">
-                        {{ form.ativa.label }}
-                    </label>
-                </div>
-                {% if form.ativa.errors %}
-                    <div class="text-danger small mt-1 w-100">{{ form.ativa.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-12 col-md-4 d-flex align-items-end">
-                <div class="form-check mb-2">
-                    {{ form.fechada }}
-                    <label class="form-check-label fw-semibold" for="{{ form.fechada.id_for_label }}">
-                        {{ form.fechada.label }}
-                    </label>
-                </div>
-                {% if form.fechada.errors %}
-                    <div class="text-danger small mt-1 w-100">{{ form.fechada.errors|join:", " }}</div>
+                {% if form.vt_status_manual.errors %}
+                    <div class="text-danger small mt-1">{{ form.vt_status_manual.errors|join:", " }}</div>
                 {% endif %}
             </div>
         </div>
+
+        <script>
+        (function () {
+            var cb = document.getElementById('{{ form.vt_calculo_automatico.id_for_label }}');
+            var wrap = document.getElementById('wrap-vt-status-manual');
+            if (!cb || !wrap) return;
+            function sync() {
+                wrap.classList.toggle('d-none', cb.checked);
+            }
+            cb.addEventListener('change', sync);
+            sync();
+        })();
+        </script>
 
         {% if form.non_field_errors %}
             <div class="alert alert-danger mt-3 mb-0">
