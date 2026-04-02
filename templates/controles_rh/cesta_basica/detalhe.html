@@ -1,0 +1,735 @@
+{% extends 'base.html' %}
+
+{% block title %}Cesta Básica — {{ competencia.referencia }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .summary-card,
+    .table-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+
+    .summary-body,
+    .table-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .summary-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .summary-title {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .15rem;
+    }
+
+    .summary-subtitle {
+        color: #64748b;
+        margin: 0;
+    }
+
+    .summary-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .summary-actions .btn {
+        border-radius: .9rem;
+        font-weight: 700;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: .85rem;
+    }
+
+    .summary-box {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .9rem;
+        padding: .9rem 1rem;
+    }
+
+    .summary-label {
+        color: #64748b;
+        font-size: .8rem;
+        font-weight: 700;
+        margin-bottom: .2rem;
+    }
+
+    .summary-value {
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .table-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    /* Mesmo padrão visual e UX da tabela VT (rolagem dupla, resize, cabeçalho). */
+    .vt-table-scroll-bundle {
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+    }
+
+    .vt-hscroll-top {
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 14px;
+        background: #f1f5f9;
+        scrollbar-width: thin;
+    }
+
+    .vt-hscroll-top-inner {
+        height: 1px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        border-radius: 0;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .table-responsive::-webkit-scrollbar {
+        height: 0;
+    }
+
+    .vt-table {
+        margin-bottom: 0;
+        vertical-align: middle;
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .vt-table thead th {
+        background: #eff6ff;
+        color: #0f172a;
+        font-weight: 800;
+        border-bottom: 1px solid #dbe4ee;
+        white-space: nowrap;
+        position: relative;
+        padding-right: 14px;
+    }
+
+    .vt-table th .th-label {
+        display: inline-block;
+        padding-right: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .vt-col-resize {
+        position: absolute;
+        right: 0;
+        top: 2px;
+        bottom: 2px;
+        width: 12px;
+        cursor: col-resize;
+        user-select: none;
+        z-index: 3;
+        border-radius: 4px 0 0 4px;
+        background: rgba(59, 130, 246, 0.14);
+        border-left: 2px solid rgba(37, 99, 235, 0.65);
+        box-shadow: -1px 0 0 rgba(255, 255, 255, 0.5) inset;
+    }
+
+    .vt-col-resize:hover {
+        background: rgba(59, 130, 246, 0.32);
+        border-left-color: #1d4ed8;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+    }
+
+    .vt-col-resize:active {
+        background: rgba(59, 130, 246, 0.45);
+    }
+
+    .vt-table th.col-num,
+    .vt-table td.col-num {
+        width: 42px;
+        min-width: 42px;
+        text-align: center;
+    }
+
+    .vt-table th.col-drag,
+    .vt-table td.col-drag {
+        width: 40px;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .vt-table th.col-nome,
+    .vt-table td.col-nome { width: 200px; }
+
+    .vt-table th.col-funcao,
+    .vt-table td.col-funcao { width: 130px; }
+
+    .vt-table th.col-lotacao,
+    .vt-table td.col-lotacao { width: 160px; }
+
+    .vt-table th.col-rec,
+    .vt-table td.col-rec {
+        width: 88px;
+        text-align: center;
+    }
+
+    .vt-table th.col-data-receb,
+    .vt-table td.col-data-receb {
+        width: 118px;
+        text-align: center;
+    }
+
+    .vt-drag-handle {
+        cursor: grab;
+        color: #94a3b8;
+        padding: 2px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .vt-drag-handle:active {
+        cursor: grabbing;
+    }
+
+    .vt-table tbody tr.vt-row-clickable {
+        cursor: pointer;
+    }
+
+    .vt-table tbody tr.vt-row-clickable td {
+        transition: box-shadow 0.14s ease;
+    }
+
+    .vt-table tbody tr.vt-row-clickable:hover:not(.vt-sortable-ghost) td {
+        box-shadow: inset 0 0 0 9999px rgba(37, 99, 235, 0.12);
+    }
+
+    .vt-table tbody tr.vt-row-clickable:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+    }
+
+    .ellipsis-cell {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hint-table-tools {
+        font-size: .78rem;
+        color: #64748b;
+        margin: 0 0 .75rem;
+    }
+
+    .empty-box {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+
+    .vt-sortable-ghost {
+        opacity: 0.45;
+    }
+</style>
+
+<div class="summary-card mb-4">
+    <div class="summary-body">
+        <div class="summary-top">
+            <div>
+                <div class="summary-title">{{ lista.nome_exibicao }}</div>
+                <p class="summary-subtitle mb-0">Competência {{ competencia.referencia }} — {{ competencia.empresa }}</p>
+            </div>
+
+            <div class="summary-actions">
+                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   class="btn btn-outline-secondary"
+                   hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                </a>
+
+                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_recibo' lista.pk %}"
+                   class="btn btn-outline-danger"
+                   target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF Recibo
+                </a>
+                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_relatorio' lista.pk %}"
+                   class="btn btn-outline-success"
+                   target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-bar-graph me-1"></i> Exportar PDF Relatório
+                </a>
+
+                <button
+                    type="button"
+                    class="btn btn-outline-primary"
+                    hx-get="{% url 'controles_rh:editar_cesta_basica_lista' lista.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                    <i class="bi bi-pencil-square me-1"></i> Recibo
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    hx-get="{% url 'controles_rh:excluir_cesta_basica_lista' lista.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                    <i class="bi bi-trash me-1"></i> Excluir
+                </button>
+            </div>
+        </div>
+
+        <div class="summary-grid mt-3">
+            <div class="summary-box">
+                <div class="summary-label">Total de Funcionários</div>
+                <div class="summary-value">{{ total_ativos }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Já receberam</div>
+                <div class="summary-value">{{ total_recebidos }} / {{ total_ativos }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Entrega (cesta)</div>
+                <div class="summary-value">
+                    {% if lista.cb_status_efetivo == 'entregue_totalmente' %}
+                        <span class="badge rounded-pill bg-success">{{ lista.cb_status_efetivo_label }}</span>
+                    {% else %}
+                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista.cb_status_efetivo_label }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if lista.observacao %}
+            <div class="mt-2 text-muted small">
+                <strong>Obs. interna:</strong> {{ lista.observacao }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-header">
+        <h3 class="table-title">Lista para Cesta Básica</h3>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                hx-get="{% url 'controles_rh:adicionar_item_cesta_basica' lista.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                + Funcionário
+            </button>
+            <button
+                type="button"
+                class="btn btn-outline-success btn-sm"
+                hx-post="{% url 'controles_rh:receber_todos_cesta_basica' lista.pk %}"
+                hx-confirm="Marcar todas as linhas como recebidas com a data de hoje?"
+                hx-swap="none">
+                Receber Todos
+            </button>
+            <button
+                type="button"
+                class="btn btn-outline-warning btn-sm"
+                hx-post="{% url 'controles_rh:limpar_recebido_cesta_basica' lista.pk %}"
+                hx-confirm="Limpar todas as marcações &quot;Recebeu&quot; e as datas de recebimento nesta lista?"
+                hx-swap="none">
+                Limpar Recebeu
+            </button>
+        </div>
+    </div>
+
+    <div class="table-body">
+        <div id="cb-htmx-csrf" class="d-none">{% csrf_token %}</div>
+        {% if itens %}
+            <p class="hint-table-tools px-1">
+                <i class="bi bi-arrows-move me-1"></i> Arraste pelo ícone à esquerda para reordenar.
+                <span class="ms-2"><i class="bi bi-hand-index-thumb me-1"></i> Clique na linha para editar.</span>
+                Ajuste a largura das colunas pela borda direita do cabeçalho.
+                <span class="ms-2"><i class="bi bi-check2-square me-1"></i> Marque <strong>Recebeu</strong> após entregar a cesta.</span>
+            </p>
+            <div class="vt-table-scroll-bundle">
+                <div class="vt-hscroll-top" id="cb-hscroll-top" role="presentation">
+                    <div class="vt-hscroll-top-inner" id="cb-hscroll-top-inner"></div>
+                </div>
+                <div class="table-responsive" id="cb-hscroll-bottom">
+                    <table class="table vt-table align-middle" id="cb-table-main" data-lista-id="{{ lista.pk }}">
+                        <thead>
+                            <tr>
+                                <th class="col-num" data-col-idx="1">
+                                    <span class="th-label">#</span>
+                                </th>
+                                <th class="col-drag" data-col-idx="2">
+                                    <span class="th-label"></span>
+                                </th>
+                                <th class="col-nome" data-col-idx="3">
+                                    <span class="th-label">Nome</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
+                                <th class="col-funcao" data-col-idx="4">
+                                    <span class="th-label">Função</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
+                                <th class="col-lotacao" data-col-idx="5">
+                                    <span class="th-label">Lotação</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
+                                <th class="col-rec" data-col-idx="6">
+                                    <span class="th-label">Recebeu</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
+                                <th class="col-data-receb" data-col-idx="7">
+                                    <span class="th-label">Data recebimento</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="cb-sortable-tbody">
+                            {% for item in itens %}
+                                <tr
+                                    class="vt-row-clickable{% if not item.ativo %} table-secondary{% endif %}"
+                                    data-item-id="{{ item.pk }}"
+                                    data-cb-edit-url="{% url 'controles_rh:editar_item_cesta_basica' item.pk %}"
+                                    role="button"
+                                    tabindex="0"
+                                    title="Clique para editar esta linha">
+                                    <td class="col-num">{{ forloop.counter }}</td>
+                                    <td class="col-drag" onclick="event.stopPropagation()">
+                                        <span class="vt-drag-handle" title="Arrastar para reordenar">
+                                            <i class="bi bi-grip-vertical"></i>
+                                        </span>
+                                    </td>
+                                    <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
+                                        {{ item.nome_exibicao }}
+                                    </td>
+                                    <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'—' }}">
+                                        {{ item.funcao|default:"—" }}
+                                    </td>
+                                    <td class="col-lotacao ellipsis-cell" title="{{ item.lotacao|default:'—' }}">
+                                        {{ item.lotacao|default:"—" }}
+                                    </td>
+                                    <td class="col-rec cb-col-recebido" onclick="event.stopPropagation()">
+                                        {% if item.ativo %}
+                                            <input
+                                                type="checkbox"
+                                                class="form-check-input m-0"
+                                                {% if item.recebido %}checked{% endif %}
+                                                title="Cesta entregue"
+                                                hx-post="{% url 'controles_rh:definir_recebido_item_cesta' item.pk %}"
+                                                hx-trigger="change"
+                                                hx-vals="js:{recebido: event.target.checked}"
+                                                hx-include="#cb-htmx-csrf"
+                                                hx-swap="none">
+                                        {% else %}
+                                            <span class="text-muted small">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="col-data-receb text-muted">
+                                        {% if item.data_recebimento %}
+                                            {{ item.data_recebimento|date:"d/m/Y" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-box">
+                <div class="mb-2"><i class="bi bi-basket fs-1"></i></div>
+                <div class="fw-bold mb-1">Nenhuma linha</div>
+                <div>Adicione empregados para montar o recibo.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if itens %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+    function cleanupModalBackdropIfNoneOpen() {
+        window.setTimeout(function () {
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }, 0);
+    }
+    var modalPadraoEl = document.getElementById('modalPadrao');
+    if (modalPadraoEl) {
+        modalPadraoEl.addEventListener('hidden.bs.modal', cleanupModalBackdropIfNoneOpen);
+    }
+
+    const table = document.getElementById('cb-table-main');
+    const tbody = document.getElementById('cb-sortable-tbody');
+    const listaId = table && table.dataset.listaId;
+    const storageKey = listaId ? ('cb-col-widths-' + listaId) : null;
+    const reorderUrl = "{% url 'controles_rh:reordenar_itens_cesta_basica' lista.pk %}";
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrfInput ? csrfInput.value : '';
+
+    const bottomScroll = document.getElementById('cb-hscroll-bottom');
+    const topScroll = document.getElementById('cb-hscroll-top');
+    const topInner = document.getElementById('cb-hscroll-top-inner');
+
+    function syncHorizontalScrollbars() {
+        if (!bottomScroll || !topScroll || !topInner || !table) return;
+        topInner.style.width = bottomScroll.scrollWidth + 'px';
+        var overflow = bottomScroll.scrollWidth > bottomScroll.clientWidth + 1;
+        topScroll.style.display = overflow ? '' : 'none';
+        topScroll.scrollLeft = bottomScroll.scrollLeft;
+    }
+
+    if (bottomScroll && topScroll && topInner) {
+        bottomScroll.addEventListener('scroll', function () {
+            topScroll.scrollLeft = bottomScroll.scrollLeft;
+        });
+        topScroll.addEventListener('scroll', function () {
+            bottomScroll.scrollLeft = topScroll.scrollLeft;
+        });
+        window.addEventListener('resize', syncHorizontalScrollbars);
+        if (window.ResizeObserver) {
+            try {
+                new ResizeObserver(syncHorizontalScrollbars).observe(bottomScroll);
+                if (table) new ResizeObserver(syncHorizontalScrollbars).observe(table);
+            } catch (e) { /* ignore */ }
+        }
+    }
+
+    function setColumnWidth(colIdx, widthPx) {
+        if (!table) return;
+        const min = 36;
+        const w = Math.max(min, Math.round(widthPx));
+        const sel = 'thead th:nth-child(' + colIdx + '), tbody td:nth-child(' + colIdx + ')';
+        table.querySelectorAll(sel).forEach(function (el) {
+            el.style.width = w + 'px';
+            el.style.minWidth = w + 'px';
+            el.style.maxWidth = w + 'px';
+        });
+    }
+
+    function loadWidths() {
+        if (!storageKey || !window.localStorage || !table) return;
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return;
+            const map = JSON.parse(raw);
+            Object.keys(map).forEach(function (k) {
+                const idx = parseInt(k, 10);
+                if (!idx || !map[k]) return;
+                setColumnWidth(idx, map[k]);
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveWidths(map) {
+        if (!storageKey || !window.localStorage) return;
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(map));
+        } catch (e) { /* ignore */ }
+    }
+
+    function refreshRowNumbers() {
+        if (!tbody) return;
+        tbody.querySelectorAll('tr').forEach(function (tr, i) {
+            const numCell = tr.querySelector('.col-num');
+            if (numCell) numCell.textContent = String(i + 1);
+        });
+    }
+
+    function collectWidths() {
+        const map = {};
+        if (!table) return map;
+        table.querySelectorAll('thead th[data-col-idx]').forEach(function (th) {
+            const idx = parseInt(th.dataset.colIdx, 10);
+            if (!idx) return;
+            map[idx] = th.getBoundingClientRect().width;
+        });
+        return map;
+    }
+
+    loadWidths();
+    requestAnimationFrame(function () {
+        syncHorizontalScrollbars();
+    });
+
+    let resizing = { active: false, colIdx: null, startX: 0, startW: 0 };
+
+    if (table) {
+        table.querySelectorAll('.vt-col-resize').forEach(function (handle) {
+            handle.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const th = handle.closest('th');
+                if (!th || !th.dataset.colIdx) return;
+                resizing = {
+                    active: true,
+                    colIdx: parseInt(th.dataset.colIdx, 10),
+                    startX: e.clientX,
+                    startW: th.getBoundingClientRect().width
+                };
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+        });
+    }
+
+    document.addEventListener('mousemove', function (e) {
+        if (!resizing.active) return;
+        const dx = e.clientX - resizing.startX;
+        const nw = resizing.startW + dx;
+        setColumnWidth(resizing.colIdx, nw);
+        syncHorizontalScrollbars();
+    });
+
+    document.addEventListener('mouseup', function () {
+        if (!resizing.active) return;
+        resizing.active = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        saveWidths(collectWidths());
+        requestAnimationFrame(syncHorizontalScrollbars);
+    });
+
+    if (tbody && typeof Sortable !== 'undefined') {
+        Sortable.create(tbody, {
+            handle: '.vt-drag-handle',
+            animation: 150,
+            ghostClass: 'vt-sortable-ghost',
+            onEnd: function () {
+                refreshRowNumbers();
+                const ids = Array.prototype.map.call(
+                    tbody.querySelectorAll('tr[data-item-id]'),
+                    function (tr) { return tr.dataset.itemId; }
+                );
+                fetch(reorderUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ ids: ids })
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('Falha ao salvar ordem');
+                    return r.json();
+                }).catch(function () {
+                    window.location.reload();
+                });
+                requestAnimationFrame(syncHorizontalScrollbars);
+            }
+        });
+    }
+
+    requestAnimationFrame(syncHorizontalScrollbars);
+
+    if (window.htmx && typeof window.htmx.process === 'function' && tbody) {
+        window.htmx.process(tbody);
+    }
+
+    function openCbEditarLinhaModal(tr) {
+        var url = tr.getAttribute('data-cb-edit-url');
+        if (!url) return;
+        var modalContent = document.getElementById('modal-content');
+        var modalPadrao = document.getElementById('modalPadrao');
+        if (!modalContent || !modalPadrao) return;
+        fetch(url, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'HX-Request': 'true',
+            },
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Falha ao carregar');
+                return r.text();
+            })
+            .then(function (html) {
+                modalContent.innerHTML = html;
+                if (window.htmx && typeof window.htmx.process === 'function') {
+                    window.htmx.process(modalContent);
+                }
+                if (window.bootstrap) {
+                    bootstrap.Modal.getOrCreateInstance(modalPadrao).show();
+                }
+            })
+            .catch(function () {
+                window.location.reload();
+            });
+    }
+
+    if (tbody) {
+        tbody.addEventListener('click', function (e) {
+            if (e.target.closest('.vt-drag-handle, .col-drag, .cb-col-recebido, input[type="checkbox"]')) {
+                return;
+            }
+            var tr = e.target.closest('tr[data-cb-edit-url]');
+            if (!tr || !tbody.contains(tr)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openCbEditarLinhaModal(tr);
+        });
+
+        tbody.querySelectorAll('tr.vt-row-clickable').forEach(function (tr) {
+            tr.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.target !== tr) return;
+                e.preventDefault();
+                tr.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            });
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

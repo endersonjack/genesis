@@ -1,14 +1,32 @@
 /**
- * Garante o header X-CSRFToken em requisições HTMX (ex.: modais carregados dinamicamente).
+ * Garante o header X-CSRFToken em requisições HTMX mutáveis.
+ * Formulários: token do próprio form. Botões/links hx-post etc.: primeiro hidden da página ou cookie csrftoken.
  */
 document.body.addEventListener('htmx:configRequest', function (event) {
-    const elt = event.detail.elt;
-    if (!elt || elt.tagName !== 'FORM') {
+    const method = (event.detail.verb || 'GET').toUpperCase();
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         return;
     }
-    const tokenInput = elt.querySelector('[name=csrfmiddlewaretoken]');
-    if (tokenInput && tokenInput.value) {
-        event.detail.headers['X-CSRFToken'] = tokenInput.value;
+    const elt = event.detail.elt;
+    if (elt && elt.tagName === 'FORM') {
+        const tokenInput = elt.querySelector('[name=csrfmiddlewaretoken]');
+        if (tokenInput && tokenInput.value) {
+            event.detail.headers['X-CSRFToken'] = tokenInput.value;
+        }
+        return;
+    }
+    const globalInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+    if (globalInput && globalInput.value) {
+        event.detail.headers['X-CSRFToken'] = globalInput.value;
+        return;
+    }
+    const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+    if (m) {
+        try {
+            event.detail.headers['X-CSRFToken'] = decodeURIComponent(m[1]);
+        } catch (e) {
+            event.detail.headers['X-CSRFToken'] = m[1];
+        }
     }
 });
 
@@ -180,9 +198,13 @@ async function refreshGenesisToasts() {
     }
 }
 
-// Depois de qualquer request HTMX, busca mensagens novas no servidor
-// e mostra como toasts no canto inferior direito.
-document.body.addEventListener('htmx:afterRequest', function () {
+// Depois de request HTMX, busca mensagens no servidor para toasts — exceto quando a resposta
+// pede HX-Refresh (página inteira recarrega e o HTML já traz {% messages %}).
+document.body.addEventListener('htmx:afterRequest', function (evt) {
+    const xhr = evt.detail.xhr;
+    if (xhr && xhr.getResponseHeader('HX-Refresh')) {
+        return;
+    }
     refreshGenesisToasts();
 });
 

@@ -1,0 +1,103 @@
+<div class="modal-header py-2 px-3">
+    <h5 class="modal-title fw-bold mb-0">Dados do recibo</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'controles_rh:editar_cesta_basica_lista' lista.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body px-3 py-2">
+        <div class="alert alert-light border py-2 px-3 mb-3">
+            <span class="text-muted me-2">Competência</span>
+            <span class="fw-semibold text-dark">{{ competencia.referencia }}</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }}</label>
+                {{ form.titulo }}
+                {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.texto_declaracao.id_for_label }}">{{ form.texto_declaracao.label }}</label>
+                {{ form.texto_declaracao }}
+                {% if form.texto_declaracao.help_text %}<div class="form-text small">{{ form.texto_declaracao.help_text }}</div>{% endif %}
+                {% if form.texto_declaracao.errors %}<div class="text-danger small mt-1">{{ form.texto_declaracao.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.data_emissao_recibo.id_for_label }}">{{ form.data_emissao_recibo.label }}</label>
+                {{ form.data_emissao_recibo }}
+                {% if form.data_emissao_recibo.errors %}<div class="text-danger small mt-1">{{ form.data_emissao_recibo.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.local_emissao.id_for_label }}">{{ form.local_emissao.label }}</label>
+                {{ form.local_emissao }}
+                {% if form.local_emissao.errors %}<div class="text-danger small mt-1">{{ form.local_emissao.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
+                {{ form.observacao }}
+                {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div class="col-12">
+                <hr class="my-2">
+                <div class="fw-bold text-secondary small mb-2">Status de entrega</div>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check mb-2">
+                    {{ form.cb_calculo_automatico }}
+                    <label class="form-check-label fw-semibold" for="{{ form.cb_calculo_automatico.id_for_label }}">
+                        {{ form.cb_calculo_automatico.label }}
+                    </label>
+                </div>
+                {% if form.cb_calculo_automatico.help_text %}
+                    <div class="form-text mb-2">{{ form.cb_calculo_automatico.help_text }}</div>
+                {% endif %}
+                {% if form.cb_calculo_automatico.errors %}
+                    <div class="text-danger small mt-1">{{ form.cb_calculo_automatico.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12" id="wrap-cb-status-manual">
+                <label class="form-label fw-semibold" for="{{ form.cb_status_manual.id_for_label }}">{{ form.cb_status_manual.label }}</label>
+                {{ form.cb_status_manual }}
+                {% if form.cb_status_manual.help_text %}
+                    <div class="form-text">{{ form.cb_status_manual.help_text }}</div>
+                {% endif %}
+                {% if form.cb_status_manual.errors %}
+                    <div class="text-danger small mt-1">{{ form.cb_status_manual.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <script>
+        (function () {
+            var cb = document.getElementById('{{ form.cb_calculo_automatico.id_for_label }}');
+            var wrap = document.getElementById('wrap-cb-status-manual');
+            if (!cb || !wrap) return;
+            function sync() {
+                wrap.classList.toggle('d-none', cb.checked);
+            }
+            cb.addEventListener('change', sync);
+            sync();
+        })();
+        </script>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0 small">{{ form.non_field_errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer py-2 px-3">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

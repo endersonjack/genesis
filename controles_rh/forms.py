@@ -1,8 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from rh.models import Funcionario
 from .models import (
+    CestaBasicaItem,
+    CestaBasicaLista,
     Competencia,
     STATUS_PAGAMENTO_VT_CHOICES,
     ValeTransporteItem,
@@ -327,4 +330,126 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         if commit:
             instance.save()
 
+        return instance
+
+
+class CestaBasicaListaForm(BaseStyledModelForm):
+    class Meta:
+        model = CestaBasicaLista
+        fields = [
+            'titulo',
+            'texto_declaracao',
+            'data_emissao_recibo',
+            'local_emissao',
+            'observacao',
+            'cb_calculo_automatico',
+            'cb_status_manual',
+        ]
+        widgets = {
+            'titulo': forms.TextInput(attrs={'maxlength': 120}),
+            'texto_declaracao': forms.Textarea(attrs={'rows': 3}),
+            'data_emissao_recibo': forms.DateInput(attrs={'type': 'date'}),
+            'local_emissao': forms.TextInput(attrs={'maxlength': 120}),
+            'observacao': forms.Textarea(attrs={'rows': 2}),
+        }
+        labels = {
+            'titulo': 'Título interno',
+            'texto_declaracao': 'Texto da declaração (rodapé)',
+            'data_emissao_recibo': 'Data no rodapé do recibo',
+            'local_emissao': 'Local (cidade/UF)',
+            'observacao': 'Observação interna',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['titulo'].required = False
+        self.fields['texto_declaracao'].required = False
+        self.fields['data_emissao_recibo'].required = False
+        self.fields['observacao'].required = False
+        df = self.fields['data_emissao_recibo']
+        df.widget.format = '%Y-%m-%d'
+        df.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
+        self.fields['texto_declaracao'].help_text = (
+            'Vazio = texto padrão: declaração de recebimento da cesta com o nome da empresa.'
+        )
+        self.fields['cb_status_manual'].required = False
+
+
+class CestaBasicaItemForm(BaseStyledModelForm):
+    class Meta:
+        model = CestaBasicaItem
+        fields = ['funcionario', 'nome', 'funcao', 'lotacao', 'recebido', 'data_recebimento', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={'maxlength': 150}),
+            'funcao': forms.TextInput(attrs={'maxlength': 120}),
+            'lotacao': forms.TextInput(attrs={'maxlength': 120}),
+            'data_recebimento': forms.DateInput(attrs={'type': 'date'}),
+        }
+        labels = {
+            'funcionario': 'Funcionário',
+            'nome': 'Empregado',
+            'funcao': 'Função',
+            'lotacao': 'Lotação',
+            'recebido': 'Já recebeu a cesta',
+            'data_recebimento': 'Data de recebimento',
+            'ativo': 'Ativo',
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.lista = kwargs.pop('lista', None)
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['funcionario'].required = False
+        self.fields['nome'].required = False
+        self.fields['funcao'].required = False
+        self.fields['lotacao'].required = False
+
+        if self.lista:
+            empresa = self.lista.competencia.empresa
+            q_func = Q(empresa=empresa, situacao_atual='admitido')
+            if self.instance and self.instance.pk and self.instance.funcionario_id:
+                q_func |= Q(pk=self.instance.funcionario_id)
+            funcionarios_qs = (
+                Funcionario.objects.filter(q_func)
+                .select_related('cargo', 'banco', 'lotacao')
+                .distinct()
+                .order_by('nome')
+            )
+            self.fields['funcionario'].queryset = funcionarios_qs
+
+            self.funcionarios_data = {
+                str(func.pk): {
+                    'nome': getattr(func, 'nome', '') or '',
+                    'funcao': str(getattr(func, 'cargo', '') or ''),
+                    'lotacao': (
+                        func.lotacao.nome
+                        if getattr(func, 'lotacao_id', None)
+                        else ''
+                    ),
+                }
+                for func in funcionarios_qs
+            }
+        else:
+            self.funcionarios_data = {}
+
+        self.fields['nome'].help_text = 'Pode ser preenchido ao escolher o funcionário ou digitado manualmente.'
+        self.fields['funcao'].help_text = 'Pode vir do cargo do funcionário ou ser editada.'
+        self.fields['lotacao'].help_text = (
+            'Preenchida automaticamente com a lotação do cadastro do funcionário; pode ser alterada.'
+        )
+        self.fields['data_recebimento'].required = False
+        self.fields['data_recebimento'].help_text = (
+            'Ao marcar “Recebeu” na lista, a data de hoje é sugerida automaticamente se estiver vazia.'
+        )
+        df = self.fields['data_recebimento']
+        df.widget.format = '%Y-%m-%d'
+        df.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.lista and not instance.pk:
+            instance.lista = self.lista
+        if commit:
+            instance.save()
         return instance

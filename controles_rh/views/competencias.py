@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from controles_rh.forms import CompetenciaForm
-from controles_rh.models import Competencia, ValeTransporteTabela
+from controles_rh.models import CestaBasicaLista, Competencia, ValeTransporteTabela
 
 
 def _is_htmx(request):
@@ -171,11 +171,16 @@ def detalhe_competencia(request, ano, mes):
         competencia=competencia
     ).order_by('ordem', 'nome', 'id')
 
+    listas_cesta_basica = CestaBasicaLista.objects.filter(competencia=competencia).order_by(
+        'data_criacao', 'id'
+    )
+
     context = {
         'page_title': f'Competência {competencia.referencia}',
         'competencia': competencia,
         'tabelas_vt': tabelas_vt,
         'total_tabelas_vt': tabelas_vt.count(),
+        'listas_cesta_basica': listas_cesta_basica,
         'total_faltas': 0,
         'total_pagamentos': 0,
         'total_tabelas_diversas': 0,

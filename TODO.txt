@@ -20,3 +20,9 @@ CONTROLE - VALE TRANSPORTE
 Observações não está salvando ou mostrar os salvos
 Adiciona em Branco, Completo ou copiar de outro
 OK - Botão de Copiar PIX, e dar Feedback no Toast
+
+
+CONTROLE - CESTA BÁSICA
+
+Editar só Data de Recebimento via modal
+Fazer Recibos individuais

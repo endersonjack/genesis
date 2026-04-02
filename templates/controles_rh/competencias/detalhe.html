@@ -173,6 +173,11 @@
         color: #b45309;
     }
 
+    .controle-icon.cesta {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
     .controle-list-item .controle-icon {
         width: 42px;
         height: 42px;
@@ -302,7 +307,7 @@
         <div class="controles-layout">
 
             <div class="controles-col-main">
-                    {% if tabelas_vt %}
+                    {% if tabelas_vt or listas_cesta_basica %}
                         <div class="controle-list controle-list--solo">
                             {% for tabela in tabelas_vt %}
                                 <a href="{% url 'controles_rh:detalhe_tabela_vt' tabela.pk %}"
@@ -338,6 +343,36 @@
                                     </div>
                                 </a>
                             {% endfor %}
+                            {% for lista_cb in listas_cesta_basica %}
+                                <a href="{% url 'controles_rh:detalhe_cesta_basica' lista_cb.pk %}"
+                                   class="controle-list-item controle-list-item-link"
+                                   hx-get="{% url 'controles_rh:detalhe_cesta_basica' lista_cb.pk %}"
+                                   hx-target="body"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="true">
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                            <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
+                                                <i class="bi bi-basket3-fill"></i>
+                                            </span>
+                                            <div class="min-w-0">
+                                                <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
+                                                <div class="mt-1">
+                                                    {% if lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
+                                                        <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
+                                                    {% else %}
+                                                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted d-block mt-1">
+                                                    Recibo de cesta básica — clique para editar linhas e exportar PDF.
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+                                    </div>
+                                </a>
+                            {% endfor %}
                         </div>
                     {% else %}
                         <p class="controle-empty controle-empty--solo mb-0">Nenhum controle cadastrado nesta competência.</p>
@@ -363,7 +398,7 @@
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                                <i class="bi bi-plus-circle me-1"></i> Add VT
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar
                             </button>
                         </div>
 
@@ -375,7 +410,7 @@
                                 <p class="add-mini-title mb-0">Faltas</p>
                             </div>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Add Falta
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar
                             </button>
                         </div>
 
@@ -387,7 +422,7 @@
                                 <p class="add-mini-title mb-0">Pagamentos</p>
                             </div>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Add Pagamento
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar
                             </button>
                         </div>
 
@@ -399,8 +434,20 @@
                                 <p class="add-mini-title mb-0">Tabelas diversas</p>
                             </div>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Add Tabela
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar
                             </button>
+                        </div>
+
+                        <div class="add-mini-card">
+                            <div class="add-mini-card-top">
+                                <span class="controle-icon cesta">
+                                    <i class="bi bi-basket3-fill"></i>
+                                </span>
+                                <p class="add-mini-title mb-0">Cesta Básica</p>
+                            </div>
+                            <a href="{% url 'controles_rh:criar_cesta_basica' competencia.pk %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar
+                            </a>
                         </div>
 
                     </div>

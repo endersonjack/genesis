@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Competencia, ValeTransporteTabela, ValeTransporteItem
+from .models import (
+    CestaBasicaItem,
+    CestaBasicaLista,
+    Competencia,
+    ValeTransporteItem,
+    ValeTransporteTabela,
+)
 
 
 @admin.register(Competencia)
@@ -36,6 +42,40 @@ class ValeTransporteTabelaAdmin(admin.ModelAdmin):
     list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes', 'ativa', 'fechada')
     search_fields = ('nome', 'descricao', 'competencia__titulo')
     ordering = ('competencia__ano', 'competencia__mes', 'ordem', 'nome')
+
+
+@admin.register(CestaBasicaLista)
+class CestaBasicaListaAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'competencia',
+        'titulo',
+        'cb_calculo_automatico',
+        'cb_status_manual',
+        'ativa',
+        'data_criacao',
+    )
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes', 'ativa')
+    search_fields = ('titulo', 'observacao', 'competencia__titulo')
+    ordering = ('competencia__ano', 'competencia__mes', 'id')
+
+
+@admin.register(CestaBasicaItem)
+class CestaBasicaItemAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'nome_exibicao',
+        'lista',
+        'funcao',
+        'lotacao',
+        'recebido',
+        'data_recebimento',
+        'ordem',
+        'ativo',
+    )
+    list_filter = ('lista__competencia__empresa', 'lista__competencia__ano', 'ativo', 'recebido')
+    search_fields = ('nome', 'funcao', 'lotacao', 'funcionario__nome')
+    ordering = ('lista', 'ordem', 'nome', 'id')
 
 
 @admin.register(ValeTransporteItem)

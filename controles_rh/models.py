@@ -10,6 +10,11 @@ STATUS_PAGAMENTO_VT_CHOICES = [
     ('pago_completo', 'Pago completo'),
 ]
 
+STATUS_ENTREGA_CESTA_CHOICES = [
+    ('falta_entregar', 'Falta entregar'),
+    ('entregue_totalmente', 'Entregue totalmente'),
+]
+
 
 def _status_pagamento_vt_de_itens(itens_qs):
     """
@@ -20,6 +25,20 @@ def _status_pagamento_vt_de_itens(itens_qs):
     if pendentes.exists():
         return 'em_pagamento'
     return 'pago_completo'
+
+
+def _status_entrega_cesta_de_itens(itens_qs):
+    """
+    Considera apenas itens ativos.
+    Se não houver linhas ativas, considera entregue totalmente.
+    Se algum ativo ainda não marcou recebimento, falta entregar.
+    """
+    ativos = itens_qs.filter(ativo=True)
+    if not ativos.exists():
+        return 'entregue_totalmente'
+    if ativos.filter(recebido=False).exists():
+        return 'falta_entregar'
+    return 'entregue_totalmente'
 
 
 class Competencia(models.Model):
@@ -442,5 +461,189 @@ class ValeTransporteItem(models.Model):
         vp = self.valor_pagar if self.valor_pagar is not None else Decimal('0')
         self.valor_base = vp
 
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class CestaBasicaLista(models.Model):
+    """
+    Recibo / controle de Cesta Básica por competência.
+    Pode haver várias listas na mesma competência (ex.: obras, equipes).
+    """
+
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='cestas_basicas',
+    )
+
+    titulo = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name='Título interno',
+        help_text='Opcional. Identificação na lista de controles.',
+    )
+
+    texto_declaracao = models.TextField(
+        blank=True,
+        verbose_name='Texto da declaração',
+        help_text='Vazio = texto padrão com o nome da empresa.',
+    )
+
+    data_emissao_recibo = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Data no rodapé do recibo',
+    )
+
+    local_emissao = models.CharField(
+        max_length=120,
+        blank=True,
+        default='PARNAMIRIM - RN',
+        verbose_name='Local (cidade/UF)',
+    )
+
+    observacao = models.TextField(blank=True, verbose_name='Observação interna')
+
+    ativa = models.BooleanField(default=True, verbose_name='Ativa')
+
+    cb_calculo_automatico = models.BooleanField(
+        default=True,
+        verbose_name='Status de entrega automático',
+        help_text='Quando ativo, o status é calculado pelos checkboxes “Recebeu” nas linhas.',
+    )
+    cb_status_manual = models.CharField(
+        max_length=30,
+        choices=STATUS_ENTREGA_CESTA_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Status de entrega manual',
+        help_text='Usado apenas quando o status automático está desligado.',
+    )
+
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Lista de Cesta Básica'
+        verbose_name_plural = 'Listas de Cesta Básica'
+        ordering = ['data_criacao', 'id']
+
+    def __str__(self):
+        return f'{self.nome_exibicao} — {self.competencia.referencia}'
+
+    @property
+    def nome_exibicao(self):
+        return (self.titulo or '').strip() or 'Cesta Básica'
+
+    def clean(self):
+        errors = {}
+        if not self.cb_calculo_automatico and not self.cb_status_manual:
+            errors['cb_status_manual'] = (
+                'Informe o status manual ou reative o cálculo automático.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def cb_status_efetivo(self):
+        if self.cb_calculo_automatico:
+            return _status_entrega_cesta_de_itens(self.itens.all())
+        return self.cb_status_manual or 'falta_entregar'
+
+    @property
+    def cb_status_efetivo_label(self):
+        return dict(STATUS_ENTREGA_CESTA_CHOICES).get(
+            self.cb_status_efetivo, self.cb_status_efetivo
+        )
+
+
+class CestaBasicaItem(models.Model):
+    """Linha do recibo de cesta básica."""
+
+    lista = models.ForeignKey(
+        CestaBasicaLista,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='itens_cesta_basica',
+    )
+
+    nome = models.CharField(max_length=150, blank=True, verbose_name='Empregado')
+
+    funcao = models.CharField(max_length=120, blank=True, verbose_name='Função')
+
+    lotacao = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name='Lotação',
+    )
+
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
+
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
+
+    recebido = models.BooleanField(
+        default=False,
+        verbose_name='Recebeu',
+        help_text='Marque quando a cesta já foi entregue a este empregado.',
+    )
+
+    data_recebimento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Data de recebimento',
+    )
+
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Item de Cesta Básica'
+        verbose_name_plural = 'Itens de Cesta Básica'
+        ordering = ['ordem', 'nome', 'id']
+
+    def __str__(self):
+        return self.nome_exibicao
+
+    @property
+    def nome_exibicao(self):
+        if self.nome:
+            return self.nome
+        if self.funcionario:
+            return self.funcionario.nome
+        return 'Sem nome'
+
+    def clean(self):
+        errors = {}
+        if self.funcionario_id and self.lista_id:
+            fe = getattr(self.funcionario, 'empresa_id', None)
+            le = self.lista.competencia.empresa_id
+            if fe and fe != le:
+                errors['funcionario'] = 'O funcionário deve pertencer à mesma empresa da competência.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.funcionario:
+            if not self.nome:
+                self.nome = getattr(self.funcionario, 'nome', '') or self.nome
+            if not self.funcao:
+                cargo = getattr(self.funcionario, 'cargo', None)
+                self.funcao = str(cargo) if cargo else self.funcao
+            if not (self.lotacao or '').strip():
+                lot = getattr(self.funcionario, 'lotacao', None)
+                if lot:
+                    self.lotacao = lot.nome
         self.full_clean()
         super().save(*args, **kwargs)

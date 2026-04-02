@@ -98,7 +98,7 @@ def exportar_tabela_vt_xlsx(request, pk):
         ('Descrição', desc_txt),
     ]
     right_rows = [
-        ('Total de itens', resumo['total_itens']),
+        ('Total de Funcionários', resumo['total_itens']),
         ('Total a pagar (R$)', float(resumo['total_a_pagar'])),
         ('Total pago (R$)', float(resumo['total_valor_pago'])),
         ('Saldo à pagar (R$)', float(resumo['saldo_a_pagar'])),
@@ -203,7 +203,7 @@ def exportar_tabela_vt_pdf(request, pk):
         [
             'Competência',
             comp.referencia,
-            'Total de itens',
+            'Total de Funcionários',
             str(resumo['total_itens']),
         ],
         [

@@ -19,6 +19,24 @@ from controles_rh.views.vale_transporte import (
     modal_pagamento_item_vt,
     reordenar_itens_vt,
 )
+from controles_rh.views.cesta_basica import (
+    adicionar_item_cesta_basica,
+    criar_cesta_basica,
+    definir_recebido_item_cesta_basica,
+    detalhe_cesta_basica,
+    editar_cesta_basica_lista,
+    editar_item_cesta_basica,
+    excluir_cesta_basica_lista,
+    excluir_item_cesta_basica,
+    limpar_recebido_cesta_basica,
+    receber_todos_cesta_basica,
+    reordenar_itens_cesta_basica,
+)
+from controles_rh.views.cesta_export import (
+    exportar_cesta_basica_pdf,
+    exportar_cesta_basica_pdf_recibo,
+    exportar_cesta_basica_pdf_relatorio,
+)
 from controles_rh.views.vt_export import exportar_tabela_vt_pdf, exportar_tabela_vt_xlsx
 
 # ROTAS A PARTIR DE /rh/gestao/
@@ -47,5 +65,40 @@ urlpatterns = [
     path('vt/itens/<int:pk>/editar/', editar_item_vt, name='editar_item_vt'),
     path('vt/itens/<int:pk>/pagamento/', modal_pagamento_item_vt, name='modal_pagamento_item_vt'),
     path('vt/itens/<int:pk>/excluir/', excluir_item_vt, name='excluir_item_vt'),
+
+    path('competencias/<int:competencia_pk>/cesta-basica/nova/', criar_cesta_basica, name='criar_cesta_basica'),
+    path('cesta-basica/<int:pk>/', detalhe_cesta_basica, name='detalhe_cesta_basica'),
+    path('cesta-basica/<int:pk>/editar/', editar_cesta_basica_lista, name='editar_cesta_basica_lista'),
+    path('cesta-basica/<int:pk>/excluir/', excluir_cesta_basica_lista, name='excluir_cesta_basica_lista'),
+    path(
+        'cesta-basica/<int:pk>/exportar/pdf/recibo/',
+        exportar_cesta_basica_pdf_recibo,
+        name='exportar_cesta_basica_pdf_recibo',
+    ),
+    path(
+        'cesta-basica/<int:pk>/exportar/pdf/relatorio/',
+        exportar_cesta_basica_pdf_relatorio,
+        name='exportar_cesta_basica_pdf_relatorio',
+    ),
+    path('cesta-basica/<int:pk>/exportar/pdf/', exportar_cesta_basica_pdf, name='exportar_cesta_basica_pdf'),
+    path('cesta-basica/<int:lista_pk>/itens/novo/', adicionar_item_cesta_basica, name='adicionar_item_cesta_basica'),
+    path(
+        'cesta-basica/<int:lista_pk>/limpar-recebido/',
+        limpar_recebido_cesta_basica,
+        name='limpar_recebido_cesta_basica',
+    ),
+    path(
+        'cesta-basica/<int:lista_pk>/receber-todos/',
+        receber_todos_cesta_basica,
+        name='receber_todos_cesta_basica',
+    ),
+    path('cesta-basica/<int:lista_pk>/itens/reordenar/', reordenar_itens_cesta_basica, name='reordenar_itens_cesta_basica'),
+    path('cesta-basica/itens/<int:pk>/editar/', editar_item_cesta_basica, name='editar_item_cesta_basica'),
+    path(
+        'cesta-basica/itens/<int:pk>/recebido/',
+        definir_recebido_item_cesta_basica,
+        name='definir_recebido_item_cesta',
+    ),
+    path('cesta-basica/itens/<int:pk>/excluir/', excluir_item_cesta_basica, name='excluir_item_cesta_basica'),
 
 ]

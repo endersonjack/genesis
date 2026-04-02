@@ -389,7 +389,7 @@
             </div>
 
             <div class="summary-box">
-                <div class="summary-label">Total de itens</div>
+                <div class="summary-label">Total de Funcionários</div>
                 <div class="summary-value">{{ total_itens }}</div>
             </div>
 
@@ -432,7 +432,7 @@
 
 <div class="table-card">
     <div class="table-header">
-        <h3 class="table-title">Itens da Tabela de Vale Transporte</h3>
+        <h3 class="table-title">Lista para Vale Transporte</h3>
 
         <button
             type="button"
@@ -441,7 +441,7 @@
             hx-target="#modal-content"
             hx-swap="innerHTML"
             hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-            <i class="bi bi-plus-circle me-1"></i> Adicionar linha
+            + Funcionário
         </button>
     </div>
 
