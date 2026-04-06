@@ -14,6 +14,8 @@ Observação:
 
 from django.shortcuts import get_object_or_404, render
 
+from auditoria.registry import audit_rh
+
 from ..forms import LembreteRHForm
 from ..models import LembreteRH
 from .base import _empresa_ativa_or_redirect
@@ -71,6 +73,12 @@ def criar_lembrete_rh(request):
             obj.empresa = empresa_ativa
             obj.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Lembrete "{obj.titulo}" criado.',
+                {'lembrete_id': obj.pk},
+            )
             lembretes = LembreteRH.objects.filter(
                 empresa=empresa_ativa
             ).select_related('funcionario').order_by('data', 'titulo')
@@ -125,8 +133,13 @@ def editar_lembrete_rh(request, pk):
             empresa_ativa=empresa_ativa,
         )
         if form.is_valid():
-            form.save()
-
+            salvo = form.save()
+            audit_rh(
+                request,
+                'update',
+                f'Lembrete "{salvo.titulo}" atualizado.',
+                {'lembrete_id': salvo.pk},
+            )
             lembretes = LembreteRH.objects.filter(
                 empresa=empresa_ativa
             ).select_related('funcionario').order_by('data', 'titulo')
@@ -175,7 +188,15 @@ def excluir_lembrete_rh(request, pk):
         empresa=empresa_ativa,
     )
 
+    titulo = lembrete.titulo
+    lid = lembrete.pk
     lembrete.delete()
+    audit_rh(
+        request,
+        'delete',
+        f'Lembrete "{titulo}" excluído.',
+        {'lembrete_id': lid},
+    )
 
     lembretes = LembreteRH.objects.filter(
         empresa=empresa_ativa

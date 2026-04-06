@@ -14,6 +14,8 @@ Observação:
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.registry import audit_rh
+
 from core.urlutils import redirect_empresa
 
 from ..forms import CargoForm
@@ -69,6 +71,12 @@ def criar_cargo(request):
             obj.empresa = empresa_ativa
             obj.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Cargo "{obj.nome}" criado.',
+                {'cargo_id': obj.pk},
+            )
             messages.success(request, 'Cargo criado com sucesso.')
             return redirect_empresa(request, 'rh:lista_cargos')
     else:
@@ -111,8 +119,13 @@ def editar_cargo(request, pk):
             empresa_ativa=empresa_ativa,
         )
         if form.is_valid():
-            form.save()
-
+            salvo = form.save()
+            audit_rh(
+                request,
+                'update',
+                f'Cargo "{salvo.nome}" atualizado.',
+                {'cargo_id': salvo.pk},
+            )
             messages.success(request, 'Cargo atualizado com sucesso.')
             return redirect_empresa(request, 'rh:lista_cargos')
     else:
@@ -153,7 +166,15 @@ def excluir_cargo(request, pk):
     )
 
     if request.method == 'POST':
+        nome = cargo.nome
+        cid = cargo.pk
         cargo.delete()
+        audit_rh(
+            request,
+            'delete',
+            f'Cargo "{nome}" excluído.',
+            {'cargo_id': cid},
+        )
         messages.success(request, 'Cargo excluído com sucesso.')
         return redirect_empresa(request, 'rh:lista_cargos')
 

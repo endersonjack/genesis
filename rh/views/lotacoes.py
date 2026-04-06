@@ -15,6 +15,8 @@ Observação:
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.registry import audit_rh
+
 from core.urlutils import redirect_empresa
 
 from ..forms import LotacaoForm
@@ -70,6 +72,12 @@ def criar_lotacao(request):
             obj.empresa = empresa_ativa
             obj.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Lotação "{obj.nome}" criada.',
+                {'lotacao_id': obj.pk},
+            )
             messages.success(request, 'Lotação criada com sucesso.')
             return redirect_empresa(request, 'rh:lista_lotacoes')
     else:
@@ -112,8 +120,13 @@ def editar_lotacao(request, pk):
             empresa_ativa=empresa_ativa,
         )
         if form.is_valid():
-            form.save()
-
+            salvo = form.save()
+            audit_rh(
+                request,
+                'update',
+                f'Lotação "{salvo.nome}" atualizada.',
+                {'lotacao_id': salvo.pk},
+            )
             messages.success(request, 'Lotação atualizada com sucesso.')
             return redirect_empresa(request, 'rh:lista_lotacoes')
     else:
@@ -154,7 +167,15 @@ def excluir_lotacao(request, pk):
     )
 
     if request.method == 'POST':
+        nome = lotacao.nome
+        lid = lotacao.pk
         lotacao.delete()
+        audit_rh(
+            request,
+            'delete',
+            f'Lotação "{nome}" excluída.',
+            {'lotacao_id': lid},
+        )
         messages.success(request, 'Lotação excluída com sucesso.')
         return redirect_empresa(request, 'rh:lista_lotacoes')
 

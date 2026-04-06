@@ -1,173 +1,285 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Dashboard | Genesis ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quick-access-section-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 0.65rem;
+    }
+    .quick-access-tile {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        height: 100%;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .quick-access-tile:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        transform: translateY(-1px);
+    }
+    .quick-access-tile-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .quick-access-tile-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #0f172a;
+        margin-bottom: 0.15rem;
+    }
+    .quick-access-tile-desc {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin: 0;
+        line-height: 1.35;
+    }
+    .dashboard-audit-card .table th {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        font-weight: 700;
+    }
+    .dashboard-audit-card .table td {
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="mb-4">
     <h2 class="fw-bold mb-1">Dashboard</h2>
     <p class="text-muted mb-0">
-        Visão geral da empresa
+        Acesso rápido aos módulos
         {% if request.empresa_ativa %}
-            <strong>{{ request.empresa_ativa }}</strong>
+            — <strong>{{ request.empresa_ativa }}</strong>
         {% endif %}
     </p>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card dashboard-card card-primary h-100">
-            <div class="card-body">
-                <div class="card-icon">
-                    <i class="bi bi-people"></i>
-                </div>
-                <p class="card-label">Funcionários</p>
-                <h3 class="card-value">24</h3>
-                <small class="text-muted">Total cadastrados</small>
-            </div>
-        </div>
+{% if request.empresa_ativa %}
+<div class="card content-card">
+    <div class="card-header bg-white border-0 pb-0 pt-3 px-3 px-md-4">
+        <h5 class="mb-1">Acesso rápido</h5>
+        <p class="text-muted small mb-0">Atalhos para as telas mais usadas nesta empresa</p>
     </div>
+    <div class="card-body pt-3 px-3 px-md-4 pb-4">
 
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card dashboard-card card-success h-100">
-            <div class="card-body">
-                <div class="card-icon">
-                    <i class="bi bi-currency-dollar"></i>
-                </div>
-                <p class="card-label">Receitas</p>
-                <h3 class="card-value">R$ 18.450</h3>
-                <small class="text-muted">Mês atual</small>
+        <p class="quick-access-section-title">RH</p>
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
+                            <i class="bi bi-people"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Funcionários</div>
+                            <p class="quick-access-tile-desc">Lista e cadastro de colaboradores</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Buscar funcionários</div>
+                            <p class="quick-access-tile-desc">Pesquisa entre os cadastros</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-info-subtle text-info">
+                            <i class="bi bi-calendar3"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Calendário RH</div>
+                            <p class="quick-access-tile-desc">Eventos, férias e prazos</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'rh:lista_cargos' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-success-subtle text-success">
+                            <i class="bi bi-briefcase"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Cargos</div>
+                            <p class="quick-access-tile-desc">Cargos e salários base</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-warning-subtle text-warning-emphasis">
+                            <i class="bi bi-clipboard-check"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Controles RH</div>
+                            <p class="quick-access-tile-desc">Vale transporte, cesta básica e competências</p>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
-    </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card dashboard-card card-warning h-100">
-            <div class="card-body">
-                <div class="card-icon">
-                    <i class="bi bi-receipt"></i>
-                </div>
-                <p class="card-label">Despesas</p>
-                <h3 class="card-value">R$ 9.270</h3>
-                <small class="text-muted">Contas a pagar</small>
+        <p class="quick-access-section-title">Empresa</p>
+        <div class="row g-3">
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
+                            <i class="bi bi-geo-alt"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Locais</div>
+                            <p class="quick-access-tile-desc">Unidades e endereços</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% if request.usuario_admin_empresa or request.user.is_superuser %}
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
+                            <i class="bi bi-journal-text"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Auditoria</div>
+                            <p class="quick-access-tile-desc">Histórico de ações na empresa</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endif %}
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'empresa_preferencias' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
+                            <i class="bi bi-sliders"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Preferências</div>
+                            <p class="quick-access-tile-desc">Dados e tema da empresa</p>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
-    </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card dashboard-card card-danger h-100">
-            <div class="card-body">
-                <div class="card-icon">
-                    <i class="bi bi-box-seam"></i>
-                </div>
-                <p class="card-label">Itens em alerta</p>
-                <h3 class="card-value">8</h3>
-                <small class="text-muted">Estoque baixo</small>
-            </div>
-        </div>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-12 col-xl-8">
-        <div class="card content-card h-100">
-            <div class="card-header bg-white border-0 pb-0">
-                <h5 class="mb-1">Resumo operacional</h5>
-                <p class="text-muted small mb-0">Visão rápida dos principais módulos</p>
-            </div>
-            <div class="card-body pt-3">
-                <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                        <div class="mini-panel">
-                            <div class="mini-panel-icon bg-primary-subtle text-primary">
-                                <i class="bi bi-person-badge"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-1">RH</h6>
-                                <p class="mb-0 text-muted small">Controle de funcionários, cargos e setores.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <div class="mini-panel">
-                            <div class="mini-panel-icon bg-success-subtle text-success">
-                                <i class="bi bi-bank"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-1">Financeiro</h6>
-                                <p class="mb-0 text-muted small">Acompanhamento de receitas, despesas e fluxo.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <div class="mini-panel">
-                            <div class="mini-panel-icon bg-warning-subtle text-warning">
-                                <i class="bi bi-boxes"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-1">Estoque</h6>
-                                <p class="mb-0 text-muted small">Entrada, saída, controle mínimo e inventário.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <div class="mini-panel">
-                            <div class="mini-panel-icon bg-info-subtle text-info">
-                                <i class="bi bi-bar-chart"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-1">Indicadores</h6>
-                                <p class="mb-0 text-muted small">Painéis estratégicos por empresa e módulo.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="card content-card dashboard-audit-card mt-4">
+    <div class="card-header bg-white border-0 d-flex flex-wrap align-items-start justify-content-between gap-2 pb-0 pt-3 px-3 px-md-4">
+        <div>
+            <h5 class="mb-1">Últimas alterações</h5>
+            <p class="text-muted small mb-0">
+                {% if auditoria_resumo_admin %}
+                    Até 20 eventos mais recentes de todos os usuários nesta empresa.
+                {% else %}
+                    Até 20 dos seus eventos mais recentes nesta empresa.
+                {% endif %}
+            </p>
         </div>
+        {% if request.usuario_admin_empresa or request.user.is_superuser %}
+        <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold flex-shrink-0">
+            Ver auditoria completa
+        </a>
+        {% endif %}
     </div>
-
-    <div class="col-12 col-xl-4">
-        <div class="card content-card h-100">
-            <div class="card-header bg-white border-0 pb-0">
-                <h5 class="mb-1">Atividades recentes</h5>
-                <p class="text-muted small mb-0">Últimas movimentações do sistema</p>
-            </div>
-            <div class="card-body pt-3">
-                <div class="activity-item">
-                    <div class="activity-dot bg-primary"></div>
-                    <div>
-                        <strong>Novo funcionário</strong>
-                        <p class="mb-0 text-muted small">Cadastro realizado no módulo RH.</p>
-                    </div>
-                </div>
-
-                <div class="activity-item">
-                    <div class="activity-dot bg-success"></div>
-                    <div>
-                        <strong>Recebimento lançado</strong>
-                        <p class="mb-0 text-muted small">Entrada financeira confirmada.</p>
-                    </div>
-                </div>
-
-                <div class="activity-item">
-                    <div class="activity-dot bg-warning"></div>
-                    <div>
-                        <strong>Produto com estoque baixo</strong>
-                        <p class="mb-0 text-muted small">Verifique necessidade de reposição.</p>
-                    </div>
-                </div>
-
-                <div class="activity-item">
-                    <div class="activity-dot bg-danger"></div>
-                    <div>
-                        <strong>Conta próxima do vencimento</strong>
-                        <p class="mb-0 text-muted small">Acompanhe o financeiro da empresa.</p>
-                    </div>
-                </div>
-            </div>
+    <div class="card-body pt-2 px-0 px-md-2 pb-3">
+        {% if ultimas_auditoria %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 ps-md-4">Quando</th>
+                        {% if auditoria_resumo_admin %}
+                        <th>Usuário</th>
+                        {% endif %}
+                        <th>Ação</th>
+                        <th>Módulo</th>
+                        <th class="pe-3 pe-md-4">Resumo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in ultimas_auditoria %}
+                    <tr>
+                        <td class="text-muted small text-nowrap ps-3 ps-md-4">{{ r.criado_em|naturaltime }} — {{ r.criado_em|date:"d/m H:i" }}</td>
+                        {% if auditoria_resumo_admin %}
+                        <td class="small">
+                            {% if r.usuario %}{{ r.usuario.nome_completo|default:r.usuario.username }}{% else %}—{% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if r.acao == 'create' %}
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'update' %}
+                                <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'delete' %}
+                                <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'export' %}
+                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis">{{ r.get_acao_display }}</span>
+                            {% else %}
+                                <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis">{{ r.get_acao_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if r.modulo == 'rh' %}RH
+                            {% elif r.modulo == 'controles_rh' %}Controles RH
+                            {% elif r.modulo == 'empresas' %}Empresa
+                            {% elif r.modulo == 'financeiro' %}Financeiro
+                            {% elif r.modulo == 'estoque' %}Estoque
+                            {% elif r.modulo == 'local' %}Locais
+                            {% elif r.modulo %}<code class="small">{{ r.modulo }}</code>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="pe-3 pe-md-4">{{ r.resumo }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <p class="text-muted small mb-0 px-3 px-md-4">Nenhum registro de auditoria ainda nesta empresa.</p>
+        {% endif %}
     </div>
 </div>
+{% else %}
+<div class="alert alert-warning mb-0">
+    Nenhuma empresa ativa. Selecione uma empresa para ver o dashboard.
+</div>
+{% endif %}
 {% endblock %}

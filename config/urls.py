@@ -16,6 +16,7 @@ urlpatterns = [
             path('', include('dashboard.urls')),
             path('preferencias/', include('empresas.urls')),
             path('local/', include('local.urls')),
+            path('auditoria/', include('auditoria.urls')),
             path('rh/gestao/', include('controles_rh.urls')),
             path('rh/', include('rh.urls')),
             path('usuarios/', include('usuarios.urls_empresa')),

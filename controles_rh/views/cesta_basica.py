@@ -12,6 +12,8 @@ from django.utils import timezone
 from core.urlutils import redirect_empresa, reverse_empresa
 from django.views.decorators.http import require_POST
 
+from auditoria.registry import audit_controles_rh
+
 from controles_rh.forms import CestaBasicaItemForm, CestaBasicaListaForm
 from controles_rh.models import CestaBasicaItem, CestaBasicaLista
 from controles_rh.views.competencias import _get_competencia_empresa
@@ -71,6 +73,12 @@ def criar_cesta_basica(request, competencia_pk):
     n = CestaBasicaLista.objects.filter(competencia=competencia).count() + 1
     titulo = 'Cesta Básica' if n == 1 else f'Cesta Básica {n}'
     lista = CestaBasicaLista.objects.create(competencia=competencia, titulo=titulo)
+    audit_controles_rh(
+        request,
+        'create',
+        f'Lista de cesta básica criada: {titulo} ({competencia.referencia}).',
+        {'cesta_lista_id': lista.pk, 'competencia_id': competencia.pk},
+    )
     return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
 
 
@@ -113,6 +121,12 @@ def definir_recebido_item_cesta_basica(request, pk):
         elif not item.recebido:
             item.data_recebimento = None
     item.save(update_fields=['recebido', 'data_recebimento', 'data_atualizacao'])
+    audit_controles_rh(
+        request,
+        'update',
+        f'Recebimento de cesta atualizado — {item.nome_exibicao}.',
+        {'cesta_item_id': item.pk, 'cesta_lista_id': item.lista_id},
+    )
     response = HttpResponse(status=204)
     if _is_htmx(request):
         response['HX-Refresh'] = 'true'
@@ -128,6 +142,12 @@ def limpar_recebido_cesta_basica(request, lista_pk):
         recebido=False,
         data_recebimento=None,
         data_atualizacao=timezone.now(),
+    )
+    audit_controles_rh(
+        request,
+        'update',
+        f'Recebimentos de cesta limpos — {lista.titulo}.',
+        {'cesta_lista_id': lista.pk},
     )
     messages.success(request, 'Todas as marcações de recebimento foram limpas.')
     response = HttpResponse(status=204)
@@ -148,6 +168,12 @@ def receber_todos_cesta_basica(request, lista_pk):
         data_atualizacao=timezone.now(),
     )
     if n:
+        audit_controles_rh(
+            request,
+            'update',
+            f'Todas as linhas marcadas como recebidas — {lista.titulo} ({n} linhas).',
+            {'cesta_lista_id': lista.pk},
+        )
         messages.success(
             request,
             f'Todas as linhas foram marcadas como recebidas em {hoje.strftime("%d/%m/%Y")}.',
@@ -168,6 +194,12 @@ def editar_cesta_basica_lista(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Dados do recibo de cesta atualizados — {lista.titulo}.',
+                {'cesta_lista_id': lista.pk},
+            )
             messages.success(request, 'Dados do recibo atualizados.')
             if _is_htmx(request):
                 response = HttpResponse(status=204)
@@ -190,7 +222,16 @@ def excluir_cesta_basica_lista(request, pk):
     competencia = lista.competencia
 
     if request.method == 'POST':
+        titulo = lista.titulo
+        lid = lista.pk
+        cid = competencia.pk
         lista.delete()
+        audit_controles_rh(
+            request,
+            'delete',
+            f'Lista de cesta básica excluída: {titulo}.',
+            {'cesta_lista_id': lid, 'competencia_id': cid},
+        )
         messages.success(request, 'Controle de Cesta Básica removido desta competência.')
         if _is_htmx(request):
             response = HttpResponse(status=204)
@@ -227,6 +268,12 @@ def adicionar_item_cesta_basica(request, lista_pk):
     if request.method == 'POST':
         if form.is_valid():
             item = form.save()
+            audit_controles_rh(
+                request,
+                'create',
+                f'Linha de cesta adicionada: {item.nome_exibicao}.',
+                {'cesta_item_id': item.pk, 'cesta_lista_id': lista.pk},
+            )
             messages.success(request, f'Linha "{item.nome_exibicao}" adicionada.')
             if _is_htmx(request):
                 response = HttpResponse(status=204)
@@ -259,6 +306,12 @@ def editar_item_cesta_basica(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Linha de cesta atualizada: {item.nome_exibicao}.',
+                {'cesta_item_id': item.pk, 'cesta_lista_id': lista.pk},
+            )
             messages.success(request, f'Linha "{item.nome_exibicao}" atualizada.')
             if _is_htmx(request):
                 response = HttpResponse(status=204)
@@ -285,7 +338,14 @@ def excluir_item_cesta_basica(request, pk):
     if request.method == 'POST':
         nome = item.nome_exibicao
         lista_pk = lista.pk
+        iid = item.pk
         item.delete()
+        audit_controles_rh(
+            request,
+            'delete',
+            f'Linha de cesta excluída: {nome}.',
+            {'cesta_item_id': iid, 'cesta_lista_id': lista_pk},
+        )
         messages.success(request, f'Linha "{nome}" excluída.')
         if _is_htmx(request):
             response = HttpResponse(status=204)
@@ -328,4 +388,10 @@ def reordenar_itens_cesta_basica(request, lista_pk):
         for ordem, item_id in enumerate(id_list, start=1):
             CestaBasicaItem.objects.filter(pk=item_id, lista=lista).update(ordem=ordem)
 
+    audit_controles_rh(
+        request,
+        'update',
+        f'Ordem das linhas de cesta atualizada — {lista.titulo}.',
+        {'cesta_lista_id': lista.pk},
+    )
     return JsonResponse({'ok': True})

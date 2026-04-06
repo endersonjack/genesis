@@ -21,6 +21,8 @@ from datetime import datetime
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
+
+from auditoria.registry import audit_rh
 from core.urlutils import reverse_empresa
 
 from ..forms import (
@@ -66,6 +68,12 @@ def modal_novo_funcionario_rapido(request):
             funcionario.empresa = empresa_ativa
             funcionario.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Funcionário "{funcionario.nome}" cadastrado (cadastro rápido).',
+                {'funcionario_id': funcionario.pk},
+            )
             response = HttpResponse(status=204)
             response['HX-Redirect'] = reverse_empresa(
                 request,
@@ -106,6 +114,12 @@ def modal_editar_pessoais(request, pk):
             form.save()
             funcionario.refresh_from_db()
 
+            audit_rh(
+                request,
+                'update',
+                f'Funcionário "{funcionario.nome}": dados pessoais atualizados (modal).',
+                {'funcionario_id': funcionario.pk},
+            )
             response = render(
                 request,
                 "rh/funcionarios/modals/pessoais_success.html",
@@ -164,6 +178,12 @@ def modal_editar_admissao(request, pk):
                 situacao_nova=situacao_nova,
             )
 
+            audit_rh(
+                request,
+                'update',
+                f'Funcionário "{funcionario.nome}": admissão atualizada (modal).',
+                {'funcionario_id': funcionario.pk},
+            )
             response = render(
                 request,
                 "rh/funcionarios/modals/admissao_success.html",
@@ -227,6 +247,12 @@ def modal_editar_demissao(request, pk):
         obj.save()
         funcionario.refresh_from_db()
 
+        audit_rh(
+            request,
+            'update',
+            f'Funcionário "{funcionario.nome}": demissão atualizada (modal).',
+            {'funcionario_id': funcionario.pk},
+        )
         response = render(
             request,
             "rh/funcionarios/modals/demissao_success.html",
@@ -297,6 +323,12 @@ def modal_editar_bancarios(request, pk):
             form.save()
             funcionario.refresh_from_db()
 
+            audit_rh(
+                request,
+                'update',
+                f'Funcionário "{funcionario.nome}": dados bancários atualizados (modal).',
+                {'funcionario_id': funcionario.pk},
+            )
             response = render(
                 request,
                 "rh/funcionarios/modals/bancarios_success.html",
@@ -342,6 +374,12 @@ def modal_editar_outros(request, pk):
             form.save()
             funcionario.refresh_from_db()
 
+            audit_rh(
+                request,
+                'update',
+                f'Funcionário "{funcionario.nome}": outros dados atualizados (modal).',
+                {'funcionario_id': funcionario.pk},
+            )
             response = render(
                 request,
                 "rh/funcionarios/modals/outros_success.html",

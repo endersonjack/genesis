@@ -4,6 +4,8 @@ from django.shortcuts import redirect, render
 
 from core.urlutils import redirect_empresa
 
+from auditoria.registry import registrar_auditoria
+
 from rh.views.base import _empresa_ativa_or_redirect
 
 from .forms import EmpresaPreferenciasForm
@@ -23,6 +25,12 @@ def preferencias(request):
         )
         if form.is_valid():
             form.save()
+            registrar_auditoria(
+                request,
+                acao='update',
+                resumo=f'Preferências da empresa "{empresa_ativa}" atualizadas.',
+                modulo='empresas',
+            )
             messages.success(request, 'Preferências da empresa salvas.')
             return redirect_empresa(request, 'empresa_preferencias')
     else:

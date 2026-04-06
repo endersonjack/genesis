@@ -5,6 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.registry import audit_rh
+
 from core.urlutils import redirect_empresa
 
 from ..forms import (
@@ -292,6 +294,12 @@ def criar_funcionario(request):
 
             _salvar_todos_formsets(funcionario, formsets)
 
+            audit_rh(
+                request,
+                'create',
+                f'Funcionário "{funcionario.nome}" cadastrado (cadastro completo).',
+                {'funcionario_id': funcionario.pk},
+            )
             messages.success(request, 'Funcionário cadastrado com sucesso.')
             return redirect_empresa(request, 'rh:detalhes_funcionario', pk=funcionario.pk)
     else:
@@ -515,6 +523,12 @@ def editar_funcionario(request, pk):
         )
 
         if salvou:
+            audit_rh(
+                request,
+                'update',
+                f'Funcionário "{funcionario.nome}": seção "{secao}" atualizada.',
+                {'funcionario_id': funcionario.pk, 'secao': secao},
+            )
             messages.success(request, mensagem)
             return redirect_empresa(request, 'rh:editar_funcionario', pk=funcionario.pk)
 
@@ -630,7 +644,15 @@ def excluir_funcionario(request, pk):
     )
 
     if request.method == 'POST':
+        nome = funcionario.nome
+        fid = funcionario.pk
         funcionario.delete()
+        audit_rh(
+            request,
+            'delete',
+            f'Funcionário "{nome}" excluído.',
+            {'funcionario_id': fid},
+        )
         messages.success(request, 'Funcionário excluído com sucesso.')
         return redirect_empresa(request, 'rh:lista_funcionarios')
 

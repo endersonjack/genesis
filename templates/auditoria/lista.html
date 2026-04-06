@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Auditoria | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .page-header-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .page-header-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .25rem;
+    }
+    .page-header-desc {
+        color: #64748b;
+        margin: 0;
+    }
+    .list-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .card-header-soft {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+    }
+    .card-header-soft h5 {
+        margin: 0;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .card-body-soft {
+        padding: 0;
+        background: #f8fafc;
+    }
+    .audit-filters {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #f8fafc;
+    }
+    .empty-state {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+    .table-audit th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .table-audit td {
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+    .audit-per-page .btn.active {
+        background: #0f172a;
+        border-color: #0f172a;
+        color: #fff;
+    }
+</style>
+
+<div class="page-header-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="page-header-title">Auditoria</h2>
+            <p class="page-header-desc">
+                {% if pode_ver_todos %}
+                    Registro de ações nesta empresa (todos os usuários).
+                {% else %}
+                    Registro das suas ações nesta empresa.
+                {% endif %}
+            </p>
+        </div>
+        <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="list-card">
+    <div class="card-header-soft d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h5 class="mb-1">Eventos</h5>
+            <p class="text-muted small mb-0">Últimos registros (mais recentes no topo). Escolha quantos exibir por página.</p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="btn-group audit-per-page" role="group" aria-label="Quantidade por página">
+                {% for n, qs in botoes_por_pagina %}
+                <a href="?{{ qs }}" class="btn btn-sm btn-outline-secondary rounded-3 {% if per_page == n %}active{% endif %}">{{ n }}</a>
+                {% endfor %}
+            </div>
+            {% if filtros_ativos %}
+            <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-sm btn-outline-secondary rounded-3">Limpar filtros</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="audit-filters border-bottom">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6 col-lg-4">
+                <label class="form-label small text-muted mb-1" for="auditoria-empresa">Empresa</label>
+                {% if mostrar_seletor_empresa %}
+                <select class="form-select form-select-sm rounded-3" id="auditoria-empresa" aria-label="Trocar empresa na auditoria" onchange="if (this.value) window.location.href=this.value">
+                    {% for e in empresas_acesso %}
+                    <option value="{% url 'auditoria:lista' empresa_id=e.pk %}{% if filter_query %}?{{ filter_query }}{% endif %}" {% if e.pk == request.empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <p class="mb-0 fw-semibold text-dark py-1">{{ request.empresa_ativa }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <form class="audit-filters" method="get" action="">
+        <input type="hidden" name="por_pagina" value="{{ per_page }}">
+        <div class="row g-2 align-items-end">
+            {% if pode_ver_todos %}
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small text-muted mb-1">Usuário</label>
+                <select name="usuario" class="form-select form-select-sm rounded-3">
+                    <option value="">Todos</option>
+                    {% for u in usuarios_empresa %}
+                    <option value="{{ u.pk }}" {% if filtro_usuario == u.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ u.nome_completo|default:u.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small text-muted mb-1">Módulo</label>
+                <select name="modulo" class="form-select form-select-sm rounded-3">
+                    {% for val, label in modulo_filtro_choices %}
+                    <option value="{{ val }}" {% if filtro_modulo == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small text-muted mb-1">Ação</label>
+                <select name="acao" class="form-select form-select-sm rounded-3">
+                    <option value="">Todas</option>
+                    {% for val, label in acao_filtro_choices %}
+                    <option value="{{ val }}" {% if filtro_acao == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-auto">
+                <button type="submit" class="btn btn-primary btn-sm rounded-3 px-4 fw-semibold">
+                    <i class="bi bi-funnel me-1"></i> Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card-body-soft">
+        {% if page_obj.object_list %}
+        <div class="table-responsive">
+            <table class="table table-hover table-audit mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        {% if pode_ver_todos %}
+                        <th>Usuário</th>
+                        {% endif %}
+                        <th>Ação</th>
+                        <th>Módulo</th>
+                        <th>Resumo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in page_obj %}
+                    <tr>
+                        <td class="text-nowrap text-muted small">{{ r.criado_em|naturaltime }} — {{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                        {% if pode_ver_todos %}
+                        <td>
+                            {% if r.usuario %}
+                                {{ r.usuario.nome_completo|default:r.usuario.username }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if r.acao == 'create' %}
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'update' %}
+                                <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'delete' %}
+                                <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis">{{ r.get_acao_display }}</span>
+                            {% elif r.acao == 'export' %}
+                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis">{{ r.get_acao_display }}</span>
+                            {% else %}
+                                <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis">{{ r.get_acao_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.modulo == 'rh' %}RH
+                            {% elif r.modulo == 'controles_rh' %}Controles RH
+                            {% elif r.modulo == 'empresas' %}Empresa
+                            {% elif r.modulo == 'financeiro' %}Financeiro
+                            {% elif r.modulo == 'estoque' %}Estoque
+                            {% elif r.modulo == 'local' %}Locais
+                            {% elif r.modulo %}<code class="small">{{ r.modulo }}</code>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{{ r.resumo }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state m-3">
+            {% if filtros_ativos %}
+                Nenhum registro com os filtros selecionados.
+            {% else %}
+                Nenhum registro de auditoria ainda.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3 d-flex justify-content-center" aria-label="Paginação">
+    <ul class="pagination mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link rounded-start" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link rounded-end" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

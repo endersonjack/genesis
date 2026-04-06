@@ -2,6 +2,8 @@ import json
 
 from django.shortcuts import get_object_or_404, render
 
+from auditoria.registry import audit_rh
+
 from ..forms import AnexoAvulsoFuncionarioForm
 from ..models import AnexoAvulsoFuncionario
 from .base import _get_funcionario_empresa
@@ -207,6 +209,12 @@ def modal_adicionar_anexo_avulso(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Anexo avulso adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'anexo_avulso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_anexos_avulsos_list(request, funcionario)
@@ -252,7 +260,12 @@ def modal_editar_anexo_avulso(request, pk, anexo_id):
         form = AnexoAvulsoFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Anexo avulso atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'anexo_avulso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_anexos_avulsos_list(request, funcionario)
@@ -295,8 +308,14 @@ def modal_excluir_anexo_avulso(request, pk, anexo_id):
     )
 
     if request.method == "POST":
+        aid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Anexo avulso excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'anexo_avulso_id': aid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_anexos_avulsos_list(request, funcionario)

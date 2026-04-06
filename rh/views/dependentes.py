@@ -14,6 +14,8 @@ import json
 
 from django.shortcuts import get_object_or_404, render
 
+from auditoria.registry import audit_rh
+
 from ..forms import DependenteForm
 from ..models import Dependente, Funcionario
 from .base import _empresa_ativa_or_redirect
@@ -91,6 +93,12 @@ def modal_adicionar_dependente(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Dependente adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'dependente_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_dependentes_list(request, funcionario)
@@ -140,7 +148,12 @@ def modal_editar_dependente(request, pk, dependente_id):
         form = DependenteForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Dependente atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'dependente_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_dependentes_list(request, funcionario)
@@ -187,8 +200,14 @@ def modal_excluir_dependente(request, pk, dependente_id):
     )
 
     if request.method == "POST":
+        did = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Dependente excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'dependente_id': did},
+        )
         funcionario.refresh_from_db()
 
         response = _render_dependentes_list(request, funcionario)

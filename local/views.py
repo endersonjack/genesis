@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.registry import registrar_auditoria
+
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import LocalForm
@@ -50,6 +52,13 @@ def local_criar(request):
             obj = form.save(commit=False)
             obj.empresa = empresa
             obj.save()
+            registrar_auditoria(
+                request,
+                acao='create',
+                resumo=f'Local "{obj.nome}" cadastrado.',
+                modulo='local',
+                detalhes={'local_id': obj.pk},
+            )
             messages.success(request, f'Local "{obj.nome}" cadastrado com sucesso.')
             if _is_htmx(request):
                 return _redirect_lista_htmx(request)
@@ -79,8 +88,15 @@ def local_editar(request, pk):
 
     if request.method == 'POST':
         if form.is_valid():
-            form.save()
-            messages.success(request, f'Local "{local.nome}" atualizado com sucesso.')
+            salvo = form.save()
+            registrar_auditoria(
+                request,
+                acao='update',
+                resumo=f'Local "{salvo.nome}" atualizado.',
+                modulo='local',
+                detalhes={'local_id': salvo.pk},
+            )
+            messages.success(request, f'Local "{salvo.nome}" atualizado com sucesso.')
             if _is_htmx(request):
                 return _redirect_lista_htmx(request)
             return redirect_empresa(request, 'local:lista')
@@ -108,7 +124,15 @@ def local_excluir(request, pk):
 
     if request.method == 'POST':
         nome = local.nome
+        local_id = local.pk
         local.delete()
+        registrar_auditoria(
+            request,
+            acao='delete',
+            resumo=f'Local "{nome}" excluído.',
+            modulo='local',
+            detalhes={'local_id': local_id},
+        )
         messages.success(request, f'Local "{nome}" excluído com sucesso.')
         if _is_htmx(request):
             return _redirect_lista_htmx(request)

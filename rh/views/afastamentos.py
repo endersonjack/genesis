@@ -2,6 +2,8 @@ import json
 
 from django.shortcuts import get_object_or_404, render
 
+from auditoria.registry import audit_rh
+
 from ..forms import AfastamentoFuncionarioForm
 from ..models import AfastamentoFuncionario, Funcionario
 from .base import _empresa_ativa_or_redirect
@@ -79,6 +81,12 @@ def modal_adicionar_afastamento(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Afastamento registrado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'afastamento_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_afastamentos_list(request, funcionario)
@@ -128,7 +136,12 @@ def modal_editar_afastamento(request, pk, afastamento_id):
         form = AfastamentoFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Afastamento atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'afastamento_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_afastamentos_list(request, funcionario)
@@ -175,8 +188,14 @@ def modal_excluir_afastamento(request, pk, afastamento_id):
     )
 
     if request.method == "POST":
+        aid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Afastamento excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'afastamento_id': aid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_afastamentos_list(request, funcionario)

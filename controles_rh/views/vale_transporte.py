@@ -10,6 +10,8 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from auditoria.registry import audit_controles_rh
+
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.models import Competencia, ValeTransporteItem, ValeTransporteTabela
@@ -294,6 +296,16 @@ def criar_tabela_vt(request, competencia_pk):
                     _clonar_itens_vt_de_tabela(tabela, origem)
                 # modo == 'vazio': sem linhas
 
+            audit_controles_rh(
+                request,
+                'create',
+                f'Tabela VT "{tabela.nome}" criada (modo: {modo}).',
+                {
+                    'tabela_vt_id': tabela.pk,
+                    'competencia_id': competencia.pk,
+                    'modo_criacao': modo,
+                },
+            )
             messages.success(request, f'Tabela "{tabela.nome}" criada com sucesso.')
 
             if _is_htmx(request):
@@ -367,6 +379,12 @@ def editar_tabela_vt(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             tabela = form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Tabela VT "{tabela.nome}" atualizada.',
+                {'tabela_vt_id': tabela.pk, 'competencia_id': tabela.competencia_id},
+            )
             messages.success(request, f'Tabela "{tabela.nome}" atualizada com sucesso.')
 
             if _is_htmx(request):
@@ -408,7 +426,14 @@ def excluir_tabela_vt(request, pk):
     if request.method == 'POST':
         competencia = tabela.competencia
         nome = tabela.nome
+        tid = tabela.pk
         tabela.delete()
+        audit_controles_rh(
+            request,
+            'delete',
+            f'Tabela VT "{nome}" excluída.',
+            {'tabela_vt_id': tid, 'competencia_id': competencia.pk},
+        )
 
         messages.success(request, f'Tabela "{nome}" excluída com sucesso.')
 
@@ -478,6 +503,12 @@ def reordenar_itens_vt(request, tabela_pk):
         for ordem, item_id in enumerate(id_list, start=1):
             ValeTransporteItem.objects.filter(pk=item_id, tabela=tabela).update(ordem=ordem)
 
+    audit_controles_rh(
+        request,
+        'update',
+        f'Ordem das linhas VT atualizada — {tabela.nome}.',
+        {'tabela_vt_id': tabela.pk},
+    )
     return JsonResponse({'ok': True})
 
 
@@ -499,6 +530,12 @@ def adicionar_item_vt(request, tabela_pk):
     if request.method == 'POST':
         if form.is_valid():
             item = form.save()
+            audit_controles_rh(
+                request,
+                'create',
+                f'Linha VT "{item.nome_exibicao}" adicionada.',
+                {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
+            )
             messages.success(request, f'Linha "{item.nome_exibicao}" adicionada com sucesso.')
 
             if _is_htmx(request):
@@ -537,6 +574,12 @@ def editar_item_vt(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             item = form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Linha VT "{item.nome_exibicao}" atualizada.',
+                {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
+            )
             messages.success(request, f'Linha "{item.nome_exibicao}" atualizada com sucesso.')
 
             if _is_htmx(request):
@@ -574,6 +617,12 @@ def modal_pagamento_item_vt(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Pagamento VT atualizado — {item.nome_exibicao}.',
+                {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
+            )
             messages.success(request, 'Pagamento atualizado.')
             if _is_htmx(request):
                 response = HttpResponse(status=204)
@@ -602,7 +651,14 @@ def excluir_item_vt(request, pk):
     if request.method == 'POST':
         nome = item.nome_exibicao
         tabela_pk = tabela.pk
+        iid = item.pk
         item.delete()
+        audit_controles_rh(
+            request,
+            'delete',
+            f'Linha VT "{nome}" excluída.',
+            {'item_vt_id': iid, 'tabela_vt_id': tabela_pk},
+        )
 
         messages.success(request, f'Linha "{nome}" excluída com sucesso.')
 

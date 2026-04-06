@@ -4,6 +4,8 @@ from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from auditoria.registry import audit_controles_rh
+
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.forms import CompetenciaForm
@@ -120,6 +122,12 @@ def criar_competencia(request):
     if request.method == 'POST':
         if form.is_valid():
             competencia = form.save()
+            audit_controles_rh(
+                request,
+                'create',
+                f'Competência {competencia.referencia} criada.',
+                {'competencia_id': competencia.pk},
+            )
             messages.success(
                 request,
                 f'Competência {competencia.referencia} criada com sucesso.'
@@ -207,6 +215,12 @@ def editar_competencia(request, pk):
     if request.method == 'POST':
         if form.is_valid():
             competencia = form.save()
+            audit_controles_rh(
+                request,
+                'update',
+                f'Competência {competencia.referencia} atualizada.',
+                {'competencia_id': competencia.pk},
+            )
             messages.success(
                 request,
                 f'Competência {competencia.referencia} atualizada com sucesso.'
@@ -251,7 +265,14 @@ def excluir_competencia(request, pk):
 
     if request.method == 'POST':
         referencia = competencia.referencia
+        cid = competencia.pk
         competencia.delete()
+        audit_controles_rh(
+            request,
+            'delete',
+            f'Competência {referencia} excluída.',
+            {'competencia_id': cid},
+        )
         messages.success(request, f'Competência {referencia} excluída com sucesso.')
 
         if _is_htmx(request):

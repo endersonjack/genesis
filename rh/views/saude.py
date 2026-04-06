@@ -18,6 +18,8 @@ import json
 
 from django.shortcuts import get_object_or_404, render
 
+from auditoria.registry import audit_rh
+
 from ..forms import (
     ASOFuncionarioForm,
     AtestadoLicencaFuncionarioForm,
@@ -124,6 +126,12 @@ def modal_adicionar_aso(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'ASO adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'aso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_aso_list(request, funcionario)
@@ -163,7 +171,12 @@ def modal_editar_aso(request, pk, aso_id):
         form = ASOFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'ASO atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'aso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_aso_list(request, funcionario)
@@ -200,8 +213,14 @@ def modal_excluir_aso(request, pk, aso_id):
     )
 
     if request.method == "POST":
+        aid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'ASO excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'aso_id': aid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_aso_list(request, funcionario)
@@ -261,6 +280,12 @@ def modal_adicionar_certificado(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Certificado adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'certificado_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_certificados_list(request, funcionario)
@@ -300,7 +325,12 @@ def modal_editar_certificado(request, pk, certificado_id):
         form = CertificadoFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Certificado atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'certificado_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_certificados_list(request, funcionario)
@@ -337,8 +367,14 @@ def modal_excluir_certificado(request, pk, certificado_id):
     )
 
     if request.method == "POST":
+        cid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Certificado excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'certificado_id': cid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_certificados_list(request, funcionario)
@@ -398,6 +434,12 @@ def modal_adicionar_pcmso(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'PCMSO adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'pcmso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_pcmso_list(request, funcionario)
@@ -437,7 +479,12 @@ def modal_editar_pcmso(request, pk, pcmso_id):
         form = PCMSOFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'PCMSO atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'pcmso_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_pcmso_list(request, funcionario)
@@ -474,8 +521,14 @@ def modal_excluir_pcmso(request, pk, pcmso_id):
     )
 
     if request.method == "POST":
+        pid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'PCMSO excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'pcmso_id': pid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_pcmso_list(request, funcionario)
@@ -535,6 +588,12 @@ def modal_adicionar_atestado_licenca(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Atestado/licença adicionado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'atestado_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_atestados_licencas_list(request, funcionario)
@@ -574,7 +633,12 @@ def modal_editar_atestado_licenca(request, pk, atestado_id):
         form = AtestadoLicencaFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Atestado/licença atualizado — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'atestado_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_atestados_licencas_list(request, funcionario)
@@ -611,8 +675,14 @@ def modal_excluir_atestado_licenca(request, pk, atestado_id):
     )
 
     if request.method == "POST":
+        aid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Atestado/licença excluído — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'atestado_id': aid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_atestados_licencas_list(request, funcionario)
@@ -672,6 +742,12 @@ def modal_adicionar_ocorrencia_saude(request, pk):
             item.funcionario = funcionario
             item.save()
 
+            audit_rh(
+                request,
+                'create',
+                f'Ocorrência de saúde adicionada — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'ocorrencia_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_ocorrencias_saude_list(request, funcionario)
@@ -711,7 +787,12 @@ def modal_editar_ocorrencia_saude(request, pk, ocorrencia_id):
         form = OcorrenciaSaudeFuncionarioForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-
+            audit_rh(
+                request,
+                'update',
+                f'Ocorrência de saúde atualizada — {funcionario.nome}.',
+                {'funcionario_id': funcionario.pk, 'ocorrencia_id': item.pk},
+            )
             funcionario.refresh_from_db()
 
             response = _render_ocorrencias_saude_list(request, funcionario)
@@ -748,8 +829,14 @@ def modal_excluir_ocorrencia_saude(request, pk, ocorrencia_id):
     )
 
     if request.method == "POST":
+        oid = item.pk
         item.delete()
-
+        audit_rh(
+            request,
+            'delete',
+            f'Ocorrência de saúde excluída — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk, 'ocorrencia_id': oid},
+        )
         funcionario.refresh_from_db()
 
         response = _render_ocorrencias_saude_list(request, funcionario)
