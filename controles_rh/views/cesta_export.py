@@ -3,7 +3,9 @@ from io import BytesIO
 from xml.sax.saxutils import escape as xml_escape
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.http import Http404, HttpResponse
 from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -11,6 +13,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from controles_rh.models import CestaBasicaItem
 from controles_rh.views.cesta_basica import _get_lista_cesta_empresa
 
 
@@ -66,6 +69,28 @@ def _data_rodape_pt(lista):
     return '___ DE ______________ DE ______'
 
 
+def _data_texto_rodape_de_date(d):
+    """Formata uma data (date) como no rodapé do recibo (ex.: 05 DE ABRIL DE 2026)."""
+    if not d:
+        return None
+    return f'{d.day:02d} DE {_mes_nome_pt(d.month).upper()} DE {d.year}'
+
+
+def _rodape_data_recibo_pdf(lista, items):
+    """
+    Data exibida no rodapé do recibo em PDF.
+    Recibo com uma linha: usa a mesma data da coluna «Data recebimento» (item.data_recebimento).
+    Recibo com várias linhas: mantém a data da lista (data_emissao_recibo) ou placeholder.
+    """
+    items = list(items) if items is not None else []
+    if len(items) == 1:
+        dr = getattr(items[0], 'data_recebimento', None)
+        texto = _data_texto_rodape_de_date(dr)
+        if texto:
+            return texto
+    return _data_rodape_pt(lista)
+
+
 def _cell_styles_base(styles):
     cell_txt = ParagraphStyle(
         'cb_cell_txt',
@@ -111,12 +136,76 @@ def _table_style_base(last_idx):
     return pdf_style
 
 
-@login_required
-def exportar_cesta_basica_pdf_recibo(request, pk):
+def cesta_basica_item_para_linha_vt(vt_item):
     """
-    PDF para impressão do recibo: colunas até assinatura (espaço em branco), sem data.
+    Encontra a linha de Cesta Básica na mesma competência do VT (por funcionário ou nome).
+    Se houver várias listas, usa a primeira linha encontrada (ordem de lista).
     """
-    lista = _get_lista_cesta_empresa(request, pk)
+    competencia = vt_item.tabela.competencia
+    qs = CestaBasicaItem.objects.filter(lista__competencia=competencia).select_related(
+        'funcionario', 'lista'
+    )
+    if vt_item.funcionario_id:
+        return qs.filter(funcionario_id=vt_item.funcionario_id).order_by('lista_id', 'id').first()
+    nome = (vt_item.nome or '').strip() or (vt_item.nome_exibicao or '').strip()
+    if not nome:
+        return None
+    return qs.filter(
+        Q(nome__iexact=nome) | Q(funcionario__nome__iexact=nome)
+    ).order_by('lista_id', 'id').first()
+
+
+def vt_recibo_cesta_sets_por_recebimento(tabela, itens_list):
+    """
+    Para a planilha VT: duas classes de linhas com correspondência na Cesta Básica
+    (mesma competência, mesmo critério de `cesta_basica_item_para_linha_vt`).
+
+    Retorna (pks_recebido, pks_nao_recebido):
+    - pks_recebido: pode imprimir o recibo individual (botão azul).
+    - pks_nao_recebido: tem linha na CB mas ainda não recebeu (botão desabilitado).
+    Linhas sem correspondência na CB não entram em nenhum dos conjuntos.
+    """
+    comp = tabela.competencia
+    cesta_items = list(
+        CestaBasicaItem.objects.filter(lista__competencia=comp)
+        .select_related('funcionario')
+        .order_by('lista_id', 'id')
+    )
+    by_func = {}
+    by_name = {}
+    for ci in cesta_items:
+        if ci.funcionario_id and ci.funcionario_id not in by_func:
+            by_func[ci.funcionario_id] = ci
+        nome = (ci.nome or '').strip()
+        if not nome and ci.funcionario_id:
+            nome = (ci.funcionario.nome or '').strip()
+        key = nome.lower() if nome else ''
+        if key and key not in by_name:
+            by_name[key] = ci
+    recebido_ok = set()
+    pendente = set()
+    for vt in itens_list:
+        ci = None
+        if vt.funcionario_id and vt.funcionario_id in by_func:
+            ci = by_func[vt.funcionario_id]
+        else:
+            nome = (vt.nome or '').strip() or (vt.nome_exibicao or '').strip()
+            if nome and nome.lower() in by_name:
+                ci = by_name[nome.lower()]
+        if not ci:
+            continue
+        if ci.recebido:
+            recebido_ok.add(vt.pk)
+        else:
+            pendente.add(vt.pk)
+    return recebido_ok, pendente
+
+
+def _http_response_pdf_recibo_cesta(lista, items, *, filename_label=None):
+    """
+    Gera o PDF de recibo (modelo colunas + declaração) para as linhas informadas.
+    filename_label: parte do nome do arquivo; default = nome da lista.
+    """
     comp = lista.competencia
     empresa = comp.empresa
 
@@ -149,7 +238,7 @@ def exportar_cesta_basica_pdf_recibo(request, pk):
     headers = ['№', 'EMPREGADO', 'FUNÇÃO', 'LOTAÇÃO', 'ASSINATURA']
 
     data_rows = [headers]
-    for n, item in enumerate(_itens_export(lista), start=1):
+    for n, item in enumerate(items, start=1):
         nome_txt = (item.nome_exibicao or '').strip() or '—'
         funcao_txt = (item.funcao or '').strip() or '—'
         lot_txt = (item.lotacao or '').strip() or '—'
@@ -194,7 +283,7 @@ def exportar_cesta_basica_pdf_recibo(request, pk):
 
     decl = _texto_declaracao_padrao(lista)
     local_txt = (lista.local_emissao or 'PARNAMIRIM - RN').strip()
-    rodape_data = f'{_data_rodape_pt(lista)}, {xml_escape(local_txt)}.'
+    rodape_data = f'{_rodape_data_recibo_pdf(lista, items)}, {xml_escape(local_txt)}.'
 
     rodape_style = ParagraphStyle(
         'cb_rod',
@@ -212,13 +301,75 @@ def exportar_cesta_basica_pdf_recibo(request, pk):
     doc.build(story)
     buf.seek(0)
 
-    name = _safe_filename_part(lista.nome_exibicao)
+    label = filename_label if filename_label is not None else lista.nome_exibicao
+    name = _safe_filename_part(label)
     ref = f'{comp.mes:02d}_{comp.ano}'
     filename = f'CestaBasica_Recibo_{name}_{ref}.pdf'
 
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
+
+
+@login_required
+def exportar_cesta_basica_pdf_recibo(request, pk):
+    """
+    PDF para impressão do recibo: colunas até assinatura (espaço em branco), sem data.
+    """
+    lista = _get_lista_cesta_empresa(request, pk)
+    items = list(_itens_export(lista))
+    return _http_response_pdf_recibo_cesta(lista, items)
+
+
+@login_required
+def exportar_recibo_cesta_individual_por_vt_item(request, vt_item_pk):
+    """
+    Recibo de Cesta Básica com uma única linha, a partir da linha do VT correspondente
+    (mesmo funcionário ou mesmo nome na competência).
+    """
+    from controles_rh.views.vale_transporte import _get_item_vt_empresa
+
+    vt_item = _get_item_vt_empresa(request, vt_item_pk)
+    cesta_item = cesta_basica_item_para_linha_vt(vt_item)
+    if not cesta_item:
+        raise Http404(
+            'Não há linha correspondente na Cesta Básica desta competência. '
+            'Inclua o empregado em uma lista de Cesta Básica.'
+        )
+    if not cesta_item.recebido:
+        raise PermissionDenied(
+            'O recibo individual só pode ser impresso depois de marcar '
+            '"Recebeu" na Cesta Básica para este empregado.'
+        )
+    lista = cesta_item.lista
+    _get_lista_cesta_empresa(request, lista.pk)
+    return _http_response_pdf_recibo_cesta(
+        lista,
+        [cesta_item],
+        filename_label=cesta_item.nome_exibicao,
+    )
+
+
+@login_required
+def exportar_recibo_cesta_individual_por_item(request, pk):
+    """
+    Recibo de Cesta Básica com uma única linha, a partir do item da própria lista (tela Cesta Básica).
+    """
+    from controles_rh.views.cesta_basica import _get_item_cesta_empresa
+
+    item = _get_item_cesta_empresa(request, pk)
+    if not item.recebido:
+        raise PermissionDenied(
+            'O recibo individual só pode ser impresso depois de marcar '
+            '"Recebeu" para esta linha.'
+        )
+    lista = item.lista
+    _get_lista_cesta_empresa(request, lista.pk)
+    return _http_response_pdf_recibo_cesta(
+        lista,
+        [item],
+        filename_label=item.nome_exibicao,
+    )
 
 
 @login_required

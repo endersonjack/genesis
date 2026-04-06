@@ -209,6 +209,13 @@
         text-align: center;
     }
 
+    .vt-table th.col-recibo-cesta,
+    .vt-table td.col-recibo-cesta {
+        width: 96px;
+        min-width: 88px;
+        text-align: center;
+    }
+
     .vt-drag-handle {
         cursor: grab;
         color: #94a3b8;
@@ -294,25 +301,43 @@
                     <i class="bi bi-file-earmark-bar-graph me-1"></i> Exportar PDF Relatório
                 </a>
 
-                <button
-                    type="button"
-                    class="btn btn-outline-primary"
-                    hx-get="{% url 'controles_rh:editar_cesta_basica_lista' lista.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-pencil-square me-1"></i> Recibo
-                </button>
-
-                <button
-                    type="button"
-                    class="btn btn-outline-danger"
-                    hx-get="{% url 'controles_rh:excluir_cesta_basica_lista' lista.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-trash me-1"></i> Excluir
-                </button>
+                <div class="dropdown">
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary px-2"
+                        id="cb-dropdown-config"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Configurações da lista de Cesta Básica"
+                        title="Configurações">
+                        <i class="bi bi-gear fs-5"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="cb-dropdown-config">
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item"
+                                hx-get="{% url 'controles_rh:editar_cesta_basica_lista' lista.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-pencil-square me-2 text-primary"></i> Editar Dados Recibo Geral
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                hx-get="{% url 'controles_rh:excluir_cesta_basica_lista' lista.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-trash me-2"></i> Excluir Controle de Cesta Básica
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -421,6 +446,10 @@
                                     <span class="th-label">Data recebimento</span>
                                     <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
                                 </th>
+                                <th class="col-recibo-cesta" data-col-idx="8">
+                                    <span class="th-label">Recibo</span>
+                                    <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="cb-sortable-tbody">
@@ -468,6 +497,28 @@
                                             {{ item.data_recebimento|date:"d/m/Y" }}
                                         {% else %}
                                             —
+                                        {% endif %}
+                                    </td>
+                                    <td class="col-recibo-cesta" onclick="event.stopPropagation()">
+                                        {% if item.ativo %}
+                                            {% if item.recebido %}
+                                                <a href="{{ item.recibo_item_url }}"
+                                                   class="btn btn-primary btn-sm py-0 px-2"
+                                                   title="Abrir PDF — recibo individual"
+                                                   target="_blank"
+                                                   rel="noopener">
+                                                    <i class="bi bi-basket"></i>
+                                                </a>
+                                            {% else %}
+                                                <button type="button"
+                                                        class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                        disabled
+                                                        title="Marque &quot;Recebeu&quot; antes de imprimir o recibo">
+                                                    <i class="bi bi-basket"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted small">—</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -711,7 +762,7 @@
 
     if (tbody) {
         tbody.addEventListener('click', function (e) {
-            if (e.target.closest('.vt-drag-handle, .col-drag, .cb-col-recebido, input[type="checkbox"]')) {
+            if (e.target.closest('.vt-drag-handle, .col-drag, .cb-col-recebido, .col-recibo-cesta, input[type="checkbox"]')) {
                 return;
             }
             var tr = e.target.closest('tr[data-cb-edit-url]');

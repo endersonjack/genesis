@@ -36,6 +36,8 @@ from controles_rh.views.cesta_export import (
     exportar_cesta_basica_pdf,
     exportar_cesta_basica_pdf_recibo,
     exportar_cesta_basica_pdf_relatorio,
+    exportar_recibo_cesta_individual_por_item,
+    exportar_recibo_cesta_individual_por_vt_item,
 )
 from controles_rh.views.vt_export import exportar_tabela_vt_pdf, exportar_tabela_vt_xlsx
 
@@ -65,6 +67,11 @@ urlpatterns = [
     path('vt/itens/<int:pk>/editar/', editar_item_vt, name='editar_item_vt'),
     path('vt/itens/<int:pk>/pagamento/', modal_pagamento_item_vt, name='modal_pagamento_item_vt'),
     path('vt/itens/<int:pk>/excluir/', excluir_item_vt, name='excluir_item_vt'),
+    path(
+        'vt/itens/<int:vt_item_pk>/recebimento-cesta/recibo/',
+        exportar_recibo_cesta_individual_por_vt_item,
+        name='exportar_recibo_cesta_individual_vt',
+    ),
 
     path('competencias/<int:competencia_pk>/cesta-basica/nova/', criar_cesta_basica, name='criar_cesta_basica'),
     path('cesta-basica/<int:pk>/', detalhe_cesta_basica, name='detalhe_cesta_basica'),
@@ -98,6 +105,11 @@ urlpatterns = [
         'cesta-basica/itens/<int:pk>/recebido/',
         definir_recebido_item_cesta_basica,
         name='definir_recebido_item_cesta',
+    ),
+    path(
+        'cesta-basica/itens/<int:pk>/recibo/pdf/',
+        exportar_recibo_cesta_individual_por_item,
+        name='exportar_recibo_cesta_individual_item',
     ),
     path('cesta-basica/itens/<int:pk>/excluir/', excluir_item_cesta_basica, name='excluir_item_cesta_basica'),
 

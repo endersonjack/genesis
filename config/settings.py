@@ -128,9 +128,10 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Arquivos de mídia
+# Arquivos de mídia (MEDIA_ROOT pode apontar para volume montado no Railway, ex.: /data/media)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 
 # Modelos e autenticação
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

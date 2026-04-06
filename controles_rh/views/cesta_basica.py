@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -31,6 +31,15 @@ def _get_lista_cesta_empresa(request, pk):
     else:
         qs = qs.none()
     return get_object_or_404(qs, pk=pk)
+
+
+def _url_recibo_individual_item(request, item_pk):
+    """URL do PDF de recibo individual; fallback se o nome da rota ainda não estiver carregado."""
+    try:
+        return reverse('controles_rh:exportar_recibo_cesta_individual_item', args=[item_pk])
+    except NoReverseMatch:
+        prefix = (getattr(request, 'script_name', None) or '').rstrip('/')
+        return f'{prefix}/rh/gestao/cesta-basica/itens/{item_pk}/recibo/pdf/'
 
 
 def _get_item_cesta_empresa(request, pk):
@@ -61,14 +70,17 @@ def criar_cesta_basica(request, competencia_pk):
 @login_required
 def detalhe_cesta_basica(request, pk):
     lista = _get_lista_cesta_empresa(request, pk)
-    itens = lista.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
-    ativos = itens.filter(ativo=True)
+    itens_qs = lista.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+    ativos = itens_qs.filter(ativo=True)
+    itens = list(itens_qs)
+    for item in itens:
+        item.recibo_item_url = _url_recibo_individual_item(request, item.pk)
     context = {
         'page_title': f'Cesta Básica — {lista.competencia.referencia}',
         'lista': lista,
         'competencia': lista.competencia,
         'itens': itens,
-        'total_itens': itens.count(),
+        'total_itens': len(itens),
         'total_ativos': ativos.count(),
         'total_recebidos': ativos.filter(recebido=True).count(),
     }

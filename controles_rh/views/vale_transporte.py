@@ -154,6 +154,12 @@ def detalhe_tabela_vt(request, pk):
     tabela = _get_tabela_vt_empresa(request, pk)
 
     itens = tabela.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+    itens_list = list(itens)
+    from controles_rh.views.cesta_export import vt_recibo_cesta_sets_por_recebimento
+
+    vt_recibo_cesta_recebido, vt_recibo_cesta_pendente = vt_recibo_cesta_sets_por_recebimento(
+        tabela, itens_list
+    )
 
     total_valor_pago = _total_valor_pago_tabela(tabela)
     total_a_pagar = tabela.total_valor
@@ -166,6 +172,8 @@ def detalhe_tabela_vt(request, pk):
         'tabela': tabela,
         'competencia': tabela.competencia,
         'itens': itens,
+        'vt_recibo_cesta_recebido': vt_recibo_cesta_recebido,
+        'vt_recibo_cesta_pendente': vt_recibo_cesta_pendente,
         'total_itens': itens.count(),
         'total_valor': total_a_pagar,
         'total_valor_pago': total_valor_pago,

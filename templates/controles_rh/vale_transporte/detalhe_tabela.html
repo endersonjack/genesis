@@ -248,6 +248,12 @@
     .vt-table td.col-tipo { width: 110px; }
     .vt-table th.col-banco,
     .vt-table td.col-banco { width: 120px; }
+    .vt-table th.col-recibo-cesta,
+    .vt-table td.col-recibo-cesta {
+        width: 96px;
+        min-width: 88px;
+        text-align: center;
+    }
 
     .vt-table tbody tr.vt-row-clickable {
         cursor: pointer;
@@ -506,6 +512,10 @@
                                 <span class="th-label">Banco</span>
                                 <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
                             </th>
+                            <th class="col-recibo-cesta" data-col-idx="13">
+                                <span class="th-label">Recibo Cesta</span>
+                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="vt-sortable-tbody">
@@ -585,6 +595,26 @@
                                 </td>
                                 <td class="col-banco ellipsis-cell" title="{{ item.banco|default:'-' }}">
                                     {{ item.banco|default:"-" }}
+                                </td>
+                                <td class="col-recibo-cesta text-center" onclick="event.stopPropagation()">
+                                    {% if item.pk in vt_recibo_cesta_recebido %}
+                                        <a href="{% url 'controles_rh:exportar_recibo_cesta_individual_vt' item.pk %}"
+                                           class="btn btn-primary btn-sm py-0 px-2"
+                                           title="Abrir PDF — recibo individual de Cesta Básica"
+                                           target="_blank"
+                                           rel="noopener">
+                                            <i class="bi bi-basket"></i>
+                                        </a>
+                                    {% elif item.pk in vt_recibo_cesta_pendente %}
+                                        <button type="button"
+                                                class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                                disabled
+                                                title="Marque &quot;Recebeu&quot; na Cesta Básica antes de imprimir o recibo">
+                                            <i class="bi bi-basket"></i>
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted small" title="Inclua o empregado na lista de Cesta Básica desta competência">—</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}
@@ -837,7 +867,7 @@
     if (tbody) {
         /* Clique na linha abre "Editar linha" — sem hx na <tr> para não conflitar com o lápis de valor (htmx na linha disparava os dois modais) */
         tbody.addEventListener('click', function (e) {
-            if (e.target.closest('.btn-pago-edit, .btn-pix-copy, .vt-drag-handle, .col-drag')) {
+            if (e.target.closest('.btn-pago-edit, .btn-pix-copy, .vt-drag-handle, .col-drag, .col-recibo-cesta')) {
                 return;
             }
             var tr = e.target.closest('tr[data-vt-edit-url]');
