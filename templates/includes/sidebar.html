@@ -31,12 +31,13 @@
             <nav class="menu-section">
                 <p class="menu-title">Principal</p>
 
-                <a href="{% url 'dashboard_home' %}" class="menu-link {% if request.path == '/' %}active{% endif %}">
+                {% if request.empresa_ativa %}
+                <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
                     <i class="bi bi-speedometer2"></i>
                     <span>Dashboard</span>
                 </a>
 
-                <a href="{% url 'rh:dashboard_rh' %}" class="menu-link {% if '/rh/' in request.path %}active{% endif %}">
+                <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/rh/' in request.path and '/rh/gestao/' not in request.path %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>RH</span>
                 </a>
@@ -50,6 +51,7 @@
                     <i class="bi bi-box-seam"></i>
                     <span>Estoque</span>
                 </a>
+                {% endif %}
             </nav>
         </div>
 
@@ -63,7 +65,7 @@
                 </a>
 
                 {% if request.empresa_ativa %}
-                    <a href="{% url 'local:lista' %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
+                    <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
                         <i class="bi bi-geo-alt"></i>
                         <span>Locais</span>
                     </a>
@@ -77,7 +79,7 @@
                 {% endif %}
 
                 {% if request.empresa_ativa %}
-                    <a href="{% url 'empresa_preferencias' %}" class="menu-link {% if '/empresa/preferencias' in request.path %}active{% endif %}">
+                    <a href="{% url 'empresa_preferencias' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/preferencias/' in request.path %}active{% endif %}">
                         <i class="bi bi-sliders"></i>
                         <span>Preferências</span>
                     </a>

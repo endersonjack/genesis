@@ -9,7 +9,7 @@
 <form
     method="post"
     class="section-modal-form"
-    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_afastamento' funcionario.pk item.pk %}{% else %}{% url 'rh:modal_adicionar_afastamento' funcionario.pk %}{% endif %}"
+    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_afastamento' empresa_id=request.empresa_ativa.pk pk=funcionario.pk afastamento_id=item.pk %}{% else %}{% url 'rh:modal_adicionar_afastamento' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}{% endif %}"
     hx-target="#afastamentos-lista"
     hx-swap="innerHTML">
     {% csrf_token %}

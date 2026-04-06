@@ -11,7 +11,7 @@
                 <button
                     type="button"
                     class="btn btn-light btn-sm"
-                    hx-get="{% url 'rh:modal_editar_admissao' funcionario.pk %}"
+                    hx-get="{% url 'rh:modal_editar_admissao' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML">
                     <i class="bi bi-pencil-square me-1"></i> Editar seção

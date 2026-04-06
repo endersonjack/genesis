@@ -182,9 +182,9 @@
         </div>
 
         <div class="top-actions">
-            <a href="{% url 'controles_rh:home' %}"
+            <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
                class="btn btn-outline-secondary"
-               hx-get="{% url 'controles_rh:home' %}"
+               hx-get="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
                hx-target="body"
                hx-swap="innerHTML"
                hx-push-url="true">
@@ -194,7 +194,7 @@
             <button
                 type="button"
                 class="btn btn-primary"
-                hx-get="{% url 'controles_rh:criar_competencia' %}"
+                hx-get="{% url 'controles_rh:criar_competencia' empresa_id=request.empresa_ativa.pk %}"
                 hx-target="#modal-content"
                 hx-swap="innerHTML"
                 data-bs-toggle="modal"
@@ -212,7 +212,7 @@
     <div class="card-body-soft">
         <form method="get"
               class="row g-3 align-items-end"
-              hx-get="{% url 'controles_rh:lista_competencias' %}"
+              hx-get="{% url 'controles_rh:lista_competencias' empresa_id=request.empresa_ativa.pk %}"
               hx-target="body"
               hx-swap="innerHTML"
               hx-push-url="true"
@@ -247,9 +247,9 @@
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-search me-1"></i> Filtrar
                 </button>
-                <a href="{% url 'controles_rh:lista_competencias' %}"
+                <a href="{% url 'controles_rh:lista_competencias' empresa_id=request.empresa_ativa.pk %}"
                    class="btn btn-outline-secondary"
-                   hx-get="{% url 'controles_rh:lista_competencias' %}"
+                   hx-get="{% url 'controles_rh:lista_competencias' empresa_id=request.empresa_ativa.pk %}"
                    hx-target="body"
                    hx-swap="innerHTML"
                    hx-push-url="true"
@@ -270,9 +270,9 @@
         {% if competencias %}
             <div class="competencia-grid">
                 {% for competencia in competencias %}
-                    <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                    <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                        class="competencia-card"
-                       hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                       hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                        hx-target="body"
                        hx-swap="innerHTML"
                        hx-push-url="true">
@@ -325,7 +325,7 @@
                 <button
                     type="button"
                     class="btn btn-primary"
-                    hx-get="{% url 'controles_rh:criar_competencia' %}"
+                    hx-get="{% url 'controles_rh:criar_competencia' empresa_id=request.empresa_ativa.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
                     data-bs-toggle="modal"

@@ -313,21 +313,21 @@
             </div>
 
             <div class="summary-actions">
-                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                    class="btn btn-outline-secondary"
-                   hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                    hx-target="body"
                    hx-swap="innerHTML"
                    hx-push-url="true">
                     <i class="bi bi-arrow-left me-1"></i> Voltar
                 </a>
 
-                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_recibo' lista.pk %}"
+                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_recibo' empresa_id=request.empresa_ativa.pk pk=lista.pk %}"
                    class="btn btn-outline-danger"
                    target="_blank" rel="noopener">
                     <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF Recibo
                 </a>
-                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_relatorio' lista.pk %}"
+                <a href="{% url 'controles_rh:exportar_cesta_basica_pdf_relatorio' empresa_id=request.empresa_ativa.pk pk=lista.pk %}"
                    class="btn btn-outline-success"
                    target="_blank" rel="noopener">
                     <i class="bi bi-file-earmark-bar-graph me-1"></i> Exportar PDF Relatório
@@ -349,7 +349,7 @@
                             <button
                                 type="button"
                                 class="dropdown-item"
-                                hx-get="{% url 'controles_rh:editar_cesta_basica_lista' lista.pk %}"
+                                hx-get="{% url 'controles_rh:editar_cesta_basica_lista' empresa_id=request.empresa_ativa.pk pk=lista.pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -361,7 +361,7 @@
                             <button
                                 type="button"
                                 class="dropdown-item text-danger"
-                                hx-get="{% url 'controles_rh:excluir_cesta_basica_lista' lista.pk %}"
+                                hx-get="{% url 'controles_rh:excluir_cesta_basica_lista' empresa_id=request.empresa_ativa.pk pk=lista.pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -410,7 +410,7 @@
             <button
                 type="button"
                 class="btn btn-primary btn-sm"
-                hx-get="{% url 'controles_rh:adicionar_item_cesta_basica' lista.pk %}"
+                hx-get="{% url 'controles_rh:adicionar_item_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}"
                 hx-target="#modal-content"
                 hx-swap="innerHTML"
                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -419,7 +419,7 @@
             <button
                 type="button"
                 class="btn btn-outline-success btn-sm"
-                hx-post="{% url 'controles_rh:receber_todos_cesta_basica' lista.pk %}"
+                hx-post="{% url 'controles_rh:receber_todos_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}"
                 hx-confirm="Marcar todas as linhas como recebidas com a data de hoje?"
                 hx-swap="none">
                 Receber Todos
@@ -427,7 +427,7 @@
             <button
                 type="button"
                 class="btn btn-outline-warning btn-sm"
-                hx-post="{% url 'controles_rh:limpar_recebido_cesta_basica' lista.pk %}"
+                hx-post="{% url 'controles_rh:limpar_recebido_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}"
                 hx-confirm="Limpar todas as marcações &quot;Recebeu&quot; e as datas de recebimento nesta lista?"
                 hx-swap="none">
                 Limpar Recebeu
@@ -489,7 +489,7 @@
                                 <tr
                                     class="vt-row-clickable{% if not item.ativo %} table-secondary{% endif %}"
                                     data-item-id="{{ item.pk }}"
-                                    data-cb-edit-url="{% url 'controles_rh:editar_item_cesta_basica' item.pk %}"
+                                    data-cb-edit-url="{% url 'controles_rh:editar_item_cesta_basica' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                                     role="button"
                                     tabindex="0"
                                     title="Clique para editar esta linha">
@@ -515,7 +515,7 @@
                                                 class="form-check-input m-0"
                                                 {% if item.recebido %}checked{% endif %}
                                                 title="Cesta entregue"
-                                                hx-post="{% url 'controles_rh:definir_recebido_item_cesta' item.pk %}"
+                                                hx-post="{% url 'controles_rh:definir_recebido_item_cesta' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                                                 hx-trigger="change"
                                                 hx-vals="js:{recebido: event.target.checked}"
                                                 hx-include="#cb-htmx-csrf"
@@ -600,7 +600,7 @@
     const listaId = table && table.dataset.listaId;
     /* v2: não mistura larguras salvas com #/arraste (antes herdavam espaço extra) */
     const storageKey = listaId ? ('cb-col-widths-v2-' + listaId) : null;
-    const reorderUrl = "{% url 'controles_rh:reordenar_itens_cesta_basica' lista.pk %}";
+    const reorderUrl = "{% url 'controles_rh:reordenar_itens_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}";
     const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
     const csrfToken = csrfInput ? csrfInput.value : '';
 

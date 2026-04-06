@@ -8,8 +8,9 @@ from django.db import transaction
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views.decorators.http import require_POST
+
+from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.models import Competencia, ValeTransporteItem, ValeTransporteTabela
 from rh.models import Funcionario
@@ -212,12 +213,14 @@ def criar_tabela_vt(request, competencia_pk):
 
     if request.method == 'GET':
         if not criacao_modo_ctx:
-            return redirect(
+            return redirect_empresa(
+                request,
                 'controles_rh:modal_opcoes_criar_tabela_vt',
                 competencia_pk=competencia_pk,
             )
         if criacao_modo_ctx not in ('vazio', 'funcionarios', 'clonar'):
-            return redirect(
+            return redirect_empresa(
+                request,
                 'controles_rh:modal_opcoes_criar_tabela_vt',
                 competencia_pk=competencia_pk,
             )
@@ -228,7 +231,8 @@ def criar_tabela_vt(request, competencia_pk):
                     request,
                     'Não há tabela de VT na competência anterior para clonar.',
                 )
-                return redirect(
+                return redirect_empresa(
+                    request,
                     'controles_rh:modal_opcoes_criar_tabela_vt',
                     competencia_pk=competencia_pk,
                 )
@@ -295,12 +299,16 @@ def criar_tabela_vt(request, competencia_pk):
             if _is_htmx(request):
                 # HX-Redirect (200) é o padrão já usado em excluir_tabela_vt; 204 + HX-Refresh
                 # falhou em alguns fluxos (página não atualizava após salvar).
-                url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela.pk})
+                url = reverse_empresa(
+                    request,
+                    'controles_rh:detalhe_tabela_vt',
+                    kwargs={'pk': tabela.pk},
+                )
                 response = HttpResponse(status=200)
                 response['HX-Redirect'] = url
                 return response
 
-            return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
         messages.error(request, 'Não foi possível criar a tabela de VT. Revise os campos.')
 
@@ -362,12 +370,16 @@ def editar_tabela_vt(request, pk):
             messages.success(request, f'Tabela "{tabela.nome}" atualizada com sucesso.')
 
             if _is_htmx(request):
-                url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela.pk})
+                url = reverse_empresa(
+                    request,
+                    'controles_rh:detalhe_tabela_vt',
+                    kwargs={'pk': tabela.pk},
+                )
                 response = HttpResponse(status=200)
                 response['HX-Redirect'] = url
                 return response
 
-            return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
         messages.error(request, 'Não foi possível atualizar a tabela de VT.')
 
@@ -383,7 +395,7 @@ def editar_tabela_vt(request, pk):
 @login_required
 def excluir_tabela_vt_legacy_redirect(request, pk):
     """Compatibilidade: antiga URL `vt/<pk>/excluir/` → `vt/tabela/<pk>/excluir/`."""
-    return redirect(reverse('controles_rh:excluir_tabela_vt', kwargs={'pk': pk}))
+    return redirect_empresa(request, 'controles_rh:excluir_tabela_vt', pk=pk)
 
 
 @login_required
@@ -400,7 +412,8 @@ def excluir_tabela_vt(request, pk):
 
         messages.success(request, f'Tabela "{nome}" excluída com sucesso.')
 
-        url_comp = reverse(
+        url_comp = reverse_empresa(
+            request,
             'controles_rh:detalhe_competencia',
             kwargs={'ano': competencia.ano, 'mes': competencia.mes},
         )
@@ -493,7 +506,7 @@ def adicionar_item_vt(request, tabela_pk):
                 response['HX-Refresh'] = 'true'
                 return response
 
-            return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
         messages.error(request, 'Não foi possível adicionar a linha.')
 
@@ -531,7 +544,7 @@ def editar_item_vt(request, pk):
                 response['HX-Refresh'] = 'true'
                 return response
 
-            return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
         messages.error(request, 'Não foi possível atualizar a linha.')
 
@@ -566,7 +579,7 @@ def modal_pagamento_item_vt(request, pk):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
-            return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
         messages.error(request, 'Revise os valores informados.')
 
     context = {
@@ -594,12 +607,16 @@ def excluir_item_vt(request, pk):
         messages.success(request, f'Linha "{nome}" excluída com sucesso.')
 
         if _is_htmx(request):
-            url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela_pk})
+            url = reverse_empresa(
+                request,
+                'controles_rh:detalhe_tabela_vt',
+                kwargs={'pk': tabela_pk},
+            )
             response = HttpResponse(status=200)
             response['HX-Redirect'] = url
             return response
 
-        return redirect('controles_rh:detalhe_tabela_vt', pk=tabela_pk)
+        return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela_pk)
 
     context = {
         'item': item,

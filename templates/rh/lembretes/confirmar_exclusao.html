@@ -11,7 +11,7 @@
             <form method="post">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Excluir</button>
-                <a href="{% url 'rh:calendario_rh' %}" class="btn btn-outline-secondary">Cancelar</a>
+                <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">Cancelar</a>
             </form>
         </div>
     </div>

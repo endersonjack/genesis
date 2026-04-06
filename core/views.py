@@ -1,7 +1,18 @@
 from django.contrib import messages as django_messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.template.loader import render_to_string
+
+
+@login_required
+def home_root_redirect(request):
+    """Raiz `/`: envia para o dashboard da empresa na sessão ou para seleção."""
+    empresa_id = request.session.get('empresa_id')
+    if empresa_id:
+        return redirect('dashboard_home', empresa_id=empresa_id)
+    return redirect('selecionar_empresa')
 
 
 def genesis_messages_toasts(request):

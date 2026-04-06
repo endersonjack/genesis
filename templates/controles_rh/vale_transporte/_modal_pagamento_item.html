@@ -5,8 +5,8 @@
 
 <form
     method="post"
-    action="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
-    hx-post="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
+    action="{% url 'controles_rh:modal_pagamento_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+    hx-post="{% url 'controles_rh:modal_pagamento_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
     hx-target="#modal-pagamento-vt-content"
     hx-swap="innerHTML">
     {% csrf_token %}

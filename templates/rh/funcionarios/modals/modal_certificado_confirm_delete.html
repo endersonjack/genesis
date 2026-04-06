@@ -9,7 +9,7 @@
 <form
     method="post"
     class="section-modal-form compact"
-    hx-post="{% url 'rh:modal_excluir_certificado' funcionario.pk item.pk %}"
+    hx-post="{% url 'rh:modal_excluir_certificado' empresa_id=request.empresa_ativa.pk pk=funcionario.pk certificado_id=item.pk %}"
     hx-target="#certificados-lista"
     hx-swap="innerHTML">
     {% csrf_token %}

@@ -5,7 +5,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
+    hx-post="{% url 'controles_rh:excluir_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}

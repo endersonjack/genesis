@@ -1,6 +1,6 @@
 <form 
     method="post"
-    hx-post="{% if lembrete %}{% url 'rh:editar_lembrete_rh' lembrete.pk %}{% else %}{% url 'rh:criar_lembrete_rh' %}{% endif %}"
+    hx-post="{% if lembrete %}{% url 'rh:editar_lembrete_rh' empresa_id=request.empresa_ativa.pk pk=lembrete.pk %}{% else %}{% url 'rh:criar_lembrete_rh' empresa_id=request.empresa_ativa.pk %}{% endif %}"
     hx-target="#lembretes-lista"
     hx-swap="outerHTML"
     hx-on="htmx:afterRequest: window.location.reload()"> 
@@ -67,7 +67,7 @@
 
         {% if lembrete %}
             <button
-                hx-post="{% url 'rh:excluir_lembrete_rh' lembrete.pk %}"
+                hx-post="{% url 'rh:excluir_lembrete_rh' empresa_id=request.empresa_ativa.pk pk=lembrete.pk %}"
                 hx-target="#lembretes-lista"
                 hx-confirm="Deseja excluir este lembrete?"
                 hx-on="htmx:afterRequest: window.location.reload()"

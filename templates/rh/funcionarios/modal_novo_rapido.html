@@ -1,6 +1,6 @@
 <form
     method="post"
-    hx-post="{% url 'rh:modal_novo_funcionario_rapido' %}"
+    hx-post="{% url 'rh:modal_novo_funcionario_rapido' empresa_id=request.empresa_ativa.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
 

@@ -299,7 +299,7 @@
             data-bs-target="#modalLembretes">
             <i class="bi bi-bell me-1"></i> Lembretes
         </button>
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar ao dashboard
         </a>
     </div>
@@ -315,13 +315,13 @@
                 </div>
 
                 <div class="calendar-nav">
-                    <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_anterior }}&ano={{ ano_anterior }}" class="btn btn-outline-secondary">
+                    <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}?mes={{ mes_anterior }}&ano={{ ano_anterior }}" class="btn btn-outline-secondary">
                         <i class="bi bi-chevron-left me-1"></i> Mês anterior
                     </a>
-                    <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_atual }}&ano={{ ano_atual }}" class="btn btn-outline-primary">
+                    <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}?mes={{ mes_atual }}&ano={{ ano_atual }}" class="btn btn-outline-primary">
                         <i class="bi bi-calendar-check me-1"></i> Mês atual
                     </a>
-                    <a href="{% url 'rh:calendario_rh' %}?mes={{ mes_proximo }}&ano={{ ano_proximo }}" class="btn btn-outline-secondary">
+                    <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}?mes={{ mes_proximo }}&ano={{ ano_proximo }}" class="btn btn-outline-secondary">
                         Próximo mês <i class="bi bi-chevron-right ms-1"></i>
                     </a>
                 </div>
@@ -501,7 +501,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <button
                         class="btn btn-primary btn-sm"
-                        hx-get="{% url 'rh:criar_lembrete_rh' %}"
+                        hx-get="{% url 'rh:criar_lembrete_rh' empresa_id=request.empresa_ativa.pk %}"
                         hx-target="#modal-content"
                         data-bs-toggle="modal"
                         data-bs-target="#modalPadrao">

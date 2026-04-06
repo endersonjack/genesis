@@ -3,7 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+
+from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.forms import CompetenciaForm
 from controles_rh.models import CestaBasicaLista, Competencia, ValeTransporteTabela
@@ -109,7 +110,7 @@ def criar_competencia(request):
 
     if not empresa_ativa:
         messages.error(request, 'Selecione uma empresa ativa para criar a competência.')
-        return redirect('controles_rh:home')
+        return redirect_empresa(request, 'controles_rh:home')
 
     form = CompetenciaForm(
         request.POST or None,
@@ -125,7 +126,8 @@ def criar_competencia(request):
             )
 
             if _is_htmx(request):
-                url = reverse(
+                url = reverse_empresa(
+                    request,
                     'controles_rh:detalhe_competencia',
                     kwargs={'ano': competencia.ano, 'mes': competencia.mes},
                 )
@@ -133,10 +135,10 @@ def criar_competencia(request):
                 response['HX-Redirect'] = url
                 return response
 
-            return redirect(
+            return redirect_empresa(
+                request,
                 'controles_rh:detalhe_competencia',
-                ano=competencia.ano,
-                mes=competencia.mes,
+                kwargs={'ano': competencia.ano, 'mes': competencia.mes},
             )
 
         messages.error(request, 'Não foi possível criar a competência. Revise os campos.')
@@ -211,7 +213,8 @@ def editar_competencia(request, pk):
             )
 
             if _is_htmx(request):
-                url = reverse(
+                url = reverse_empresa(
+                    request,
                     'controles_rh:detalhe_competencia',
                     kwargs={'ano': competencia.ano, 'mes': competencia.mes},
                 )
@@ -219,10 +222,10 @@ def editar_competencia(request, pk):
                 response['HX-Redirect'] = url
                 return response
 
-            return redirect(
+            return redirect_empresa(
+                request,
                 'controles_rh:detalhe_competencia',
-                ano=competencia.ano,
-                mes=competencia.mes,
+                kwargs={'ano': competencia.ano, 'mes': competencia.mes},
             )
 
         messages.error(request, 'Não foi possível atualizar a competência. Revise os campos.')
@@ -254,10 +257,10 @@ def excluir_competencia(request, pk):
         if _is_htmx(request):
             # Não usar HX-Refresh: recarregaria a URL atual (ex.: detalhe da competência) e daria 404.
             response = HttpResponse(status=200)
-            response['HX-Redirect'] = reverse('controles_rh:home')
+            response['HX-Redirect'] = reverse_empresa(request, 'controles_rh:home')
             return response
 
-        return redirect('controles_rh:home')
+        return redirect_empresa(request, 'controles_rh:home')
 
     context = {
         'page_title': f'Excluir Competência {competencia.referencia}',

@@ -11,8 +11,8 @@
 
 <form
     method="post"
-    action="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_cesta_basica' item.pk %}{% else %}{% url 'controles_rh:adicionar_item_cesta_basica' lista.pk %}{% endif %}"
-    hx-post="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_cesta_basica' item.pk %}{% else %}{% url 'controles_rh:adicionar_item_cesta_basica' lista.pk %}{% endif %}"
+    action="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_cesta_basica' empresa_id=request.empresa_ativa.pk pk=item.pk %}{% else %}{% url 'controles_rh:adicionar_item_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}{% endif %}"
+    hx-post="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_cesta_basica' empresa_id=request.empresa_ativa.pk pk=item.pk %}{% else %}{% url 'controles_rh:adicionar_item_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}{% endif %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}
@@ -82,7 +82,7 @@
                 <button
                     type="button"
                     class="btn btn-outline-danger"
-                    hx-get="{% url 'controles_rh:excluir_item_cesta_basica' item.pk %}"
+                    hx-get="{% url 'controles_rh:excluir_item_cesta_basica' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML">
                     <i class="bi bi-trash me-1"></i> Excluir linha

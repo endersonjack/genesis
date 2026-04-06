@@ -10,7 +10,7 @@
     method="post"
     enctype="multipart/form-data"
     class="section-modal-form"
-    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_certificado' funcionario.pk item.pk %}{% else %}{% url 'rh:modal_adicionar_certificado' funcionario.pk %}{% endif %}"
+    hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_certificado' empresa_id=request.empresa_ativa.pk pk=funcionario.pk certificado_id=item.pk %}{% else %}{% url 'rh:modal_adicionar_certificado' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}{% endif %}"
     hx-target="#certificados-lista"
     hx-swap="innerHTML">
     {% csrf_token %}

@@ -69,12 +69,12 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>
             Voltar
         </a>
 
-        <a href="{% url 'rh:criar_lotacao' %}" class="btn btn-primary">
+        <a href="{% url 'rh:criar_lotacao' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i>
             Nova lotação
         </a>
@@ -124,11 +124,11 @@
                                 <td>{{ lotacao.total_funcionarios }}</td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2 flex-wrap">
-                                        <a href="{% url 'rh:editar_lotacao' lotacao.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'rh:editar_lotacao' empresa_id=request.empresa_ativa.pk pk=lotacao.pk %}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
 
-                                        <a href="{% url 'rh:excluir_lotacao' lotacao.pk %}" class="btn btn-sm btn-outline-danger">
+                                        <a href="{% url 'rh:excluir_lotacao' empresa_id=request.empresa_ativa.pk pk=lotacao.pk %}" class="btn btn-sm btn-outline-danger">
                                             <i class="bi bi-trash"></i>
                                         </a>
                                     </div>
@@ -144,7 +144,7 @@
                 <h5 class="fw-semibold">Nenhuma lotação encontrada</h5>
                 <p class="mb-3">Cadastre a primeira lotação para organizar os funcionários.</p>
 
-                <a href="{% url 'rh:criar_lotacao' %}" class="btn btn-primary">
+                <a href="{% url 'rh:criar_lotacao' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-1"></i>
                     Cadastrar lotação
                 </a>

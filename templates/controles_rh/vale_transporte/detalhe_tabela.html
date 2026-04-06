@@ -377,19 +377,19 @@
             </div>
 
             <div class="summary-actions">
-                <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                    class="btn btn-outline-secondary"
-                   hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                   hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                    hx-target="body"
                    hx-swap="innerHTML"
                    hx-push-url="true">
                     <i class="bi bi-arrow-left me-1"></i> Voltar
                 </a>
 
-                <a href="{% url 'controles_rh:exportar_tabela_vt_xlsx' tabela.pk %}" class="btn btn-outline-success">
+                <a href="{% url 'controles_rh:exportar_tabela_vt_xlsx' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}" class="btn btn-outline-success">
                     <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar Excel
                 </a>
-                <a href="{% url 'controles_rh:exportar_tabela_vt_pdf' tabela.pk %}" class="btn btn-outline-danger" target="_blank" rel="noopener noreferrer">
+                <a href="{% url 'controles_rh:exportar_tabela_vt_pdf' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}" class="btn btn-outline-danger" target="_blank" rel="noopener noreferrer">
                     <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
                 </a>
 
@@ -409,7 +409,7 @@
                             <button
                                 type="button"
                                 class="dropdown-item"
-                                hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
+                                hx-get="{% url 'controles_rh:editar_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -421,7 +421,7 @@
                             <button
                                 type="button"
                                 class="dropdown-item text-danger"
-                                hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
+                                hx-get="{% url 'controles_rh:excluir_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -488,7 +488,7 @@
         <button
             type="button"
             class="btn btn-primary btn-sm"
-            hx-get="{% url 'controles_rh:adicionar_item_vt' tabela.pk %}"
+            hx-get="{% url 'controles_rh:adicionar_item_vt' empresa_id=request.empresa_ativa.pk tabela_pk=tabela.pk %}"
             hx-target="#modal-content"
             hx-swap="innerHTML"
             hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -564,7 +564,7 @@
                             <tr
                                 class="{{ item.classe_linha_pagamento }} vt-row-clickable"
                                 data-item-id="{{ item.pk }}"
-                                data-vt-edit-url="{% url 'controles_rh:editar_item_vt' item.pk %}"
+                                data-vt-edit-url="{% url 'controles_rh:editar_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                                 role="button"
                                 tabindex="0"
                                 title="Clique para editar esta linha">
@@ -594,7 +594,7 @@
                                             class="btn btn-outline-secondary btn-sm btn-pago-edit"
                                             title="Alterar valor pago e data"
                                             data-no-global-loading
-                                            hx-get="{% url 'controles_rh:modal_pagamento_item_vt' item.pk %}"
+                                            hx-get="{% url 'controles_rh:modal_pagamento_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                                             hx-target="#modal-pagamento-vt-content"
                                             hx-swap="innerHTML"
                                             hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPagamentoVt'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
@@ -703,7 +703,7 @@
     const tbody = document.getElementById('vt-sortable-tbody');
     const tabelaId = table && table.dataset.tabelaId;
     const storageKey = tabelaId ? ('vt-col-widths-' + tabelaId) : null;
-    const reorderUrl = "{% url 'controles_rh:reordenar_itens_vt' tabela.pk %}";
+    const reorderUrl = "{% url 'controles_rh:reordenar_itens_vt' empresa_id=request.empresa_ativa.pk tabela_pk=tabela.pk %}";
     const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
     const csrfToken = csrfInput ? csrfInput.value : '';
 

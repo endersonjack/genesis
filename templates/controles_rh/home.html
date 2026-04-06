@@ -253,9 +253,9 @@ a.competencia-item:focus-visible {
     </div>
 
     <div class="home-actions">
-        <a href="{% url 'rh:dashboard_rh' %}"
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}"
            class="btn btn-outline-secondary"
-           hx-get="{% url 'rh:dashboard_rh' %}"
+           hx-get="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}"
            hx-target="body"
            hx-swap="innerHTML"
            hx-push-url="true">
@@ -265,7 +265,7 @@ a.competencia-item:focus-visible {
         <button
             type="button"
             class="btn btn-primary"
-            hx-get="{% url 'controles_rh:criar_competencia' %}"
+            hx-get="{% url 'controles_rh:criar_competencia' empresa_id=request.empresa_ativa.pk %}"
             hx-target="#modal-content"
             hx-swap="innerHTML"
             data-bs-toggle="modal"
@@ -286,7 +286,7 @@ a.competencia-item:focus-visible {
 
         <form method="get"
               class="header-filters"
-              hx-get="{% url 'controles_rh:home' %}"
+              hx-get="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
               hx-target="body"
               hx-swap="innerHTML"
               hx-push-url="true"
@@ -318,9 +318,9 @@ a.competencia-item:focus-visible {
         {% if competencias %}
             <div class="competencia-list">
                 {% for competencia in competencias %}
-                    <a href="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                    <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                        class="competencia-item"
-                       hx-get="{% url 'controles_rh:detalhe_competencia' competencia.ano competencia.mes %}"
+                       hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
                        hx-target="body"
                        hx-swap="innerHTML"
                        hx-push-url="true">
@@ -361,7 +361,7 @@ a.competencia-item:focus-visible {
                 <button
                     type="button"
                     class="btn btn-primary"
-                    hx-get="{% url 'controles_rh:criar_competencia' %}"
+                    hx-get="{% url 'controles_rh:criar_competencia' empresa_id=request.empresa_ativa.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
                     data-bs-toggle="modal"

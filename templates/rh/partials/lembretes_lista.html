@@ -16,7 +16,7 @@
 
             <button
                 class="btn btn-sm btn-outline-primary"
-                hx-get="{% url 'rh:editar_lembrete_rh' item.pk %}"
+                hx-get="{% url 'rh:editar_lembrete_rh' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                 hx-target="#modal-content"
                 data-bs-toggle="modal"
                 data-bs-target="#modalPadrao">

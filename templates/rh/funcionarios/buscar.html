@@ -130,7 +130,7 @@ td:first-child, th:first-child {
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
 
@@ -260,7 +260,7 @@ td:first-child, th:first-child {
                 </div>
 
                 <div class="d-flex gap-2 pt-2">
-    <a href="{% url 'rh:buscar_funcionarios' %}" class="btn btn-outline-secondary w-100">
+    <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary w-100">
         Limpar filtros
     </a>
 </div>
@@ -291,7 +291,7 @@ td:first-child, th:first-child {
                     </thead>
                     <tbody>
                         {% for funcionario in funcionarios %}
-                            <tr onclick="window.location='{% url 'rh:detalhes_funcionario' funcionario.pk %}'">
+                            <tr onclick="window.location='{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}'">
             
                                 <td class="text-muted fw-bold">
                                     {{ forloop.counter }}

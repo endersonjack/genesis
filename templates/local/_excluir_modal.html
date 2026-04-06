@@ -5,7 +5,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'local:excluir' local.pk %}"
+    hx-post="{% url 'local:excluir' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}

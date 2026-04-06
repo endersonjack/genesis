@@ -62,7 +62,7 @@
                     {% csrf_token %}
 
                     <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center">
-                        <a href="{% url 'rh:lista_lotacoes' %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'rh:lista_lotacoes' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
                             Cancelar
                         </a>
 

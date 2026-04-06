@@ -9,7 +9,7 @@
             <div class="section-header-actions">
                 <button
                     class="btn btn-light btn-sm"
-                    hx-get="{% url 'rh:modal_editar_demissao' funcionario.pk %}"
+                    hx-get="{% url 'rh:modal_editar_demissao' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
                     hx-target="#modal-content"
                     hx-trigger="click">
                     <i class="bi bi-pencil-square me-1"></i> Editar seção

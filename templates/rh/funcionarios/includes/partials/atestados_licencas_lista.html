@@ -18,7 +18,7 @@
                                 <button
                                     type="button"
                                     class="btn btn-light btn-sm"
-                                    hx-get="{% url 'rh:modal_editar_atestado_licenca' funcionario.pk item.pk %}"
+                                    hx-get="{% url 'rh:modal_editar_atestado_licenca' empresa_id=request.empresa_ativa.pk pk=funcionario.pk atestado_id=item.pk %}"
                                     hx-target="#modal-content"
                                     hx-swap="innerHTML">
                                     <i class="bi bi-pencil me-1"></i> Editar
@@ -27,7 +27,7 @@
                                 <button
                                     type="button"
                                     class="btn btn-outline-danger btn-sm"
-                                    hx-get="{% url 'rh:modal_excluir_atestado_licenca' funcionario.pk item.pk %}"
+                                    hx-get="{% url 'rh:modal_excluir_atestado_licenca' empresa_id=request.empresa_ativa.pk pk=funcionario.pk atestado_id=item.pk %}"
                                     hx-target="#modal-content"
                                     hx-swap="innerHTML">
                                     <i class="bi bi-trash me-1"></i> Excluir

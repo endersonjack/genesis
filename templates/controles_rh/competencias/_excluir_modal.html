@@ -5,7 +5,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'controles_rh:excluir_competencia' competencia.pk %}"
+    hx-post="{% url 'controles_rh:excluir_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}

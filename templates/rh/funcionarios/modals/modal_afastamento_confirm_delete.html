@@ -9,7 +9,7 @@
 <form
     method="post"
     class="section-modal-form compact"
-    hx-post="{% url 'rh:modal_excluir_afastamento' funcionario.pk item.pk %}"
+    hx-post="{% url 'rh:modal_excluir_afastamento' empresa_id=request.empresa_ativa.pk pk=funcionario.pk afastamento_id=item.pk %}"
     hx-target="#afastamentos-lista"
     hx-swap="innerHTML">
     {% csrf_token %}

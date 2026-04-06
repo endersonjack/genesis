@@ -3,21 +3,24 @@ from django.urls import include, path, re_path
 from django.conf import settings
 from django.views.static import serve
 
-from core.views import genesis_messages_toasts
+from core.views import genesis_messages_toasts, home_root_redirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('usuarios/', include('usuarios.urls')),
-    path('empresa/', include('empresas.urls')),
-    path('local/', include('local.urls')),
-    # Mais específico antes de `rh/`, para `/rh/gestao/` não depender do include genérico de `rh/`.
-    path('rh/gestao/', include('controles_rh.urls')),
-    path('rh/', include('rh.urls')),
-    path('', include('dashboard.urls')),
-
-    # Toasts globais para exibir mensagens sem recarregar a página (HTMX/JS)
     path('messages/toasts/', genesis_messages_toasts, name='genesis_messages_toasts'),
+    path(
+        'empresa/<int:empresa_id>/',
+        include([
+            path('', include('dashboard.urls')),
+            path('preferencias/', include('empresas.urls')),
+            path('local/', include('local.urls')),
+            path('rh/gestao/', include('controles_rh.urls')),
+            path('rh/', include('rh.urls')),
+        ]),
+    ),
+    path('', home_root_redirect, name='home_root'),
 ]
 
 # Em DEBUG=False o helper static() não registra rotas; sem isso /media/ dá 404 (ex.: Railway).

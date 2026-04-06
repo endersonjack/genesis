@@ -14,6 +14,8 @@ Observação:
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.urlutils import redirect_empresa
+
 from ..forms import CargoForm
 from ..models import Cargo
 from .base import _empresa_ativa_or_redirect
@@ -68,7 +70,7 @@ def criar_cargo(request):
             obj.save()
 
             messages.success(request, 'Cargo criado com sucesso.')
-            return redirect('rh:lista_cargos')
+            return redirect_empresa(request, 'rh:lista_cargos')
     else:
         form = CargoForm(empresa_ativa=empresa_ativa)
 
@@ -112,7 +114,7 @@ def editar_cargo(request, pk):
             form.save()
 
             messages.success(request, 'Cargo atualizado com sucesso.')
-            return redirect('rh:lista_cargos')
+            return redirect_empresa(request, 'rh:lista_cargos')
     else:
         form = CargoForm(
             instance=cargo,
@@ -153,7 +155,7 @@ def excluir_cargo(request, pk):
     if request.method == 'POST':
         cargo.delete()
         messages.success(request, 'Cargo excluído com sucesso.')
-        return redirect('rh:lista_cargos')
+        return redirect_empresa(request, 'rh:lista_cargos')
 
     return render(
         request,

@@ -15,6 +15,8 @@ Observação:
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.urlutils import redirect_empresa
+
 from ..forms import LotacaoForm
 from ..models import Lotacao
 from .base import _empresa_ativa_or_redirect
@@ -69,7 +71,7 @@ def criar_lotacao(request):
             obj.save()
 
             messages.success(request, 'Lotação criada com sucesso.')
-            return redirect('rh:lista_lotacoes')
+            return redirect_empresa(request, 'rh:lista_lotacoes')
     else:
         form = LotacaoForm(empresa_ativa=empresa_ativa)
 
@@ -113,7 +115,7 @@ def editar_lotacao(request, pk):
             form.save()
 
             messages.success(request, 'Lotação atualizada com sucesso.')
-            return redirect('rh:lista_lotacoes')
+            return redirect_empresa(request, 'rh:lista_lotacoes')
     else:
         form = LotacaoForm(
             instance=lotacao,
@@ -154,7 +156,7 @@ def excluir_lotacao(request, pk):
     if request.method == 'POST':
         lotacao.delete()
         messages.success(request, 'Lotação excluída com sucesso.')
-        return redirect('rh:lista_lotacoes')
+        return redirect_empresa(request, 'rh:lista_lotacoes')
 
     return render(
         request,

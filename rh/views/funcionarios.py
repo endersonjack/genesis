@@ -5,6 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.urlutils import redirect_empresa
+
 from ..forms import (
     AfastamentoFuncionarioFormSet,
     ASOFuncionarioFormSet,
@@ -291,7 +293,7 @@ def criar_funcionario(request):
             _salvar_todos_formsets(funcionario, formsets)
 
             messages.success(request, 'Funcionário cadastrado com sucesso.')
-            return redirect('rh:detalhes_funcionario', pk=funcionario.pk)
+            return redirect_empresa(request, 'rh:detalhes_funcionario', pk=funcionario.pk)
     else:
         form = FuncionarioForm(empresa_ativa=empresa_ativa)
         formsets = _montar_formsets_funcionario()
@@ -514,7 +516,7 @@ def editar_funcionario(request, pk):
 
         if salvou:
             messages.success(request, mensagem)
-            return redirect('rh:editar_funcionario', pk=funcionario.pk)
+            return redirect_empresa(request, 'rh:editar_funcionario', pk=funcionario.pk)
 
         messages.error(request, mensagem)
 
@@ -630,7 +632,7 @@ def excluir_funcionario(request, pk):
     if request.method == 'POST':
         funcionario.delete()
         messages.success(request, 'Funcionário excluído com sucesso.')
-        return redirect('rh:lista_funcionarios')
+        return redirect_empresa(request, 'rh:lista_funcionarios')
 
     return render(
         request,

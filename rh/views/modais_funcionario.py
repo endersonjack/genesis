@@ -21,7 +21,7 @@ from datetime import datetime
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
-from django.urls import reverse
+from core.urlutils import reverse_empresa
 
 from ..forms import (
     FuncionarioAdmissaoForm,
@@ -67,9 +67,10 @@ def modal_novo_funcionario_rapido(request):
             funcionario.save()
 
             response = HttpResponse(status=204)
-            response['HX-Redirect'] = reverse(
+            response['HX-Redirect'] = reverse_empresa(
+                request,
                 'rh:detalhes_funcionario',
-                args=[funcionario.pk],
+                kwargs={'pk': funcionario.pk},
             )
             return response
     else:

@@ -2,7 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+
+from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import LocalForm
 from .models import Local
@@ -12,9 +13,9 @@ def _is_htmx(request):
     return request.headers.get('HX-Request') == 'true'
 
 
-def _redirect_lista_htmx():
+def _redirect_lista_htmx(request):
     response = HttpResponse(status=200)
-    response['HX-Redirect'] = reverse('local:lista')
+    response['HX-Redirect'] = reverse_empresa(request, 'local:lista')
     return response
 
 
@@ -51,8 +52,8 @@ def local_criar(request):
             obj.save()
             messages.success(request, f'Local "{obj.nome}" cadastrado com sucesso.')
             if _is_htmx(request):
-                return _redirect_lista_htmx()
-            return redirect('local:lista')
+                return _redirect_lista_htmx(request)
+            return redirect_empresa(request, 'local:lista')
         messages.error(request, 'Revise os campos do formulário.')
 
     return render(
@@ -81,8 +82,8 @@ def local_editar(request, pk):
             form.save()
             messages.success(request, f'Local "{local.nome}" atualizado com sucesso.')
             if _is_htmx(request):
-                return _redirect_lista_htmx()
-            return redirect('local:lista')
+                return _redirect_lista_htmx(request)
+            return redirect_empresa(request, 'local:lista')
         messages.error(request, 'Revise os campos do formulário.')
 
     return render(
@@ -110,8 +111,8 @@ def local_excluir(request, pk):
         local.delete()
         messages.success(request, f'Local "{nome}" excluído com sucesso.')
         if _is_htmx(request):
-            return _redirect_lista_htmx()
-        return redirect('local:lista')
+            return _redirect_lista_htmx(request)
+        return redirect_empresa(request, 'local:lista')
 
     return render(
         request,

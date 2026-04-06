@@ -72,13 +72,13 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+            <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
             <button
                 type="button"
                 class="btn btn-primary rounded-3 fw-semibold"
-                hx-get="{% url 'local:criar' %}"
+                hx-get="{% url 'local:criar' empresa_id=request.empresa_ativa.pk %}"
                 hx-target="#modal-content"
                 hx-swap="innerHTML"
                 data-bs-toggle="modal"
@@ -125,7 +125,7 @@
                                         type="button"
                                         class="btn btn-sm btn-outline-primary"
                                         title="Editar"
-                                        hx-get="{% url 'local:editar' local.pk %}"
+                                        hx-get="{% url 'local:editar' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
                                         hx-target="#modal-content"
                                         hx-swap="innerHTML"
                                         data-bs-toggle="modal"
@@ -136,7 +136,7 @@
                                         type="button"
                                         class="btn btn-sm btn-outline-danger"
                                         title="Excluir"
-                                        hx-get="{% url 'local:excluir' local.pk %}"
+                                        hx-get="{% url 'local:excluir' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
                                         hx-target="#modal-content"
                                         hx-swap="innerHTML"
                                         data-bs-toggle="modal"
@@ -157,7 +157,7 @@
                 <button
                     type="button"
                     class="btn btn-primary rounded-3 fw-semibold"
-                    hx-get="{% url 'local:criar' %}"
+                    hx-get="{% url 'local:criar' empresa_id=request.empresa_ativa.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
                     data-bs-toggle="modal"

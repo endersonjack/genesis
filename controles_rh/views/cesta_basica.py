@@ -6,8 +6,10 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch
 from django.utils import timezone
+
+from core.urlutils import redirect_empresa, reverse_empresa
 from django.views.decorators.http import require_POST
 
 from controles_rh.forms import CestaBasicaItemForm, CestaBasicaListaForm
@@ -36,10 +38,15 @@ def _get_lista_cesta_empresa(request, pk):
 def _url_recibo_individual_item(request, item_pk):
     """URL do PDF de recibo individual; fallback se o nome da rota ainda não estiver carregado."""
     try:
-        return reverse('controles_rh:exportar_recibo_cesta_individual_item', args=[item_pk])
-    except NoReverseMatch:
+        return reverse_empresa(
+            request,
+            'controles_rh:exportar_recibo_cesta_individual_item',
+            kwargs={'pk': item_pk},
+        )
+    except (NoReverseMatch, ValueError):
         prefix = (getattr(request, 'script_name', None) or '').rstrip('/')
-        return f'{prefix}/rh/gestao/cesta-basica/itens/{item_pk}/recibo/pdf/'
+        eid = getattr(getattr(request, 'empresa_ativa', None), 'pk', '') or ''
+        return f'{prefix}/empresa/{eid}/rh/gestao/cesta-basica/itens/{item_pk}/recibo/pdf/'
 
 
 def _get_item_cesta_empresa(request, pk):
@@ -64,7 +71,7 @@ def criar_cesta_basica(request, competencia_pk):
     n = CestaBasicaLista.objects.filter(competencia=competencia).count() + 1
     titulo = 'Cesta Básica' if n == 1 else f'Cesta Básica {n}'
     lista = CestaBasicaLista.objects.create(competencia=competencia, titulo=titulo)
-    return redirect('controles_rh:detalhe_cesta_basica', pk=lista.pk)
+    return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
 
 
 @login_required
@@ -166,7 +173,7 @@ def editar_cesta_basica_lista(request, pk):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
-            return redirect('controles_rh:detalhe_cesta_basica', pk=lista.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
         messages.error(request, 'Revise os campos.')
 
     context = {
@@ -187,12 +194,17 @@ def excluir_cesta_basica_lista(request, pk):
         messages.success(request, 'Controle de Cesta Básica removido desta competência.')
         if _is_htmx(request):
             response = HttpResponse(status=204)
-            response['HX-Redirect'] = reverse(
+            response['HX-Redirect'] = reverse_empresa(
+                request,
                 'controles_rh:detalhe_competencia',
                 kwargs={'ano': competencia.ano, 'mes': competencia.mes},
             )
             return response
-        return redirect('controles_rh:detalhe_competencia', ano=competencia.ano, mes=competencia.mes)
+        return redirect_empresa(
+            request,
+            'controles_rh:detalhe_competencia',
+            kwargs={'ano': competencia.ano, 'mes': competencia.mes},
+        )
 
     context = {
         'lista': lista,
@@ -220,7 +232,7 @@ def adicionar_item_cesta_basica(request, lista_pk):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
-            return redirect('controles_rh:detalhe_cesta_basica', pk=lista.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
         messages.error(request, 'Não foi possível adicionar a linha.')
 
     context = {
@@ -252,7 +264,7 @@ def editar_item_cesta_basica(request, pk):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
-            return redirect('controles_rh:detalhe_cesta_basica', pk=lista.pk)
+            return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
         messages.error(request, 'Não foi possível atualizar a linha.')
 
     context = {
@@ -279,7 +291,7 @@ def excluir_item_cesta_basica(request, pk):
             response = HttpResponse(status=204)
             response['HX-Refresh'] = 'true'
             return response
-        return redirect('controles_rh:detalhe_cesta_basica', pk=lista_pk)
+        return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista_pk)
 
     context = {
         'item': item,

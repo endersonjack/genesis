@@ -11,7 +11,7 @@
 
 <form
     method="post"
-    hx-post="{% if modo == 'editar' and competencia and competencia.pk %}{% url 'controles_rh:editar_competencia' competencia.pk %}{% else %}{% url 'controles_rh:criar_competencia' %}{% endif %}"
+    hx-post="{% if modo == 'editar' and competencia and competencia.pk %}{% url 'controles_rh:editar_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}{% else %}{% url 'controles_rh:criar_competencia' empresa_id=request.empresa_ativa.pk %}{% endif %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}

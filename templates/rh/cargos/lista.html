@@ -49,10 +49,10 @@
     </div>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
-        <a href="{% url 'rh:criar_cargo' %}" class="btn btn-primary">
+        <a href="{% url 'rh:criar_cargo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Novo cargo
         </a>
     </div>
@@ -92,10 +92,10 @@
                                 <td>{{ cargo.total_funcionarios }}</td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <a href="{% url 'rh:editar_cargo' cargo.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'rh:editar_cargo' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <a href="{% url 'rh:excluir_cargo' cargo.pk %}" class="btn btn-sm btn-outline-danger">
+                                        <a href="{% url 'rh:excluir_cargo' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}" class="btn btn-sm btn-outline-danger">
                                             <i class="bi bi-trash"></i>
                                         </a>
                                     </div>
@@ -110,7 +110,7 @@
                 <i class="bi bi-briefcase fs-1 d-block mb-3"></i>
                 <h5 class="fw-semibold">Nenhum cargo encontrado</h5>
                 <p class="mb-3">Cadastre o primeiro cargo para começar a organizar o RH.</p>
-                <a href="{% url 'rh:criar_cargo' %}" class="btn btn-primary">
+                <a href="{% url 'rh:criar_cargo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-1"></i> Cadastrar cargo
                 </a>
             </div>

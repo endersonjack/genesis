@@ -3,7 +3,8 @@ from datetime import date, timedelta
 
 from django.db.models import Q
 from django.shortcuts import render
-from django.urls import reverse
+
+from core.urlutils import reverse_empresa
 
 from ..models import (
     AfastamentoFuncionario,
@@ -19,7 +20,7 @@ from .base import _empresa_ativa_or_redirect
 # ==========================================================
 # CALENDÁRIO RH - MONTAGEM DOS EVENTOS
 # ==========================================================
-def _montar_eventos_calendario_rh(empresa_ativa, ano, mes):
+def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
     """
     Monta todos os eventos do calendário mensal do RH.
 
@@ -62,7 +63,11 @@ def _montar_eventos_calendario_rh(empresa_ativa, ano, mes):
         dia = data_evento.day
 
         if not detalhe_url and funcionario:
-            detalhe_url = reverse("rh:detalhes_funcionario", args=[funcionario.pk])
+            detalhe_url = reverse_empresa(
+                request,
+                'rh:detalhes_funcionario',
+                kwargs={'pk': funcionario.pk},
+            )
 
         eventos_por_dia.setdefault(dia, []).append({
             "tipo": tipo,
@@ -246,7 +251,11 @@ def _montar_eventos_calendario_rh(empresa_ativa, ano, mes):
     ).select_related("funcionario")
 
     for item in lembretes:
-        detalhe = reverse("rh:editar_lembrete_rh", args=[item.pk])
+        detalhe = reverse_empresa(
+            request,
+            'rh:editar_lembrete_rh',
+            kwargs={'pk': item.pk},
+        )
         add_evento(
             item.data,
             "lembrete",
@@ -375,7 +384,7 @@ def calendario_rh(request):
     else:
         mes_proximo, ano_proximo = mes + 1, ano
 
-    calendario_context = _montar_eventos_calendario_rh(empresa_ativa, ano, mes)
+    calendario_context = _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes)
 
     lembretes = LembreteRH.objects.filter(
         empresa=empresa_ativa
@@ -489,7 +498,11 @@ def dashboard_rh(request):
         detalhe_url = None
 
         if funcionario:
-            detalhe_url = reverse("rh:detalhes_funcionario", args=[funcionario.pk])
+            detalhe_url = reverse_empresa(
+                request,
+                'rh:detalhes_funcionario',
+                kwargs={'pk': funcionario.pk},
+            )
 
         eventos_por_dia.setdefault(dia, []).append({
             "tipo": tipo,
@@ -612,7 +625,11 @@ def dashboard_rh(request):
                     "nome": func.nome,
                     "cargo": func.cargo.nome if func.cargo else "",
                     "dia": func.data_nascimento.day,
-                    "detalhe_url": reverse("rh:detalhes_funcionario", args=[func.pk]),
+                    "detalhe_url": reverse_empresa(
+                        request,
+                        'rh:detalhes_funcionario',
+                        kwargs={'pk': func.pk},
+                    ),
                 }
             )
 

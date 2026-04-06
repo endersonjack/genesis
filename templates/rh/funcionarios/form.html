@@ -446,10 +446,10 @@
         </div>
 
         <div class="employee-summary-actions">
-            <a href="{% url 'rh:lista_funcionarios' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
-            <a href="{% url 'rh:detalhes_funcionario' funcionario.pk %}" class="btn btn-outline-dark">
+            <a href="{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}" class="btn btn-outline-dark">
                 <i class="bi bi-eye me-1"></i> Ver detalhes
             </a>
         </div>

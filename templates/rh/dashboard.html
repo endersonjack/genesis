@@ -679,8 +679,8 @@
     </div>
 
     <div class="rh-top-actions">
-        <a href="{% url 'rh:buscar_funcionarios' %}"
-           hx-get="{% url 'rh:buscar_funcionarios' %}"
+        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
            hx-target="body"
            hx-swap="innerHTML"
            hx-push-url="true"
@@ -689,8 +689,8 @@
             <span>Buscar</span>
         </a>
 
-        <a href="{% url 'controles_rh:home' %}"
-           hx-get="{% url 'controles_rh:home' %}"
+        <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
+           hx-get="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
            hx-target="body"
            hx-swap="innerHTML"
            hx-push-url="true"
@@ -702,7 +702,7 @@
         <button
             type="button"
             class="rh-top-btn rh-top-btn-primary"
-            hx-get="{% url 'rh:modal_novo_funcionario_rapido' %}"
+            hx-get="{% url 'rh:modal_novo_funcionario_rapido' empresa_id=request.empresa_ativa.pk %}"
             hx-target="#modal-content"
             hx-swap="innerHTML"
             data-bs-toggle="modal"
@@ -738,8 +738,8 @@
                         <div class="mini-card-desc">
                             Total de funcionários cadastrados na empresa ativa.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=todos"
-                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=todos"
+                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=todos"
+                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=todos"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -759,8 +759,8 @@
                         <div class="mini-card-desc">
                             Funcionários atualmente em gozo de férias.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=ferias"
-                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=ferias"
+                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=ferias"
+                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=ferias"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -780,8 +780,8 @@
                         <div class="mini-card-desc">
                             Inclui quem vai prorrogar e quem já está em prorrogação.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=experiencia"
-                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=experiencia"
+                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=experiencia"
+                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=experiencia"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -801,8 +801,8 @@
                         <div class="mini-card-desc">
                             Funcionários com aviso ativo e data final definida.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' %}?grupo=aviso"
-                           hx-get="{% url 'rh:lista_funcionarios' %}?grupo=aviso"
+                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=aviso"
+                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=aviso"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -881,8 +881,8 @@
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
                             Por Semana
                         </button>
-                        <a href="{% url 'rh:calendario_rh' %}"
-                           hx-get="{% url 'rh:calendario_rh' %}"
+                        <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
+                           hx-get="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"

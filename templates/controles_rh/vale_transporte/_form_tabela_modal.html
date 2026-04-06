@@ -12,7 +12,7 @@
 <form
     method="post"
     data-no-global-loading
-    hx-post="{% if modo == 'editar' and tabela and tabela.pk %}{% url 'controles_rh:editar_tabela_vt' tabela.pk %}{% else %}{% url 'controles_rh:criar_tabela_vt' competencia.pk %}{% endif %}"
+    hx-post="{% if modo == 'editar' and tabela and tabela.pk %}{% url 'controles_rh:editar_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}{% else %}{% url 'controles_rh:criar_tabela_vt' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}{% endif %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
     {% csrf_token %}
@@ -121,7 +121,7 @@
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
                     data-no-global-loading
-                    hx-get="{% url 'controles_rh:modal_opcoes_criar_tabela_vt' competencia.pk %}"
+                    hx-get="{% url 'controles_rh:modal_opcoes_criar_tabela_vt' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML">
                     <i class="bi bi-arrow-left me-1"></i> Voltar

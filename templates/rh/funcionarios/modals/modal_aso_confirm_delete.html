@@ -9,7 +9,7 @@
 <form
     method="post"
     class="section-modal-form compact"
-    hx-post="{% url 'rh:modal_excluir_aso' funcionario.pk item.pk %}"
+    hx-post="{% url 'rh:modal_excluir_aso' empresa_id=request.empresa_ativa.pk pk=funcionario.pk aso_id=item.pk %}"
     hx-target="#aso-lista"
     hx-swap="innerHTML">
     {% csrf_token %}

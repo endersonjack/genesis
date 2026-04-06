@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
+from core.urlutils import redirect_empresa
+
 from rh.views.base import _empresa_ativa_or_redirect
 
 from .forms import EmpresaPreferenciasForm
@@ -22,7 +24,7 @@ def preferencias(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Preferências da empresa salvas.')
-            return redirect('empresa_preferencias')
+            return redirect_empresa(request, 'empresa_preferencias')
     else:
         form = EmpresaPreferenciasForm(instance=empresa_ativa)
 

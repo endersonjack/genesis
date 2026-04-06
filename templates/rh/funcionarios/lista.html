@@ -58,7 +58,7 @@
     </div>
 
     <div class="d-flex gap-2">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
 
@@ -124,7 +124,7 @@
                 </thead>
                 <tbody>
                     {% for funcionario in funcionarios %}
-                        <tr onclick="window.location='{% url 'rh:detalhes_funcionario' funcionario.pk %}'">
+                        <tr onclick="window.location='{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}'">
                             <td class="fw-semibold">{{ funcionario.nome }}</td>
                             <td>{{ funcionario.cpf }}</td>
                             <td>{{ funcionario.pis|default:"—" }}</td>

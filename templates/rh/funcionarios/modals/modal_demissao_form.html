@@ -9,7 +9,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'rh:modal_editar_demissao' funcionario.pk %}"
+    hx-post="{% url 'rh:modal_editar_demissao' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
     enctype="multipart/form-data"

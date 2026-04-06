@@ -8,7 +8,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'rh:modal_editar_admissao' funcionario.pk %}"
+    hx-post="{% url 'rh:modal_editar_admissao' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
     enctype="multipart/form-data"

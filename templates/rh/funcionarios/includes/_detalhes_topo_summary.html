@@ -35,7 +35,7 @@
     </div>
 
     <div class="employee-summary-actions">
-        <a href="{% url 'rh:dashboard_rh' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Voltar
     </a>
     </div>

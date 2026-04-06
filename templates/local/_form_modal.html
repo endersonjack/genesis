@@ -12,9 +12,9 @@
 <form
     method="post"
     {% if modo == 'editar' and local and local.pk %}
-        hx-post="{% url 'local:editar' local.pk %}"
+        hx-post="{% url 'local:editar' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
     {% else %}
-        hx-post="{% url 'local:criar' %}"
+        hx-post="{% url 'local:criar' empresa_id=request.empresa_ativa.pk %}"
     {% endif %}
     hx-target="#modal-content"
     hx-swap="innerHTML">
