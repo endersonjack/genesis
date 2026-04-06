@@ -4,12 +4,16 @@
 
 {% block content %}
 <style>
+    /* .summary-card sem overflow:hidden: o dropdown da engrenagem não é recortado pelo cartão. */
     .summary-card,
     .section-card {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
         background: #fff;
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .section-card {
         overflow: hidden;
     }
 
@@ -44,6 +48,14 @@
     .summary-actions .btn {
         border-radius: .9rem;
         font-weight: 700;
+    }
+
+    .summary-actions .dropdown .dropdown-toggle::after {
+        display: none;
+    }
+
+    .summary-actions .dropdown-menu {
+        z-index: 1055;
     }
 
     .section-header {
@@ -284,25 +296,43 @@
                     <i class="bi bi-arrow-left me-1"></i> Voltar
                 </a>
 
-                <button
-                    type="button"
-                    class="btn btn-outline-primary"
-                    hx-get="{% url 'controles_rh:editar_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-pencil-square me-1"></i> Editar
-                </button>
-
-                <button
-                    type="button"
-                    class="btn btn-outline-danger"
-                    hx-get="{% url 'controles_rh:excluir_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-trash me-1"></i> Excluir
-                </button>
+                <div class="dropdown" data-bs-popper="static">
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary px-2 dropdown-toggle"
+                        id="competencia-dropdown-acoes"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Ações da competência"
+                        title="Ações">
+                        <i class="bi bi-gear fs-5"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="competencia-dropdown-acoes">
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item"
+                                hx-get="{% url 'controles_rh:editar_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-pencil-square me-2 text-primary"></i> Editar
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                hx-get="{% url 'controles_rh:excluir_competencia' empresa_id=request.empresa_ativa.pk pk=competencia.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-trash me-2"></i> Excluir
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
 

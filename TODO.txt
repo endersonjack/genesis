@@ -12,7 +12,7 @@ Melhor o template do Toast pra que o X fique no canto superior direito
 
 
 Loading HTMX
-Adionar todos os botoes via HTMX para o Loading funcionar
+OK - Adionar todos os botoes via HTMX para o Loading funcionar
 
 
 CONTROLE - VALE TRANSPORTE
@@ -26,3 +26,7 @@ CONTROLE - CESTA BÁSICA
 
 OK - Editar só Data de Recebimento via modal
 OK - Fazer Recibos individuais
+
+NO SISTEMA GERAL:
+
+Loading nos cards (para carregamento rápido.)
