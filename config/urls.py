@@ -18,6 +18,7 @@ urlpatterns = [
             path('local/', include('local.urls')),
             path('rh/gestao/', include('controles_rh.urls')),
             path('rh/', include('rh.urls')),
+            path('usuarios/', include('usuarios.urls_empresa')),
         ]),
     ),
     path('', home_root_redirect, name='home_root'),

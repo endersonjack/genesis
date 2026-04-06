@@ -35,19 +35,36 @@
                     <span>Empresa ativa:</span>
                     <strong>{{ request.empresa_ativa }}</strong>
 
-                    <a href="{% url 'selecionar_empresa' %}"
-                       class="btn btn-sm btn-light py-0 px-2"
-                       title="Trocar empresa">
+                    {% if usuario_mostrar_troca_empresa %}
+                    <button type="button"
+                            class="btn btn-sm btn-light py-0 px-2"
+                            title="Trocar empresa"
+                            hx-get="{% url 'modal_trocar_empresa' %}?next={{ request.path|urlencode }}"
+                            hx-target="#modal-trocar-empresa-content"
+                            hx-swap="innerHTML"
+                            data-no-global-loading
+                            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalTrocarEmpresa'); if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); }">
                         <i class="bi bi-arrow-repeat"></i>
-                    </a>
+                    </button>
+                    {% endif %}
                 </small>
             {% else %}
                 <small class="topbar-company text-white d-flex align-items-center gap-2 flex-wrap">
                     <span>Nenhuma empresa selecionada</span>
-                    <a href="{% url 'selecionar_empresa' %}"
-                       class="btn btn-sm btn-light py-0 px-2">
-                        Selecionar empresa
-                    </a>
+                    {% if usuario_mostrar_troca_empresa %}
+                    <button type="button"
+                            class="btn btn-sm btn-light py-0 px-2"
+                            title="Selecionar empresa"
+                            hx-get="{% url 'modal_trocar_empresa' %}?next={{ request.path|urlencode }}"
+                            hx-target="#modal-trocar-empresa-content"
+                            hx-swap="innerHTML"
+                            data-no-global-loading
+                            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalTrocarEmpresa'); if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); }">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                    {% elif usuario_qtd_empresas_acesso == 1 %}
+                    <a href="{% url 'selecionar_empresa' %}" class="text-white text-decoration-underline small">Entrar na empresa</a>
+                    {% endif %}
                 </small>
             {% endif %}
         </div>

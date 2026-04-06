@@ -46,6 +46,14 @@
 
 <div class="mobile-bottom-space d-lg-none"></div>
 
+{% if request.user.is_authenticated %}
+<div class="modal fade" id="modalTrocarEmpresa" tabindex="-1" aria-labelledby="modalTrocarEmpresaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content" id="modal-trocar-empresa-content"></div>
+    </div>
+</div>
+{% endif %}
+
 <div id="global-htmx-loading" class="global-htmx-loading" aria-hidden="true" aria-busy="false">
     <div class="global-htmx-loading-inner text-center">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">

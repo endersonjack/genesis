@@ -1,0 +1,24 @@
+{% if vinculos %}
+    <p class="text-muted small mb-3">Escolha a empresa. Você permanece na mesma tela, no contexto da empresa selecionada.</p>
+    <div class="d-grid gap-2">
+        {% for vinculo in vinculos %}
+            {% if vinculo.empresa.id == empresa_sessao_id %}
+                <button type="button" class="btn btn-light text-start d-flex justify-content-between align-items-center" disabled>
+                    <span>{{ vinculo.empresa }}</span>
+                    <span class="badge text-bg-primary">Atual</span>
+                </button>
+            {% else %}
+                <form method="post" action="{% url 'trocar_empresa' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_path }}">
+                    <input type="hidden" name="empresa_id" value="{{ vinculo.empresa.id }}">
+                    <button type="submit" class="btn btn-outline-primary w-100 text-start">
+                        {{ vinculo.empresa }}
+                    </button>
+                </form>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-muted mb-0">Nenhuma empresa disponível para sua conta.</p>
+{% endif %}

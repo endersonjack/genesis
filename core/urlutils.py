@@ -1,3 +1,6 @@
+import re
+from typing import Optional
+
 from django.shortcuts import redirect
 from django.urls import reverse
 
@@ -22,3 +25,31 @@ def redirect_empresa(request, viewname, args=None, kwargs=None, **url_kwargs):
     kw = dict(kwargs or {})
     kw.update(url_kwargs)
     return redirect(reverse_empresa(request, viewname, args=args, kwargs=kw or None))
+
+
+def is_safe_internal_path(path: str) -> bool:
+    """Evita open redirect: apenas caminhos relativos ao site."""
+    if not path or not path.startswith('/'):
+        return False
+    if path.startswith('//'):
+        return False
+    if '..' in path:
+        return False
+    return True
+
+
+def build_url_after_empresa_swap(path: str, new_empresa_id: int) -> Optional[str]:
+    """
+    Troca o segmento /empresa/<id>/ pelo novo id, mantendo o restante do caminho.
+    Ex.: /empresa/5/rh/foo -> /empresa/7/rh/foo
+    Retorna None se o path não for uma rota sob /empresa/<id>/.
+    """
+    if not is_safe_internal_path(path):
+        return None
+    m = re.match(r'^/empresa/\d+(.*)$', path)
+    if not m:
+        return None
+    rest = m.group(1)
+    if rest == '':
+        rest = '/'
+    return f'/empresa/{new_empresa_id}{rest}'

@@ -59,10 +59,12 @@
             <nav class="menu-section">
                 <p class="menu-title">Sistema</p>
 
-                <a href="{% url 'selecionar_empresa' %}" class="menu-link">
+                {% if request.empresa_ativa and usuario_mostrar_troca_empresa %}
+                <a href="{% url 'trocar_empresa_pagina' empresa_id=request.empresa_ativa.pk %}?next={{ request.path|urlencode }}" class="menu-link {% if request.resolver_match.url_name == 'trocar_empresa_pagina' %}active{% endif %}">
                     <i class="bi bi-buildings"></i>
                     <span>Trocar empresa</span>
                 </a>
+                {% endif %}
 
                 {% if request.empresa_ativa %}
                     <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
