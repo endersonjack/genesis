@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}Locais | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .page-header-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .page-header-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .25rem;
+    }
+    .page-header-desc {
+        color: #64748b;
+        margin: 0;
+    }
+    .list-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .card-header-soft {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+    }
+    .card-header-soft h5 {
+        margin: 0;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .card-body-soft {
+        padding: 0;
+        background: #f8fafc;
+    }
+    .empty-state {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+    .table-locais th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .table-locais td {
+        vertical-align: middle;
+    }
+</style>
+
+<div class="page-header-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="page-header-title">Locais</h2>
+            <p class="page-header-desc">
+                Locais da empresa ativa.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <button
+                type="button"
+                class="btn btn-primary rounded-3 fw-semibold"
+                hx-get="{% url 'local:criar' %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-plus-circle me-1"></i> Novo local
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="list-card">
+    <div class="card-header-soft d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0">Cadastrados</h5>
+        <small class="text-muted">Empresa: <strong>{{ request.empresa_ativa }}</strong></small>
+    </div>
+    <div class="card-body-soft p-0">
+        {% if locais %}
+            <div class="table-responsive">
+                <table class="table table-hover table-locais mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Local</th>
+                            <th>Endereço</th>
+                            <th>Mapa</th>
+                            <th class="text-end pe-4" style="width: 140px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for local in locais %}
+                            <tr>
+                                <td class="ps-4 fw-semibold text-dark">{{ local.nome }}</td>
+                                <td class="text-secondary small">{{ local.endereco|default:"—" }}</td>
+                                <td class="small">
+                                    {% if local.link_maps %}
+                                        <a href="{{ local.link_maps }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        title="Editar"
+                                        hx-get="{% url 'local:editar' local.pk %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPadrao">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Excluir"
+                                        hx-get="{% url 'local:excluir' local.pk %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPadrao">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state m-3">
+                <div class="mb-2"><i class="bi bi-geo-alt fs-1"></i></div>
+                <div class="fw-bold mb-1">Nenhum local cadastrado</div>
+                <div class="mb-3">Cadastre o primeiro local da empresa ativa.</div>
+                <button
+                    type="button"
+                    class="btn btn-primary rounded-3 fw-semibold"
+                    hx-get="{% url 'local:criar' %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
+                    <i class="bi bi-plus-circle me-1"></i> Novo local
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}

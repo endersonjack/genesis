@@ -5,12 +5,16 @@
 {% block content %}
 
 <style>
+    /* .summary-card sem overflow:hidden: o dropdown de configurações fica visível (Popper). */
     .summary-card,
     .table-card {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
         background: #fff;
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .table-card {
         overflow: hidden;
     }
 
@@ -50,6 +54,16 @@
     .summary-actions .btn {
         border-radius: .9rem;
         font-weight: 700;
+    }
+
+    /* Ícone de engrenagem: mantém dropdown-toggle do Bootstrap sem seta extra */
+    .summary-actions .dropdown .dropdown-toggle::after {
+        display: none;
+    }
+
+    /* Dropdown do Bootstrap vem com z-index ~1000; topbar do layout usa 1030 — o menu abria por baixo e parecia não funcionar */
+    .summary-actions .dropdown-menu {
+        z-index: 1055;
     }
 
     .summary-grid {
@@ -379,10 +393,10 @@
                     <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
                 </a>
 
-                <div class="dropdown">
+                <div class="dropdown" data-bs-popper="static">
                     <button
                         type="button"
-                        class="btn btn-outline-primary px-2"
+                        class="btn btn-outline-primary px-2 dropdown-toggle"
                         id="vt-dropdown-config"
                         data-bs-toggle="dropdown"
                         aria-expanded="false"
@@ -866,6 +880,9 @@
             })
             .then(function (html) {
                 modalContent.innerHTML = html;
+                if (window.htmx && typeof window.htmx.process === 'function') {
+                    window.htmx.process(modalContent);
+                }
                 if (window.bootstrap) {
                     bootstrap.Modal.getOrCreateInstance(modalPadrao).show();
                 }

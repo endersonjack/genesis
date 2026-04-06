@@ -62,6 +62,13 @@
                     <span>Trocar empresa</span>
                 </a>
 
+                {% if request.empresa_ativa %}
+                    <a href="{% url 'local:lista' %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
+                        <i class="bi bi-geo-alt"></i>
+                        <span>Locais</span>
+                    </a>
+                {% endif %}
+
                 {% if request.usuario_admin_empresa or request.user.is_superuser %}
                     <a href="/admin/" class="menu-link">
                         <i class="bi bi-gear"></i>

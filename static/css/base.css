@@ -185,11 +185,13 @@ body {
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
-    pointer-events: auto;
+    /* Sem --show: não interceptar cliques (evita overlay “fantasma” após bfcache/back) */
+    pointer-events: none;
 }
 
 .global-htmx-loading.global-htmx-loading--show {
     display: flex;
+    pointer-events: auto;
 }
 
 .global-htmx-loading-inner {

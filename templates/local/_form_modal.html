@@ -1,0 +1,61 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">
+        {% if modo == 'editar' and local and local.pk %}
+            Editar local
+        {% else %}
+            Novo local
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    {% if modo == 'editar' and local and local.pk %}
+        hx-post="{% url 'local:editar' local.pk %}"
+    {% else %}
+        hx-post="{% url 'local:criar' %}"
+    {% endif %}
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                {{ form.endereco }}
+                {% if form.endereco.errors %}
+                    <div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.link_maps.id_for_label }}">{{ form.link_maps.label }}</label>
+                {{ form.link_maps }}
+                {% if form.link_maps.help_text %}
+                    <div class="form-text">{{ form.link_maps.help_text }}</div>
+                {% endif %}
+                {% if form.link_maps.errors %}
+                    <div class="text-danger small mt-1">{{ form.link_maps.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

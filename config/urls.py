@@ -10,8 +10,10 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('usuarios/', include('usuarios.urls')),
     path('empresa/', include('empresas.urls')),
-    path('rh/', include('rh.urls')),
+    path('local/', include('local.urls')),
+    # Mais específico antes de `rh/`, para `/rh/gestao/` não depender do include genérico de `rh/`.
     path('rh/gestao/', include('controles_rh.urls')),
+    path('rh/', include('rh.urls')),
     path('', include('dashboard.urls')),
 
     # Toasts globais para exibir mensagens sem recarregar a página (HTMX/JS)

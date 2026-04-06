@@ -312,6 +312,56 @@ function showGenesisClientToast(message, variant) {
 window.copyTextToClipboard = copyTextToClipboard;
 window.showGenesisClientToast = showGenesisClientToast;
 
+/**
+ * Bootstrap Dropdown: após swap HTMX em `body`, `evt.detail.target` pode não cobrir
+ * toda a árvore; em páginas como VT o botão de configurações ficava “morto”.
+ * Varremos sempre `document.body` e repetimos no primeiro paint (F5 / entrada direta).
+ */
+function initBootstrapDropdowns() {
+    if (!window.bootstrap || !bootstrap.Dropdown) return;
+    var root = document.body;
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (el) {
+        try {
+            bootstrap.Dropdown.getOrCreateInstance(el);
+        } catch (e) {
+            /* ignore */
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBootstrapDropdowns);
+} else {
+    initBootstrapDropdowns();
+}
+
+document.body.addEventListener('htmx:afterSettle', function () {
+    initBootstrapDropdowns();
+});
+
+window.initBootstrapDropdowns = initBootstrapDropdowns;
+
+/**
+ * Voltar com o botão do browser / bfcache: o overlay de loading e o contador podem
+ * ficar num estado inconsistente (sem afterRequest). Reset evita loading eterno.
+ * Re-inicializar dropdowns após restaurar a página do cache.
+ */
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted && typeof window.resetGlobalHtmxLoading === 'function') {
+        window.resetGlobalHtmxLoading();
+    }
+    if (typeof initBootstrapDropdowns === 'function') {
+        initBootstrapDropdowns();
+    }
+});
+
+window.addEventListener('popstate', function () {
+    if (typeof window.resetGlobalHtmxLoading === 'function') {
+        window.resetGlobalHtmxLoading();
+    }
+});
+
 function limparFormulario(btn) {
     if (!confirm('Deseja realmente limpar todos os campos?')) return;
 

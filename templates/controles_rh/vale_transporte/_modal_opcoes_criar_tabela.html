@@ -1,0 +1,80 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Nova tabela de Vale Transporte</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<div class="modal-body">
+    <p class="text-muted small mb-3">
+        Competência <strong>{{ competencia.referencia }}</strong> — {{ competencia.empresa }}.
+        Escolha como montar as linhas iniciais:
+    </p>
+
+    <div class="d-flex flex-column gap-2">
+        <button
+            type="button"
+            class="btn btn-outline-secondary text-start py-3 d-flex align-items-start gap-3 rounded-3"
+            data-no-global-loading
+            hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}?modo=vazio"
+            hx-target="#modal-content"
+            hx-swap="innerHTML">
+            <span class="fs-4 text-secondary"><i class="bi bi-table" aria-hidden="true"></i></span>
+            <span class="flex-grow-1">
+                <span class="fw-bold d-block text-dark">Tabela vazia</span>
+                <span class="small text-muted">Cria só o controle, sem linhas. Você inclui funcionários depois.</span>
+            </span>
+        </button>
+
+        <button
+            type="button"
+            class="btn btn-outline-primary text-start py-3 d-flex align-items-start gap-3 rounded-3"
+            data-no-global-loading
+            hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}?modo=funcionarios"
+            hx-target="#modal-content"
+            hx-swap="innerHTML">
+            <span class="fs-4"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
+            <span class="flex-grow-1">
+                <span class="fw-bold d-block text-dark">Com todos os funcionários</span>
+                <span class="small text-muted">Uma linha por funcionário admitido, com dados e VT do cadastro.</span>
+            </span>
+        </button>
+
+        {% if pode_clonar %}
+            <button
+                type="button"
+                class="btn btn-outline-success text-start py-3 d-flex align-items-start gap-3 rounded-3"
+                data-no-global-loading
+                hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}?modo=clonar"
+                hx-target="#modal-content"
+                hx-swap="innerHTML">
+                <span class="fs-4"><i class="bi bi-copy" aria-hidden="true"></i></span>
+                <span class="flex-grow-1">
+                    <span class="fw-bold d-block text-dark">Clonar da competência anterior</span>
+                    <span class="small text-muted">
+                        Origem: <strong>{{ label_clonar }}</strong>.
+                        Copia linhas e valores a pagar; zera pagamentos e datas.
+                    </span>
+                </span>
+            </button>
+        {% else %}
+            <div class="border rounded-3 p-3 bg-light text-muted">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-copy fs-5 flex-shrink-0 mt-1" aria-hidden="true"></i>
+                    <div>
+                        <div class="fw-bold text-secondary">Clonar da competência anterior</div>
+                        <div class="small">
+                            {% if competencia_anterior %}
+                                Existe a competência {{ competencia_anterior.referencia }}, mas não há tabela de VT para copiar.
+                            {% else %}
+                                Não há competência imediatamente anterior cadastrada para esta empresa (ex.: primeiro mês).
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+</div>

@@ -99,12 +99,17 @@
         border-radius: 1rem;
         padding: .85rem 1rem;
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-        display: flex;
-        flex-direction: column;
-        gap: .65rem;
     }
 
     .add-mini-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        min-width: 0;
+    }
+
+    .add-mini-title-wrap {
         display: flex;
         align-items: center;
         gap: .65rem;
@@ -127,10 +132,21 @@
         line-height: 1.2;
     }
 
-    .add-mini-card .btn {
-        border-radius: .8rem;
+    .add-mini-card .btn-add-inline {
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
         font-weight: 700;
-        width: 100%;
+    }
+
+    .add-mini-card .btn-add-inline:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
     }
 
     .add-sidebar-heading {
@@ -386,68 +402,85 @@
 
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
-                                <span class="controle-icon vt">
-                                    <i class="bi bi-bus-front-fill"></i>
-                                </span>
-                                <p class="add-mini-title mb-0">Vale Transporte</p>
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon vt" aria-hidden="true">
+                                        <i class="bi bi-bus-front-fill"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Vale Transporte</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm btn-add-inline"
+                                    title="Adicionar"
+                                    aria-label="Adicionar Vale Transporte"
+                                    data-no-global-loading
+                                    hx-get="{% url 'controles_rh:modal_opcoes_criar_tabela_vt' competencia.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                class="btn btn-primary btn-sm"
-                                hx-get="{% url 'controles_rh:criar_tabela_vt' competencia.pk %}"
-                                hx-target="#modal-content"
-                                hx-swap="innerHTML"
-                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                                <i class="bi bi-plus-circle me-1"></i> Adicionar
-                            </button>
                         </div>
 
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
-                                <span class="controle-icon faltas">
-                                    <i class="bi bi-x-circle-fill"></i>
-                                </span>
-                                <p class="add-mini-title mb-0">Faltas</p>
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon cesta" aria-hidden="true">
+                                        <i class="bi bi-basket3-fill"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Cesta Básica</p>
+                                </div>
+                                <a href="{% url 'controles_rh:criar_cesta_basica' competencia.pk %}"
+                                   class="btn btn-primary btn-sm btn-add-inline"
+                                   title="Adicionar"
+                                   aria-label="Adicionar Cesta Básica">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </a>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Adicionar
-                            </button>
                         </div>
 
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
-                                <span class="controle-icon pagamentos">
-                                    <i class="bi bi-cash-stack"></i>
-                                </span>
-                                <p class="add-mini-title mb-0">Pagamentos</p>
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon faltas" aria-hidden="true">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Faltas</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Faltas (em breve)">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Adicionar
-                            </button>
                         </div>
 
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
-                                <span class="controle-icon tabelas">
-                                    <i class="bi bi-table"></i>
-                                </span>
-                                <p class="add-mini-title mb-0">Tabelas diversas</p>
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon pagamentos" aria-hidden="true">
+                                        <i class="bi bi-cash-stack"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Pagamentos</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Pagamentos (em breve)">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                                <i class="bi bi-plus-circle me-1"></i> Adicionar
-                            </button>
                         </div>
 
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
-                                <span class="controle-icon cesta">
-                                    <i class="bi bi-basket3-fill"></i>
-                                </span>
-                                <p class="add-mini-title mb-0">Cesta Básica</p>
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon tabelas" aria-hidden="true">
+                                        <i class="bi bi-table"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Tabelas diversas</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Tabelas diversas (em breve)">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
-                            <a href="{% url 'controles_rh:criar_cesta_basica' competencia.pk %}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-plus-circle me-1"></i> Adicionar
-                            </a>
                         </div>
 
                     </div>

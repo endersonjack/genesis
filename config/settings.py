@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
 
     'core',
+    'local',
     'empresas',
     'usuarios',
     'dashboard',

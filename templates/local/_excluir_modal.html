@@ -1,0 +1,32 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Excluir local</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'local:excluir' local.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="alert alert-warning mb-3">
+            <strong>Atenção:</strong> esta ação remove o local. No futuro, funcionários poderão estar vinculados a ele.
+        </div>
+        <p class="mb-2">Deseja realmente excluir este local?</p>
+        <div class="border rounded-4 p-3 bg-light">
+            <div><strong>Nome:</strong> {{ local.nome }}</div>
+            {% if local.endereco %}
+                <div><strong>Endereço:</strong> {{ local.endereco }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir
+        </button>
+    </div>
+</form>

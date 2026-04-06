@@ -3,10 +3,12 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from controles_rh.models import Competencia, ValeTransporteItem, ValeTransporteTabela
@@ -40,19 +42,21 @@ def _get_competencia_empresa(request, competencia_pk):
 
 
 def _get_tabela_vt_empresa(request, pk):
-    empresa_ativa = _get_empresa_ativa(request)
+    """
+    Carrega a tabela pelo id e confere se a competência pertence à empresa ativa (sessão).
+    Evita filtros ORM que falhavam em alguns casos e garante mensagem coerente.
+    """
+    empresa_id_sessao = request.session.get('empresa_id')
+    if not empresa_id_sessao:
+        raise PermissionDenied('Selecione uma empresa ativa.')
 
-    queryset = ValeTransporteTabela.objects.select_related(
-        'competencia',
-        'competencia__empresa'
+    tabela = get_object_or_404(
+        ValeTransporteTabela.objects.select_related('competencia', 'competencia__empresa'),
+        pk=pk,
     )
-
-    if empresa_ativa:
-        queryset = queryset.filter(competencia__empresa=empresa_ativa)
-    else:
-        queryset = queryset.none()
-
-    return get_object_or_404(queryset, pk=pk)
+    if tabela.competencia.empresa_id != int(empresa_id_sessao):
+        raise PermissionDenied('Esta tabela não pertence à empresa ativa.')
+    return tabela
 
 
 def _total_valor_pago_tabela(tabela):
@@ -108,29 +112,192 @@ def _criar_itens_iniciais_vt(tabela):
         ValeTransporteItem.objects.bulk_create(itens)
 
 
+def _competencia_anterior_mesma_empresa(competencia):
+    """Competência imediatamente anterior (mesma empresa), ou None."""
+    m, y = competencia.mes, competencia.ano
+    if m <= 1:
+        nm, ny = 12, y - 1
+    else:
+        nm, ny = m - 1, y
+    return Competencia.objects.filter(
+        empresa_id=competencia.empresa_id,
+        mes=nm,
+        ano=ny,
+    ).first()
+
+
+def _primeira_tabela_vt_competencia(competencia):
+    if not competencia:
+        return None
+    return (
+        ValeTransporteTabela.objects.filter(competencia=competencia)
+        .order_by('ordem', 'nome', 'id')
+        .first()
+    )
+
+
+def _origem_clone_para_competencia(competencia):
+    """
+    Retorna (competencia_anterior, primeira_tabela_vt) ou (None, None).
+    """
+    ant = _competencia_anterior_mesma_empresa(competencia)
+    if not ant:
+        return None, None
+    tab = _primeira_tabela_vt_competencia(ant)
+    return ant, tab
+
+
+def _modo_criacao_vt(request):
+    """Lê ?modo= (GET) ou criacao_modo (POST), normalizado (strip)."""
+    if request.method == 'POST':
+        return (request.POST.get('criacao_modo') or '').strip()
+    return (request.GET.get('modo') or '').strip()
+
+
+def _clonar_itens_vt_de_tabela(destino, origem):
+    """Copia linhas da tabela origem; zera pagamentos na nova competência."""
+    qs = origem.itens.select_related('funcionario').order_by('ordem', 'id')
+    for it in qs:
+        ValeTransporteItem.objects.create(
+            tabela=destino,
+            funcionario=it.funcionario,
+            nome=it.nome,
+            funcao=it.funcao,
+            endereco=it.endereco,
+            valor_pagar=it.valor_pagar,
+            valor_base=it.valor_base,
+            valor_pago=Decimal('0.00'),
+            data_pagamento=None,
+            pix=it.pix,
+            tipo_pix=it.tipo_pix or '',
+            banco=it.banco,
+            observacao=it.observacao,
+            ordem=it.ordem,
+            ativo=it.ativo,
+        )
+
+
+@login_required
+def modal_opcoes_criar_tabela_vt(request, competencia_pk):
+    """
+    Modal inicial: tabela vazia, com funcionários, ou clonar da competência anterior.
+    """
+    competencia = _get_competencia_empresa(request, competencia_pk)
+    comp_ant, t_origem = _origem_clone_para_competencia(competencia)
+    pode_clonar = t_origem is not None
+    label_clonar = ''
+    if comp_ant and t_origem:
+        label_clonar = f'{comp_ant.referencia} — {t_origem.nome}'
+    return render(
+        request,
+        'controles_rh/vale_transporte/_modal_opcoes_criar_tabela.html',
+        {
+            'competencia': competencia,
+            'pode_clonar': pode_clonar,
+            'competencia_anterior': comp_ant,
+            'tabela_origem_clone': t_origem,
+            'label_clonar': label_clonar,
+        },
+    )
+
+
 @login_required
 def criar_tabela_vt(request, competencia_pk):
     """
-    Cria uma nova tabela de VT dentro da competência e gera os itens iniciais.
+    Cria uma nova tabela de VT. Itens conforme criacao_modo (POST) ou ?modo= (GET).
     """
     competencia = _get_competencia_empresa(request, competencia_pk)
+
+    criacao_modo_ctx = _modo_criacao_vt(request)
+
+    if request.method == 'GET':
+        if not criacao_modo_ctx:
+            return redirect(
+                'controles_rh:modal_opcoes_criar_tabela_vt',
+                competencia_pk=competencia_pk,
+            )
+        if criacao_modo_ctx not in ('vazio', 'funcionarios', 'clonar'):
+            return redirect(
+                'controles_rh:modal_opcoes_criar_tabela_vt',
+                competencia_pk=competencia_pk,
+            )
+        if criacao_modo_ctx == 'clonar':
+            _, origem = _origem_clone_para_competencia(competencia)
+            if not origem:
+                messages.error(
+                    request,
+                    'Não há tabela de VT na competência anterior para clonar.',
+                )
+                return redirect(
+                    'controles_rh:modal_opcoes_criar_tabela_vt',
+                    competencia_pk=competencia_pk,
+                )
 
     form = ValeTransporteTabelaForm(
         request.POST or None,
         competencia=competencia
     )
 
+    if request.method == 'POST' and not criacao_modo_ctx:
+        criacao_modo_ctx = 'funcionarios'
+    modo_resumo = ''
+    if criacao_modo_ctx == 'vazio':
+        modo_resumo = 'Será criada uma tabela sem linhas (você adiciona depois).'
+    elif criacao_modo_ctx == 'funcionarios':
+        modo_resumo = (
+            'Serão criadas linhas para todos os funcionários admitidos da empresa.'
+        )
+    elif criacao_modo_ctx == 'clonar':
+        ca, ta = _origem_clone_para_competencia(competencia)
+        if ca and ta:
+            modo_resumo = (
+                f'As linhas serão copiadas de {ca.referencia} — tabela «{ta.nome}». '
+                'Valores pagos não são copiados.'
+            )
+
     if request.method == 'POST':
         if form.is_valid():
+            modo = (
+                criacao_modo_ctx
+                if criacao_modo_ctx in ('vazio', 'funcionarios', 'clonar')
+                else 'funcionarios'
+            )
+
             with transaction.atomic():
                 tabela = form.save()
-                _criar_itens_iniciais_vt(tabela)
+                if modo == 'funcionarios':
+                    _criar_itens_iniciais_vt(tabela)
+                elif modo == 'clonar':
+                    _, origem = _origem_clone_para_competencia(competencia)
+                    if not origem:
+                        messages.error(
+                            request,
+                            'Não há tabela na competência anterior para clonar.',
+                        )
+                        context = {
+                            'competencia': competencia,
+                            'tabela': None,
+                            'form': form,
+                            'modo': 'criar',
+                            'criacao_modo': criacao_modo_ctx,
+                            'modo_resumo': modo_resumo,
+                        }
+                        return render(
+                            request,
+                            'controles_rh/vale_transporte/_form_tabela_modal.html',
+                            context,
+                        )
+                    _clonar_itens_vt_de_tabela(tabela, origem)
+                # modo == 'vazio': sem linhas
 
             messages.success(request, f'Tabela "{tabela.nome}" criada com sucesso.')
 
             if _is_htmx(request):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
+                # HX-Redirect (200) é o padrão já usado em excluir_tabela_vt; 204 + HX-Refresh
+                # falhou em alguns fluxos (página não atualizava após salvar).
+                url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela.pk})
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = url
                 return response
 
             return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
@@ -142,6 +309,8 @@ def criar_tabela_vt(request, competencia_pk):
         'tabela': None,
         'form': form,
         'modo': 'criar',
+        'criacao_modo': criacao_modo_ctx,
+        'modo_resumo': modo_resumo,
     }
     return render(request, 'controles_rh/vale_transporte/_form_tabela_modal.html', context)
 
@@ -193,8 +362,9 @@ def editar_tabela_vt(request, pk):
             messages.success(request, f'Tabela "{tabela.nome}" atualizada com sucesso.')
 
             if _is_htmx(request):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
+                url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela.pk})
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = url
                 return response
 
             return redirect('controles_rh:detalhe_tabela_vt', pk=tabela.pk)
@@ -211,6 +381,12 @@ def editar_tabela_vt(request, pk):
 
 
 @login_required
+def excluir_tabela_vt_legacy_redirect(request, pk):
+    """Compatibilidade: antiga URL `vt/<pk>/excluir/` → `vt/tabela/<pk>/excluir/`."""
+    return redirect(reverse('controles_rh:excluir_tabela_vt', kwargs={'pk': pk}))
+
+
+@login_required
 def excluir_tabela_vt(request, pk):
     """
     Exclui a tabela de VT.
@@ -224,16 +400,16 @@ def excluir_tabela_vt(request, pk):
 
         messages.success(request, f'Tabela "{nome}" excluída com sucesso.')
 
+        url_comp = reverse(
+            'controles_rh:detalhe_competencia',
+            kwargs={'ano': competencia.ano, 'mes': competencia.mes},
+        )
         if _is_htmx(request):
-            response = HttpResponse(status=204)
-            response['HX-Refresh'] = 'true'
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = url_comp
             return response
 
-        return redirect(
-            'controles_rh:detalhe_competencia',
-            ano=competencia.ano,
-            mes=competencia.mes,
-        )
+        return redirect(url_comp)
 
     context = {
         'tabela': tabela,
@@ -418,8 +594,9 @@ def excluir_item_vt(request, pk):
         messages.success(request, f'Linha "{nome}" excluída com sucesso.')
 
         if _is_htmx(request):
-            response = HttpResponse(status=204)
-            response['HX-Refresh'] = 'true'
+            url = reverse('controles_rh:detalhe_tabela_vt', kwargs={'pk': tabela_pk})
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = url
             return response
 
         return redirect('controles_rh:detalhe_tabela_vt', pk=tabela_pk)

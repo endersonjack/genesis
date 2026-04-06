@@ -43,6 +43,7 @@
 <form
     class="vt-modal-form"
     method="post"
+    data-no-global-loading
     hx-post="{% if modo == 'editar' and item and item.pk %}{% url 'controles_rh:editar_item_vt' item.pk %}{% else %}{% url 'controles_rh:adicionar_item_vt' tabela.pk %}{% endif %}"
     hx-target="#modal-content"
     hx-swap="innerHTML">
@@ -178,6 +179,7 @@
                 <button
                     type="button"
                     class="btn btn-outline-danger"
+                    data-no-global-loading
                     hx-get="{% url 'controles_rh:excluir_item_vt' item.pk %}"
                     hx-target="#modal-content"
                     hx-swap="innerHTML">

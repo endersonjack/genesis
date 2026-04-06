@@ -16,6 +16,31 @@ alwaysApply: true
 - Formulários em modal: `method="post"` + `hx-post="{% url ... %}"` com o mesmo alvo; o projeto já envia **CSRF** via `htmx:configRequest` em `static/js/extra.js`.
 - Respostas de sucesso: preferir **`HX-Redirect`** ou recarregar o necessário para **Django messages** + toasts globais, conforme já implementado na base.
 
+## Navegação para outra página após HTMX (evitar estado quebrado)
+
+Quando o utilizador conclui uma ação HTMX e o resultado esperado é **ir para outra rota** (nova página completa), o browser precisa de **navegação real** para recarregar scripts, `hx-*` nos novos elementos e URLs corretas. Se só devolver HTML parcial ou refresh pouco fiável, **links e atalhos podem ficar inconsistentes** até um F5 manual.
+
+**Preferir (padrão já usado em views como `excluir_tabela_vt`, criação/edição de VT após salvar):**
+
+- Resposta **`200`** com cabeçalho **`HX-Redirect`**: valor = URL absoluta no site (ex.: `reverse('app:view', kwargs={...})`).
+- O HTMX faz `location.href = …` e carrega a página **inteira** — mensagens Django, toasts e **re-inicialização** do que depende de `DOMContentLoaded` / listeners.
+
+**Evitar como única estratégia para “ir para outra página”:**
+
+- **`204 No Content` + `HX-Refresh: true`** — em alguns fluxos o reload não atualiza o estado como esperado; o utilizador pode precisar de atualizar manualmente.
+
+**Modais e `static/js/extra.js`:**
+
+- O loading global em `htmx:beforeRequest` chama código que **fecha modais abertos**. Para pedidos HTMX que devem **manter o modal visível** (trocar só `#modal-content`), usar **`data-no-global-loading`** no botão ou no `<form>` que dispara o pedido.
+
+## Bootstrap: dropdowns após HTMX (`data-bs-toggle="dropdown"`)
+
+Após `hx-target="body"` + `hx-swap="innerHTML"`, o DOM é novo. Em `static/js/extra.js`, **`initBootstrapDropdowns()`** varre **`document.body`** no **`htmx:afterSettle`**, no **primeiro paint** e em **`pageshow`** (voltar do cache do browser). Dropdowns chatos com Popper: **`data-bs-popper="static"`** no `.dropdown` (ex.: VT). Ver `overflow: hidden` em ancestrais.
+
+## Loading global e botão Voltar do browser
+
+O overlay `#global-htmx-loading` só deve bloquear cliques com **`.global-htmx-loading--show`** (`pointer-events: none` quando oculto em `base.css`). Se o contador HTMX ficar inconsistente ao cancelar pedidos ou ao usar **Voltar** / **bfcache**, `extra.js` chama **`resetGlobalHtmxLoading()`** em **`pageshow`** (com `event.persisted`) e em **`popstate`**.
+
 ## Exceções (não obrigatório HTMX)
 
 - Links que são **navegação inteira de página** (`<a href="...">` para outra rota) sem troca parcial — podem permanecer como link normal.
