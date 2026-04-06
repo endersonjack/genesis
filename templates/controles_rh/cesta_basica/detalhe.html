@@ -147,6 +147,8 @@
         padding-right: 6px;
         overflow: hidden;
         text-overflow: ellipsis;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
 
     .vt-col-resize {
@@ -174,45 +176,75 @@
         background: rgba(59, 130, 246, 0.45);
     }
 
+    /* Larguras base em % (sem colgroup: senão o resize manual não altera a coluna) */
+    .vt-table tbody td.col-nome {
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .vt-table tbody td.col-funcao,
+    .vt-table tbody td.col-lotacao,
+    .vt-table tbody td.col-data-receb {
+        text-transform: uppercase;
+    }
+
     .vt-table th.col-num,
     .vt-table td.col-num {
-        width: 42px;
-        min-width: 42px;
+        width: 2%;
+        min-width: 1.75rem;
+        max-width: 2.75rem;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
         text-align: center;
+        font-variant-numeric: tabular-nums;
     }
 
     .vt-table th.col-drag,
     .vt-table td.col-drag {
-        width: 40px;
-        min-width: 40px;
+        width: 2.5%;
+        min-width: 2rem;
+        max-width: 2.75rem;
+        padding-left: 0;
+        padding-right: 0;
         text-align: center;
     }
 
     .vt-table th.col-nome,
-    .vt-table td.col-nome { width: 200px; }
+    .vt-table td.col-nome {
+        width: 38%;
+        min-width: 12rem;
+    }
 
     .vt-table th.col-funcao,
-    .vt-table td.col-funcao { width: 130px; }
+    .vt-table td.col-funcao {
+        width: 12%;
+        min-width: 6rem;
+    }
 
     .vt-table th.col-lotacao,
-    .vt-table td.col-lotacao { width: 160px; }
+    .vt-table td.col-lotacao {
+        width: 12%;
+        min-width: 7rem;
+    }
 
     .vt-table th.col-rec,
     .vt-table td.col-rec {
-        width: 88px;
+        width: 8%;
+        min-width: 4.5rem;
         text-align: center;
     }
 
     .vt-table th.col-data-receb,
     .vt-table td.col-data-receb {
-        width: 118px;
+        width: 12%;
+        min-width: 6.5rem;
         text-align: center;
     }
 
     .vt-table th.col-recibo-cesta,
     .vt-table td.col-recibo-cesta {
-        width: 96px;
-        min-width: 88px;
+        width: 13.5%;
+        min-width: 5rem;
         text-align: center;
     }
 
@@ -467,13 +499,13 @@
                                             <i class="bi bi-grip-vertical"></i>
                                         </span>
                                     </td>
-                                    <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
+                                    <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao|upper }}">
                                         {{ item.nome_exibicao }}
                                     </td>
-                                    <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'—' }}">
+                                    <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'—'|upper }}">
                                         {{ item.funcao|default:"—" }}
                                     </td>
-                                    <td class="col-lotacao ellipsis-cell" title="{{ item.lotacao|default:'—' }}">
+                                    <td class="col-lotacao ellipsis-cell" title="{{ item.lotacao|default:'—'|upper }}">
                                         {{ item.lotacao|default:"—" }}
                                     </td>
                                     <td class="col-rec cb-col-recebido" onclick="event.stopPropagation()">
@@ -566,7 +598,8 @@
     const table = document.getElementById('cb-table-main');
     const tbody = document.getElementById('cb-sortable-tbody');
     const listaId = table && table.dataset.listaId;
-    const storageKey = listaId ? ('cb-col-widths-' + listaId) : null;
+    /* v2: não mistura larguras salvas com #/arraste (antes herdavam espaço extra) */
+    const storageKey = listaId ? ('cb-col-widths-v2-' + listaId) : null;
     const reorderUrl = "{% url 'controles_rh:reordenar_itens_cesta_basica' lista.pk %}";
     const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
     const csrfToken = csrfInput ? csrfInput.value : '';
@@ -601,14 +634,27 @@
 
     function setColumnWidth(colIdx, widthPx) {
         if (!table) return;
-        const min = 36;
+        var min = 36;
+        if (colIdx === 1) min = 22;
+        else if (colIdx === 2) min = 28;
         const w = Math.max(min, Math.round(widthPx));
         const sel = 'thead th:nth-child(' + colIdx + '), tbody td:nth-child(' + colIdx + ')';
         table.querySelectorAll(sel).forEach(function (el) {
             el.style.width = w + 'px';
             el.style.minWidth = w + 'px';
-            el.style.maxWidth = w + 'px';
+            /* maxWidth igual à largura trava o resize em alguns navegadores; # e arraste precisam fixar */
+            if (colIdx === 1 || colIdx === 2) {
+                el.style.maxWidth = w + 'px';
+            } else {
+                el.style.removeProperty('max-width');
+            }
         });
+    }
+
+    function applyFixedNarrowColumns() {
+        if (!table) return;
+        setColumnWidth(1, 30);
+        setColumnWidth(2, 34);
     }
 
     function loadWidths() {
@@ -619,7 +665,8 @@
             const map = JSON.parse(raw);
             Object.keys(map).forEach(function (k) {
                 const idx = parseInt(k, 10);
-                if (!idx || !map[k]) return;
+                /* # e arraste: só proporção CSS + applyFixedNarrowColumns */
+                if (!idx || idx <= 2 || !map[k]) return;
                 setColumnWidth(idx, map[k]);
             });
         } catch (e) { /* ignore */ }
@@ -645,13 +692,14 @@
         if (!table) return map;
         table.querySelectorAll('thead th[data-col-idx]').forEach(function (th) {
             const idx = parseInt(th.dataset.colIdx, 10);
-            if (!idx) return;
+            if (!idx || idx <= 2) return;
             map[idx] = th.getBoundingClientRect().width;
         });
         return map;
     }
 
     loadWidths();
+    applyFixedNarrowColumns();
     requestAnimationFrame(function () {
         syncHorizontalScrollbars();
     });

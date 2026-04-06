@@ -69,6 +69,13 @@
                     </a>
                 {% endif %}
 
+                {% if request.empresa_ativa %}
+                    <a href="{% url 'empresa_preferencias' %}" class="menu-link {% if '/empresa/preferencias' in request.path %}active{% endif %}">
+                        <i class="bi bi-sliders"></i>
+                        <span>Preferências</span>
+                    </a>
+                {% endif %}
+
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
                     <button type="submit" class="menu-link text-danger border-0 bg-transparent w-100 text-start">

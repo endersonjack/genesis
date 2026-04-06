@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Preferências | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="fw-bold mb-1">Preferências</h2>
+    <p class="text-muted mb-0">
+        Dados cadastrais e logo da empresa <strong>{{ empresa }}</strong> (usados em recibos, PDFs e planilhas exportadas).
+    </p>
+</div>
+
+<form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <div class="card content-card">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="mb-1">Dados da empresa</h5>
+                    <p class="text-muted small mb-0">Identificação, contato e marca nos documentos.</p>
+                </div>
+                <div class="card-body pt-3">
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.razao_social.id_for_label }}">{{ form.razao_social.label }}</label>
+                        {{ form.razao_social }}
+                        {% if form.razao_social.errors %}<div class="text-danger small mt-1">{{ form.razao_social.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.nome_fantasia.id_for_label }}">{{ form.nome_fantasia.label }}</label>
+                        {{ form.nome_fantasia }}
+                        {% if form.nome_fantasia.errors %}<div class="text-danger small mt-1">{{ form.nome_fantasia.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.cnpj.id_for_label }}">{{ form.cnpj.label }}</label>
+                        {{ form.cnpj }}
+                        {% if form.cnpj.errors %}<div class="text-danger small mt-1">{{ form.cnpj.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.telefone.id_for_label }}">{{ form.telefone.label }}</label>
+                        {{ form.telefone }}
+                        {% if form.telefone.errors %}<div class="text-danger small mt-1">{{ form.telefone.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                        {{ form.endereco }}
+                        {% if form.endereco.help_text %}<div class="form-text">{{ form.endereco.help_text }}</div>{% endif %}
+                        {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.logo.id_for_label }}">{{ form.logo.label }}</label>
+                        {{ form.logo }}
+                        {% if form.logo.help_text %}<div class="form-text">{{ form.logo.help_text }}</div>{% endif %}
+                        {% if form.logo.errors %}<div class="text-danger small mt-1">{{ form.logo.errors|join:", " }}</div>{% endif %}
+                        {% if empresa.logo %}
+                            <div class="mt-2 p-2 border rounded bg-light d-inline-block">
+                                <p class="small text-muted mb-1">Pré-visualização atual</p>
+                                <img src="{{ empresa.logo.url }}" alt="Logo" class="img-fluid" style="max-height: 96px;">
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold" for="{{ form.cor_tema.id_for_label }}">{{ form.cor_tema.label }}</label>
+                        {{ form.cor_tema }}
+                        {% if form.cor_tema.help_text %}<div class="form-text">{{ form.cor_tema.help_text }}</div>{% endif %}
+                        {% if form.cor_tema.errors %}<div class="text-danger small mt-1">{{ form.cor_tema.errors|join:", " }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar preferências
+        </button>
+        <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

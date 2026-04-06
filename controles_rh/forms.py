@@ -341,6 +341,7 @@ class CestaBasicaListaForm(BaseStyledModelForm):
             'texto_declaracao',
             'data_emissao_recibo',
             'local_emissao',
+            'recibo_altura_linha_pct',
             'observacao',
             'cb_calculo_automatico',
             'cb_status_manual',
@@ -350,6 +351,15 @@ class CestaBasicaListaForm(BaseStyledModelForm):
             'texto_declaracao': forms.Textarea(attrs={'rows': 3}),
             'data_emissao_recibo': forms.DateInput(attrs={'type': 'date'}),
             'local_emissao': forms.TextInput(attrs={'maxlength': 120}),
+            'recibo_altura_linha_pct': forms.NumberInput(
+                attrs={
+                    'type': 'range',
+                    'class': 'form-range',
+                    'min': 70,
+                    'max': 180,
+                    'step': 5,
+                }
+            ),
             'observacao': forms.Textarea(attrs={'rows': 2}),
         }
         labels = {
@@ -357,6 +367,7 @@ class CestaBasicaListaForm(BaseStyledModelForm):
             'texto_declaracao': 'Texto da declaração (rodapé)',
             'data_emissao_recibo': 'Data no rodapé do recibo',
             'local_emissao': 'Local (cidade/UF)',
+            'recibo_altura_linha_pct': 'Altura da linha no PDF (tabela)',
             'observacao': 'Observação interna',
         }
 
@@ -371,7 +382,13 @@ class CestaBasicaListaForm(BaseStyledModelForm):
         df.widget.format = '%Y-%m-%d'
         df.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
         self.fields['texto_declaracao'].help_text = (
-            'Vazio = texto padrão: declaração de recebimento da cesta com o nome da empresa.'
+            'Vazio = declaração padrão com o nome da empresa (definida no sistema).'
+        )
+        self.fields['local_emissao'].help_text = (
+            'Cidade/UF no rodapé do recibo. Vazio = PARNAMIRIM - RN (padrão do sistema).'
+        )
+        self.fields['recibo_altura_linha_pct'].help_text = (
+            'Afeta recibo e relatório em PDF: 100% = padrão; aumente para linhas mais altas.'
         )
         self.fields['cb_status_manual'].required = False
 

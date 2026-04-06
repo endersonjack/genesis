@@ -1,3 +1,6 @@
 <div id="sec-pessoais" hx-swap-oob="outerHTML">
     {% include 'rh/funcionarios/includes/sec_pessoais.html' %}
 </div>
+<div id="employee-detalhes-topo" hx-swap-oob="outerHTML" class="employee-sticky-top {{ funcionario.classe_resumo_status|default:'top-summary-default' }}">
+    {% include 'rh/funcionarios/includes/_detalhes_topo_summary.html' %}
+</div>

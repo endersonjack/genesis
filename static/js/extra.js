@@ -64,6 +64,12 @@ document.body.addEventListener('htmx:configRequest', function (event) {
     function hideBootstrapModalsBeforeHtmxLoading() {
         if (window.bootstrap && bootstrap.Modal) {
             document.querySelectorAll('.modal.show').forEach(function (modalEl) {
+                // Não fechar o modal de seções do funcionário aqui: o hide dispara
+                // hidden.bs.modal, que limpa #modal-content e remove o <form> ainda em
+                // voo no HTMX (upload multipart), impedindo afterRequest e travando o loading.
+                if (modalEl.id === 'sectionModal') {
+                    return;
+                }
                 var inst = bootstrap.Modal.getInstance(modalEl);
                 if (inst) {
                     inst.hide();

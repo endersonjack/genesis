@@ -25,4 +25,4 @@ OK - Botão de Copiar PIX, e dar Feedback no Toast
 CONTROLE - CESTA BÁSICA
 
 Editar só Data de Recebimento via modal
-Fazer Recibos individuais
+OK - Fazer Recibos individuais

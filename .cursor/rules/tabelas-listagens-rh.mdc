@@ -1,0 +1,22 @@
+---
+description: Listagens em tabela (RH / gestão) — tipografia dos dados e resize de colunas.
+globs: templates/controles_rh/**/*.html
+alwaysApply: false
+---
+
+# Tabelas de listagem (Cesta Básica, Vale Transporte, similares)
+
+## Dados nas células
+
+- Exibir **texto** de dados em **MAIÚSCULAS** (via CSS `text-transform: uppercase` nas células de texto, ou filtros `|upper` no template quando fizer sentido).
+- A coluna **nome do empregado** (classe típica `col-nome`) deve usar **`font-weight: 700`** (negrito), além do maiúsculas.
+- **Não** forçar maiúsculas em controles puros (checkbox, botões com só ícone) quando quebrar o layout; o restante da linha segue a regra.
+
+## Cabeçalhos
+
+- Rótulos em `<span class="th-label">` podem usar **maiúsculas** (`text-transform: uppercase`) para alinhar ao padrão visual dos dados.
+
+## Redimensionamento de colunas (JS)
+
+- **Não** usar `<colgroup>` com `width` fixo em % quando a tabela tiver **resize manual** por arraste: isso impede o navegador de aplicar as larguras definidas no `thead`/`tbody`.
+- Em `setColumnWidth`, **não** fixar `max-width` igual à largura nas colunas **redimensionáveis** (índice ≥ 3); usar `max-width` só nas colunas **#** e **arraste** (índices 1 e 2), se necessário para mantê-las estreitas.

@@ -149,6 +149,25 @@
         padding-right: 6px;
         overflow: hidden;
         text-overflow: ellipsis;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .vt-table tbody td.col-nome {
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .vt-table tbody td.col-funcao,
+    .vt-table tbody td.col-endereco,
+    .vt-table tbody td.col-valor,
+    .vt-table tbody td.col-pago,
+    .vt-table tbody td.col-saldo,
+    .vt-table tbody td.col-data-pagamento,
+    .vt-table tbody td.col-pix,
+    .vt-table tbody td.col-tipo,
+    .vt-table tbody td.col-banco {
+        text-transform: uppercase;
     }
 
     .vt-col-resize {
@@ -248,12 +267,6 @@
     .vt-table td.col-tipo { width: 110px; }
     .vt-table th.col-banco,
     .vt-table td.col-banco { width: 120px; }
-    .vt-table th.col-recibo-cesta,
-    .vt-table td.col-recibo-cesta {
-        width: 96px;
-        min-width: 88px;
-        text-align: center;
-    }
 
     .vt-table tbody tr.vt-row-clickable {
         cursor: pointer;
@@ -366,25 +379,43 @@
                     <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
                 </a>
 
-                <button
-                    type="button"
-                    class="btn btn-outline-primary"
-                    hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-pencil-square me-1"></i> Editar
-                </button>
-
-                <button
-                    type="button"
-                    class="btn btn-outline-danger"
-                    hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
-                    <i class="bi bi-trash me-1"></i> Excluir
-                </button>
+                <div class="dropdown">
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary px-2"
+                        id="vt-dropdown-config"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Configurações do Vale Transporte"
+                        title="Configurações">
+                        <i class="bi bi-gear fs-5"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="vt-dropdown-config">
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item"
+                                hx-get="{% url 'controles_rh:editar_tabela_vt' tabela.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-pencil-square me-2 text-primary"></i> Editar Dados Controle de Vale Transporte
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                hx-get="{% url 'controles_rh:excluir_tabela_vt' tabela.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
+                                <i class="bi bi-trash me-2"></i> Excluir Controle de Vale Transporte
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -512,10 +543,6 @@
                                 <span class="th-label">Banco</span>
                                 <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
                             </th>
-                            <th class="col-recibo-cesta" data-col-idx="13">
-                                <span class="th-label">Recibo Cesta</span>
-                                <span class="vt-col-resize" aria-hidden="true" title="Arrastar para ajustar a largura da coluna"></span>
-                            </th>
                         </tr>
                     </thead>
                     <tbody id="vt-sortable-tbody">
@@ -533,13 +560,13 @@
                                         <i class="bi bi-grip-vertical"></i>
                                     </span>
                                 </td>
-                                <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao }}">
+                                <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao|upper }}">
                                     {{ item.nome_exibicao }}
                                 </td>
-                                <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-' }}">
+                                <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-'|upper }}">
                                     {{ item.funcao|default:"-" }}
                                 </td>
-                                <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-' }}">
+                                <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-'|upper }}">
                                     {{ item.endereco|default:"-" }}
                                 </td>
                                 <td class="col-valor money">
@@ -595,26 +622,6 @@
                                 </td>
                                 <td class="col-banco ellipsis-cell" title="{{ item.banco|default:'-' }}">
                                     {{ item.banco|default:"-" }}
-                                </td>
-                                <td class="col-recibo-cesta text-center" onclick="event.stopPropagation()">
-                                    {% if item.pk in vt_recibo_cesta_recebido %}
-                                        <a href="{% url 'controles_rh:exportar_recibo_cesta_individual_vt' item.pk %}"
-                                           class="btn btn-primary btn-sm py-0 px-2"
-                                           title="Abrir PDF — recibo individual de Cesta Básica"
-                                           target="_blank"
-                                           rel="noopener">
-                                            <i class="bi bi-basket"></i>
-                                        </a>
-                                    {% elif item.pk in vt_recibo_cesta_pendente %}
-                                        <button type="button"
-                                                class="btn btn-outline-secondary btn-sm py-0 px-2"
-                                                disabled
-                                                title="Marque &quot;Recebeu&quot; na Cesta Básica antes de imprimir o recibo">
-                                            <i class="bi bi-basket"></i>
-                                        </button>
-                                    {% else %}
-                                        <span class="text-muted small" title="Inclua o empregado na lista de Cesta Básica desta competência">—</span>
-                                    {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}
@@ -721,7 +728,11 @@
         table.querySelectorAll(sel).forEach(function (el) {
             el.style.width = w + 'px';
             el.style.minWidth = w + 'px';
-            el.style.maxWidth = w + 'px';
+            if (colIdx === 1 || colIdx === 2) {
+                el.style.maxWidth = w + 'px';
+            } else {
+                el.style.removeProperty('max-width');
+            }
         });
     }
 
@@ -867,7 +878,7 @@
     if (tbody) {
         /* Clique na linha abre "Editar linha" — sem hx na <tr> para não conflitar com o lápis de valor (htmx na linha disparava os dois modais) */
         tbody.addEventListener('click', function (e) {
-            if (e.target.closest('.btn-pago-edit, .btn-pix-copy, .vt-drag-handle, .col-drag, .col-recibo-cesta')) {
+            if (e.target.closest('.btn-pago-edit, .btn-pix-copy, .vt-drag-handle, .col-drag')) {
                 return;
             }
             var tr = e.target.closest('tr[data-vt-edit-url]');

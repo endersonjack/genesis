@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F
 
@@ -499,8 +500,16 @@ class CestaBasicaLista(models.Model):
     local_emissao = models.CharField(
         max_length=120,
         blank=True,
-        default='PARNAMIRIM - RN',
+        default='',
         verbose_name='Local (cidade/UF)',
+        help_text='Vazio = local padrão do sistema (PARNAMIRIM - RN).',
+    )
+
+    recibo_altura_linha_pct = models.PositiveSmallIntegerField(
+        default=100,
+        validators=[MinValueValidator(70), MaxValueValidator(180)],
+        verbose_name='Altura da linha no PDF (recibo/relatório)',
+        help_text='Percentual: 100 = padrão. Aumente para linhas mais altas na tabela.',
     )
 
     observacao = models.TextField(blank=True, verbose_name='Observação interna')

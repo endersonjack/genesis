@@ -39,6 +39,17 @@
                 {% if form.local_emissao.errors %}<div class="text-danger small mt-1">{{ form.local_emissao.errors|join:", " }}</div>{% endif %}
             </div>
             <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.recibo_altura_linha_pct.id_for_label }}">{{ form.recibo_altura_linha_pct.label }}</label>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="flex-grow-1" style="min-width: 200px; max-width: 420px;">
+                        {{ form.recibo_altura_linha_pct }}
+                    </div>
+                    <span class="fw-semibold text-primary" id="cb-recibo-altura-val" style="min-width: 4rem;">{{ form.recibo_altura_linha_pct.value|default:100 }}%</span>
+                </div>
+                {% if form.recibo_altura_linha_pct.help_text %}<div class="form-text small">{{ form.recibo_altura_linha_pct.help_text }}</div>{% endif %}
+                {% if form.recibo_altura_linha_pct.errors %}<div class="text-danger small mt-1">{{ form.recibo_altura_linha_pct.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
                 <label class="form-label fw-semibold" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
                 {{ form.observacao }}
                 {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors|join:", " }}</div>{% endif %}
@@ -86,6 +97,16 @@
             }
             cb.addEventListener('change', sync);
             sync();
+        })();
+        (function () {
+            var r = document.getElementById('{{ form.recibo_altura_linha_pct.id_for_label }}');
+            var out = document.getElementById('cb-recibo-altura-val');
+            if (!r || !out) return;
+            function syncAltura() {
+                out.textContent = r.value + '%';
+            }
+            r.addEventListener('input', syncAltura);
+            syncAltura();
         })();
         </script>
 
