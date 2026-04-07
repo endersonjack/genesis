@@ -191,6 +191,9 @@
             if (event.detail && event.detail.section) {
                 setTimeout(() => {
                     activateSection(event.detail.section, true);
+                    if (event.detail.section === 'saude' && event.detail.healthTab) {
+                        openSubtab(event.detail.healthTab);
+                    }
                 }, 50);
             }
         });

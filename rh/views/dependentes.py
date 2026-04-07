@@ -21,6 +21,7 @@ from auditoria.registry import audit_rh
 from ..forms import DependenteForm, FuncionarioRecebeSalarioFamiliaForm
 from ..models import Dependente, Funcionario
 from .base import _empresa_ativa_or_redirect
+from .htmx_funcionario import hx_trigger_secao_modal
 
 
 # ==========================================================
@@ -104,10 +105,10 @@ def modal_adicionar_dependente(request, pk):
             funcionario.refresh_from_db()
 
             response = _render_dependentes_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "dependentes"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "dependentes",
+                "Dependente adicionado.",
+            )
             return response
     else:
         form = DependenteForm()
@@ -159,10 +160,10 @@ def modal_editar_dependente(request, pk, dependente_id):
             funcionario.refresh_from_db()
 
             response = _render_dependentes_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "dependentes"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "dependentes",
+                "Dependente atualizado.",
+            )
             return response
     else:
         form = DependenteForm(instance=item)
@@ -213,10 +214,10 @@ def modal_excluir_dependente(request, pk, dependente_id):
         funcionario.refresh_from_db()
 
         response = _render_dependentes_list(request, funcionario)
-        response["HX-Trigger-After-Settle"] = json.dumps({
-            "closeSectionModal": True,
-            "openSection": {"section": "dependentes"},
-        })
+        response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+            "dependentes",
+            "Dependente removido.",
+        )
         return response
 
     return render(
@@ -247,12 +248,36 @@ def funcionario_recebe_salario_familia_hx(request, pk):
     funcionario = get_object_or_404(Funcionario, pk=pk, empresa=empresa_ativa)
     form = FuncionarioRecebeSalarioFamiliaForm(request.POST, instance=funcionario)
     if form.is_valid():
-        form.save()
+        saved = form.save()
         audit_rh(
             request,
             'update',
             f'Salário família (funcionário) atualizado — {funcionario.nome}.',
             {'funcionario_id': funcionario.pk},
         )
-        return HttpResponse(status=204)
-    return HttpResponse(status=400)
+        msg = (
+            'Salário família ativado.'
+            if saved.recebe_salario_familia
+            else 'Salário família desativado.'
+        )
+        # HTMX out-of-band: atualiza a secção Admissão (texto «Recebe salário família») sem F5
+        response = render(
+            request,
+            'rh/funcionarios/includes/partials/detalhes_oob_sec_admissao_fragment.html',
+            {'funcionario': saved},
+        )
+        response['HX-Trigger'] = json.dumps({
+            'genesisClientToast': {
+                'message': msg,
+                'variant': 'success',
+            },
+        })
+        return response
+    response = HttpResponse(status=400)
+    response['HX-Trigger'] = json.dumps({
+        'genesisClientToast': {
+            'message': 'Não foi possível guardar a preferência de salário família.',
+            'variant': 'error',
+        },
+    })
+    return response

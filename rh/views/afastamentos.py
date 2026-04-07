@@ -1,5 +1,3 @@
-import json
-
 from django.shortcuts import get_object_or_404, render
 
 from auditoria.registry import audit_rh
@@ -7,6 +5,7 @@ from auditoria.registry import audit_rh
 from ..forms import AfastamentoFuncionarioForm
 from ..models import AfastamentoFuncionario, Funcionario
 from .base import _empresa_ativa_or_redirect
+from .htmx_funcionario import hx_trigger_secao_modal
 
 
 # ==========================================================
@@ -90,10 +89,10 @@ def modal_adicionar_afastamento(request, pk):
             funcionario.refresh_from_db()
 
             response = _render_afastamentos_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "afastamentos"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "afastamentos",
+                "Afastamento registado.",
+            )
             return response
     else:
         form = AfastamentoFuncionarioForm()
@@ -145,10 +144,10 @@ def modal_editar_afastamento(request, pk, afastamento_id):
             funcionario.refresh_from_db()
 
             response = _render_afastamentos_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "afastamentos"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "afastamentos",
+                "Afastamento atualizado.",
+            )
             return response
     else:
         form = AfastamentoFuncionarioForm(instance=item)
@@ -199,10 +198,10 @@ def modal_excluir_afastamento(request, pk, afastamento_id):
         funcionario.refresh_from_db()
 
         response = _render_afastamentos_list(request, funcionario)
-        response["HX-Trigger-After-Settle"] = json.dumps({
-            "closeSectionModal": True,
-            "openSection": {"section": "afastamentos"},
-        })
+        response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+            "afastamentos",
+            "Afastamento removido.",
+        )
         return response
 
     return render(

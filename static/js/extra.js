@@ -313,6 +313,20 @@ window.copyTextToClipboard = copyTextToClipboard;
 window.showGenesisClientToast = showGenesisClientToast;
 
 /**
+ * Toasts disparados pelo servidor via cabeçalho HX-Trigger (ex.: toggle salário família).
+ */
+document.body.addEventListener('genesisClientToast', function (evt) {
+    var d = evt.detail;
+    if (!d || typeof window.showGenesisClientToast !== 'function') {
+        return;
+    }
+    window.showGenesisClientToast(
+        d.message || 'Atualizado.',
+        d.variant || 'success'
+    );
+});
+
+/**
  * Bootstrap Dropdown: após swap HTMX em `body`, `evt.detail.target` pode não cobrir
  * toda a árvore; em páginas como VT o botão de configurações ficava “morto”.
  * Varremos sempre `document.body` e repetimos no primeiro paint (F5 / entrada direta).

@@ -8,7 +8,7 @@
 
 <form
     method="post"
-    class="section-modal-form"
+    class="section-modal-form compact"
     hx-post="{% if modo == 'editar' %}{% url 'rh:modal_editar_dependente' empresa_id=request.empresa_ativa.pk pk=funcionario.pk dependente_id=item.pk %}{% else %}{% url 'rh:modal_adicionar_dependente' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}{% endif %}"
     hx-target="#dependentes-lista"
     hx-swap="innerHTML">

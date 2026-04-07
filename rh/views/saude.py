@@ -67,20 +67,25 @@ def _get_funcionario_saude(request, pk):
     return funcionario, None
 
 
-def _build_saude_trigger(health_tab):
+def _build_saude_trigger(health_tab, mensagem_toast="Dados de saúde atualizados."):
     """
     Monta o trigger HTMX padrão para:
     - fechar o modal
     - reabrir a seção saúde
     - manter a aba correta ativa
+    - toast de feedback
     """
-    return json.dumps({
-        "closeSectionModal": True,
-        "openSection": {
-            "section": "saude",
-            "healthTab": health_tab,
+    return json.dumps(
+        {
+            "closeSectionModal": True,
+            "openSection": {
+                "section": "saude",
+                "healthTab": health_tab,
+            },
+            "genesisClientToast": {"message": mensagem_toast, "variant": "success"},
         },
-    })
+        ensure_ascii=False,
+    )
 
 
 # ==========================================================

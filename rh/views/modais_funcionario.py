@@ -15,7 +15,6 @@ Observação:
 - este arquivo concentra somente os modais principais do cadastro
 """
 
-import json
 from datetime import datetime
 
 from django.db import transaction
@@ -34,6 +33,7 @@ from ..forms import (
     FuncionarioOutrosForm,
 )
 from .base import _empresa_ativa_or_redirect, _get_funcionario_empresa
+from .htmx_funcionario import hx_trigger_secao_modal
 from ..utils.historico import registrar_alteracao_situacao
 
 
@@ -125,10 +125,10 @@ def modal_editar_pessoais(request, pk):
                 "rh/funcionarios/modals/pessoais_success.html",
                 {"funcionario": funcionario},
             )
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "pessoais"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "pessoais",
+                "Dados pessoais atualizados.",
+            )
             return response
     else:
         form = FuncionarioDadosPessoaisForm(instance=funcionario)
@@ -189,10 +189,10 @@ def modal_editar_admissao(request, pk):
                 "rh/funcionarios/modals/admissao_success.html",
                 {"funcionario": funcionario},
             )
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "admissao"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "admissao",
+                "Admissão atualizada.",
+            )
             return response
     else:
         form = FuncionarioAdmissaoForm(
@@ -258,10 +258,10 @@ def modal_editar_demissao(request, pk):
             "rh/funcionarios/modals/demissao_success.html",
             {"funcionario": funcionario},
         )
-        response["HX-Trigger-After-Settle"] = json.dumps({
-            "closeSectionModal": True,
-            "openSection": {"section": "demissao"},
-        })
+        response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+            "demissao",
+            "Demissão atualizada.",
+        )
         return response
 
     # --------------------------------------------------
@@ -335,10 +335,10 @@ def modal_editar_bancarios(request, pk):
                 {"funcionario": funcionario},
             )
 
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "bancarios"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "bancarios",
+                "Dados bancários atualizados.",
+            )
             return response
     else:
         form = FuncionarioBancariosForm(instance=funcionario)
@@ -386,10 +386,10 @@ def modal_editar_outros(request, pk):
                 {"funcionario": funcionario},
             )
 
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "outros"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "outros",
+                "Outros dados atualizados.",
+            )
             return response
     else:
         form = FuncionarioOutrosForm(instance=funcionario)

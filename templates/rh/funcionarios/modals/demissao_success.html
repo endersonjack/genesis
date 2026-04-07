@@ -1,3 +1,10 @@
 <div id="sec-demissao" hx-swap-oob="outerHTML">
     {% include "rh/funcionarios/includes/sec_demissao.html" %}
 </div>
+<div id="employee-detalhes-topo" hx-swap-oob="outerHTML" class="employee-sticky-top {{ funcionario.classe_resumo_status|default:'top-summary-default' }}">
+    {% include 'rh/funcionarios/includes/_detalhes_topo_summary.html' %}
+</div>
+{% include 'rh/funcionarios/includes/partials/detalhes_oob_sec_admissao_fragment.html' %}
+<div id="dependentes-sf-toggle-wrap" hx-swap-oob="innerHTML">
+    {% include 'rh/funcionarios/includes/partials/dependentes_salario_familia_toggle_inner.html' %}
+</div>

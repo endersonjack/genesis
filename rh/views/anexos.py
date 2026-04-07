@@ -1,5 +1,3 @@
-import json
-
 from django.shortcuts import get_object_or_404, render
 
 from auditoria.registry import audit_rh
@@ -7,6 +5,7 @@ from auditoria.registry import audit_rh
 from ..forms import AnexoAvulsoFuncionarioForm
 from ..models import AnexoAvulsoFuncionario
 from .base import _get_funcionario_empresa
+from .htmx_funcionario import hx_trigger_secao_modal
 
 
 # ==========================================================
@@ -218,10 +217,10 @@ def modal_adicionar_anexo_avulso(request, pk):
             funcionario.refresh_from_db()
 
             response = _render_anexos_avulsos_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "anexos"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "anexos",
+                "Anexo adicionado.",
+            )
             return response
     else:
         form = AnexoAvulsoFuncionarioForm()
@@ -269,10 +268,10 @@ def modal_editar_anexo_avulso(request, pk, anexo_id):
             funcionario.refresh_from_db()
 
             response = _render_anexos_avulsos_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "anexos"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "anexos",
+                "Anexo atualizado.",
+            )
             return response
     else:
         form = AnexoAvulsoFuncionarioForm(instance=item)
@@ -319,10 +318,10 @@ def modal_excluir_anexo_avulso(request, pk, anexo_id):
         funcionario.refresh_from_db()
 
         response = _render_anexos_avulsos_list(request, funcionario)
-        response["HX-Trigger-After-Settle"] = json.dumps({
-            "closeSectionModal": True,
-            "openSection": {"section": "anexos"},
-        })
+        response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+            "anexos",
+            "Anexo removido.",
+        )
         return response
 
     return render(

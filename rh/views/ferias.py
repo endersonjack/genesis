@@ -10,8 +10,6 @@ Responsabilidades deste arquivo:
 Essas views são usadas pela seção HTMX dentro dos detalhes do funcionário.
 """
 
-import json
-
 from django.shortcuts import get_object_or_404, render
 
 from auditoria.registry import audit_rh
@@ -19,6 +17,7 @@ from auditoria.registry import audit_rh
 from ..forms import FeriasFuncionarioForm
 from ..models import FeriasFuncionario, Funcionario
 from .base import _empresa_ativa_or_redirect
+from .htmx_funcionario import hx_trigger_secao_modal
 
 
 # ==========================================================
@@ -102,10 +101,10 @@ def modal_adicionar_ferias(request, pk):
             funcionario.refresh_from_db()
 
             response = _render_ferias_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "ferias"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "ferias",
+                "Férias registadas.",
+            )
             return response
     else:
         form = FeriasFuncionarioForm()
@@ -157,10 +156,10 @@ def modal_editar_ferias(request, pk, ferias_id):
             funcionario.refresh_from_db()
 
             response = _render_ferias_list(request, funcionario)
-            response["HX-Trigger-After-Settle"] = json.dumps({
-                "closeSectionModal": True,
-                "openSection": {"section": "ferias"},
-            })
+            response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+                "ferias",
+                "Férias atualizadas.",
+            )
             return response
     else:
         form = FeriasFuncionarioForm(instance=item)
@@ -211,10 +210,10 @@ def modal_excluir_ferias(request, pk, ferias_id):
         funcionario.refresh_from_db()
 
         response = _render_ferias_list(request, funcionario)
-        response["HX-Trigger-After-Settle"] = json.dumps({
-            "closeSectionModal": True,
-            "openSection": {"section": "ferias"},
-        })
+        response["HX-Trigger-After-Settle"] = hx_trigger_secao_modal(
+            "ferias",
+            "Férias removidas.",
+        )
         return response
 
     return render(
