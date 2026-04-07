@@ -1,4 +1,4 @@
-<section class="section-panel" data-panel="saude">
+<section class="section-panel {% if secao_inicial == 'saude' %}active{% endif %}" data-panel="saude">
     <div class="section-card">
         <div class="section-card-header">
             <div>
@@ -9,30 +9,30 @@
 
         <div class="section-card-body">
             <div class="subtab-nav mb-3">
-                <button type="button" class="subtab-btn active" data-subtab="aso">ASO</button>
-                <button type="button" class="subtab-btn" data-subtab="certificados">Certificados</button>
-                <button type="button" class="subtab-btn" data-subtab="pcmso">PCMSO</button>
-                <button type="button" class="subtab-btn" data-subtab="atestados">Atestados / Licenças</button>
-                <button type="button" class="subtab-btn" data-subtab="ocorrencias">Ocorrências</button>
+                <button type="button" class="subtab-btn {% if saude_inicial == 'aso' %}active{% endif %}" data-subtab="aso">ASO</button>
+                <button type="button" class="subtab-btn {% if saude_inicial == 'certificados' %}active{% endif %}" data-subtab="certificados">Certificados</button>
+                <button type="button" class="subtab-btn {% if saude_inicial == 'pcmso' %}active{% endif %}" data-subtab="pcmso">PCMSO</button>
+                <button type="button" class="subtab-btn {% if saude_inicial == 'atestados' %}active{% endif %}" data-subtab="atestados">Atestados / Licenças</button>
+                <button type="button" class="subtab-btn {% if saude_inicial == 'ocorrencias' %}active{% endif %}" data-subtab="ocorrencias">Ocorrências</button>
             </div>
 
-            <div class="subtab-panel active" data-subtab-panel="aso">
+            <div class="subtab-panel {% if saude_inicial == 'aso' %}active{% endif %}" data-subtab-panel="aso">
                 {% include "rh/funcionarios/includes/sec_saude_aso.html" %}
             </div>
 
-            <div class="subtab-panel" data-subtab-panel="certificados">
+            <div class="subtab-panel {% if saude_inicial == 'certificados' %}active{% endif %}" data-subtab-panel="certificados">
                 {% include "rh/funcionarios/includes/sec_saude_certificados.html" %}
             </div>
 
-            <div class="subtab-panel" data-subtab-panel="pcmso">
+            <div class="subtab-panel {% if saude_inicial == 'pcmso' %}active{% endif %}" data-subtab-panel="pcmso">
                 {% include "rh/funcionarios/includes/sec_saude_pcmso.html" %}
             </div>
 
-            <div class="subtab-panel" data-subtab-panel="atestados">
+            <div class="subtab-panel {% if saude_inicial == 'atestados' %}active{% endif %}" data-subtab-panel="atestados">
                 {% include "rh/funcionarios/includes/sec_saude_atestados.html" %}
             </div>
 
-            <div class="subtab-panel" data-subtab-panel="ocorrencias">
+            <div class="subtab-panel {% if saude_inicial == 'ocorrencias' %}active{% endif %}" data-subtab-panel="ocorrencias">
                 {% include "rh/funcionarios/includes/sec_saude_ocorrencias.html" %}
             </div>
         </div>

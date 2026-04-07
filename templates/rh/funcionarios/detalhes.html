@@ -89,10 +89,20 @@
             });
         });
 
-        activateSection('pessoais');
+        const params = new URLSearchParams(window.location.search);
+        const secaoInicial = params.get('secao');
+        const saudeInicial = params.get('saude');
 
-        if (document.querySelectorAll('.subtab-btn').length) {
-            openSubtab('aso');
+        if (secaoInicial) {
+            activateSection(secaoInicial, true);
+            if (secaoInicial === 'saude') {
+                openSubtab(saudeInicial || 'aso');
+            }
+        } else {
+            activateSection('pessoais');
+            if (document.querySelectorAll('.subtab-btn').length) {
+                openSubtab('aso');
+            }
         }
 
         document.body.addEventListener('htmx:afterSwap', function (event) {

@@ -6,46 +6,46 @@
 
     <nav class="employee-side-nav">
 
-        <button type="button" class="employee-side-link active" data-section="pessoais">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'pessoais' %}active{% endif %}" data-section="pessoais">
             <i class="bi bi-person-vcard"></i> Dados pessoais
         </button>
 
-        <button type="button" class="employee-side-link" data-section="admissao">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'admissao' %}active{% endif %}" data-section="admissao">
             <i class="bi bi-box-arrow-in-right"></i> Admissão
         </button>
 
-        <button type="button" class="employee-side-link" data-section="ferias">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'ferias' %}active{% endif %}" data-section="ferias">
             <i class="bi bi-sun"></i> Férias
         </button>
 
-        <button type="button" class="employee-side-link" data-section="afastamentos">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'afastamentos' %}active{% endif %}" data-section="afastamentos">
             <i class="bi bi-person-dash"></i> Afastamentos
         </button>
 
-        <button type="button" class="employee-side-link" data-section="demissao">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'demissao' %}active{% endif %}" data-section="demissao">
             <i class="bi bi-box-arrow-right"></i> Demissão
         </button>
 
-        <button type="button" class="employee-side-link" data-section="dependentes">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'dependentes' %}active{% endif %}" data-section="dependentes">
             <i class="bi bi-people"></i> Dependentes
         </button>
 
-        <button type="button" class="employee-side-link" data-section="saude">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'saude' %}active{% endif %}" data-section="saude">
             <i class="bi bi-heart-pulse"></i> Saúde
         </button>
 
-        <button type="button" class="employee-side-link" data-section="bancarios">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'bancarios' %}active{% endif %}" data-section="bancarios">
             <i class="bi bi-bank"></i> Dados Bancários
         </button>
 
-        <button type="button" class="employee-side-link" data-section="anexos">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'anexos' %}active{% endif %}" data-section="anexos">
             <i class="bi bi-paperclip"></i> Anexos
         </button>
 
-        <button type="button" class="employee-side-link" data-section="outros">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'outros' %}active{% endif %}" data-section="outros">
             <i class="bi bi-three-dots"></i> Outros
         </button>
-        <button type="button" class="employee-side-link" data-section="historico">
+        <button type="button" class="employee-side-link {% if secao_inicial == 'historico' %}active{% endif %}" data-section="historico">
     <i class="bi bi-clock-history"></i> Histórico
 </button>
     </nav>

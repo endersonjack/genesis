@@ -1,11 +1,11 @@
 import calendar
 from datetime import date, timedelta
 
-from django.db.models import Q
 from django.shortcuts import render
 
 from core.urlutils import reverse_empresa
 
+from ..perfil_secao import perfil_funcionario_url_por_tipo
 from ..models import (
     AfastamentoFuncionario,
     ASOFuncionario,
@@ -65,10 +65,8 @@ def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
         dia = data_evento.day
 
         if not detalhe_url and funcionario:
-            detalhe_url = reverse_empresa(
-                request,
-                'rh:detalhes_funcionario',
-                kwargs={'pk': funcionario.pk},
+            detalhe_url = perfil_funcionario_url_por_tipo(
+                request, funcionario.pk, tipo,
             )
 
         eventos_por_dia.setdefault(dia, []).append({
@@ -83,6 +81,20 @@ def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
     # EVENTOS DO FUNCIONÁRIO
     # --------------------------------------------------
     for func in funcionarios.order_by("nome"):
+        if func.data_nascimento and func.data_nascimento.month == mes:
+            try:
+                data_aniversario = date(ano, mes, func.data_nascimento.day)
+            except ValueError:
+                # Ex.: 29/02 em ano não bissexto
+                data_aniversario = date(ano, mes, 28)
+
+            add_evento(
+                data_aniversario,
+                "aniversario",
+                "Aniversário",
+                func,
+            )
+
         if func.data_admissao:
             add_evento(func.data_admissao, "admissao", "Admissão", func)
 
@@ -408,95 +420,104 @@ def calendario_rh(request):
 # ==========================================================
 # DASHBOARD PRINCIPAL DO RH
 # ==========================================================
-def dashboard_rh(request):
-    """
-    Dashboard principal do RH com:
-    - totais principais
-    - calendário resumido do mês
-    - férias ativas
-    - funcionários em experiência
-    - funcionários em aviso
-    - exames próximos
-    """
-    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
-        request,
-        "Selecione uma empresa para visualizar o RH.",
-    )
-    if redirect_response:
-        return redirect_response
+_NOMES_MESES_RH = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
 
+
+def _context_dashboard_funcionarios(request, empresa_ativa):
+    """
+    KPIs + lista de aniversariantes do mês (card esquerdo).
+    """
     hoje = date.today()
-    ano = hoje.year
-    mes = hoje.month
-    limite_experiencia = hoje - timedelta(days=45)
+    funcionarios_ativos = Funcionario.objects.filter(
+        empresa=empresa_ativa,
+    ).exclude(
+        situacao_atual__in=['demitido', 'inativo'],
+    ).select_related("cargo")
 
-    funcionarios = Funcionario.objects.filter(
-        empresa=empresa_ativa
-    ).select_related(
-        "cargo",
-        "lotacao",
-        "tipo_contrato",
-    )
+    total_funcionarios = funcionarios_ativos.count()
 
-    total_funcionarios = funcionarios.count()
-
-    funcionarios_ativos = funcionarios.exclude(
-        situacao_atual__in=['demitido', 'inativo']
-    )
-
-    # --------------------------------------------------
-    # FUNCIONÁRIOS EM FÉRIAS NO MOMENTO
-    # --------------------------------------------------
-    ferias_ativas_qs = FeriasFuncionario.objects.filter(
+    total_ferias = FeriasFuncionario.objects.filter(
         funcionario__empresa=empresa_ativa,
         gozo_inicio__isnull=False,
         gozo_fim__isnull=False,
         gozo_inicio__lte=hoje,
         gozo_fim__gte=hoje,
-    ).select_related("funcionario").order_by("gozo_fim")
+    ).values("funcionario_id").distinct().count()
 
-    total_ferias = ferias_ativas_qs.values("funcionario_id").distinct().count()
+    total_experiencia = funcionarios_ativos.filter(
+        data_admissao__isnull=False,
+        data_admissao__lte=hoje,
+        fim_prorrogacao__isnull=False,
+        fim_prorrogacao__gte=hoje,
+    ).count()
 
-    # --------------------------------------------------
-    # FUNCIONÁRIOS EM EXPERIÊNCIA
-    # --------------------------------------------------
-    experiencia_qs = funcionarios_ativos.filter(
-        Q(
-            data_admissao__isnull=False,
-            data_admissao__gte=limite_experiencia,
-            inicio_prorrogacao__isnull=True,
-        ) |
-        Q(
-            inicio_prorrogacao__isnull=False,
-            fim_prorrogacao__isnull=False,
-            inicio_prorrogacao__lte=hoje,
-            fim_prorrogacao__gte=hoje,
-        )
-    ).order_by("nome")
-
-    total_experiencia = experiencia_qs.count()
-
-    # --------------------------------------------------
-    # FUNCIONÁRIOS EM AVISO
-    # --------------------------------------------------
-    aviso_qs = funcionarios_ativos.filter(
+    total_aviso = funcionarios_ativos.filter(
         data_inicio_aviso__isnull=False,
         data_fim_aviso__isnull=False,
         data_inicio_aviso__lte=hoje,
         data_fim_aviso__gte=hoje,
-    ).order_by("data_fim_aviso", "nome")
+    ).count()
 
-    total_aviso = aviso_qs.count()
+    aniversariantes_mes = []
+    for func in funcionarios_ativos.filter(data_nascimento__isnull=False):
+        if func.data_nascimento.month == hoje.month:
+            aniversariantes_mes.append(
+                {
+                    "nome": func.nome,
+                    "cargo": func.cargo.nome if func.cargo else "",
+                    "dia": func.data_nascimento.day,
+                    "detalhe_url": perfil_funcionario_url_por_tipo(
+                        request, func.pk, "aniversario",
+                    ),
+                }
+            )
 
-    # --------------------------------------------------
-    # CALENDÁRIO RESUMIDO DO DASHBOARD
-    # --------------------------------------------------
+    aniversariantes_mes.sort(key=lambda item: (item["dia"], item["nome"]))
+
+    return {
+        "mes_nome": _NOMES_MESES_RH[hoje.month],
+        "total_funcionarios": total_funcionarios,
+        "total_ferias": total_ferias,
+        "total_experiencia": total_experiencia,
+        "total_aviso": total_aviso,
+        "aniversariantes_mes": aniversariantes_mes,
+    }
+
+
+def _context_dashboard_avisos(request, empresa_ativa):
+    """
+    Eventos do mês e destaques dia/semana (card AVISOS; calendário completo em calendario_rh).
+    """
+    hoje = date.today()
+    ano = hoje.year
+    mes = hoje.month
+
+    funcionarios_ativos = Funcionario.objects.filter(
+        empresa=empresa_ativa,
+    ).exclude(
+        situacao_atual__in=['demitido', 'inativo'],
+    ).select_related(
+        "cargo",
+        "lotacao",
+        "tipo_contrato",
+    ).prefetch_related("asos")
+
     eventos_por_dia = {}
 
     def add_evento(data_evento, tipo, label, funcionario=None):
-        """
-        Adiciona evento no calendário resumido do dashboard.
-        """
         if not data_evento or data_evento.year != ano or data_evento.month != mes:
             return
 
@@ -504,10 +525,8 @@ def dashboard_rh(request):
         detalhe_url = None
 
         if funcionario:
-            detalhe_url = reverse_empresa(
-                request,
-                'rh:detalhes_funcionario',
-                kwargs={'pk': funcionario.pk},
+            detalhe_url = perfil_funcionario_url_por_tipo(
+                request, funcionario.pk, tipo,
             )
 
         eventos_por_dia.setdefault(dia, []).append({
@@ -517,7 +536,6 @@ def dashboard_rh(request):
             "detalhe_url": detalhe_url,
         })
 
-    # Férias do mês
     ferias_mes = FeriasFuncionario.objects.filter(
         funcionario__empresa=empresa_ativa
     ).select_related("funcionario", "funcionario__cargo")
@@ -528,7 +546,6 @@ def dashboard_rh(request):
         if item.gozo_fim:
             add_evento(item.gozo_fim, "ferias_volta", "Volta de férias", item.funcionario)
 
-    # Alertas de experiência
     experiencia_alertas = funcionarios_ativos.filter(
         data_admissao__isnull=False
     ).order_by("data_admissao")
@@ -542,7 +559,6 @@ def dashboard_rh(request):
         if func.fim_prorrogacao:
             add_evento(func.fim_prorrogacao, "fim_prorrogacao", "Fim da prorrogação", func)
 
-    # Fim do aviso
     aviso_mes = funcionarios_ativos.filter(
         data_fim_aviso__isnull=False
     ).order_by("data_fim_aviso")
@@ -550,8 +566,6 @@ def dashboard_rh(request):
     for func in aviso_mes:
         add_evento(func.data_fim_aviso, "fim_aviso", "Fim de aviso", func)
 
-    # Exames próximos
-    exames_proximos = []
     for func in funcionarios_ativos.filter(data_admissao__isnull=False).order_by("nome"):
         aso_admissional = func.asos.filter(tipo="admissional").order_by("-data").first()
         data_base = aso_admissional.data if aso_admissional else func.data_admissao
@@ -571,15 +585,8 @@ def dashboard_rh(request):
                 proximo_exame = proximo_exame.replace(year=hoje.year + 1, day=28)
 
         if 0 <= (proximo_exame - hoje).days <= 30:
-            exames_proximos.append({
-                "funcionario": func,
-                "data": proximo_exame,
-            })
             add_evento(proximo_exame, "exame", "Exame periódico", func)
 
-    exames_proximos = sorted(exames_proximos, key=lambda x: x["data"])[:20]
-
-    # Lembretes manuais
     lembretes_dashboard = LembreteRH.objects.filter(
         empresa=empresa_ativa,
     ).select_related("funcionario").order_by("data", "titulo")
@@ -587,24 +594,28 @@ def dashboard_rh(request):
     for item in lembretes_dashboard:
         add_evento(item.data, "lembrete", item.titulo, item.funcionario)
 
-    # Ordenação dos eventos por dia
+    for func in funcionarios_ativos.filter(data_nascimento__isnull=False).order_by("nome"):
+        if func.data_nascimento.month != mes:
+            continue
+
+        try:
+            data_aniversario = date(ano, mes, func.data_nascimento.day)
+        except ValueError:
+            data_aniversario = date(ano, mes, 28)
+
+        add_evento(data_aniversario, "aniversario", "Aniversário", func)
+
     for dia in eventos_por_dia:
         eventos_por_dia[dia] = sorted(
             eventos_por_dia[dia],
             key=lambda e: (e["label"], e["funcionario_nome"]),
         )
 
-    # Destaques listados para leitura rápida na dashboard
     destaques_dia = []
     for evento in eventos_por_dia.get(hoje.day, []):
-        destaques_dia.append(
-            {
-                "data": hoje,
-                **evento,
-            }
-        )
+        destaques_dia.append({"data": hoje, **evento})
 
-    inicio_semana = hoje - timedelta(days=(hoje.weekday() + 1) % 7)  # domingo
+    inicio_semana = hoje - timedelta(days=(hoje.weekday() + 1) % 7)
     fim_semana = inicio_semana + timedelta(days=6)
     destaques_semana = []
 
@@ -612,87 +623,51 @@ def dashboard_rh(request):
         data_evento = date(ano, mes, dia_numero)
         if inicio_semana <= data_evento <= fim_semana:
             for evento in eventos:
-                destaques_semana.append(
-                    {
-                        "data": data_evento,
-                        **evento,
-                    }
-                )
+                destaques_semana.append({"data": data_evento, **evento})
 
     destaques_semana.sort(
         key=lambda e: (e["data"], e["label"], e["funcionario_nome"])
     )
 
-    aniversariantes_mes = []
-    for func in funcionarios_ativos.filter(data_nascimento__isnull=False):
-        if func.data_nascimento.month == hoje.month:
-            aniversariantes_mes.append(
-                {
-                    "nome": func.nome,
-                    "cargo": func.cargo.nome if func.cargo else "",
-                    "dia": func.data_nascimento.day,
-                    "detalhe_url": reverse_empresa(
-                        request,
-                        'rh:detalhes_funcionario',
-                        kwargs={'pk': func.pk},
-                    ),
-                }
-            )
-
-    aniversariantes_mes.sort(key=lambda item: (item["dia"], item["nome"]))
-
-    nomes_meses = {
-        1: "Janeiro",
-        2: "Fevereiro",
-        3: "Março",
-        4: "Abril",
-        5: "Maio",
-        6: "Junho",
-        7: "Julho",
-        8: "Agosto",
-        9: "Setembro",
-        10: "Outubro",
-        11: "Novembro",
-        12: "Dezembro",
-    }
-
-    nomes_dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-
-    cal = calendar.Calendar(firstweekday=6)
-    semanas_brutas = cal.monthdayscalendar(ano, mes)
-    calendario_semanas = []
-
-    for semana in semanas_brutas:
-        linha = []
-        for dia in semana:
-            linha.append({
-                "numero": dia,
-                "eventos": eventos_por_dia.get(dia, []) if dia else [],
-                "tem_evento": bool(eventos_por_dia.get(dia, [])) if dia else False,
-                "is_today": dia == hoje.day,
-            })
-        calendario_semanas.append(linha)
-
-    context = {
-        "hoje": hoje,
-        "mes_nome": nomes_meses[mes],
-        "ano": ano,
-        "nomes_dias": nomes_dias,
-
-        "total_funcionarios": total_funcionarios,
-        "total_ferias": total_ferias,
-        "total_experiencia": total_experiencia,
-        "total_aviso": total_aviso,
-
-        "calendario_semanas": calendario_semanas,
-        "eventos_por_dia": eventos_por_dia,
+    return {
         "destaques_dia": destaques_dia,
         "destaques_semana": destaques_semana,
-        "aniversariantes_mes": aniversariantes_mes,
-
-        "exames_proximos": exames_proximos[:8],
-        "ferias_ativas": ferias_ativas_qs[:8],
-        "experiencia_lista": experiencia_qs[:8],
-        "aviso_lista": aviso_qs[:8],
     }
-    return render(request, "rh/dashboard.html", context)
+
+
+def dashboard_rh(request):
+    """
+    Shell do dashboard: conteúdo dos cards carrega em paralelo via HTMX (partials).
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa para visualizar o RH.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    return render(request, "rh/dashboard.html", {})
+
+
+def dashboard_partial_funcionarios(request):
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa para visualizar o RH.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    context = _context_dashboard_funcionarios(request, empresa_ativa)
+    return render(request, "rh/partials/dashboard_funcionarios_body.html", context)
+
+
+def dashboard_partial_avisos(request):
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa para visualizar o RH.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    context = _context_dashboard_avisos(request, empresa_ativa)
+    return render(request, "rh/partials/dashboard_avisos_oob.html", context)

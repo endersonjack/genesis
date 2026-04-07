@@ -1,0 +1,11 @@
+---
+description: Preferir Skeleton Loading em carregamentos assíncronos e páginas com HTMX.
+alwaysApply: true
+---
+
+# Skeleton Loading
+
+- Sempre que fizer sentido (dados que chegam depois, `hx-get` com `load`, listagens pesadas, cards por secção), use **skeleton loading** em vez de spinners isolados ou ecrã em branco.
+- O skeleton deve **imitar o layout** do conteúdo final (altura, grelha, linhas de texto) para reduzir *layout shift*.
+- Com **HTMX** e loading global no projeto, quando o pedido for só para um bloco, prefira **`data-no-global-loading`** no contentor do skeleton + o pedido HTMX, para não bloquear a página inteira.
+- Reutilize classes/padrões já existentes no projeto (ex.: placeholders animados com gradiente) em vez de inventar estilos novos em cada ecrã, salvo quando o design exigir.

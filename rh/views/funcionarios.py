@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 
 from django.contrib import messages
 from django.db import transaction
@@ -55,7 +55,6 @@ def lista_funcionarios(request):
         return redirect_response
 
     hoje = date.today()
-    limite_experiencia = hoje - timedelta(days=45)
 
     funcionarios = Funcionario.objects.filter(
         empresa=empresa_ativa
@@ -102,17 +101,10 @@ def lista_funcionarios(request):
         ).distinct()
     elif grupo == 'experiencia':
         funcionarios = funcionarios.filter(
-            Q(
-                data_admissao__isnull=False,
-                data_admissao__gte=limite_experiencia,
-                inicio_prorrogacao__isnull=True,
-            ) |
-            Q(
-                inicio_prorrogacao__isnull=False,
-                fim_prorrogacao__isnull=False,
-                inicio_prorrogacao__lte=hoje,
-                fim_prorrogacao__gte=hoje,
-            )
+            data_admissao__isnull=False,
+            data_admissao__lte=hoje,
+            fim_prorrogacao__isnull=False,
+            fim_prorrogacao__gte=hoje,
         ).distinct()
     elif grupo == 'aviso':
         funcionarios = funcionarios.filter(
@@ -164,7 +156,6 @@ def buscar_funcionarios(request):
         return redirect_response
 
     hoje = date.today()
-    limite_experiencia = hoje - timedelta(days=45)
 
     funcionarios = Funcionario.objects.filter(
         empresa=empresa_ativa
@@ -258,17 +249,10 @@ def buscar_funcionarios(request):
 
     if experiencia == '1':
         funcionarios = funcionarios.filter(
-            Q(
-                data_admissao__isnull=False,
-                data_admissao__gte=limite_experiencia,
-                inicio_prorrogacao__isnull=True,
-            ) |
-            Q(
-                inicio_prorrogacao__isnull=False,
-                fim_prorrogacao__isnull=False,
-                inicio_prorrogacao__lte=hoje,
-                fim_prorrogacao__gte=hoje,
-            )
+            data_admissao__isnull=False,
+            data_admissao__lte=hoje,
+            fim_prorrogacao__isnull=False,
+            fim_prorrogacao__gte=hoje,
         ).distinct()
 
     if afastado == '1':
@@ -646,11 +630,35 @@ def detalhes_funcionario(request, pk):
 
     historicos = funcionario.historicos.select_related('usuario').all()
 
+    secoes_validas = {
+        'pessoais',
+        'admissao',
+        'ferias',
+        'afastamentos',
+        'demissao',
+        'dependentes',
+        'saude',
+        'bancarios',
+        'anexos',
+        'outros',
+        'historico',
+    }
+    secao_inicial = (request.GET.get('secao') or 'pessoais').strip().lower()
+    if secao_inicial not in secoes_validas:
+        secao_inicial = 'pessoais'
+
+    saude_validas = {'aso', 'certificados', 'pcmso', 'atestados', 'ocorrencias'}
+    saude_inicial = (request.GET.get('saude') or 'aso').strip().lower()
+    if saude_inicial not in saude_validas:
+        saude_inicial = 'aso'
+
     context = {
         'funcionario': funcionario,
         'precisa_exame_demissional': precisa_exame_demissional,
         'exame_info_indisponivel': exame_info_indisponivel,
         'historicos': historicos,
+        'secao_inicial': secao_inicial,
+        'saude_inicial': saude_inicial,
     }
     context.update(secao_anexos_context(funcionario))
 

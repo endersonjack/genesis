@@ -237,6 +237,7 @@
     .pcmso { background: #e9d5ff; color: #7e22ce; }
     .feriado { background: #f3e8ff; color: #7e22ce; }
     .lembrete { background: #ffe4e6; color: #be123c; }
+    .aniversario { background: #ffedd5; color: #c2410c; }
 
     @media (max-width: 1199.98px) {
         .calendar-weekday,
@@ -379,6 +380,8 @@
                                                         <i class="bi bi-flag-fill"></i>
                                                     {% elif evento.tipo == 'lembrete' %}
                                                         <i class="bi bi-bell-fill"></i>
+                                                    {% elif evento.tipo == 'aniversario' %}
+                                                        <i class="bi bi-cake2-fill"></i>
                                                     {% endif %}
                                                 </span>
                                             {% endfor %}
@@ -459,6 +462,8 @@
                                                     <i class="bi bi-flag-fill"></i>
                                                 {% elif evento.tipo == 'lembrete' %}
                                                     <i class="bi bi-bell-fill"></i>
+                                                    {% elif evento.tipo == 'aniversario' %}
+                                                        <i class="bi bi-cake2-fill"></i>
                                                 {% endif %}
                                             </span>
                                             <span>{{ evento.label }}</span>

@@ -270,6 +270,11 @@
         color: #1d4ed8;
     }
 
+    .day-icon.aniversario {
+        background: #ffedd5;
+        color: #c2410c;
+    }
+
     .calendar-empty {
         background: #fcfcfd;
         cursor: default;
@@ -324,6 +329,11 @@
     .legend-dot.exame {
         background: #dbeafe;
         color: #1d4ed8;
+    }
+
+    .legend-dot.aniversario {
+        background: #ffedd5;
+        color: #c2410c;
     }
 
     .calendar-actions {
@@ -475,6 +485,7 @@
 .destaque-item.fim_aviso { border-left-color: #ea580c; }
 .destaque-item.exame { border-left-color: #1d4ed8; }
 .destaque-item.lembrete { border-left-color: #be123c; }
+.destaque-item.aniversario { border-left-color: #c2410c; }
 
 .destaque-vazio {
     color: #64748b;
@@ -670,6 +681,47 @@
     }
 }
 
+@keyframes dashboardSk {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.dashboard-hx-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 0%, #e8eef5 45%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: dashboardSk 1.15s ease-in-out infinite;
+    border-radius: .65rem;
+}
+
+.dashboard-hx-skeleton-line {
+    height: .85rem;
+    margin-bottom: .5rem;
+}
+
+.dashboard-hx-skeleton-line.short { width: 55%; }
+.dashboard-hx-skeleton-line.tiny { width: 35%; height: .65rem; }
+
+.dashboard-hx-skeleton-card {
+    min-height: 118px;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    background: #fff;
+}
+
+.dashboard-hx-skeleton-title {
+    height: 1.75rem;
+    width: 40%;
+    margin-bottom: .75rem;
+    border-radius: .5rem;
+}
+
+.dashboard-hx-skeleton-block {
+    height: 140px;
+    border-radius: 1rem;
+    margin-top: 1rem;
+}
+
 </style>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -726,132 +778,42 @@
             </div>
 
             <div class="rh-board-body">
-                <div class="mini-cards-grid">
-                    <div class="mini-card">
-                        <div class="mini-card-top">
-                            <span class="mini-card-icon total">
-                                <i class="bi bi-people-fill"></i>
-                            </span>
+                <div
+                    id="dashboard-slot-funcionarios"
+                    class="position-relative"
+                    data-no-global-loading
+                    hx-get="{% url 'rh:dashboard_partial_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+                    hx-trigger="load"
+                    hx-swap="innerHTML">
+                    <div class="mini-cards-grid" aria-hidden="true">
+                        <div class="mini-card dashboard-hx-skeleton-card">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-3" style="width:48px;height:48px;border-radius:14px;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-title mb-2"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short"></div>
                         </div>
-                        <div class="mini-card-value">{{ total_funcionarios }}</div>
-                        <div class="mini-card-title">Todos</div>
-                        <div class="mini-card-desc">
-                            Total de funcionários cadastrados na empresa ativa.
+                        <div class="mini-card dashboard-hx-skeleton-card">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-3" style="width:48px;height:48px;border-radius:14px;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-title mb-2"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short"></div>
                         </div>
-                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-                           hx-target="body"
-                           hx-swap="innerHTML"
-                           hx-push-url="true"
-                           class="btn btn-outline-primary">
-                            Ver todos
-                        </a>
+                        <div class="mini-card dashboard-hx-skeleton-card">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-3" style="width:48px;height:48px;border-radius:14px;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-title mb-2"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short"></div>
+                        </div>
+                        <div class="mini-card dashboard-hx-skeleton-card">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-3" style="width:48px;height:48px;border-radius:14px;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-title mb-2"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short"></div>
+                        </div>
                     </div>
-
-                    <div class="mini-card">
-                        <div class="mini-card-top">
-                            <span class="mini-card-icon ferias">
-                                <i class="bi bi-sun-fill"></i>
-                            </span>
-                        </div>
-                        <div class="mini-card-value">{{ total_ferias }}</div>
-                        <div class="mini-card-title">Em Férias</div>
-                        <div class="mini-card-desc">
-                            Funcionários atualmente em gozo de férias.
-                        </div>
-                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
-                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
-                           hx-target="body"
-                           hx-swap="innerHTML"
-                           hx-push-url="true"
-                           class="btn btn-outline-primary">
-                            Ver todos
-                        </a>
-                    </div>
-
-                    <div class="mini-card">
-                        <div class="mini-card-top">
-                            <span class="mini-card-icon experiencia">
-                                <i class="bi bi-hourglass-split"></i>
-                            </span>
-                        </div>
-                        <div class="mini-card-value">{{ total_experiencia }}</div>
-                        <div class="mini-card-title">Em Experiência</div>
-                        <div class="mini-card-desc">
-                            Inclui quem vai prorrogar e quem já está em prorrogação.
-                        </div>
-                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
-                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
-                           hx-target="body"
-                           hx-swap="innerHTML"
-                           hx-push-url="true"
-                           class="btn btn-outline-primary">
-                            Ver todos
-                        </a>
-                    </div>
-
-                    <div class="mini-card">
-                        <div class="mini-card-top">
-                            <span class="mini-card-icon aviso">
-                                <i class="bi bi-exclamation-triangle-fill"></i>
-                            </span>
-                        </div>
-                        <div class="mini-card-value">{{ total_aviso }}</div>
-                        <div class="mini-card-title">Em Aviso</div>
-                        <div class="mini-card-desc">
-                            Funcionários com aviso ativo e data final definida.
-                        </div>
-                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
-                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
-                           hx-target="body"
-                           hx-swap="innerHTML"
-                           hx-push-url="true"
-                           class="btn btn-outline-primary">
-                            Ver todos
-                        </a>
-                    </div>
-                </div>
-                <div class="destaques-card aniversariantes-card">
-                    <h5 class="destaques-card-title">Aniversariantes de {{ mes_nome }}</h5>
-                    <div class="aniversariantes-lista">
-                        {% for pessoa in aniversariantes_mes %}
-                            {% if pessoa.detalhe_url %}
-                                <a href="{{ pessoa.detalhe_url }}"
-                                   hx-get="{{ pessoa.detalhe_url }}"
-                                   hx-target="body"
-                                   hx-swap="innerHTML"
-                                   hx-push-url="true"
-                                   class="destaque-item-link">
-                                    <div class="aniversariante-item">
-                                        <div class="aniversariante-main">
-                                            <span class="aniversariante-icon">
-                                                <i class="bi bi-cake2-fill"></i>
-                                            </span>
-                                            <div>
-                                                <div class="aniversariante-info">{{ pessoa.nome }}</div>
-                                                <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
-                                                <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            {% else %}
-                                <div class="aniversariante-item">
-                                    <div class="aniversariante-main">
-                                        <span class="aniversariante-icon">
-                                            <i class="bi bi-cake2-fill"></i>
-                                        </span>
-                                        <div>
-                                            <div class="aniversariante-info">{{ pessoa.nome }}</div>
-                                            <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
-                                            <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% empty %}
-                            <div class="destaque-vazio">Nenhum aniversariante neste mês.</div>
-                        {% endfor %}
+                    <div class="destaques-card aniversariantes-card mt-3" aria-hidden="true">
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line" style="width:55%;height:1.1rem;margin-bottom:.75rem;"></div>
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-block"></div>
                     </div>
                 </div>
             </div>
@@ -867,182 +829,30 @@
                     </span>
                     AVISOS
                 </h3>
-                <span class="avisos-data-header">Hoje: {{ hoje|date:"d/m/Y" }}</span>
+                <span class="avisos-data-header">Hoje: {% now "d/m/Y" %}</span>
             </div>
 
             <div class="rh-board-body">
-
-
-                <div class="calendar-head">
-                    <div class="avisos-view-switch">
-                        <button type="button" class="btn btn-outline-secondary btn-sm active" data-view-target="dia">
-                            Por Dia
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
-                            Por Semana
-                        </button>
-                        <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
-                           hx-get="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
-                           hx-target="body"
-                           hx-swap="innerHTML"
-                           hx-push-url="true"
-                           class="btn btn-outline-primary btn-sm">
-                            Ver calendário
-                        </a>
+                <div
+                    id="dashboard-slot-avisos"
+                    data-no-global-loading
+                    hx-get="{% url 'rh:dashboard_partial_avisos' empresa_id=request.empresa_ativa.pk %}"
+                    hx-trigger="load"
+                    hx-swap="none">
+                    <div class="calendar-head mb-2">
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line" style="width:70%;max-width:280px;height:2rem;border-radius:.85rem;"></div>
                     </div>
-                </div>
-
-                <div id="avisos-view-dia" class="destaques-view">
                     <div class="destaques-card">
-                        <h5 class="destaques-card-title">Destaques do Dia</h5>
-                        <div class="destaques-lista">
-                            {% for evento in destaques_dia %}
-                                {% if evento.detalhe_url %}
-                                    <a href="{{ evento.detalhe_url }}"
-                                       hx-get="{{ evento.detalhe_url }}"
-                                       hx-target="body"
-                                       hx-swap="innerHTML"
-                                       hx-push-url="true"
-                                       class="destaque-item-link">
-                                        <div class="destaque-item {{ evento.tipo }}">
-                                            <div class="destaque-item-meta">
-                                                <i class="bi bi-calendar-event"></i>
-                                                {{ evento.data|date:"d/m/Y" }}
-                                            </div>
-                                            <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                            <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                                        </div>
-                                    </a>
-                                {% else %}
-                                    <div class="destaque-item {{ evento.tipo }}">
-                                        <div class="destaque-item-meta">
-                                            <i class="bi bi-calendar-event"></i>
-                                            {{ evento.data|date:"d/m/Y" }}
-                                        </div>
-                                        <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                        <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                                    </div>
-                                {% endif %}
-                            {% empty %}
-                                <div class="destaque-vazio">Nenhum aviso para hoje.</div>
-                            {% endfor %}
-                        </div>
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-3" style="width:45%;"></div>
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-2"></div>
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-2"></div>
+                        <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line tiny"></div>
                     </div>
                 </div>
-
-                <div id="avisos-view-semana" class="destaques-view d-none">
-                    <div class="destaques-card">
-                        <h5 class="destaques-card-title">Destaques da Semana</h5>
-                        <div class="destaques-lista">
-                            {% regroup destaques_semana by data as destaques_semana_por_dia %}
-                            {% for dia in destaques_semana_por_dia %}
-                                <div class="destaques-dia-grupo">
-                                    <div class="destaques-dia-titulo">{{ dia.grouper|date:"d/m/Y" }}</div>
-                                    {% for evento in dia.list %}
-                                        {% if evento.detalhe_url %}
-                                            <a href="{{ evento.detalhe_url }}"
-                                               hx-get="{{ evento.detalhe_url }}"
-                                               hx-target="body"
-                                               hx-swap="innerHTML"
-                                               hx-push-url="true"
-                                               class="destaque-item-link">
-                                                <div class="destaque-item {{ evento.tipo }}">
-                                                    <div class="destaque-item-meta">
-                                                        <i class="bi bi-calendar-week"></i>
-                                                        {{ evento.data|date:"d/m/Y" }}
-                                                    </div>
-                                                    <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                                    <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                                                </div>
-                                            </a>
-                                        {% else %}
-                                            <div class="destaque-item {{ evento.tipo }}">
-                                                <div class="destaque-item-meta">
-                                                    <i class="bi bi-calendar-week"></i>
-                                                    {{ evento.data|date:"d/m/Y" }}
-                                                </div>
-                                                <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                                <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            {% empty %}
-                                <div class="destaque-vazio">Nenhum aviso para esta semana.</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
 </div>
-
-{% for semana in calendario_semanas %}
-    {% for dia in semana %}
-        {% if dia.numero and dia.tem_evento %}
-            <div class="modal fade" id="modalDia{{ dia.numero }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
-                    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
-                        <div class="modal-header">
-                            <h5 class="modal-title fw-bold">
-                                Avisos do dia {{ dia.numero }} de {{ mes_nome }}
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-
-                        <div class="modal-body bg-light">
-                            <div class="day-modal-list">
-                                {% for evento in dia.eventos %}
-
-                                    <div class="day-modal-item">
-                                        <div class="day-modal-item-title">
-                                            {{ evento.funcionario_nome|default:"Funcionário" }}
-                                        </div>
-
-                                        <div class="day-modal-item-sub d-flex align-items-center gap-2 flex-wrap">
-                                            <span class="legend-dot {{ evento.tipo }}">
-                                                {% if evento.tipo == 'ferias_inicio' %}
-                                                    <i class="bi bi-sun-fill"></i>
-                                                {% elif evento.tipo == 'ferias_volta' %}
-                                                    <i class="bi bi-arrow-counterclockwise"></i>
-                                                {% elif evento.tipo == 'experiencia_45' or evento.tipo == 'fim_prorrogacao' %}
-                                                    <i class="bi bi-hourglass-split"></i>
-                                                {% elif evento.tipo == 'fim_aviso' %}
-                                                    <i class="bi bi-exclamation-triangle-fill"></i>
-                                                {% elif evento.tipo == 'exame' %}
-                                                    <i class="bi bi-heart-pulse-fill"></i>
-                                                {% elif evento.tipo == 'lembrete' %}
-                                                    <i class="bi bi-bell-fill"></i>
-                                                {% endif %}
-                                            </span>
-
-                                            <span>{{ evento.label }}</span>
-                                        </div>
-
-                                        {% if evento.detalhe_url %}
-                                            <a href="{{ evento.detalhe_url }}"
-                                               hx-get="{{ evento.detalhe_url }}"
-                                               hx-target="body"
-                                               hx-swap="innerHTML"
-                                               hx-push-url="true"
-                                               class="btn btn-sm btn-primary">
-                                                <i class="bi bi-person-vcard me-1"></i> Detalhar
-                                            </a>
-                                        {% endif %}
-                                    </div>
-
-
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-    {% endfor %}
-{% endfor %}
 
 <div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1052,29 +862,29 @@
     </div>
 </div>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const switcher = document.querySelector(".avisos-view-switch");
+document.body.addEventListener("click", function (e) {
+    const button = e.target.closest(".avisos-view-switch [data-view-target]");
+    if (!button) return;
+
+    const switcher = button.closest(".avisos-view-switch");
     if (!switcher) return;
 
+    const target = button.getAttribute("data-view-target");
     const buttons = switcher.querySelectorAll("[data-view-target]");
     const viewDia = document.getElementById("avisos-view-dia");
     const viewSemana = document.getElementById("avisos-view-semana");
+    if (!viewDia || !viewSemana) return;
 
-    buttons.forEach((button) => {
-        button.addEventListener("click", function () {
-            const target = button.getAttribute("data-view-target");
-            buttons.forEach((b) => b.classList.remove("active"));
-            button.classList.add("active");
+    buttons.forEach((b) => b.classList.remove("active"));
+    button.classList.add("active");
 
-            if (target === "dia") {
-                viewDia.classList.remove("d-none");
-                viewSemana.classList.add("d-none");
-            } else {
-                viewSemana.classList.remove("d-none");
-                viewDia.classList.add("d-none");
-            }
-        });
-    });
+    if (target === "dia") {
+        viewDia.classList.remove("d-none");
+        viewSemana.classList.add("d-none");
+    } else {
+        viewSemana.classList.remove("d-none");
+        viewDia.classList.add("d-none");
+    }
 });
 </script>
 {% endblock %}

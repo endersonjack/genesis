@@ -12,6 +12,16 @@ urlpatterns = [
     # DASHBOARD RH
     # ======================
     path('', empresa_scoped(dashboard_rh), name='dashboard_rh'),
+    path(
+        'dashboard/partials/funcionarios/',
+        empresa_scoped(dashboard_partial_funcionarios),
+        name='dashboard_partial_funcionarios',
+    ),
+    path(
+        'dashboard/partials/avisos/',
+        empresa_scoped(dashboard_partial_avisos),
+        name='dashboard_partial_avisos',
+    ),
 
     # ======================
     # FUNCIONÁRIOS - CRUD PRINCIPAL

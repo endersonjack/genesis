@@ -1,0 +1,128 @@
+<div class="mini-cards-grid">
+    <div class="mini-card">
+        <div class="mini-card-top">
+            <span class="mini-card-icon total">
+                <i class="bi bi-people-fill"></i>
+            </span>
+        </div>
+        <div class="mini-card-value">{{ total_funcionarios }}</div>
+        <div class="mini-card-title">Ativos</div>
+        <div class="mini-card-desc">
+            Funcionários ativos na empresa (exclui demitidos e inativos).
+        </div>
+        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="btn btn-outline-primary">
+            Ver todos
+        </a>
+    </div>
+
+    <div class="mini-card">
+        <div class="mini-card-top">
+            <span class="mini-card-icon ferias">
+                <i class="bi bi-sun-fill"></i>
+            </span>
+        </div>
+        <div class="mini-card-value">{{ total_ferias }}</div>
+        <div class="mini-card-title">Em Férias</div>
+        <div class="mini-card-desc">
+            Funcionários atualmente em gozo de férias.
+        </div>
+        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
+           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="btn btn-outline-primary">
+            Ver todos
+        </a>
+    </div>
+
+    <div class="mini-card">
+        <div class="mini-card-top">
+            <span class="mini-card-icon experiencia">
+                <i class="bi bi-hourglass-split"></i>
+            </span>
+        </div>
+        <div class="mini-card-value">{{ total_experiencia }}</div>
+        <div class="mini-card-title">Em Experiência</div>
+        <div class="mini-card-desc">
+            Da data de admissão até o fim da prorrogação.
+        </div>
+        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
+           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="btn btn-outline-primary">
+            Ver todos
+        </a>
+    </div>
+
+    <div class="mini-card">
+        <div class="mini-card-top">
+            <span class="mini-card-icon aviso">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </span>
+        </div>
+        <div class="mini-card-value">{{ total_aviso }}</div>
+        <div class="mini-card-title">Em Aviso</div>
+        <div class="mini-card-desc">
+            Funcionários com aviso ativo e data final definida.
+        </div>
+        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
+           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           class="btn btn-outline-primary">
+            Ver todos
+        </a>
+    </div>
+</div>
+<div class="destaques-card aniversariantes-card">
+    <h5 class="destaques-card-title">Aniversariantes de {{ mes_nome }}</h5>
+    <div class="aniversariantes-lista">
+        {% for pessoa in aniversariantes_mes %}
+            {% if pessoa.detalhe_url %}
+                <a href="{{ pessoa.detalhe_url }}"
+                   hx-get="{{ pessoa.detalhe_url }}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   class="destaque-item-link">
+                    <div class="aniversariante-item">
+                        <div class="aniversariante-main">
+                            <span class="aniversariante-icon">
+                                <i class="bi bi-cake2-fill"></i>
+                            </span>
+                            <div>
+                                <div class="aniversariante-info">{{ pessoa.nome }}</div>
+                                <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
+                                <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            {% else %}
+                <div class="aniversariante-item">
+                    <div class="aniversariante-main">
+                        <span class="aniversariante-icon">
+                            <i class="bi bi-cake2-fill"></i>
+                        </span>
+                        <div>
+                            <div class="aniversariante-info">{{ pessoa.nome }}</div>
+                            <div class="aniversariante-cargo">{{ pessoa.cargo|default:"Sem cargo" }}</div>
+                            <div class="aniversariante-dia">Dia {{ pessoa.dia }}</div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% empty %}
+            <div class="destaque-vazio">Nenhum aniversariante neste mês.</div>
+        {% endfor %}
+    </div>
+</div>
