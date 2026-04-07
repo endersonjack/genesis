@@ -104,7 +104,7 @@ def _criar_itens_iniciais_vt(tabela):
                 endereco=getattr(funcionario, 'endereco_completo', '') or '',
                 valor_unitario=vt_unit,
                 viagens_dia=2,
-                dias=1,
+                dias=20,
                 pix=getattr(funcionario, 'pix', '') or '',
                 tipo_pix=getattr(funcionario, 'tipo_pix', '') or '',
                 banco=str(banco) if banco else '',
@@ -169,8 +169,8 @@ def _clonar_itens_vt_de_tabela(destino, origem):
             funcao=it.funcao,
             endereco=it.endereco,
             valor_unitario=getattr(it, 'valor_unitario', None) if getattr(it, 'valor_unitario', None) is not None else it.valor_pagar,
-            viagens_dia=getattr(it, 'viagens_dia', None) if getattr(it, 'viagens_dia', None) is not None else 1,
-            dias=getattr(it, 'dias', None) if getattr(it, 'dias', None) is not None else 1,
+            viagens_dia=getattr(it, 'viagens_dia', None) if getattr(it, 'viagens_dia', None) is not None else 2,
+            dias=getattr(it, 'dias', None) if getattr(it, 'dias', None) is not None else 20,
             valor_pago=Decimal('0.00'),
             data_pagamento=None,
             pix=it.pix,
@@ -526,7 +526,12 @@ def adicionar_item_vt(request, tabela_pk):
     form = ValeTransporteItemForm(
         request.POST or None,
         tabela=tabela,
-        initial={'ordem': ultima_ordem + 1, 'ativo': True}
+        initial={
+            'ordem': ultima_ordem + 1,
+            'ativo': True,
+            'viagens_dia': 2,
+            'dias': 20,
+        }
     )
 
     if request.method == 'POST':

@@ -343,7 +343,7 @@ class ValeTransporteItem(models.Model):
     )
 
     dias = models.PositiveSmallIntegerField(
-        default=1,
+        default=20,
         verbose_name='Dias',
         help_text='Quantidade de dias usada para calcular o total.',
     )
