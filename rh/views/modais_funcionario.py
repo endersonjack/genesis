@@ -218,8 +218,8 @@ def modal_editar_demissao(request, pk):
     Modal da seção de demissão.
 
     Regras:
-    - se houver data_demissao, a situação vai para 'demitido'
-    - se remover a data e a situação ainda estiver como 'demitido',
+    - se houver data_demissao, a situação vai para 'inativo' (desativado)
+    - se remover a data e a situação ainda estiver como 'inativo',
       volta para 'admitido'
     - calcula o alerta de exame demissional antes de salvar
     """
@@ -240,8 +240,8 @@ def modal_editar_demissao(request, pk):
         obj = form.save(commit=False)
 
         if obj.data_demissao:
-            obj.situacao_atual = 'demitido'
-        elif obj.situacao_atual == 'demitido':
+            obj.situacao_atual = 'inativo'
+        elif obj.situacao_atual == 'inativo':
             obj.situacao_atual = 'admitido'
 
         obj.save()

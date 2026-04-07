@@ -87,9 +87,14 @@ def lista_funcionarios(request):
         funcionarios = funcionarios.filter(lotacao_id=lotacao_id)
 
     if situacao and situacao != 'todos':
-        funcionarios = funcionarios.filter(situacao_atual=situacao)
+        if situacao == 'demitido':
+            # Demitidos são identificados pela data_demissao (mesmo que situacao_atual vire inativo)
+            funcionarios = funcionarios.filter(data_demissao__isnull=False)
+        else:
+            funcionarios = funcionarios.filter(situacao_atual=situacao)
     elif grupo == 'todos':
-        pass
+        # Por padrão, não exibe desativados; só aparecem se filtrar explicitamente.
+        funcionarios = funcionarios.exclude(situacao_atual__in=['demitido', 'inativo'])
     elif grupo == 'ferias':
         funcionarios = funcionarios.filter(
             ferias__gozo_inicio__lte=hoje,
@@ -202,7 +207,23 @@ def buscar_funcionarios(request):
         funcionarios = funcionarios.filter(lotacao_id=lotacao_id)
 
     if situacao and situacao != 'todos':
-        funcionarios = funcionarios.filter(situacao_atual=situacao)
+        if situacao == 'desativados':
+            # Inclui:
+            # - inativos "manuais"
+            # - demitidos legados (situacao_atual='demitido')
+            # - demitidos atuais (data_demissao preenchida)
+            funcionarios = funcionarios.filter(
+                Q(situacao_atual__in=['inativo', 'demitido']) |
+                Q(data_demissao__isnull=False)
+            )
+        elif situacao == 'demitido':
+            funcionarios = funcionarios.filter(data_demissao__isnull=False)
+        else:
+            funcionarios = funcionarios.filter(situacao_atual=situacao)
+    else:
+        # Por padrão, não exibe demitidos/inativos na busca.
+        # Eles só aparecem se o usuário filtrar explicitamente por situação.
+        funcionarios = funcionarios.exclude(situacao_atual__in=['demitido', 'inativo'])
 
     if tipo_contrato_id:
         funcionarios = funcionarios.filter(tipo_contrato_id=tipo_contrato_id)
@@ -408,8 +429,8 @@ def _salvar_secao_funcionario(secao, forms, formsets, funcionario, empresa_ativa
             obj.empresa = empresa_ativa
 
             if obj.data_demissao:
-                obj.situacao_atual = 'demitido'
-            elif obj.situacao_atual == 'demitido':
+                obj.situacao_atual = 'inativo'
+            elif obj.situacao_atual == 'inativo':
                 obj.situacao_atual = 'admitido'
 
             obj.save()

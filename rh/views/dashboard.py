@@ -44,6 +44,8 @@ def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
     """
     funcionarios = Funcionario.objects.filter(
         empresa=empresa_ativa
+    ).exclude(
+        situacao_atual__in=['demitido', 'inativo']
     ).select_related(
         "cargo",
         "lotacao",
@@ -438,6 +440,10 @@ def dashboard_rh(request):
 
     total_funcionarios = funcionarios.count()
 
+    funcionarios_ativos = funcionarios.exclude(
+        situacao_atual__in=['demitido', 'inativo']
+    )
+
     # --------------------------------------------------
     # FUNCIONÁRIOS EM FÉRIAS NO MOMENTO
     # --------------------------------------------------
@@ -454,7 +460,7 @@ def dashboard_rh(request):
     # --------------------------------------------------
     # FUNCIONÁRIOS EM EXPERIÊNCIA
     # --------------------------------------------------
-    experiencia_qs = funcionarios.filter(
+    experiencia_qs = funcionarios_ativos.filter(
         Q(
             data_admissao__isnull=False,
             data_admissao__gte=limite_experiencia,
@@ -473,7 +479,7 @@ def dashboard_rh(request):
     # --------------------------------------------------
     # FUNCIONÁRIOS EM AVISO
     # --------------------------------------------------
-    aviso_qs = funcionarios.filter(
+    aviso_qs = funcionarios_ativos.filter(
         data_inicio_aviso__isnull=False,
         data_fim_aviso__isnull=False,
         data_inicio_aviso__lte=hoje,
@@ -523,7 +529,7 @@ def dashboard_rh(request):
             add_evento(item.gozo_fim, "ferias_volta", "Volta de férias", item.funcionario)
 
     # Alertas de experiência
-    experiencia_alertas = funcionarios.filter(
+    experiencia_alertas = funcionarios_ativos.filter(
         data_admissao__isnull=False
     ).order_by("data_admissao")
 
@@ -537,7 +543,7 @@ def dashboard_rh(request):
             add_evento(func.fim_prorrogacao, "fim_prorrogacao", "Fim da prorrogação", func)
 
     # Fim do aviso
-    aviso_mes = funcionarios.filter(
+    aviso_mes = funcionarios_ativos.filter(
         data_fim_aviso__isnull=False
     ).order_by("data_fim_aviso")
 
@@ -546,7 +552,7 @@ def dashboard_rh(request):
 
     # Exames próximos
     exames_proximos = []
-    for func in funcionarios.filter(data_admissao__isnull=False).order_by("nome"):
+    for func in funcionarios_ativos.filter(data_admissao__isnull=False).order_by("nome"):
         aso_admissional = func.asos.filter(tipo="admissional").order_by("-data").first()
         data_base = aso_admissional.data if aso_admissional else func.data_admissao
 
@@ -618,7 +624,7 @@ def dashboard_rh(request):
     )
 
     aniversariantes_mes = []
-    for func in funcionarios.filter(data_nascimento__isnull=False):
+    for func in funcionarios_ativos.filter(data_nascimento__isnull=False):
         if func.data_nascimento.month == hoje.month:
             aniversariantes_mes.append(
                 {

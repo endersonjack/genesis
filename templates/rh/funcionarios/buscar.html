@@ -182,11 +182,16 @@ td:first-child, th:first-child {
                 <div>
                     <label class="form-label">Situação</label>
                     <select name="situacao" class="form-select">
-                        <option value="">Todas</option>
+                        <option value="" {% if not request.GET.situacao %}selected{% endif %}>Todos Ativos</option>
+                        <option value="desativados" {% if request.GET.situacao == 'desativados' %}selected{% endif %}>
+                            Inativo/Demitido
+                        </option>
                         {% for valor, rotulo in status_choices %}
-                            <option value="{{ valor }}" {% if request.GET.situacao == valor %}selected{% endif %}>
-                                {{ rotulo }}
-                            </option>
+                            {% if valor != 'inativo' and valor != 'demitido' %}
+                                <option value="{{ valor }}" {% if request.GET.situacao == valor %}selected{% endif %}>
+                                    {{ rotulo }}
+                                </option>
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </div>

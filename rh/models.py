@@ -316,8 +316,9 @@ class Funcionario(TimeStampedModel):
             self.precisa_exame_demissional = False
 
         if self.data_demissao:
-            self.situacao_atual = 'demitido'
-        elif self.situacao_atual == 'demitido':
+            # Regra do projeto: demitido vira desativado (não aparece por padrão).
+            self.situacao_atual = 'inativo'
+        elif self.situacao_atual in ('demitido', 'inativo'):
             self.situacao_atual = 'admitido'
         
         super().save(*args, **kwargs)
