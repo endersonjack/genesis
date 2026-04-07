@@ -110,18 +110,34 @@
                 <div class="vt-form-section">
                     <div class="vt-form-section-title">Valores e pagamento</div>
                     <div class="row g-2 g-lg-3">
-                        <div class="col-6 col-lg-4">
+                        <div class="col-6 col-lg-3">
+                            <label class="form-label fw-semibold" for="{{ form.valor_unitario.id_for_label }}">{{ form.valor_unitario.label }}</label>
+                            {{ form.valor_unitario }}
+                            {% if form.valor_unitario.errors %}<div class="text-danger small mt-1">{{ form.valor_unitario.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-6 col-lg-1">
+                            <label class="form-label fw-semibold" for="{{ form.viagens_dia.id_for_label }}">{{ form.viagens_dia.label }}</label>
+                            {{ form.viagens_dia }}
+                            {% if form.viagens_dia.errors %}<div class="text-danger small mt-1">{{ form.viagens_dia.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-6 col-lg-2">
+                            <label class="form-label fw-semibold" for="{{ form.dias.id_for_label }}">{{ form.dias.label }}</label>
+                            {{ form.dias }}
+                            {% if form.dias.errors %}<div class="text-danger small mt-1">{{ form.dias.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-3">
                             <label class="form-label fw-semibold" for="{{ form.valor_pagar.id_for_label }}">{{ form.valor_pagar.label }}</label>
                             {{ form.valor_pagar }}
+                            {% if form.valor_pagar.help_text %}<div class="form-text small">{{ form.valor_pagar.help_text }}</div>{% endif %}
                             {% if form.valor_pagar.errors %}<div class="text-danger small mt-1">{{ form.valor_pagar.errors|join:", " }}</div>{% endif %}
                         </div>
-                        <div class="col-6 col-lg-4">
+                        <div class="col-6 col-lg-2">
                             <label class="form-label fw-semibold" for="{{ form.valor_pago.id_for_label }}">{{ form.valor_pago.label }}</label>
                             {{ form.valor_pago }}
                             {% if form.valor_pago.help_text %}<div class="form-text small">{{ form.valor_pago.help_text }}</div>{% endif %}
                             {% if form.valor_pago.errors %}<div class="text-danger small mt-1">{{ form.valor_pago.errors|join:", " }}</div>{% endif %}
                         </div>
-                        <div class="col-12 col-lg-4">
+                        <div class="col-6 col-lg-2">
                             <label class="form-label fw-semibold" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
                             {{ form.data_pagamento }}
                             {% if form.data_pagamento.help_text %}<div class="form-text small">{{ form.data_pagamento.help_text }}</div>{% endif %}
@@ -202,7 +218,10 @@
     const nomeInput = document.getElementById("{{ form.nome.id_for_label }}");
     const funcaoInput = document.getElementById("{{ form.funcao.id_for_label }}");
     const enderecoInput = document.getElementById("{{ form.endereco.id_for_label }}");
-    const valorInput = document.getElementById("{{ form.valor_pagar.id_for_label }}");
+    const valorUnitarioInput = document.getElementById("{{ form.valor_unitario.id_for_label }}");
+    const viagensDiaInput = document.getElementById("{{ form.viagens_dia.id_for_label }}");
+    const diasInput = document.getElementById("{{ form.dias.id_for_label }}");
+    const valorTotalInput = document.getElementById("{{ form.valor_pagar.id_for_label }}");
     const pixInput = document.getElementById("{{ form.pix.id_for_label }}");
     const tipoPixInput = document.getElementById("{{ form.tipo_pix.id_for_label }}");
     const bancoInput = document.getElementById("{{ form.banco.id_for_label }}");
@@ -211,6 +230,35 @@
     if (!funcionarioSelect || !dataEl) return;
 
     const funcionariosData = JSON.parse(dataEl.textContent || "{}");
+
+    function asFloat(v) {
+        if (v === null || v === undefined) return 0;
+        const s = String(v).trim().replace(',', '.');
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function asInt(v) {
+        const n = parseInt(String(v || '').trim(), 10);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function formatMoney(n) {
+        const v = (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
+        return v;
+    }
+
+    function recalcTotal() {
+        if (!valorTotalInput) return;
+        const vu = valorUnitarioInput ? asFloat(valorUnitarioInput.value) : 0;
+        const vx = viagensDiaInput ? asInt(viagensDiaInput.value) : 0;
+        const d = diasInput ? asInt(diasInput.value) : 0;
+        valorTotalInput.value = formatMoney(vu * vx * d);
+    }
+
+    if (valorUnitarioInput) valorUnitarioInput.addEventListener('input', recalcTotal);
+    if (viagensDiaInput) viagensDiaInput.addEventListener('input', recalcTotal);
+    if (diasInput) diasInput.addEventListener('input', recalcTotal);
 
     funcionarioSelect.addEventListener("change", function () {
         const selectedId = this.value;
@@ -221,10 +269,15 @@
         if (nomeInput) nomeInput.value = dados.nome || "";
         if (funcaoInput) funcaoInput.value = dados.funcao || "";
         if (enderecoInput) enderecoInput.value = dados.endereco || "";
-        if (valorInput && dados.valor_vale_transporte !== undefined) valorInput.value = dados.valor_vale_transporte || "";
+        if (valorUnitarioInput && dados.valor_unitario !== undefined) valorUnitarioInput.value = dados.valor_unitario || "";
+        if (viagensDiaInput && !viagensDiaInput.value) viagensDiaInput.value = "2";
+        if (diasInput && !diasInput.value) diasInput.value = "1";
+        recalcTotal();
         if (pixInput) pixInput.value = dados.pix || "";
         if (tipoPixInput) tipoPixInput.value = dados.tipo_pix || "";
         if (bancoInput) bancoInput.value = dados.banco || "";
     });
+
+    recalcTotal();
 })();
 </script>

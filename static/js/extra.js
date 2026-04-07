@@ -348,7 +348,10 @@ window.initBootstrapDropdowns = initBootstrapDropdowns;
  * Re-inicializar dropdowns após restaurar a página do cache.
  */
 window.addEventListener('pageshow', function (event) {
-    if (event.persisted && typeof window.resetGlobalHtmxLoading === 'function') {
+    // Alguns browsers/restaurações (incluindo botão "voltar" do mouse)
+    // não sinalizam `event.persisted`, mas ainda podem restaurar o DOM
+    // sem disparar o ciclo completo do HTMX (ficando sem afterRequest).
+    if (typeof window.resetGlobalHtmxLoading === 'function') {
         window.resetGlobalHtmxLoading();
     }
     if (typeof initBootstrapDropdowns === 'function') {
@@ -359,6 +362,24 @@ window.addEventListener('pageshow', function (event) {
 window.addEventListener('popstate', function () {
     if (typeof window.resetGlobalHtmxLoading === 'function') {
         window.resetGlobalHtmxLoading();
+    }
+});
+
+// HTMX history restore/popped: ao voltar/avançar, o estado do overlay pode ficar preso.
+document.body.addEventListener('htmx:historyRestore', function () {
+    if (typeof window.resetGlobalHtmxLoading === 'function') {
+        window.resetGlobalHtmxLoading();
+    }
+    if (typeof initBootstrapDropdowns === 'function') {
+        initBootstrapDropdowns();
+    }
+});
+document.body.addEventListener('htmx:popped', function () {
+    if (typeof window.resetGlobalHtmxLoading === 'function') {
+        window.resetGlobalHtmxLoading();
+    }
+    if (typeof initBootstrapDropdowns === 'function') {
+        initBootstrapDropdowns();
     }
 });
 

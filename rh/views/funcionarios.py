@@ -164,6 +164,7 @@ def buscar_funcionarios(request):
         return redirect_response
 
     hoje = date.today()
+    limite_experiencia = hoje - timedelta(days=45)
 
     funcionarios = Funcionario.objects.filter(
         empresa=empresa_ativa
@@ -187,6 +188,7 @@ def buscar_funcionarios(request):
 
     aviso_ativo = request.GET.get('aviso_ativo', '').strip()
     em_ferias = request.GET.get('em_ferias', '').strip()
+    experiencia = request.GET.get('experiencia', '').strip()
     afastado = request.GET.get('afastado', '').strip()
     sem_cargo = request.GET.get('sem_cargo', '').strip()
     sem_lotacao = request.GET.get('sem_lotacao', '').strip()
@@ -254,6 +256,21 @@ def buscar_funcionarios(request):
             ferias__gozo_fim__gte=hoje,
         ).distinct()
 
+    if experiencia == '1':
+        funcionarios = funcionarios.filter(
+            Q(
+                data_admissao__isnull=False,
+                data_admissao__gte=limite_experiencia,
+                inicio_prorrogacao__isnull=True,
+            ) |
+            Q(
+                inicio_prorrogacao__isnull=False,
+                fim_prorrogacao__isnull=False,
+                inicio_prorrogacao__lte=hoje,
+                fim_prorrogacao__gte=hoje,
+            )
+        ).distinct()
+
     if afastado == '1':
         funcionarios = funcionarios.filter(situacao_atual='afastado')
 
@@ -279,7 +296,7 @@ def buscar_funcionarios(request):
         'filtros_ativos': any([
             q, cargo_id, lotacao_id, situacao, tipo_contrato_id,
             admissao_de, admissao_ate, demissao_de, demissao_ate,
-            aviso_ativo, em_ferias, afastado, sem_cargo, sem_lotacao,
+            aviso_ativo, em_ferias, experiencia, afastado, sem_cargo, sem_lotacao,
         ]),
     }
     return render(request, 'rh/funcionarios/buscar.html', context)

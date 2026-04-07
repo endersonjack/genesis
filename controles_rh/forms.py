@@ -226,6 +226,9 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'nome',
             'funcao',
             'endereco',
+            'valor_unitario',
+            'viagens_dia',
+            'dias',
             'valor_pagar',
             'valor_pago',
             'data_pagamento',
@@ -237,6 +240,9 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         ]
         widgets = {
             'observacao': forms.Textarea(attrs={'rows': 2}),
+            'valor_unitario': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'viagens_dia': forms.NumberInput(attrs={'step': '1', 'min': '0'}),
+            'dias': forms.NumberInput(attrs={'step': '1', 'min': '0'}),
             'valor_pagar': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             # type="date" exige value ISO (YYYY-MM-DD)
@@ -250,7 +256,10 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'nome': 'Nome',
             'funcao': 'Função',
             'endereco': 'Endereço',
-            'valor_pagar': 'Valor a pagar',
+            'valor_unitario': 'Valor unitário',
+            'viagens_dia': 'X',
+            'dias': 'Dias',
+            'valor_pagar': 'Valor Total de VT',
             'valor_pago': 'Valor pago',
             'data_pagamento': 'Data de pagamento',
             'pix': 'Chave Pix',
@@ -289,7 +298,7 @@ class ValeTransporteItemForm(BaseStyledModelForm):
                     'nome': getattr(func, 'nome', '') or '',
                     'funcao': str(getattr(func, 'cargo', '') or ''),
                     'endereco': getattr(func, 'endereco_completo', '') or '',
-                    'valor_vale_transporte': str(getattr(func, 'valor_vale_transporte', '') or ''),
+                    'valor_unitario': str(getattr(func, 'valor_vale_transporte', '') or ''),
                     'pix': getattr(func, 'pix', '') or '',
                     'tipo_pix': getattr(func, 'tipo_pix', '') or '',
                     'banco': str(getattr(func, 'banco', '') or ''),
@@ -303,6 +312,8 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         self.fields['funcao'].help_text = 'Pode ser alterada manualmente.'
         self.fields['endereco'].help_text = 'Pode ser alterado manualmente.'
         self.fields['valor_pago'].help_text = 'Informe o quanto já foi pago nesta linha; a linha fica verde quando o valor pago cobre o valor a pagar.'
+        self.fields['valor_pagar'].help_text = 'Calculado automaticamente por valor unitário × dias.'
+        self.fields['valor_pagar'].widget.attrs['readonly'] = 'readonly'
 
     def save(self, commit=True):
         instance = super().save(commit=False)

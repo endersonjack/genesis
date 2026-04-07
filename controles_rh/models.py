@@ -325,7 +325,27 @@ class ValeTransporteItem(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        verbose_name='Valor a pagar'
+        verbose_name='Valor Total de VT'
+    )
+
+    valor_unitario = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='Valor unitário',
+        help_text='Valor unitário do vale transporte (ex.: por dia).',
+    )
+
+    viagens_dia = models.PositiveSmallIntegerField(
+        default=2,
+        verbose_name='Viagens/dia',
+        help_text='Multiplicador do valor unitário (ex.: ida e volta = 2).',
+    )
+
+    dias = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name='Dias',
+        help_text='Quantidade de dias usada para calcular o total.',
     )
 
     valor_base = models.DecimalField(
@@ -459,6 +479,24 @@ class ValeTransporteItem(models.Model):
             if not self.endereco:
                 self.endereco = getattr(self.funcionario, 'endereco_completo', '') or self.endereco
 
+        # Valor total é derivado do unitário × viagens/dia × dias.
+        vu = self.valor_unitario if self.valor_unitario is not None else Decimal('0')
+        vx = self.viagens_dia if self.viagens_dia is not None else 0
+        d = self.dias if self.dias is not None else 0
+        try:
+            vx = int(vx)
+        except (TypeError, ValueError):
+            vx = 0
+        if vx < 0:
+            vx = 0
+        try:
+            d = int(d)
+        except (TypeError, ValueError):
+            d = 0
+        if d < 0:
+            d = 0
+
+        self.valor_pagar = (vu * Decimal(vx) * Decimal(d)).quantize(Decimal('0.01'))
         vp = self.valor_pagar if self.valor_pagar is not None else Decimal('0')
         self.valor_base = vp
 

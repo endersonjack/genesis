@@ -738,8 +738,8 @@
                         <div class="mini-card-desc">
                             Total de funcionários cadastrados na empresa ativa.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=todos"
-                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=todos"
+                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -759,8 +759,8 @@
                         <div class="mini-card-desc">
                             Funcionários atualmente em gozo de férias.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=ferias"
-                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=ferias"
+                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
+                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -780,8 +780,8 @@
                         <div class="mini-card-desc">
                             Inclui quem vai prorrogar e quem já está em prorrogação.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=experiencia"
-                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=experiencia"
+                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
+                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"
@@ -801,8 +801,8 @@
                         <div class="mini-card-desc">
                             Funcionários com aviso ativo e data final definida.
                         </div>
-                        <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=aviso"
-                           hx-get="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}?grupo=aviso"
+                        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
+                           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
                            hx-target="body"
                            hx-swap="innerHTML"
                            hx-push-url="true"

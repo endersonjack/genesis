@@ -94,7 +94,7 @@ def _criar_itens_iniciais_vt(tabela):
         cargo = getattr(funcionario, 'cargo', None)
         banco = getattr(funcionario, 'banco', None)
 
-        vt = getattr(funcionario, 'valor_vale_transporte', 0) or 0
+        vt_unit = getattr(funcionario, 'valor_vale_transporte', 0) or 0
         itens.append(
             ValeTransporteItem(
                 tabela=tabela,
@@ -102,8 +102,9 @@ def _criar_itens_iniciais_vt(tabela):
                 nome=getattr(funcionario, 'nome', '') or '',
                 funcao=str(cargo) if cargo else '',
                 endereco=getattr(funcionario, 'endereco_completo', '') or '',
-                valor_pagar=vt,
-                valor_base=vt,
+                valor_unitario=vt_unit,
+                viagens_dia=2,
+                dias=1,
                 pix=getattr(funcionario, 'pix', '') or '',
                 tipo_pix=getattr(funcionario, 'tipo_pix', '') or '',
                 banco=str(banco) if banco else '',
@@ -167,8 +168,9 @@ def _clonar_itens_vt_de_tabela(destino, origem):
             nome=it.nome,
             funcao=it.funcao,
             endereco=it.endereco,
-            valor_pagar=it.valor_pagar,
-            valor_base=it.valor_base,
+            valor_unitario=getattr(it, 'valor_unitario', None) if getattr(it, 'valor_unitario', None) is not None else it.valor_pagar,
+            viagens_dia=getattr(it, 'viagens_dia', None) if getattr(it, 'viagens_dia', None) is not None else 1,
+            dias=getattr(it, 'dias', None) if getattr(it, 'dias', None) is not None else 1,
             valor_pago=Decimal('0.00'),
             data_pagamento=None,
             pix=it.pix,
