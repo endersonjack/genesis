@@ -62,12 +62,15 @@ document.body.addEventListener('htmx:configRequest', function (event) {
      * (por baixo ou piscando) até o HX-Refresh — fecha e limpa backdrop na hora.
      */
     function hideBootstrapModalsBeforeHtmxLoading() {
+        var skipModalIds = { sectionModal: true, modalPadrao: true };
         if (window.bootstrap && bootstrap.Modal) {
             document.querySelectorAll('.modal.show').forEach(function (modalEl) {
                 // Não fechar o modal de seções do funcionário aqui: o hide dispara
                 // hidden.bs.modal, que limpa #modal-content e remove o <form> ainda em
                 // voo no HTMX (upload multipart), impedindo afterRequest e travando o loading.
-                if (modalEl.id === 'sectionModal') {
+                // modalPadrao (dashboard / HTMX em #modal-content): fechar aqui remove o backdrop
+                // e o fundo deixa de escurecer.
+                if (skipModalIds[modalEl.id]) {
                     return;
                 }
                 var inst = bootstrap.Modal.getInstance(modalEl);
@@ -78,6 +81,14 @@ document.body.addEventListener('htmx:configRequest', function (event) {
                 modalEl.setAttribute('aria-hidden', 'true');
                 modalEl.style.display = 'none';
             });
+        }
+        var modalPadraoEl = document.getElementById('modalPadrao');
+        var sectionModalEl = document.getElementById('sectionModal');
+        var keepBackdrop =
+            (modalPadraoEl && modalPadraoEl.classList.contains('show')) ||
+            (sectionModalEl && sectionModalEl.classList.contains('show'));
+        if (keepBackdrop) {
+            return;
         }
         document.querySelectorAll('.modal-backdrop').forEach(function (b) {
             b.remove();

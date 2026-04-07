@@ -753,6 +753,7 @@
             hx-get="{% url 'rh:modal_novo_funcionario_rapido' empresa_id=request.empresa_ativa.pk %}"
             hx-target="#modal-content"
             hx-swap="innerHTML"
+            data-no-global-loading
             data-bs-toggle="modal"
             data-bs-target="#modalPadrao">
             <i class="bi bi-person-plus"></i>

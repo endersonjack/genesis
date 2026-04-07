@@ -36,3 +36,7 @@ FUNCIONÁRIO - PERFIL
 
 Imprimir Registro do Funcioário.
 Imprimir Histórico do Funcionário
+
+MASCARAS
+
+Adiocionar mascara de CPF em Dependentes

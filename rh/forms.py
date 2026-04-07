@@ -176,6 +176,10 @@ class FuncionarioDadosPessoaisForm(BaseStyledModelForm):
                 }
             ),
             'endereco_completo': forms.Textarea(attrs={'rows': 3}),
+            'cpf': forms.TextInput(attrs={
+                'data-mask': 'cpf',
+                'placeholder': '000.000.000-00',
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -775,7 +779,8 @@ class FuncionarioCadastroRapidoForm(BaseStyledModelForm):
                 'placeholder': 'Nome completo do funcionário',
             }),
             'cpf': forms.TextInput(attrs={
-                'placeholder': 'CPF',
+                'data-mask': 'cpf',
+                'placeholder': '000.000.000-00',
             }),
         }
 
