@@ -121,6 +121,36 @@ td:first-child, th:first-child {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+
+@keyframes buscarSk {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.buscar-hx-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 0%, #e8eef5 45%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: buscarSk 1.15s ease-in-out infinite;
+    border-radius: .5rem;
+}
+
+.buscar-hx-skeleton-line {
+    height: .72rem;
+    margin-bottom: .4rem;
+}
+
+.buscar-hx-skeleton-line.short { width: 42%; }
+.buscar-hx-skeleton-line.tiny { width: 28%; height: .55rem; }
+
+.buscar-hx-skeleton-number {
+    height: 1.75rem;
+    width: 3.5rem;
+    border-radius: .45rem;
+}
+
+#buscar-resultados-slot[aria-busy="true"] {
+    pointer-events: none;
+}
 </style>
 
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
@@ -148,7 +178,14 @@ td:first-child, th:first-child {
 </div>
 
         <div class="search-card-body">
-            <form method="get" class="d-grid gap-3" id="form-busca-funcionarios">
+            <form method="get"
+                  class="d-grid gap-3"
+                  id="form-busca-funcionarios"
+                  data-no-global-loading
+                  hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+                  hx-target="#buscar-resultados-slot"
+                  hx-swap="innerHTML"
+                  hx-push-url="true">
                 <div>
                     <label class="form-label">Busca geral</label>
                     <input type="text" name="q" value="{{ request.GET.q }}" class="form-control"
@@ -185,6 +222,9 @@ td:first-child, th:first-child {
                         <option value="" {% if not request.GET.situacao %}selected{% endif %}>Todos Ativos</option>
                         <option value="desativados" {% if request.GET.situacao == 'desativados' %}selected{% endif %}>
                             Inativo/Demitido
+                        </option>
+                        <option value="experiencia" {% if request.GET.situacao == 'experiencia' %}selected{% endif %}>
+                            Em experiência
                         </option>
                         {% for valor, rotulo in status_choices %}
                             {% if valor != 'inativo' and valor != 'demitido' %}
@@ -279,59 +319,62 @@ td:first-child, th:first-child {
         </div>
 
         <div class="search-card-body">
-            
-
-            <div class="table-responsive">
-                <table class="table align-middle table-rh">
-                    <thead>
-                        <tr>
-                            <th style="width:60px;">#</th>
-                            <th>Nome</th>
-                            <th>Matrícula</th>
-                            <th>CPF</th>
-                            <th>Cargo</th>
-                            <th>Lotação</th>
-                            <th>Situação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for funcionario in funcionarios %}
-                            <tr onclick="window.location='{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}'">
-            
-                                <td class="text-muted fw-bold">
-                                    {{ forloop.counter }}
-                                </td>
-
-                                <td class="fw-semibold nome-hover">{{ funcionario.nome }}</td>
-                                <td>{{ funcionario.matricula|default:"—" }}</td>
-                                <td>{{ funcionario.cpf|default:"—" }}</td>
-                                <td>{{ funcionario.cargo|default:"—" }}</td>
-                                <td>{{ funcionario.lotacao|default:"—" }}</td>
-
-                                <td>
-                                    <span class="status-pill status-{{ funcionario.situacao_atual }}">
-                                        {{ funcionario.get_situacao_atual_display }}
-                                    </span>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-5">
-                                    Nenhum funcionário encontrado com os filtros informados.
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="stats-grid mb-3">
-                <div class="stat-box">
-                    <div class="stat-label">Resultados</div>
-                    <div class="stat-value">{{ total_resultados }}</div>
-                </div>
+            <div id="buscar-resultados-slot"
+                 aria-live="polite">
+                {% include 'rh/funcionarios/partials/buscar_resultados.html' %}
             </div>
         </div>
     </div>
 </div>
+
+<div id="buscar-skeleton-markup" hidden>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:60px;">#</th>
+                    <th>Nome</th>
+                    <th>Matrícula</th>
+                    <th>CPF</th>
+                    <th>Cargo</th>
+                    <th>Lotação</th>
+                    <th>Situação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+                <tr><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line tiny"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td><td><div class="buscar-hx-skeleton buscar-hx-skeleton-line short"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="stats-grid mb-3">
+        <div class="stat-box">
+            <div class="buscar-hx-skeleton buscar-hx-skeleton-line short mb-2" style="width:38%"></div>
+            <div class="buscar-hx-skeleton buscar-hx-skeleton-number"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById('form-busca-funcionarios');
+    const slot = document.getElementById('buscar-resultados-slot');
+    const sk = document.getElementById('buscar-skeleton-markup');
+    if (!form || !slot || !sk) return;
+
+    form.addEventListener('htmx:beforeRequest', function () {
+        slot.setAttribute('aria-busy', 'true');
+        slot.innerHTML = sk.innerHTML;
+    });
+    form.addEventListener('htmx:afterRequest', function () {
+        slot.removeAttribute('aria-busy');
+    });
+})();
+</script>
 {% endblock %}

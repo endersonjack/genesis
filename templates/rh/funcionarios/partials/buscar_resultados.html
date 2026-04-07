@@ -1,0 +1,65 @@
+<div class="d-flex flex-wrap gap-2 mb-3 justify-content-end align-items-center">
+    <a class="btn btn-sm btn-outline-danger"
+       href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+       target="_blank"
+       rel="noopener noreferrer">
+        <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+    </a>
+    <a class="btn btn-sm btn-outline-success"
+       href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+       target="_blank"
+       rel="noopener noreferrer">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+    </a>
+</div>
+
+<div class="table-responsive">
+    <table class="table align-middle table-rh">
+        <thead>
+            <tr>
+                <th style="width:60px;">#</th>
+                <th>Nome</th>
+                <th>Matrícula</th>
+                <th>CPF</th>
+                <th>Cargo</th>
+                <th>Lotação</th>
+                <th>Situação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for funcionario in funcionarios %}
+                <tr onclick="window.location='{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}'">
+
+                    <td class="text-muted fw-bold">
+                        {{ forloop.counter }}
+                    </td>
+
+                    <td class="fw-semibold nome-hover">{{ funcionario.nome }}</td>
+                    <td>{{ funcionario.matricula|default:"—" }}</td>
+                    <td>{{ funcionario.cpf|default:"—" }}</td>
+                    <td>{{ funcionario.cargo|default:"—" }}</td>
+                    <td>{{ funcionario.lotacao|default:"—" }}</td>
+
+                    <td>
+                        <span class="status-pill status-{{ funcionario.situacao_atual }}">
+                            {{ funcionario.get_situacao_atual_display }}
+                        </span>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        Nenhum funcionário encontrado com os filtros informados.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="stats-grid mb-3">
+    <div class="stat-box">
+        <div class="stat-label">Resultados</div>
+        <div class="stat-value">{{ total_resultados }}</div>
+    </div>
+</div>

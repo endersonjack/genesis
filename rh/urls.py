@@ -28,6 +28,16 @@ urlpatterns = [
     # ======================
     path('funcionarios/', empresa_scoped(lista_funcionarios), name='lista_funcionarios'),
     path('funcionarios/buscar/', empresa_scoped(buscar_funcionarios), name='buscar_funcionarios'),
+    path(
+        'funcionarios/buscar/exportar/pdf/',
+        empresa_scoped(exportar_busca_funcionarios_pdf),
+        name='exportar_busca_funcionarios_pdf',
+    ),
+    path(
+        'funcionarios/buscar/exportar/xlsx/',
+        empresa_scoped(exportar_busca_funcionarios_xlsx),
+        name='exportar_busca_funcionarios_xlsx',
+    ),
     path('funcionarios/modal/novo-rapido/', empresa_scoped(modal_novo_funcionario_rapido), name='modal_novo_funcionario_rapido'),
     path('funcionarios/<int:pk>/', empresa_scoped(detalhar_funcionario), name='detalhes_funcionario'),
     path('funcionarios/<int:pk>/editar/', empresa_scoped(editar_funcionario), name='editar_funcionario'),

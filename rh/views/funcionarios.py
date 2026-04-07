@@ -132,29 +132,11 @@ def lista_funcionarios(request):
 # ==========================================================
 # BUSCA AVANÇADA DE FUNCIONÁRIOS
 # ==========================================================
-def buscar_funcionarios(request):
+def queryset_funcionarios_busca_avancada(request, empresa_ativa):
     """
-    Busca avançada de funcionários.
-
-    Permite filtros por:
-    - texto livre
-    - cargo
-    - lotação
-    - situação
-    - tipo de contrato
-    - datas de admissão/demissão
-    - aviso ativo
-    - férias
-    - afastamento
-    - sem cargo / sem lotação
+    QuerySet da busca avançada (mesmos filtros GET que a tela de buscar).
+    Reutilizado pela view de busca e pelos exports PDF/Excel.
     """
-    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
-        request,
-        'Selecione uma empresa para buscar funcionários.'
-    )
-    if redirect_response:
-        return redirect_response
-
     hoje = date.today()
 
     funcionarios = Funcionario.objects.filter(
@@ -201,21 +183,22 @@ def buscar_funcionarios(request):
 
     if situacao and situacao != 'todos':
         if situacao == 'desativados':
-            # Inclui:
-            # - inativos "manuais"
-            # - demitidos legados (situacao_atual='demitido')
-            # - demitidos atuais (data_demissao preenchida)
             funcionarios = funcionarios.filter(
                 Q(situacao_atual__in=['inativo', 'demitido']) |
                 Q(data_demissao__isnull=False)
             )
         elif situacao == 'demitido':
             funcionarios = funcionarios.filter(data_demissao__isnull=False)
+        elif situacao == 'experiencia':
+            funcionarios = funcionarios.filter(
+                data_admissao__isnull=False,
+                data_admissao__lte=hoje,
+                fim_prorrogacao__isnull=False,
+                fim_prorrogacao__gte=hoje,
+            ).distinct()
         else:
             funcionarios = funcionarios.filter(situacao_atual=situacao)
     else:
-        # Por padrão, não exibe demitidos/inativos na busca.
-        # Eles só aparecem se o usuário filtrar explicitamente por situação.
         funcionarios = funcionarios.exclude(situacao_atual__in=['demitido', 'inativo'])
 
     if tipo_contrato_id:
@@ -264,7 +247,51 @@ def buscar_funcionarios(request):
     if sem_lotacao == '1':
         funcionarios = funcionarios.filter(lotacao__isnull=True)
 
-    funcionarios = funcionarios.order_by('nome').distinct()
+    return funcionarios.order_by('nome').distinct()
+
+
+def buscar_funcionarios(request):
+    """
+    Busca avançada de funcionários.
+
+    Permite filtros por:
+    - texto livre
+    - cargo
+    - lotação
+    - situação
+    - tipo de contrato
+    - datas de admissão/demissão
+    - aviso ativo
+    - férias
+    - afastamento
+    - sem cargo / sem lotação
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para buscar funcionários.'
+    )
+    if redirect_response:
+        return redirect_response
+
+    funcionarios = queryset_funcionarios_busca_avancada(request, empresa_ativa)
+
+    q = request.GET.get('q', '').strip()
+    cargo_id = request.GET.get('cargo', '').strip()
+    lotacao_id = request.GET.get('lotacao', '').strip()
+    situacao = request.GET.get('situacao', '').strip()
+    tipo_contrato_id = request.GET.get('tipo_contrato', '').strip()
+
+    admissao_de = request.GET.get('admissao_de', '').strip()
+    admissao_ate = request.GET.get('admissao_ate', '').strip()
+    demissao_de = request.GET.get('demissao_de', '').strip()
+    demissao_ate = request.GET.get('demissao_ate', '').strip()
+
+    aviso_ativo = request.GET.get('aviso_ativo', '').strip()
+    em_ferias = request.GET.get('em_ferias', '').strip()
+    experiencia = request.GET.get('experiencia', '').strip()
+    afastado = request.GET.get('afastado', '').strip()
+    sem_cargo = request.GET.get('sem_cargo', '').strip()
+    sem_lotacao = request.GET.get('sem_lotacao', '').strip()
 
     cargos = Cargo.objects.filter(empresa=empresa_ativa).order_by('nome')
     lotacoes = Lotacao.objects.filter(empresa=empresa_ativa).order_by('nome')
@@ -283,6 +310,8 @@ def buscar_funcionarios(request):
             aviso_ativo, em_ferias, experiencia, afastado, sem_cargo, sem_lotacao,
         ]),
     }
+    if request.headers.get('HX-Request') == 'true':
+        return render(request, 'rh/funcionarios/partials/buscar_resultados.html', context)
     return render(request, 'rh/funcionarios/buscar.html', context)
 
 

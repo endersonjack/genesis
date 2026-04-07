@@ -1,0 +1,10 @@
+---
+description: Exportações PDF/Excel e downloads de relatórios abrem em nova aba.
+alwaysApply: true
+---
+
+# Exportações e downloads (nova aba)
+
+- Links que disparam **exportação PDF**, **Excel** ou **download de relatório** (resultados de busca, tabelas, recibos quando forem apenas “abrir ficheiro”) devem usar **`target="_blank"`** para não sair da página atual nem perder filtros / estado HTMX.
+- Incluir sempre **`rel="noopener noreferrer"`** em conjunto com `target="_blank"` por segurança e boas práticas.
+- Quando o fluxo exigir **POST** para gerar o ficheiro, preferir padrão que mantenha a lista aberta (ex.: `target="_blank"` no submit ou resposta com `Content-Disposition` numa janela aberta via formulário com `target`) em vez de navegar a janela principal.

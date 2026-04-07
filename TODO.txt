@@ -29,4 +29,4 @@ OK - Fazer Recibos individuais
 
 NO SISTEMA GERAL:
 
-Loading nos cards (para carregamento rápido.)
+HTMX/skeleton - Loading nos cards (para carregamento rápido.)

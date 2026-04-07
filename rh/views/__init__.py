@@ -33,6 +33,8 @@ from .dashboard import *
 # ==========================================================
 from .funcionarios import *
 
+from .export_busca_funcionarios import *
+
 
 # ==========================================================
 # MODAIS DO FUNCIONÁRIO

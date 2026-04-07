@@ -1,6 +1,7 @@
 import calendar
 from datetime import date, timedelta
 
+from django.db.models import Q
 from django.shortcuts import render
 
 from core.urlutils import reverse_empresa
@@ -499,11 +500,14 @@ def _context_dashboard_funcionarios(request, empresa_ativa):
 
 def _context_dashboard_avisos(request, empresa_ativa):
     """
-    Eventos do mês e destaques dia/semana (card AVISOS; calendário completo em calendario_rh).
+    Destaques do dia e da semana no card AVISOS (janela: domingo a sábado da semana corrente).
+
+    Não monta eventos do mês inteiro — isso fica pesado e duplica o calendário completo,
+    que continua disponível apenas em «Ver calendário» (calendario_rh).
     """
     hoje = date.today()
-    ano = hoje.year
-    mes = hoje.month
+    inicio_semana = hoje - timedelta(days=(hoje.weekday() + 1) % 7)
+    fim_semana = inicio_semana + timedelta(days=6)
 
     funcionarios_ativos = Funcionario.objects.filter(
         empresa=empresa_ativa,
@@ -515,55 +519,58 @@ def _context_dashboard_avisos(request, empresa_ativa):
         "tipo_contrato",
     ).prefetch_related("asos")
 
-    eventos_por_dia = {}
+    eventos_por_data = {}
 
     def add_evento(data_evento, tipo, label, funcionario=None):
-        if not data_evento or data_evento.year != ano or data_evento.month != mes:
+        if not data_evento or data_evento < inicio_semana or data_evento > fim_semana:
             return
 
-        dia = data_evento.day
         detalhe_url = None
-
         if funcionario:
             detalhe_url = perfil_funcionario_url_por_tipo(
                 request, funcionario.pk, tipo,
             )
 
-        eventos_por_dia.setdefault(dia, []).append({
+        eventos_por_data.setdefault(data_evento, []).append({
             "tipo": tipo,
             "label": label,
             "funcionario_nome": funcionario.nome if funcionario else "",
             "detalhe_url": detalhe_url,
         })
 
-    ferias_mes = FeriasFuncionario.objects.filter(
-        funcionario__empresa=empresa_ativa
+    ferias_janela = FeriasFuncionario.objects.filter(
+        funcionario__empresa=empresa_ativa,
+    ).filter(
+        Q(gozo_inicio__gte=inicio_semana, gozo_inicio__lte=fim_semana) |
+        Q(gozo_fim__gte=inicio_semana, gozo_fim__lte=fim_semana),
     ).select_related("funcionario", "funcionario__cargo")
 
-    for item in ferias_mes:
+    for item in ferias_janela:
         if item.gozo_inicio:
             add_evento(item.gozo_inicio, "ferias_inicio", "Início de férias", item.funcionario)
         if item.gozo_fim:
             add_evento(item.gozo_fim, "ferias_volta", "Volta de férias", item.funcionario)
 
-    experiencia_alertas = funcionarios_ativos.filter(
-        data_admissao__isnull=False
-    ).order_by("data_admissao")
-
-    for func in experiencia_alertas:
+    for func in funcionarios_ativos.filter(
+        data_admissao__isnull=False,
+        inicio_prorrogacao__isnull=True,
+        data_admissao__gte=inicio_semana - timedelta(days=45),
+        data_admissao__lte=fim_semana - timedelta(days=45),
+    ):
         data_45 = func.data_admissao + timedelta(days=45)
-
-        if data_45.month == mes and data_45.year == ano and not func.inicio_prorrogacao:
+        if inicio_semana <= data_45 <= fim_semana:
             add_evento(data_45, "experiencia_45", "45 dias / iniciar prorrogação", func)
 
-        if func.fim_prorrogacao:
-            add_evento(func.fim_prorrogacao, "fim_prorrogacao", "Fim da prorrogação", func)
+    for func in funcionarios_ativos.filter(
+        fim_prorrogacao__gte=inicio_semana,
+        fim_prorrogacao__lte=fim_semana,
+    ):
+        add_evento(func.fim_prorrogacao, "fim_prorrogacao", "Fim da prorrogação", func)
 
-    aviso_mes = funcionarios_ativos.filter(
-        data_fim_aviso__isnull=False
-    ).order_by("data_fim_aviso")
-
-    for func in aviso_mes:
+    for func in funcionarios_ativos.filter(
+        data_fim_aviso__gte=inicio_semana,
+        data_fim_aviso__lte=fim_semana,
+    ):
         add_evento(func.data_fim_aviso, "fim_aviso", "Fim de aviso", func)
 
     for func in funcionarios_ativos.filter(data_admissao__isnull=False).order_by("nome"):
@@ -584,46 +591,51 @@ def _context_dashboard_avisos(request, empresa_ativa):
             except ValueError:
                 proximo_exame = proximo_exame.replace(year=hoje.year + 1, day=28)
 
-        if 0 <= (proximo_exame - hoje).days <= 30:
+        if (
+            0 <= (proximo_exame - hoje).days <= 30
+            and inicio_semana <= proximo_exame <= fim_semana
+        ):
             add_evento(proximo_exame, "exame", "Exame periódico", func)
 
-    lembretes_dashboard = LembreteRH.objects.filter(
+    lembretes_janela = LembreteRH.objects.filter(
         empresa=empresa_ativa,
+        data__gte=inicio_semana,
+        data__lte=fim_semana,
     ).select_related("funcionario").order_by("data", "titulo")
 
-    for item in lembretes_dashboard:
+    for item in lembretes_janela:
         add_evento(item.data, "lembrete", item.titulo, item.funcionario)
 
-    for func in funcionarios_ativos.filter(data_nascimento__isnull=False).order_by("nome"):
-        if func.data_nascimento.month != mes:
-            continue
+    dias_semana = [inicio_semana + timedelta(days=i) for i in range(7)]
+    q_aniv = Q()
+    for d in dias_semana:
+        q_aniv |= Q(data_nascimento__month=d.month, data_nascimento__day=d.day)
 
-        try:
-            data_aniversario = date(ano, mes, func.data_nascimento.day)
-        except ValueError:
-            data_aniversario = date(ano, mes, 28)
+    for func in funcionarios_ativos.filter(
+        data_nascimento__isnull=False,
+    ).filter(q_aniv).order_by("nome"):
+        for d in dias_semana:
+            if (
+                func.data_nascimento.month == d.month
+                and func.data_nascimento.day == d.day
+            ):
+                add_evento(d, "aniversario", "Aniversário", func)
 
-        add_evento(data_aniversario, "aniversario", "Aniversário", func)
-
-    for dia in eventos_por_dia:
-        eventos_por_dia[dia] = sorted(
-            eventos_por_dia[dia],
+    for d_key in eventos_por_data:
+        eventos_por_data[d_key] = sorted(
+            eventos_por_data[d_key],
             key=lambda e: (e["label"], e["funcionario_nome"]),
         )
 
-    destaques_dia = []
-    for evento in eventos_por_dia.get(hoje.day, []):
-        destaques_dia.append({"data": hoje, **evento})
+    destaques_dia = [
+        {"data": hoje, **evento}
+        for evento in eventos_por_data.get(hoje, [])
+    ]
 
-    inicio_semana = hoje - timedelta(days=(hoje.weekday() + 1) % 7)
-    fim_semana = inicio_semana + timedelta(days=6)
     destaques_semana = []
-
-    for dia_numero, eventos in eventos_por_dia.items():
-        data_evento = date(ano, mes, dia_numero)
-        if inicio_semana <= data_evento <= fim_semana:
-            for evento in eventos:
-                destaques_semana.append({"data": data_evento, **evento})
+    for d in sorted(eventos_por_data.keys()):
+        for evento in eventos_por_data[d]:
+            destaques_semana.append({"data": d, **evento})
 
     destaques_semana.sort(
         key=lambda e: (e["data"], e["label"], e["funcionario_nome"])
