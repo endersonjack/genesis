@@ -95,7 +95,7 @@ def _render_aso_list(request, funcionario):
         "rh/funcionarios/includes/partials/aso_lista.html",
         {
             "funcionario": funcionario,
-            "aso_list": funcionario.asos.all(),
+            "asos_list": funcionario.asos.all(),
         },
     )
 
@@ -557,7 +557,7 @@ def _render_atestados_licencas_list(request, funcionario):
         "rh/funcionarios/includes/partials/atestados_licencas_lista.html",
         {
             "funcionario": funcionario,
-            "atestados_licencas_list": funcionario.atestados_licencas.all(),
+            "atestados_list": funcionario.atestados_licencas.all(),
         },
     )
 
@@ -711,7 +711,7 @@ def _render_ocorrencias_saude_list(request, funcionario):
         "rh/funcionarios/includes/partials/ocorrencias_saude_lista.html",
         {
             "funcionario": funcionario,
-            "ocorrencias_saude_list": funcionario.ocorrencias_saude.all(),
+            "ocorrencias_list": funcionario.ocorrencias_saude.all(),
         },
     )
 
