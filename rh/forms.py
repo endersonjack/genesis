@@ -93,6 +93,7 @@ class FuncionarioForm(BaseStyledModelForm):
             'recebe_vale_transporte',
             'valor_vale_transporte',
             'contribuinte_sindical',
+            'recebe_salario_familia',
             'data_ultimo_exame',
             'responsavel',
 
@@ -205,6 +206,7 @@ class FuncionarioAdmissaoForm(BaseStyledModelForm):
             'recebe_vale_transporte',
             'valor_vale_transporte',
             'contribuinte_sindical',
+            'recebe_salario_familia',
             'data_ultimo_exame',
             'responsavel',
         ]
@@ -279,6 +281,26 @@ class FuncionarioDemissaoForm(BaseStyledModelForm):
         self.fields['data_demissao'].input_formats = ['%Y-%m-%d']
         self.fields['data_inicio_aviso'].input_formats = ['%Y-%m-%d']
         self.fields['data_fim_aviso'].input_formats = ['%Y-%m-%d']
+
+
+class FuncionarioRecebeSalarioFamiliaForm(BaseStyledModelForm):
+    """Campo do funcionário usado na seção Dependentes (edição por seção)."""
+
+    class Meta:
+        model = Funcionario
+        fields = ['recebe_salario_familia']
+        widgets = {
+            'recebe_salario_familia': forms.CheckboxInput(
+                attrs={'class': 'sf-dep-toggle-input'},
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('empresa_ativa', None)
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['recebe_salario_familia'].widget.attrs['class'] = 'sf-dep-toggle-input'
+        self.fields['recebe_salario_familia'].label = ''
 
 
 class FuncionarioOutrosForm(BaseStyledModelForm):

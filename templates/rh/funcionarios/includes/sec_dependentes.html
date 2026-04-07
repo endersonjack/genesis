@@ -1,12 +1,119 @@
+<style>
+    .sf-dep-sf-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        background: #f8fafc;
+    }
+    .sf-dep-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        cursor: pointer;
+        margin: 0;
+    }
+    .sf-dep-toggle-input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        margin: 0;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .sf-dep-toggle-track {
+        width: 52px;
+        height: 28px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        position: relative;
+        transition: background 0.2s ease;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    .sf-dep-toggle-input:focus-visible + .sf-dep-toggle-track {
+        outline: 2px solid #93c5fd;
+        outline-offset: 2px;
+    }
+    .sf-dep-toggle-input:checked + .sf-dep-toggle-track {
+        background: #22c55e;
+    }
+    .sf-dep-toggle-thumb {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+        transition: transform 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+    .sf-dep-toggle-input:checked + .sf-dep-toggle-track .sf-dep-toggle-thumb {
+        transform: translateX(24px);
+    }
+    .sf-dep-toggle-thumb .bi-check-lg {
+        display: none;
+        font-size: 0.85rem;
+        color: #16a34a;
+    }
+    .sf-dep-toggle-thumb .bi-x-lg {
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
+    .sf-dep-toggle-input:checked + .sf-dep-toggle-track .sf-dep-toggle-thumb .bi-check-lg {
+        display: block;
+    }
+    .sf-dep-toggle-input:checked + .sf-dep-toggle-track .sf-dep-toggle-thumb .bi-x-lg {
+        display: none;
+    }
+</style>
 <section class="section-panel {% if secao_inicial == 'dependentes' %}active{% endif %}" data-panel="dependentes">
     <div class="section-card">
-        <div class="section-card-header">
+        <div class="section-card-header flex-wrap gap-2">
             <div>
                 <h5>Dependentes</h5>
                 <small>Registros vinculados ao funcionário</small>
             </div>
 
-            <div class="section-header-actions">
+            <div class="section-header-actions d-flex flex-wrap align-items-center gap-2 gap-md-3">
+                <form
+                    method="post"
+                    id="form-salario-familia-func"
+                    class="sf-dep-sf-row mb-0"
+                    data-no-global-loading
+                    hx-post="{% url 'rh:funcionario_recebe_salario_familia_hx' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
+                    hx-swap="none"
+                    hx-trigger="change from:#id_recebe_salario_familia_func">
+                    {% csrf_token %}
+                    <span class="small fw-semibold text-nowrap mb-0" id="label-sf-func">Recebe Salário Família?</span>
+                    <label class="sf-dep-toggle mb-0" for="id_recebe_salario_familia_func">
+                        <input type="checkbox"
+                               name="recebe_salario_familia"
+                               value="1"
+                               class="sf-dep-toggle-input"
+                               id="id_recebe_salario_familia_func"
+                               {% if funcionario.recebe_salario_familia %}checked{% endif %}
+                               aria-labelledby="label-sf-func">
+                        <span class="sf-dep-toggle-track" aria-hidden="true">
+                            <span class="sf-dep-toggle-thumb">
+                                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                            </span>
+                        </span>
+                    </label>
+                </form>
+
                 <button
                     type="button"
                     class="btn btn-light btn-sm"

@@ -732,10 +732,6 @@
 
     <div class="rh-top-actions">
         <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
            class="rh-top-btn rh-top-btn-light">
             <i class="bi bi-search"></i>
             <span>Buscar</span>

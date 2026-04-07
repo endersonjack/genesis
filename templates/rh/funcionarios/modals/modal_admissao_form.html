@@ -158,6 +158,16 @@
                             <div class="field-error">{{ form.contribuinte_sindical.errors|join:", " }}</div>
                         {% endif %}
                     </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Recebe salário família</label>
+                        <div class="boolean-field-box">
+                            {{ form.recebe_salario_familia }}
+                        </div>
+                        {% if form.recebe_salario_familia.errors %}
+                            <div class="field-error">{{ form.recebe_salario_familia.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 

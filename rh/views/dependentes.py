@@ -12,11 +12,13 @@ Essas views são usadas pela seção HTMX dentro dos detalhes do funcionário.
 
 import json
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_POST
 
 from auditoria.registry import audit_rh
 
-from ..forms import DependenteForm
+from ..forms import DependenteForm, FuncionarioRecebeSalarioFamiliaForm
 from ..models import Dependente, Funcionario
 from .base import _empresa_ativa_or_redirect
 
@@ -225,3 +227,32 @@ def modal_excluir_dependente(request, pk, dependente_id):
             "item": item,
         },
     )
+
+
+# ==========================================================
+# SALÁRIO FAMÍLIA (FUNCIONÁRIO — HTMX NA SEÇÃO DEPENDENTES)
+# ==========================================================
+@require_POST
+def funcionario_recebe_salario_familia_hx(request, pk):
+    """
+    Atualiza apenas o flag recebe_salario_familia do funcionário (toggle no cabeçalho).
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa antes de continuar.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    funcionario = get_object_or_404(Funcionario, pk=pk, empresa=empresa_ativa)
+    form = FuncionarioRecebeSalarioFamiliaForm(request.POST, instance=funcionario)
+    if form.is_valid():
+        form.save()
+        audit_rh(
+            request,
+            'update',
+            f'Salário família (funcionário) atualizado — {funcionario.nome}.',
+            {'funcionario_id': funcionario.pk},
+        )
+        return HttpResponse(status=204)
+    return HttpResponse(status=400)

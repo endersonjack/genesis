@@ -1,0 +1,15 @@
+{% if muito_curto %}
+    <p class="text-muted small mb-0 px-3 py-2">Digite pelo menos <strong>2 caracteres</strong> do nome.</p>
+{% elif not resultados %}
+    <p class="text-muted small mb-0 px-3 py-2">Nenhum funcionário ativo encontrado para “{{ q }}”.</p>
+{% else %}
+    <div class="list-group list-group-flush busca-rapida-lista">
+        {% for f in resultados %}
+            <a href="{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+               class="list-group-item list-group-item-action px-3 py-2 text-start">
+                <div class="fw-semibold text-break lh-sm">{{ f.nome }}</div>
+                <div class="text-muted small mt-1">{{ f.cargo|default:"Sem cargo" }} · {{ f.lotacao|default:"—" }}</div>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}

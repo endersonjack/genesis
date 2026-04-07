@@ -3,7 +3,36 @@
 
 {% block title %}{{ funcionario.nome }} | Funcionário{% endblock %}
 
-{% block extra_css %}{% endblock %}
+{% block extra_css %}
+<style>
+    .busca-rapida-wrap {
+        position: relative;
+    }
+    #busca-rapida-resultados {
+        margin-top: 0.35rem;
+        max-height: min(280px, 42vh);
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.65rem;
+        box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+    }
+    .busca-rapida-lista .list-group-item {
+        border-left: none;
+        border-right: none;
+    }
+    .busca-rapida-lista .list-group-item:first-child {
+        border-top: none;
+        border-top-left-radius: 0.65rem;
+        border-top-right-radius: 0.65rem;
+    }
+    .busca-rapida-lista .list-group-item:last-child {
+        border-bottom: none;
+        border-bottom-left-radius: 0.65rem;
+        border-bottom-right-radius: 0.65rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
     {% include 'rh/funcionarios/includes/detalhes_topo.html' %}
@@ -25,6 +54,41 @@
             {% include 'rh/funcionarios/includes/sec_outros.html' %}
             {% include 'rh/funcionarios/includes/sec_historico.html' %}
            
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalBuscaRapidaFuncionario" tabindex="-1" aria-labelledby="modalBuscaRapidaTitulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalBuscaRapidaTitulo">Abrir outro funcionário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" data-no-global-loading>
+                    <label class="form-label" for="busca-rapida-q">Nome</label>
+                    <div class="busca-rapida-wrap">
+                        <input type="text"
+                               class="form-control"
+                               id="busca-rapida-q"
+                               name="q"
+                               autocomplete="off"
+                               spellcheck="false"
+                               placeholder="Digite o nome — as opções aparecem abaixo"
+                               role="combobox"
+                               aria-autocomplete="list"
+                               aria-controls="busca-rapida-resultados"
+                               aria-expanded="false"
+                               hx-get="{% url 'rh:busca_rapida_funcionarios' empresa_id=request.empresa_ativa.pk %}?excluir={{ funcionario.pk }}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#busca-rapida-resultados">
+                        <div id="busca-rapida-resultados"
+                             role="listbox"
+                             class="border-0 bg-transparent p-0">
+                            <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">Digite pelo menos <strong>2 caracteres</strong> do nome.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -138,6 +202,31 @@
                 }
             });
         }
+
+        const modalBuscaRapida = document.getElementById('modalBuscaRapidaFuncionario');
+        const buscaRapidaQ = document.getElementById('busca-rapida-q');
+        const buscaRapidaResultados = document.getElementById('busca-rapida-resultados');
+        const buscaRapidaPlaceholder = '<p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">Digite pelo menos <strong>2 caracteres</strong> do nome.</p>';
+        if (modalBuscaRapida && buscaRapidaQ && buscaRapidaResultados) {
+            modalBuscaRapida.addEventListener('shown.bs.modal', function () {
+                buscaRapidaQ.focus();
+                buscaRapidaQ.setAttribute('aria-expanded', 'false');
+            });
+            modalBuscaRapida.addEventListener('hidden.bs.modal', function () {
+                buscaRapidaQ.value = '';
+                buscaRapidaResultados.innerHTML = buscaRapidaPlaceholder;
+                buscaRapidaQ.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        document.body.addEventListener('htmx:afterSwap', function (e) {
+            const t = e.detail && e.detail.target;
+            if (!t || t.id !== 'busca-rapida-resultados') return;
+            const inp = document.getElementById('busca-rapida-q');
+            if (!inp) return;
+            const hasOptions = t.querySelector('.busca-rapida-lista a');
+            inp.setAttribute('aria-expanded', hasOptions ? 'true' : 'false');
+        });
     });
 
 

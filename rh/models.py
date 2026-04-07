@@ -226,6 +226,11 @@ class Funcionario(TimeStampedModel):
         default=0
     )
     contribuinte_sindical = models.BooleanField(default=False)
+    recebe_salario_familia = models.BooleanField(
+        default=False,
+        verbose_name='Recebe salário família',
+        help_text='Salário família (INSS). Pode ser usado em relatórios e integrações futuras.',
+    )
 
     situacao_atual = models.CharField(
         max_length=20,

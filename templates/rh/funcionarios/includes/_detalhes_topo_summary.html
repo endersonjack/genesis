@@ -34,9 +34,16 @@
         </div>
     </div>
 
-    <div class="employee-summary-actions">
+    <div class="employee-summary-actions d-flex flex-wrap align-items-center gap-2">
         <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i> Voltar
-    </a>
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#modalBuscaRapidaFuncionario"
+                title="Buscar outro funcionário pelo nome">
+            <i class="bi bi-search"></i>
+        </button>
     </div>
 </div>

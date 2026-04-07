@@ -21,6 +21,7 @@ from ..forms import (
     FuncionarioDemissaoForm,
     FuncionarioForm,
     FuncionarioOutrosForm,
+    FuncionarioRecebeSalarioFamiliaForm,
     OcorrenciaSaudeFuncionarioFormSet,
     PCMSOFuncionarioFormSet,
 )
@@ -369,17 +370,30 @@ def criar_funcionario(request):
 # ==========================================================
 # FORMS PRINCIPAIS DA EDIÇÃO POR SEÇÃO
 # ==========================================================
-def _montar_forms_funcionario(request, empresa_ativa, funcionario):
+def _montar_forms_funcionario(request, empresa_ativa, funcionario, secao_post=None):
     """
     Monta os forms principais usados na edição por seção.
     """
     kwargs = _get_form_kwargs(request, empresa_ativa, instance=funcionario)
+
+    sf_kwargs = {
+        'instance': funcionario,
+        'empresa_ativa': empresa_ativa,
+    }
+    if (
+        request is not None
+        and request.method == 'POST'
+        and secao_post == 'dependentes'
+    ):
+        sf_kwargs['data'] = request.POST
+        sf_kwargs['files'] = request.FILES
 
     return {
         'form_pessoais': FuncionarioDadosPessoaisForm(**kwargs),
         'form_admissao': FuncionarioAdmissaoForm(**kwargs),
         'form_demissao': FuncionarioDemissaoForm(**kwargs),
         'form_outros': FuncionarioOutrosForm(**kwargs),
+        'form_recebe_salario_familia': FuncionarioRecebeSalarioFamiliaForm(**sf_kwargs),
     }
 
 
@@ -494,9 +508,11 @@ def _salvar_secao_funcionario(secao, forms, formsets, funcionario, empresa_ativa
 
     if secao == 'dependentes':
         formset = formsets['dependente_formset']
-        if formset.is_valid():
+        form_sf = forms['form_recebe_salario_familia']
+        if formset.is_valid() and form_sf.is_valid():
             formset.instance = funcionario
             formset.save()
+            form_sf.save()
             return True, 'Dependentes atualizados com sucesso.'
         return False, 'Corrija os erros em Dependentes.'
 
@@ -556,8 +572,11 @@ def editar_funcionario(request, pk):
     )
 
     secao = request.POST.get('secao') if request.method == 'POST' else 'pessoais'
+    secao_post = request.POST.get('secao') if request.method == 'POST' else None
 
-    forms = _montar_forms_funcionario(request, empresa_ativa, funcionario)
+    forms = _montar_forms_funcionario(
+        request, empresa_ativa, funcionario, secao_post=secao_post,
+    )
     formsets = _montar_formsets_funcionario_por_secao(
         request=request,
         instance=funcionario,
@@ -586,14 +605,18 @@ def editar_funcionario(request, pk):
         messages.error(request, mensagem)
 
         # Recria os formulários para manter a tela completa após erro
-        forms = _montar_forms_funcionario(request, empresa_ativa, funcionario)
+        forms = _montar_forms_funcionario(
+            request, empresa_ativa, funcionario, secao_post=secao_post,
+        )
         formsets = _montar_formsets_funcionario_por_secao(
             request=request,
             instance=funcionario,
             secao_post=secao,
         )
     else:
-        forms = _montar_forms_funcionario(request, empresa_ativa, funcionario)
+        forms = _montar_forms_funcionario(
+            request, empresa_ativa, funcionario, secao_post=None,
+        )
         formsets = _montar_formsets_funcionario_por_secao(
             request=None,
             instance=funcionario,
@@ -609,6 +632,50 @@ def editar_funcionario(request, pk):
         **formsets,
     }
     return render(request, 'rh/funcionarios/form.html', context)
+
+
+# ==========================================================
+# BUSCA RÁPIDA (modal no perfil — HTMX)
+# ==========================================================
+def busca_rapida_funcionarios(request):
+    """
+    Fragmento HTML com funcionários filtrados por nome (mín. 2 caracteres).
+    Exclui opcionalmente o PK atual (parâmetro excluir) para focar em «outro» colaborador.
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    q = request.GET.get('q', '').strip()
+    excluir = request.GET.get('excluir', '').strip()
+
+    muito_curto = len(q) < 2
+    resultados = []
+
+    if not muito_curto:
+        qs = (
+            Funcionario.objects.filter(empresa=empresa_ativa)
+            .exclude(situacao_atual__in=['demitido', 'inativo'])
+            .filter(nome__icontains=q)
+            .select_related('cargo', 'lotacao')
+            .order_by('nome')
+        )
+        if excluir.isdigit():
+            qs = qs.exclude(pk=int(excluir))
+        resultados = list(qs[:25])
+
+    return render(
+        request,
+        'rh/funcionarios/partials/busca_rapida_resultados.html',
+        {
+            'resultados': resultados,
+            'q': q,
+            'muito_curto': muito_curto,
+        },
+    )
 
 
 # ==========================================================

@@ -87,19 +87,6 @@
         <p class="quick-access-section-title">RH</p>
         <div class="row g-3 mb-4">
             <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'rh:lista_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-people"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Funcionários</div>
-                            <p class="quick-access-tile-desc">Lista e cadastro de colaboradores</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-xl-4">
                 <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
                     <div class="quick-access-tile">
                         <span class="quick-access-tile-icon bg-primary-subtle text-primary">
@@ -108,45 +95,6 @@
                         <div>
                             <div class="quick-access-tile-title">Buscar funcionários</div>
                             <p class="quick-access-tile-desc">Pesquisa entre os cadastros</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-info-subtle text-info">
-                            <i class="bi bi-calendar3"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Calendário RH</div>
-                            <p class="quick-access-tile-desc">Eventos, férias e prazos</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'rh:lista_cargos' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-success-subtle text-success">
-                            <i class="bi bi-briefcase"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Cargos</div>
-                            <p class="quick-access-tile-desc">Cargos e salários base</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-warning-subtle text-warning-emphasis">
-                            <i class="bi bi-clipboard-check"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Controles RH</div>
-                            <p class="quick-access-tile-desc">Vale transporte, cesta básica e competências</p>
                         </div>
                     </div>
                 </a>

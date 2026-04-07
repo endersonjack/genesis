@@ -11,10 +11,6 @@
             Funcionários ativos na empresa (exclui demitidos e inativos).
         </div>
         <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
            class="btn btn-outline-primary">
             Ver todos
         </a>
@@ -32,10 +28,6 @@
             Funcionários atualmente em gozo de férias.
         </div>
         <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
-           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?em_ferias=1"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
            class="btn btn-outline-primary">
             Ver todos
         </a>
@@ -53,10 +45,6 @@
             Da data de admissão até o fim da prorrogação.
         </div>
         <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
-           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?experiencia=1"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
            class="btn btn-outline-primary">
             Ver todos
         </a>
@@ -74,10 +62,6 @@
             Funcionários com aviso ativo e data final definida.
         </div>
         <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
-           hx-get="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
            class="btn btn-outline-primary">
             Ver todos
         </a>

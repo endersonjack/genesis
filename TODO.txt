@@ -30,3 +30,9 @@ OK - Fazer Recibos individuais
 NO SISTEMA GERAL:
 
 HTMX/skeleton - Loading nos cards (para carregamento rápido.)
+
+
+FUNCIONÁRIO - PERFIL
+
+Imprimir Registro do Funcioário.
+Imprimir Histórico do Funcionário

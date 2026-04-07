@@ -39,6 +39,11 @@ urlpatterns = [
         name='exportar_busca_funcionarios_xlsx',
     ),
     path('funcionarios/modal/novo-rapido/', empresa_scoped(modal_novo_funcionario_rapido), name='modal_novo_funcionario_rapido'),
+    path(
+        'funcionarios/busca-rapida/',
+        empresa_scoped(busca_rapida_funcionarios),
+        name='busca_rapida_funcionarios',
+    ),
     path('funcionarios/<int:pk>/', empresa_scoped(detalhar_funcionario), name='detalhes_funcionario'),
     path('funcionarios/<int:pk>/editar/', empresa_scoped(editar_funcionario), name='editar_funcionario'),
     path('funcionarios/<int:pk>/excluir/', empresa_scoped(excluir_funcionario), name='excluir_funcionario'),
@@ -97,6 +102,11 @@ urlpatterns = [
     # DEPENDENTES
     # ======================
     path('funcionarios/<int:pk>/dependentes/lista/', empresa_scoped(dependentes_lista), name='dependentes_lista'),
+    path(
+        'funcionarios/<int:pk>/dependentes/recebe-salario-familia/',
+        empresa_scoped(funcionario_recebe_salario_familia_hx),
+        name='funcionario_recebe_salario_familia_hx',
+    ),
     path('funcionarios/<int:pk>/modal/dependentes/adicionar/', empresa_scoped(modal_adicionar_dependente), name='modal_adicionar_dependente'),
     path('funcionarios/<int:pk>/modal/dependentes/<int:dependente_id>/editar/', empresa_scoped(modal_editar_dependente), name='modal_editar_dependente'),
     path('funcionarios/<int:pk>/modal/dependentes/<int:dependente_id>/excluir/', empresa_scoped(modal_excluir_dependente), name='modal_excluir_dependente'),
