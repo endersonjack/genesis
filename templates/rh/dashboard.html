@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard RH | Genesis ERP{% endblock %}
+{% block title %}Recursos Humanos | Genesis ERP{% endblock %}
 
 {% block content %}
 <style>
@@ -722,28 +722,16 @@
     margin-top: 1rem;
 }
 
-    /* Hero Gestão de RH */
+    /* Hero Gestão de RH — único card com barra lateral + sombra destacada */
     .rh-gestao-hero-shell {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
-        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07);
         overflow: hidden;
         position: relative;
-    }
-    .rh-gestao-hero-shell::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 5px;
-        border-radius: 1.25rem 0 0 1.25rem;
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: {{ request.empresa_ativa.cor_tema }};
-        {% else %}
-            background: #2563eb;
-        {% endif %}
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
     }
     .rh-gestao-hero-inner {
         position: relative;
@@ -801,7 +789,7 @@
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="fw-bold mb-1">Dashboard RH</h2>
+        <h2 class="fw-bold mb-1">Recursos Humanos</h2>
         <p class="text-muted mb-0">Visão geral da empresa selecionada.</p>
     </div>
 

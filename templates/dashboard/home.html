@@ -1,13 +1,43 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
-{% block title %}Dashboard | Genesis ERP{% endblock %}
+{% block title %}Início | Genesis ERP{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* Alinhado ao padrão do Dashboard RH (rh/dashboard.html) */
+    .dash-geral-board-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .dash-geral-board-heading {
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.25;
+        letter-spacing: 0.02em;
+    }
+    .dash-geral-card-top {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
     .quick-access-section-title {
-        font-size: 0.7rem;
-        font-weight: 700;
+        font-size: 0.72rem;
+        font-weight: 800;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: #64748b;
@@ -62,25 +92,123 @@
         font-size: 0.875rem;
         vertical-align: middle;
     }
+
+    /* Card empresa ativa — mesmo “shell” do hero Gestão de RH (rh/dashboard.html) */
+    .dash-geral-empresa-shell {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        overflow: hidden;
+        position: relative;
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .dash-geral-empresa-logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .dash-geral-empresa-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .dash-geral-empresa-logo-empty {
+        font-size: 2.25rem;
+        color: #94a3b8;
+    }
+    .dash-geral-empresa-eyebrow {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+    .dash-geral-empresa-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.2;
+    }
+    .dash-geral-empresa-meta {
+        font-size: 0.92rem;
+        color: #475569;
+        line-height: 1.5;
+    }
+    .dash-geral-empresa-meta strong {
+        color: #334155;
+        font-weight: 700;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2 class="fw-bold mb-1">Dashboard</h2>
-    <p class="text-muted mb-0">
-        Acesso rápido aos módulos
-        {% if request.empresa_ativa %}
-            — <strong>{{ request.empresa_ativa }}</strong>
-        {% endif %}
-    </p>
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Início</h2>
+        <p class="text-muted mb-0">Visão geral da empresa selecionada.</p>
+    </div>
 </div>
 
 {% if request.empresa_ativa %}
+<div class="dash-geral-empresa-shell mb-4 p-3 p-md-4">
+    <div class="row align-items-start g-4">
+        <div class="col-lg-8">
+            <div class="d-flex flex-column flex-sm-row align-items-start gap-3">
+                <div class="dash-geral-empresa-logo" aria-hidden="true">
+                    {% if request.empresa_ativa.logo %}
+                        <img src="{{ request.empresa_ativa.logo.url }}" alt="Logo {{ request.empresa_ativa.nome_fantasia|default:request.empresa_ativa.razao_social }}">
+                    {% else %}
+                        <i class="bi bi-building dash-geral-empresa-logo-empty"></i>
+                    {% endif %}
+                </div>
+                <div class="min-w-0">
+                    <p class="dash-geral-empresa-eyebrow mb-1">Empresa ativa</p>
+                    <h3 class="dash-geral-empresa-title">{{ request.empresa_ativa.nome_fantasia|default:request.empresa_ativa.razao_social }}</h3>
+                    {% if request.empresa_ativa.nome_fantasia %}
+                        <p class="text-muted small mb-2 mb-sm-1">{{ request.empresa_ativa.razao_social }}</p>
+                    {% endif %}
+                    <div class="dash-geral-empresa-meta">
+                        <div><strong>CNPJ</strong> {{ request.empresa_ativa.cnpj }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="dash-geral-empresa-meta text-lg-end">
+                {% if request.empresa_ativa.email %}
+                    <div><strong>E-mail</strong> {{ request.empresa_ativa.email }}</div>
+                {% endif %}
+                {% if request.empresa_ativa.telefone %}
+                    <div><strong>Telefone</strong> {{ request.empresa_ativa.telefone }}</div>
+                {% endif %}
+                {% if request.empresa_ativa.endereco %}
+                    <div class="mt-1"><strong>Endereço</strong> {{ request.empresa_ativa.endereco }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card content-card">
     <div class="card-header bg-white border-0 pb-0 pt-3 px-3 px-md-4">
-        <h5 class="mb-1">Acesso rápido</h5>
-        <p class="text-muted small mb-0">Atalhos para as telas mais usadas nesta empresa</p>
+        <div class="dash-geral-card-top mb-1">
+            <span class="dash-geral-board-icon" aria-hidden="true"><i class="bi bi-lightning-charge-fill"></i></span>
+            <div class="min-w-0">
+                <h3 class="dash-geral-board-heading text-uppercase">Acesso rápido</h3>
+                <p class="text-muted small mb-0">Atalhos para as telas mais usadas nesta empresa.</p>
+            </div>
+        </div>
     </div>
     <div class="card-body pt-3 px-3 px-md-4 pb-4">
 
@@ -150,19 +278,22 @@
 </div>
 
 <div class="card content-card dashboard-audit-card mt-4">
-    <div class="card-header bg-white border-0 d-flex flex-wrap align-items-start justify-content-between gap-2 pb-0 pt-3 px-3 px-md-4">
-        <div>
-            <h5 class="mb-1">Últimas alterações</h5>
-            <p class="text-muted small mb-0">
-                {% if auditoria_resumo_admin %}
-                    Até 20 eventos mais recentes de todos os usuários nesta empresa.
-                {% else %}
-                    Até 20 dos seus eventos mais recentes nesta empresa.
-                {% endif %}
-            </p>
+    <div class="card-header bg-white border-0 d-flex flex-wrap align-items-start justify-content-between gap-3 pb-0 pt-3 px-3 px-md-4">
+        <div class="dash-geral-card-top mb-1 min-w-0">
+            <span class="dash-geral-board-icon" aria-hidden="true"><i class="bi bi-clock-history"></i></span>
+            <div class="min-w-0">
+                <h3 class="dash-geral-board-heading text-uppercase">Últimas alterações</h3>
+                <p class="text-muted small mb-0">
+                    {% if auditoria_resumo_admin %}
+                        Até 20 eventos mais recentes de todos os usuários nesta empresa.
+                    {% else %}
+                        Até 20 dos seus eventos mais recentes nesta empresa.
+                    {% endif %}
+                </p>
+            </div>
         </div>
         {% if request.usuario_admin_empresa or request.user.is_superuser %}
-        <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold flex-shrink-0">
+        <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold flex-shrink-0 align-self-start">
             Ver auditoria completa
         </a>
         {% endif %}

@@ -1,0 +1,33 @@
+---
+description: Textos e hierarquia visual dos dashboards (Geral e RH) — títulos, subtítulos e cabeçalhos de cards.
+alwaysApply: true
+---
+
+# Dashboards — padrão de textos (Genesis)
+
+## Dashboard geral (Início)
+
+- Card **empresa ativa** no topo (quando há `request.empresa_ativa`): mesmo *shell* visual do hero «Gestão de RH» (borda, gradiente, barra lateral inset na cor da empresa): logo ou ícone, razão/nome fantasia, CNPJ, contatos, atalho para preferências.
+
+## Topo da página (área abaixo do topbar)
+
+- **Título principal:** `<h2 class="fw-bold mb-1">` — **Início** (dashboard geral) e **Recursos Humanos** (dashboard RH).
+- **Subtítulo:** um único `<p class="text-muted mb-0">` — **«Visão geral da empresa selecionada.»** (igual em Geral e RH).
+- Opcionalmente, à direita, ações (`d-flex` + `rh-top-actions` no RH); no Geral pode ficar só o bloco do título se não houver botões.
+
+## Cards de seção (listagens, acesso rápido, auditoria, etc.)
+
+- **Cabeçalho do card:** ícone em quadrado arredondado (`42×42px`, `border-radius: 12px`, fundo = **cor da empresa** `request.empresa_ativa.cor_tema` ou `#2563eb`) + título ao lado.
+- **Título da seção:** peso **800**, `font-size: ~1.2rem`, cor `#0f172a`, em **maiúsculas** (como **FUNCIONÁRIOS** / **AVISOS** no Dashboard RH). Pode usar a classe utilitária `text-uppercase` ou texto já em caps.
+- **Descrição curta** abaixo do título (quando fizer sentido): `text-muted small`.
+- Ícones sugeridos: acesso rápido `bi-lightning-charge-fill`, alterações/auditoria `bi-clock-history` (ajustar ao contexto).
+
+## Rótulos de subsecção (ex.: grupos «RH», «Empresa»)
+
+- Estilo tipo *eyebrow*: `~0.72rem`, **800**, `letter-spacing`, `uppercase`, cor `#64748b` (alinhado ao bloco «Área principal» / seções do RH).
+
+## Checklist ao criar ou alterar um dashboard
+
+- [ ] Mesmo par título + subtítulo do topo que o RH
+- [ ] Cabeçalhos de card com ícone + título em destaque (maiúsculas), cor de tema no ícone
+- [ ] `{% block title %}` coerente (ex.: `Início | Genesis ERP`, `Recursos Humanos | Genesis ERP`)

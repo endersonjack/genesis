@@ -21,7 +21,6 @@ Observações não está salvando ou mostrar os salvos
 OK - Adiciona em Branco, Completo ou copiar de outro
 OK - Botão de Copiar PIX, e dar Feedback no Toast
 
-
 CONTROLE - CESTA BÁSICA
 
 OK - Editar só Data de Recebimento via modal
@@ -30,7 +29,6 @@ OK - Fazer Recibos individuais
 NO SISTEMA GERAL:
 
 HTMX/skeleton - Loading nos cards (para carregamento rápido.)
-
 
 FUNCIONÁRIO - PERFIL
 
