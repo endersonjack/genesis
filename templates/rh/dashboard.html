@@ -722,6 +722,81 @@
     margin-top: 1rem;
 }
 
+    /* Hero Gestão de RH */
+    .rh-gestao-hero-shell {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07);
+        overflow: hidden;
+        position: relative;
+    }
+    .rh-gestao-hero-shell::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        border-radius: 1.25rem 0 0 1.25rem;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .rh-gestao-hero-inner {
+        position: relative;
+        z-index: 1;
+    }
+    .rh-gestao-hero-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.65rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+    }
+    .rh-gestao-hero-eyebrow {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+    .rh-gestao-hero-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+    }
+    .rh-gestao-hero-lead {
+        font-size: .98rem;
+        line-height: 1.55;
+        max-width: 42rem;
+    }
+    .rh-gestao-hero-cta {
+        min-width: min(100%, 280px);
+    }
+    .rh-gestao-hero .btn-primary {
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+            border-color: {{ request.empresa_ativa.cor_tema }};
+        {% endif %}
+    }
+    .rh-gestao-hero .btn-primary:hover {
+        filter: brightness(0.96);
+    }
+
 </style>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -737,16 +812,6 @@
             <span>Buscar</span>
         </a>
 
-        <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
-           hx-get="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
-           class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-person-gear"></i>
-            <span>Gestão de RH</span>
-        </a>
-
         <button
             type="button"
             class="rh-top-btn rh-top-btn-primary"
@@ -759,6 +824,40 @@
             <i class="bi bi-person-plus"></i>
             <span>Novo funcionário</span>
         </button>
+    </div>
+</div>
+
+<div class="rh-gestao-hero-shell mb-4 p-3 p-md-4">
+    <div
+        id="dashboard-slot-gestao-rh"
+        data-no-global-loading
+        hx-get="{% url 'rh:dashboard_partial_gestao_rh' empresa_id=request.empresa_ativa.pk %}"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+        hx-on="htmx:afterSwap: this.removeAttribute('aria-busy')"
+        role="region"
+        aria-busy="true"
+        aria-label="Carregando bloco Gestão de RH">
+        <div class="rh-gestao-hero-skeleton" aria-hidden="true">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="d-flex flex-column flex-sm-row align-items-start gap-3">
+                        <div class="dashboard-hx-skeleton flex-shrink-0" style="width:56px;height:56px;border-radius:16px;"></div>
+                        <div class="flex-grow-1 w-100" style="min-width:0;">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-3" style="width:28%;height:.65rem;border-radius:.35rem;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-3" style="width:52%;height:1.35rem;border-radius:.5rem;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-2"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line short mb-3"></div>
+                            <div class="dashboard-hx-skeleton" style="width:150px;height:2rem;border-radius:999px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-lg-end">
+                    <div class="dashboard-hx-skeleton ms-lg-auto" style="height:52px;width:100%;max-width:280px;border-radius:.9rem;"></div>
+                    <div class="dashboard-hx-skeleton mt-3 ms-lg-auto" style="height:.75rem;width:70%;max-width:220px;border-radius:.35rem;margin-left:auto;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

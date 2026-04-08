@@ -1,0 +1,28 @@
+---
+description: Troca de empresa — quando manter o path e quando redirecionar ao dashboard (evitar 404 por PK de outro tenant).
+alwaysApply: true
+---
+
+# Troca de empresa e URL de destino
+
+## Comportamento (Genesis)
+
+Ao **trocar de empresa** (`usuarios.views.trocar_empresa`), o destino após o POST vem de `core.urlutils.build_url_after_empresa_swap(next_path, new_empresa_id)`.
+
+- **Rotas “seguras”** (listagens, dashboards de módulo, páginas sem PK de recurso da empresa): mantém o mesmo caminho, só substituindo `/empresa/<id>/` pelo novo id. Ex.: `/empresa/5/rh/funcionarios/` → `/empresa/7/rh/funcionarios/`.
+
+- **Rotas com recurso escopado por empresa** (detalhe por PK, competência, tabelas VT/Cesta, faltas vinculadas a funcionário/competência, etc.): **não** reaproveitar o path — o utilizador vai para **`/empresa/<novo_id>/`** (dashboard geral da nova empresa). Assim evita-se **404** ou abrir o registo errado ao manter o mesmo PK noutro tenant.
+
+## Onde está no código
+
+- `core/urlutils.py`: `_EMPRESA_SWAP_DASHBOARD_REST_PATTERNS`, `_empresa_swap_should_use_dashboard_only`, `build_url_after_empresa_swap`.
+- Os padrões aplicam-se ao **“resto”** do path depois de `/empresa/<id>/` (ex.: começa por `/rh/...`).
+
+## Ao adicionar novas URLs escopadas por empresa
+
+Se a rota incluir **PK (ou id de competência/falta, etc.) que não é partilhado entre empresas**, acrescente um **regex** adequado a `_EMPRESA_SWAP_DASHBOARD_REST_PATTERNS` em `core/urlutils.py`, ou o utilizador continuará na mesma URL após trocar de empresa e poderá ver 404.
+
+## Checklist rápido
+
+- [ ] Nova rota com `<int:pk>` / ids de recurso da empresa → avaliar se entra nos padrões; se não, adicionar regex.
+- [ ] Listagens e páginas sem id de objeto → normalmente **não** precisam de padrão novo.

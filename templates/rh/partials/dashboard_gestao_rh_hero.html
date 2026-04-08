@@ -1,0 +1,45 @@
+<div class="rh-gestao-hero rh-gestao-hero-inner">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <div class="d-flex flex-column flex-sm-row align-items-start gap-3">
+                <div class="rh-gestao-hero-icon flex-shrink-0" aria-hidden="true">
+                    <i class="bi bi-kanban-fill"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="rh-gestao-hero-eyebrow mb-1">Área principal</p>
+                    <h3 class="rh-gestao-hero-title mb-2">Gestão de RH</h3>
+                    <p class="rh-gestao-hero-lead text-muted mb-0">
+                        Competências mensais, Vale Transporte, Cesta Básica, Faltas e demais controles do período.
+                    </p>
+                    {% if ultima_competencia %}
+                        <div class="mt-3">
+                            <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=ultima_competencia.ano mes=ultima_competencia.mes %}"
+                               class="btn btn-sm btn-outline-secondary rounded-pill fw-semibold px-3 rh-gestao-ultima-comp"
+                               hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=ultima_competencia.ano mes=ultima_competencia.mes %}"
+                               hx-target="body"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               title="Abrir a competência mais recente">
+                                <i class="bi bi-calendar3 me-1"></i> Última: {{ ultima_competencia.referencia }}
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 text-lg-end">
+            <a href="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-lg btn-primary rounded-3 fw-semibold px-4 rh-gestao-hero-cta"
+               hx-get="{% url 'controles_rh:home' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                Abrir Gestão de RH
+                <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            <div class="small text-muted mt-2 mt-lg-3">
+                Atalho para o painel de <strong>controles por competência</strong>.
+            </div>
+        </div>
+    </div>
+</div>

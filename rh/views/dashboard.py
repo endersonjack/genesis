@@ -6,6 +6,8 @@ from django.shortcuts import render
 
 from core.urlutils import reverse_empresa
 
+from controles_rh.models import Competencia
+
 from ..perfil_secao import perfil_funcionario_url_por_tipo
 from ..models import (
     AfastamentoFuncionario,
@@ -645,6 +647,31 @@ def _context_dashboard_avisos(request, empresa_ativa):
         "destaques_dia": destaques_dia,
         "destaques_semana": destaques_semana,
     }
+
+
+def dashboard_partial_gestao_rh(request):
+    """
+    Card hero «Gestão de RH» (competências, VT, cesta, faltas…).
+    Carregado via HTMX com skeleton no shell.
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa para visualizar o RH.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    ultima_competencia = (
+        Competencia.objects.filter(empresa=empresa_ativa)
+        .order_by("-ano", "-mes")
+        .first()
+    )
+
+    return render(
+        request,
+        "rh/partials/dashboard_gestao_rh_hero.html",
+        {"ultima_competencia": ultima_competencia},
+    )
 
 
 def dashboard_rh(request):

@@ -22,6 +22,11 @@ urlpatterns = [
         empresa_scoped(dashboard_partial_avisos),
         name='dashboard_partial_avisos',
     ),
+    path(
+        'dashboard/partials/gestao-rh/',
+        empresa_scoped(dashboard_partial_gestao_rh),
+        name='dashboard_partial_gestao_rh',
+    ),
 
     # ======================
     # FUNCIONÁRIOS - CRUD PRINCIPAL

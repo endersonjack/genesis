@@ -4,6 +4,40 @@ from typing import Optional
 from django.shortcuts import redirect
 from django.urls import reverse
 
+# Após trocar de empresa, não reutilizar o caminho se ele apontar para um recurso
+# identificado por PK (ou competência/falta) que é exclusivo da empresa anterior;
+# caso contrário o utilizador cai em 404 ou no registo errado.
+_EMPRESA_SWAP_DASHBOARD_REST_PATTERNS = tuple(
+    re.compile(p)
+    for p in (
+        r'^/rh/funcionarios/\d+',
+        r'^/rh/faltas/funcionario/\d+',
+        r'^/rh/faltas/competencia/\d+',
+        r'^/rh/lembretes/\d+/',
+        r'^/rh/cargos/\d+/',
+        r'^/rh/lotacoes/\d+/',
+        r'^/rh/gestao/competencias/\d+/\d+/',
+        r'^/rh/gestao/competencias/\d+/editar/',
+        r'^/rh/gestao/competencias/\d+/excluir/',
+        r'^/rh/gestao/competencias/\d+/vt/',
+        r'^/rh/gestao/competencias/\d+/cesta-basica/',
+        r'^/rh/gestao/vt/\d+',
+        r'^/rh/gestao/vt/tabela/\d+',
+        r'^/rh/gestao/vt/itens/\d+',
+        r'^/rh/gestao/cesta-basica/\d+',
+        r'^/rh/gestao/cesta-basica/itens/\d+',
+        r'^/local/\d+/',
+    )
+)
+
+
+def _empresa_swap_should_use_dashboard_only(rest: str) -> bool:
+    if not rest or rest == '/':
+        return False
+    if not rest.startswith('/'):
+        rest = '/' + rest
+    return any(p.search(rest) for p in _EMPRESA_SWAP_DASHBOARD_REST_PATTERNS)
+
 
 def reverse_empresa(request, viewname, args=None, kwargs=None):
     """
@@ -40,9 +74,12 @@ def is_safe_internal_path(path: str) -> bool:
 
 def build_url_after_empresa_swap(path: str, new_empresa_id: int) -> Optional[str]:
     """
-    Troca o segmento /empresa/<id>/ pelo novo id, mantendo o restante do caminho.
-    Ex.: /empresa/5/rh/foo -> /empresa/7/rh/foo
-    Retorna None se o path não for uma rota sob /empresa/<id>/.
+    Troca o segmento /empresa/<id>/ pelo novo id, mantendo o restante do caminho
+    quando for seguro (listagens, dashboard, etc.).
+
+    Se o caminho apontar para um recurso escopado por empresa (detalhe por PK,
+    competência por id, tabelas VT/Cesta, etc.), devolve a URL do dashboard da
+    nova empresa para evitar 404 ao manter o mesmo PK noutro tenant.
     """
     if not is_safe_internal_path(path):
         return None
@@ -52,4 +89,6 @@ def build_url_after_empresa_swap(path: str, new_empresa_id: int) -> Optional[str
     rest = m.group(1)
     if rest == '':
         rest = '/'
+    if _empresa_swap_should_use_dashboard_only(rest):
+        return f'/empresa/{new_empresa_id}/'
     return f'/empresa/{new_empresa_id}{rest}'
