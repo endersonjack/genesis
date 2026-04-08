@@ -37,7 +37,8 @@ def selecionar_empresa(request):
         return redirect('dashboard_home', empresa_id=vinculo.empresa.id)
 
     return render(request, 'usuarios/selecionar_empresa.html', {
-        'vinculos': vinculos
+        'vinculos': vinculos,
+        'empresa_sessao_id': request.session.get('empresa_id'),
     })
 
 

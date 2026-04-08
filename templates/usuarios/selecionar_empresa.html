@@ -1,18 +1,51 @@
 {% extends 'base.html' %}
 
-{% block content %}
-    <h2>Selecionar empresa</h2>
+{% block title %}Selecionar empresa · Genesis ERP{% endblock %}
 
-    <form method="post">
-        {% csrf_token %}
-        <select name="empresa_id" required>
-            <option value="">Selecione</option>
-            {% for vinculo in vinculos %}
-                <option value="{{ vinculo.empresa.id }}">
-                    {{ vinculo.empresa }}
-                </option>
-            {% endfor %}
-        </select>
-        <button type="submit">Entrar</button>
-    </form>
+{% block content %}
+<div class="row justify-content-center py-2 py-md-4">
+    <div class="col-12 col-md-10 col-lg-7 col-xl-6">
+        <div class="mb-4">
+            <h2 class="fw-bold mb-1">Selecionar empresa</h2>
+            <p class="text-muted mb-0">Escolha em qual empresa deseja trabalhar nesta sessão.</p>
+        </div>
+
+        <div class="card shadow-sm border-0" style="border: 1px solid #e2e8f0; border-radius: 1rem;">
+            <div class="card-body p-4 p-md-4">
+                {% if vinculos %}
+                    <div class="d-grid gap-2">
+                        {% for vinculo in vinculos %}
+                            {% if empresa_sessao_id and vinculo.empresa.id == empresa_sessao_id and vinculos|length > 1 %}
+                                <button type="button" class="btn btn-light text-start d-flex justify-content-between align-items-center rounded-3 py-3" disabled>
+                                    <span class="fw-semibold">{{ vinculo.empresa }}</span>
+                                    <span class="badge text-bg-primary">Atual na sessão</span>
+                                </button>
+                            {% else %}
+                                <form method="post" action="{% url 'selecionar_empresa' %}" class="m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="empresa_id" value="{{ vinculo.empresa.id }}">
+                                    <button type="submit" class="btn btn-outline-primary w-100 text-start rounded-3 py-3 fw-semibold">
+                                        {{ vinculo.empresa }}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted small mb-0 mt-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Você pode trocar de empresa a qualquer momento pelo menu <strong>Sistema</strong> → <strong>Trocar empresa</strong>.
+                    </p>
+                {% else %}
+                    <div class="text-center py-4">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-secondary mb-3" style="width: 56px; height: 56px;">
+                            <i class="bi bi-building-slash fs-4"></i>
+                        </span>
+                        <p class="fw-semibold mb-1">Nenhuma empresa disponível</p>
+                        <p class="text-muted small mb-0">Sua conta não possui vínculo ativo com empresas cadastradas. Entre em contato com o administrador.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
