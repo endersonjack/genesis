@@ -1,0 +1,24 @@
+{# Skeleton enquanto ?partial=tabela carrega (layout semelhante à tabela final) #}
+<div class="table-responsive af-table-wrap mb-0" aria-hidden="true">
+    <table class="table table-bordered mb-0 af-table">
+        <thead>
+            <tr class="af-group">
+                <th colspan="14" class="text-center text-muted small py-2">Carregando dados…</th>
+            </tr>
+            <tr>
+                {% for i in "12345678901234" %}
+                    <th class="af-th-wrap"><span class="placeholder col-12 bg-secondary bg-opacity-25 rounded" style="height:0.65rem;display:block;"></span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for _ in "12345" %}
+                <tr class="comp-sk-item">
+                    {% for __ in "12345678901234" %}
+                        <td class="py-2"><span class="placeholder bg-secondary bg-opacity-10 rounded w-100" style="height:0.75rem;display:block;"></span></td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

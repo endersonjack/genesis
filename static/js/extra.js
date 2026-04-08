@@ -62,7 +62,7 @@ document.body.addEventListener('htmx:configRequest', function (event) {
      * (por baixo ou piscando) até o HX-Refresh — fecha e limpa backdrop na hora.
      */
     function hideBootstrapModalsBeforeHtmxLoading() {
-        var skipModalIds = { sectionModal: true, modalPadrao: true };
+        var skipModalIds = { sectionModal: true, modalPadrao: true, modalAfLinha: true };
         if (window.bootstrap && bootstrap.Modal) {
             document.querySelectorAll('.modal.show').forEach(function (modalEl) {
                 // Não fechar o modal de seções do funcionário aqui: o hide dispara

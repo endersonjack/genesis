@@ -1,12 +1,42 @@
 from django.contrib import admin
 
 from .models import (
+    AlteracaoFolhaControle,
+    AlteracaoFolhaLinha,
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
     ValeTransporteItem,
     ValeTransporteTabela,
 )
+
+
+@admin.register(AlteracaoFolhaControle)
+class AlteracaoFolhaControleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'competencia', 'data_geracao')
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
+    search_fields = ('competencia__titulo',)
+    autocomplete_fields = ('competencia',)
+    ordering = ('-data_geracao',)
+
+
+@admin.register(AlteracaoFolhaLinha)
+class AlteracaoFolhaLinhaAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'competencia',
+        'funcionario',
+        'hora_extra',
+        'horas_feriado',
+        'adicional',
+        'premio',
+        'descontos',
+        'data_atualizacao',
+    )
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
+    search_fields = ('funcionario__nome',)
+    autocomplete_fields = ('competencia', 'funcionario')
+    ordering = ('competencia__ano', 'competencia__mes', 'funcionario__nome')
 
 
 @admin.register(Competencia)

@@ -1,0 +1,39 @@
+{# Fragmento HTMX: tabela completa (thead + tbody) #}
+<div class="table-responsive af-table-wrap mb-0">
+    <table class="table table-bordered table-hover mb-0 af-table">
+        <thead>
+            <tr class="af-group">
+                <th colspan="5" class="af-g-h-base text-center text-muted small py-2">Cadastro</th>
+                <th colspan="5" class="af-g-h-ad text-center af-g-h-titulo">Adicionais</th>
+                <th colspan="4" class="af-g-h-desc text-center af-g-h-titulo">Descontos</th>
+            </tr>
+            <tr>
+                <th scope="col" class="af-th-wrap af-th-base">#</th>
+                <th scope="col" class="af-th-wrap af-th-base af-th-funcionario">Funcionário</th>
+                <th scope="col" class="af-th-wrap af-th-base">Função</th>
+                <th scope="col" class="af-th-wrap af-th-base">Desc.<br>VT</th>
+                <th scope="col" class="af-th-wrap af-th-base">Sal.<br>fam.</th>
+                <th scope="col" class="af-th-wrap af-th-ad">H. extra<br><span class="af-th-sub">(h)</span></th>
+                <th scope="col" class="af-th-wrap af-th-ad">H. feriado<br><span class="af-th-sub">(h)</span></th>
+                <th scope="col" class="af-th-wrap af-th-ad">Adic.<br><span class="af-th-sub">(R$)</span></th>
+                <th scope="col" class="af-th-wrap af-th-ad">Prêmio<br><span class="af-th-sub">(R$)</span></th>
+                <th scope="col" class="af-th-wrap af-th-ad">Outro<br><span class="af-th-sub">adic.</span></th>
+                <th scope="col" class="af-th-wrap af-th-desc">Desc.<br><span class="af-th-sub">(R$)</span></th>
+                <th scope="col" class="af-th-wrap af-th-desc">Faltas<br>não just.</th>
+                <th scope="col" class="af-th-wrap af-th-desc">Faltas<br>justif.</th>
+                <th scope="col" class="af-th-wrap af-th-desc">Outro<br><span class="af-th-sub">desc.</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in linhas %}
+                {% include 'controles_rh/alteracao_folha/_linha_tr.html' %}
+            {% empty %}
+                <tr>
+                    <td colspan="14" class="text-center text-muted py-5">
+                        Nenhum funcionário ativo encontrado para esta empresa.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

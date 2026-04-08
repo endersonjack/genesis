@@ -694,3 +694,115 @@ class CestaBasicaItem(models.Model):
                     self.lotacao = lot.nome
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class AlteracaoFolhaControle(models.Model):
+    """
+    Marca que a tabela de alterações de folha foi gerada nesta competência.
+    Enquanto existir, o botão «+» na sidebar fica desabilitado; ao excluir, libera de novo.
+    """
+
+    competencia = models.OneToOneField(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='alteracao_folha_controle',
+    )
+    data_geracao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Alteração de folha (geração)'
+        verbose_name_plural = 'Alterações de folha (gerações)'
+
+    def __str__(self):
+        return f'Alteração de folha — {self.competencia.referencia}'
+
+
+class AlteracaoFolhaLinha(models.Model):
+    """
+    Uma linha por funcionário na competência — adicionais e descontos da folha.
+    Colunas automáticas (funcionário, função, VT, salário família, faltas) vêm de cadastro/registros.
+    """
+
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='alteracoes_folha',
+    )
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.CASCADE,
+        related_name='alteracoes_folha',
+    )
+
+    hora_extra = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name='Hora extra (h)',
+    )
+    horas_feriado = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name='Horas feriado (h)',
+    )
+    adicional = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Adicional (R$)',
+    )
+    premio = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Prêmio (R$)',
+    )
+    outro_adicional = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Outro adicional (R$)',
+    )
+    descontos = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Descontos (R$)',
+    )
+    outro_desconto = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Outro desconto (R$)',
+    )
+
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Linha de alteração de folha'
+        verbose_name_plural = 'Linhas de alteração de folha'
+        ordering = ['funcionario__nome', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['competencia', 'funcionario'],
+                name='unique_alteracao_folha_por_competencia_funcionario',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.funcionario} — {self.competencia.referencia}'
+
+    def clean(self):
+        errors = {}
+        fe = getattr(self.funcionario, 'empresa_id', None)
+        ce = self.competencia.empresa_id
+        if fe and ce and fe != ce:
+            errors['funcionario'] = 'O funcionário deve pertencer à mesma empresa da competência.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

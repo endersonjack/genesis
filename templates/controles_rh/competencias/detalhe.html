@@ -191,9 +191,9 @@
         color: #dc2626;
     }
 
-    .controle-icon.pagamentos {
-        background: #dcfce7;
-        color: #15803d;
+    .controle-icon.folha-alt {
+        background: #e0e7ff;
+        color: #4338ca;
     }
 
     .controle-icon.tabelas {
@@ -314,6 +314,20 @@
             width: 100%;
         }
     }
+
+    /* Geração alteração de folha: mensagem local (sem overlay global — data-no-global-loading no botão) */
+    .af-gen-loading {
+        display: none;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #4338ca;
+        margin-bottom: 0.5rem;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .af-gen-loading.htmx-request {
+        display: flex;
+    }
 </style>
 
 <div class="summary-card mb-4">
@@ -389,19 +403,24 @@
     <div class="section-body">
         <div class="controles-layout">
 
+            {# data-no-global-loading só no pedido inicial (load); após o swap o conteúdo fica sem esse atributo, #}
+            {# para que hx-get nos cartões (VT, cesta, faltas, alteração de folha) use o overlay global. #}
             <div
                 class="controles-col-main"
                 id="competencia-controles-main"
-                data-no-global-loading
-                hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}?partial=controles"
-                hx-trigger="load"
-                hx-swap="innerHTML"
-                hx-on="htmx:afterSwap: this.removeAttribute('aria-busy')"
                 role="region"
                 aria-live="polite"
                 aria-busy="true"
                 aria-label="Carregando controles da competência">
-                {% include 'controles_rh/competencias/_controles_da_competencia_skeleton.html' %}
+                <div
+                    data-no-global-loading
+                    hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}?partial=controles"
+                    hx-trigger="load"
+                    hx-target="#competencia-controles-main"
+                    hx-swap="innerHTML"
+                    hx-on="htmx:afterSwap: document.getElementById('competencia-controles-main')?.removeAttribute('aria-busy')">
+                    {% include 'controles_rh/competencias/_controles_da_competencia_skeleton.html' %}
+                </div>
             </div>
 
             <aside class="controles-col-add" aria-label="Ações de inclusão">
@@ -473,16 +492,36 @@
                         </div>
 
                         <div class="add-mini-card">
+                            <p id="af-gen-ind-{{ competencia.pk }}" class="af-gen-loading mb-0" aria-live="polite">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Gerando dados para a Alteração de Folha</span>
+                            </p>
                             <div class="add-mini-card-top">
                                 <div class="add-mini-title-wrap">
-                                    <span class="controle-icon pagamentos" aria-hidden="true">
-                                        <i class="bi bi-cash-stack"></i>
+                                    <span class="controle-icon folha-alt" aria-hidden="true">
+                                        <i class="bi bi-table"></i>
                                     </span>
-                                    <p class="add-mini-title mb-0">Pagamentos</p>
+                                    <p class="add-mini-title mb-0">Alterações de folha</p>
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Pagamentos (em breve)">
-                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                </button>
+                                {% if alteracao_folha_gerada %}
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm btn-add-inline"
+                                            disabled
+                                            title="Já gerada nesta competência. Exclua a tabela para gerar de novo."
+                                            aria-label="Alterações de folha já geradas">
+                                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button"
+                                            class="btn btn-primary btn-sm btn-add-inline"
+                                            title="Gerar tabela de alterações de folha"
+                                            aria-label="Gerar alterações de folha"
+                                            data-no-global-loading
+                                            hx-post="{% url 'controles_rh:gerar_alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                            hx-indicator="#af-gen-ind-{{ competencia.pk }}">
+                                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                    </button>
+                                {% endif %}
                             </div>
                         </div>
 

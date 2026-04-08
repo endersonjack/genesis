@@ -1,0 +1,31 @@
+<tr
+    id="af-row-{{ row.linha.pk }}"
+    class="af-row-click"
+    role="button"
+    tabindex="0"
+    hx-get="{% url 'controles_rh:modal_alteracao_folha_linha' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk linha_pk=row.linha.pk %}"
+    hx-target="#modalAfLinhaContent"
+    hx-swap="innerHTML"
+    hx-on="htmx:afterRequest: if (event.detail.successful) { const m = document.getElementById('modalAfLinha'); if (m && window.bootstrap) { bootstrap.Modal.getOrCreateInstance(m).show(); } }"
+    onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
+    <td class="af-readonly af-td-base text-muted">{{ row.seq }}</td>
+    <td class="af-readonly af-td-base fw-semibold">{{ row.funcionario.nome }}</td>
+    <td class="af-readonly af-td-base">{{ row.funcao }}</td>
+    <td class="af-readonly af-td-base text-center">
+        {% if row.passagem_sim %}
+            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">Sim</span>
+        {% else %}
+            <span class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle">Não</span>
+        {% endif %}
+    </td>
+    <td class="af-readonly af-td-base text-center">{{ row.salario_familia_txt }}</td>
+    <td class="af-readonly af-td-adicional text-end">{{ row.hora_extra_fmt }}</td>
+    <td class="af-readonly af-td-adicional text-end">{{ row.horas_feriado_fmt }}</td>
+    <td class="af-readonly af-td-adicional text-end">{{ row.adicional_fmt }}</td>
+    <td class="af-readonly af-td-adicional text-end">{{ row.premio_fmt }}</td>
+    <td class="af-readonly af-td-adicional text-end">{{ row.outro_adicional_fmt }}</td>
+    <td class="af-readonly af-td-desconto text-end">{{ row.descontos_fmt }}</td>
+    <td class="af-readonly af-td-desconto small">{{ row.faltas_nj }}</td>
+    <td class="af-readonly af-td-desconto small">{{ row.faltas_j }}</td>
+    <td class="af-readonly af-td-desconto text-end">{{ row.outro_desconto_fmt }}</td>
+</tr>

@@ -1,102 +1,124 @@
-{% if tabelas_vt or listas_cesta_basica or faltas_registros_count %}
-    <div class="controle-list controle-list--solo">
-        {% for tabela in tabelas_vt %}
-            <a href="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-               class="controle-list-item controle-list-item-link"
-               hx-get="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <div class="d-flex align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                        <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
-                            <i class="bi bi-bus-front-fill"></i>
-                        </span>
-                        <div class="min-w-0">
-                        <div class="fw-bold text-dark">{{ tabela.nome }}</div>
+<div class="controle-list controle-list--solo">
+    {% if alteracao_folha_gerada %}
+        <a href="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+           class="controle-list-item controle-list-item-link"
+           hx-get="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                    <span class="controle-icon folha-alt" title="Alterações de folha" aria-hidden="true" style="background:#e0e7ff;color:#4338ca;">
+                        <i class="bi bi-table"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="fw-bold text-dark">Alterações de folha</div>
+                        <small class="text-muted d-block mt-1">
+                            Tabela mensal com todos os funcionários — adicionais, descontos e referência de faltas.
+                        </small>
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+            </div>
+        </a>
+    {% endif %}
+    {% for tabela in tabelas_vt %}
+        <a href="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
+           class="controle-list-item controle-list-item-link"
+           hx-get="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                    <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
+                        <i class="bi bi-bus-front-fill"></i>
+                    </span>
+                    <div class="min-w-0">
+                    <div class="fw-bold text-dark">{{ tabela.nome }}</div>
+                    <div class="mt-1">
+                        {% if tabela.vt_status_efetivo == 'pago_completo' %}
+                            <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
+                        {% else %}
+                            <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mt-1">
+                        {% if tabela.descricao %}
+                            {{ tabela.descricao|truncatechars:72 }}
+                        {% else %}
+                            Sem descrição
+                        {% endif %}
+                    </small>
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+            </div>
+        </a>
+    {% endfor %}
+    {% for lista_cb in listas_cesta_basica %}
+        <a href="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
+           class="controle-list-item controle-list-item-link"
+           hx-get="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                    <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
+                        <i class="bi bi-basket3-fill"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
                         <div class="mt-1">
-                            {% if tabela.vt_status_efetivo == 'pago_completo' %}
-                                <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
+                            {% if lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
+                                <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
                             {% else %}
-                                <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
+                                <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>
                             {% endif %}
                         </div>
                         <small class="text-muted d-block mt-1">
-                            {% if tabela.descricao %}
-                                {{ tabela.descricao|truncatechars:72 }}
+                            Recibo de cesta básica — clique para editar linhas e exportar PDF.
+                        </small>
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+            </div>
+        </a>
+    {% endfor %}
+    {% if faltas_registros_count %}
+        <a href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+           class="controle-list-item controle-list-item-link"
+           hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                    <span class="controle-icon faltas" title="Faltas" aria-hidden="true">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="fw-bold text-dark">Faltas</div>
+                        <div class="mt-1">
+                            <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                                {{ faltas_registros_count }} registro{% if faltas_registros_count != 1 %}s{% endif %}
+                            </span>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            {% if faltas_colaboradores_count %}
+                                {{ faltas_colaboradores_count }} colaborador{% if faltas_colaboradores_count != 1 %}es{% endif %} com falta neste mês — abrir controle de faltas.
                             {% else %}
-                                Sem descrição
+                                Clique para abrir a home de faltas desta competência.
                             {% endif %}
                         </small>
-                        </div>
                     </div>
-                    <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
                 </div>
-            </a>
-        {% endfor %}
-        {% for lista_cb in listas_cesta_basica %}
-            <a href="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-               class="controle-list-item controle-list-item-link"
-               hx-get="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <div class="d-flex align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                        <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
-                            <i class="bi bi-basket3-fill"></i>
-                        </span>
-                        <div class="min-w-0">
-                            <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
-                            <div class="mt-1">
-                                {% if lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
-                                    <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
-                                {% else %}
-                                    <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>
-                                {% endif %}
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                Recibo de cesta básica — clique para editar linhas e exportar PDF.
-                            </small>
-                        </div>
-                    </div>
-                    <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-                </div>
-            </a>
-        {% endfor %}
-        {% if faltas_registros_count %}
-            <a href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-               class="controle-list-item controle-list-item-link"
-               hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <div class="d-flex align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                        <span class="controle-icon faltas" title="Faltas" aria-hidden="true">
-                            <i class="bi bi-x-circle-fill"></i>
-                        </span>
-                        <div class="min-w-0">
-                            <div class="fw-bold text-dark">Faltas</div>
-                            <div class="mt-1">
-                                <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
-                                    {{ faltas_registros_count }} registro{% if faltas_registros_count != 1 %}s{% endif %}
-                                </span>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                {% if faltas_colaboradores_count %}
-                                    {{ faltas_colaboradores_count }} colaborador{% if faltas_colaboradores_count != 1 %}es{% endif %} com falta neste mês — abrir controle de faltas.
-                                {% else %}
-                                    Clique para abrir a home de faltas desta competência.
-                                {% endif %}
-                            </small>
-                        </div>
-                    </div>
-                    <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-                </div>
-            </a>
-        {% endif %}
-    </div>
-{% else %}
-    <p class="controle-empty controle-empty--solo mb-0">Nenhum controle cadastrado nesta competência.</p>
+                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+            </div>
+        </a>
+    {% endif %}
+</div>
+{% if not tabelas_vt and not listas_cesta_basica and not faltas_registros_count %}
+    <p class="controle-empty controle-empty--solo mb-0 mt-2">Nenhum outro controle cadastrado (VT, cesta ou faltas) nesta competência.</p>
 {% endif %}

@@ -1,0 +1,100 @@
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-0">Editar linha — {{ linha.funcionario.nome }}</h5>
+        <p class="text-muted small mb-0 mt-1">Competência {{ competencia.referencia }} · {{ competencia.empresa }}</p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+    <form
+        id="formAlteracaoFolhaLinha"
+        data-no-global-loading
+        method="post"
+        action="{% url 'controles_rh:modal_alteracao_folha_linha' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk linha_pk=linha.pk %}"
+        hx-post="{% url 'controles_rh:modal_alteracao_folha_linha' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk linha_pk=linha.pk %}"
+        hx-target="#modalAfLinhaContent"
+        hx-swap="innerHTML">
+        {% csrf_token %}
+        <p class="text-muted small mb-3">Horas usam <strong>ponto</strong> nos decimais (ex.: <span class="text-nowrap">12.50</span> h). Valores em reais usam <strong>vírgula</strong> nos centavos e ponto nos milhares (ex.: <span class="text-nowrap">1.234,56</span>). Dados de faltas são somente leitura (calculados a partir do controle de faltas nesta competência).</p>
+
+        <div class="rounded-3 p-3 mb-3 af-bloco-adicionais">
+            <h6 class="af-bloco-titulo-ad d-flex align-items-center gap-2 mb-3">
+                <span class="af-bloco-ico"><i class="bi bi-plus-lg" aria-hidden="true"></i></span>
+                Adicionais
+            </h6>
+            <div class="row g-2">
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_hora_extra">{{ form.hora_extra.label }}</label>
+                    {{ form.hora_extra }}
+                    {{ form.hora_extra.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_horas_feriado">{{ form.horas_feriado.label }}</label>
+                    {{ form.horas_feriado }}
+                    {{ form.horas_feriado.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_adicional">{{ form.adicional.label }}</label>
+                    {{ form.adicional }}
+                    {{ form.adicional.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_premio">{{ form.premio.label }}</label>
+                    {{ form.premio }}
+                    {{ form.premio.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_outro_adicional">{{ form.outro_adicional.label }}</label>
+                    {{ form.outro_adicional }}
+                    {{ form.outro_adicional.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-3 p-3 af-bloco-descontos">
+            <h6 class="af-bloco-titulo-desc d-flex align-items-center gap-2 mb-3">
+                <span class="af-bloco-ico"><i class="bi bi-dash-lg" aria-hidden="true"></i></span>
+                Descontos
+            </h6>
+
+            <div class="af-info-faltas rounded-2 p-2 mb-3">
+                <p class="small fw-semibold mb-2 text-secondary">Descontos por falta <span class="fw-normal">(apenas informação)</span></p>
+                <dl class="row small mb-0 g-1">
+                    <dt class="col-sm-4 col-lg-3 mb-0 text-muted">Não justificadas</dt>
+                    <dd class="col-sm-8 col-lg-9 mb-0 fw-semibold">{{ faltas_nj }}</dd>
+                    <dt class="col-sm-4 col-lg-3 mb-0 text-muted">Justificadas</dt>
+                    <dd class="col-sm-8 col-lg-9 mb-0 fw-semibold">{{ faltas_j }}</dd>
+                </dl>
+            </div>
+
+            <p class="small fw-semibold af-bloco-titulo-desc mb-2">Valores em reais (edição manual)</p>
+            <div class="row g-2">
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_descontos">{{ form.descontos.label }}</label>
+                    {{ form.descontos }}
+                    {{ form.descontos.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_outro_desconto">{{ form.outro_desconto.label }}</label>
+                    {{ form.outro_desconto }}
+                    {{ form.outro_desconto.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-end mt-4 pt-2 border-top">
+            <button
+                type="button"
+                class="btn btn-outline-secondary rounded-3"
+                title="Zerar horas e valores em reais desta linha (não salva até clicar em Salvar)"
+                aria-label="Limpar formulário"
+                onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-mask=\'br-hours\'],[data-mask=\'br-moeda\']').forEach(function(i){i.value='';});})(this)">
+                <i class="bi bi-eraser me-1" aria-hidden="true"></i> Limpar
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+                <i class="bi bi-check2-circle me-1"></i> Salvar
+            </button>
+        </div>
+    </form>
+</div>

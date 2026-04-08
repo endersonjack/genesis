@@ -4,6 +4,7 @@ from django.db.models import Q
 
 from rh.models import Funcionario
 from .models import (
+    AlteracaoFolhaLinha,
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
@@ -481,3 +482,107 @@ class CestaBasicaItemForm(BaseStyledModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
+    class Meta:
+        model = AlteracaoFolhaLinha
+        fields = [
+            'hora_extra',
+            'horas_feriado',
+            'adicional',
+            'premio',
+            'outro_adicional',
+            'descontos',
+            'outro_desconto',
+        ]
+        widgets = {
+            'hora_extra': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-hours',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '16',
+                    'placeholder': '0.00',
+                    'class': 'text-end',
+                }
+            ),
+            'horas_feriado': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-hours',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '16',
+                    'placeholder': '0.00',
+                    'class': 'text-end',
+                }
+            ),
+            'adicional': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'premio': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'outro_adicional': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'descontos': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'outro_desconto': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        for name in self.fields:
+            self.fields[name].required = False
+
+    def clean(self):
+        from decimal import Decimal
+
+        cleaned = super().clean()
+        z = Decimal('0')
+        for name in self.Meta.fields:
+            if name not in cleaned:
+                continue
+            if cleaned[name] is None:
+                cleaned[name] = z
+        return cleaned

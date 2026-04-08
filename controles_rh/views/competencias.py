@@ -9,7 +9,12 @@ from auditoria.registry import audit_controles_rh
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.forms import CompetenciaForm
-from controles_rh.models import CestaBasicaLista, Competencia, ValeTransporteTabela
+from controles_rh.models import (
+    AlteracaoFolhaControle,
+    CestaBasicaLista,
+    Competencia,
+    ValeTransporteTabela,
+)
 
 from rh.models import FaltaFuncionario
 from rh.views.faltas import _month_bounds
@@ -190,8 +195,13 @@ def _context_controles_da_competencia(competencia: Competencia, empresa):
         else 0
     )
 
+    alteracao_folha_gerada = AlteracaoFolhaControle.objects.filter(
+        competencia_id=competencia.pk
+    ).exists()
+
     return {
         'competencia': competencia,
+        'alteracao_folha_gerada': alteracao_folha_gerada,
         'tabelas_vt': tabelas_vt,
         'total_tabelas_vt': tabelas_vt.count(),
         'listas_cesta_basica': listas_cesta_basica,
@@ -225,9 +235,14 @@ def detalhe_competencia(request, ano, mes):
             ctx,
         )
 
+    alteracao_folha_gerada = AlteracaoFolhaControle.objects.filter(
+        competencia_id=competencia.pk
+    ).exists()
+
     context = {
         'page_title': f'Competência {competencia.referencia}',
         'competencia': competencia,
+        'alteracao_folha_gerada': alteracao_folha_gerada,
     }
     return render(request, 'controles_rh/competencias/detalhe.html', context)
 

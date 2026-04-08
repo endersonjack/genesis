@@ -2,6 +2,13 @@ from django.urls import path
 
 from core.view_helpers import empresa_scoped
 
+from controles_rh.views.af_export import exportar_alteracao_folha_pdf
+from controles_rh.views.alteracao_folha import (
+    alteracao_folha_competencia,
+    excluir_alteracao_folha_competencia,
+    gerar_alteracao_folha_competencia,
+    modal_alteracao_folha_linha,
+)
 from controles_rh.views.competencias import (
     criar_competencia,
     detalhe_competencia,
@@ -54,6 +61,31 @@ urlpatterns = [
     path('competencias/', empresa_scoped(lista_competencias), name='lista_competencias'),
     path('competencias/nova/', empresa_scoped(criar_competencia), name='criar_competencia'),
     path('competencias/<int:ano>/<int:mes>/', empresa_scoped(detalhe_competencia), name='detalhe_competencia'),
+    path(
+        'competencias/<int:competencia_pk>/alteracao-folha/gerar/',
+        empresa_scoped(gerar_alteracao_folha_competencia),
+        name='gerar_alteracao_folha_competencia',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/alteracao-folha/excluir/',
+        empresa_scoped(excluir_alteracao_folha_competencia),
+        name='excluir_alteracao_folha_competencia',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/alteracao-folha/linha/<int:linha_pk>/modal/',
+        empresa_scoped(modal_alteracao_folha_linha),
+        name='modal_alteracao_folha_linha',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/alteracao-folha/exportar/pdf/',
+        empresa_scoped(exportar_alteracao_folha_pdf),
+        name='exportar_alteracao_folha_pdf',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/alteracao-folha/',
+        empresa_scoped(alteracao_folha_competencia),
+        name='alteracao_folha_competencia',
+    ),
     path('competencias/<int:pk>/editar/', empresa_scoped(editar_competencia), name='editar_competencia'),
     path('competencias/<int:pk>/excluir/', empresa_scoped(excluir_competencia), name='excluir_competencia'),
 
