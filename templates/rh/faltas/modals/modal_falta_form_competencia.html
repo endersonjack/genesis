@@ -1,0 +1,181 @@
+<div class="modal-header">
+  <div>
+    <h5 class="modal-title fw-bold mb-1">{% if modo == 'editar' %}Editar falta{% else %}Adicionar falta{% endif %}</h5>
+    <small class="text-muted">Competência: {{ competencia.referencia }} • Funcionário: {{ funcionario.nome }}</small>
+  </div>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+  method="post"
+  enctype="multipart/form-data"
+  hx-post="{% if modo == 'editar' and falta %}{% url 'rh:modal_editar_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk falta_id=falta.pk %}{% else %}{% url 'rh:modal_adicionar_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk %}{% endif %}"
+  hx-target="#modal-content"
+  hx-swap="innerHTML"
+  >
+  {% csrf_token %}
+
+  <div class="modal-body">
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label fw-semibold">Tipo de falta</label>
+        {{ form.tipo }}
+        {% if form.tipo.errors %}<div class="text-danger small mt-1">{{ form.tipo.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12" id="falta-subtipo-wrap">
+        <label class="form-label fw-semibold mb-1">Tipo específico</label>
+        <select class="form-select rounded-3" id="falta-subtipo" name="subtipo"></select>
+        {% if form.subtipo.errors %}<div class="text-danger small mt-1">{{ form.subtipo.errors|join:", " }}</div>{% endif %}
+        <div class="text-muted small mt-1" id="falta-subtipo-help" style="line-height: 1.25;"></div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Data início</label>
+        {{ form.data_inicio }}
+        {% if form.data_inicio.errors %}<div class="text-danger small mt-1">{{ form.data_inicio.errors|join:", " }}</div>{% endif %}
+        <div class="text-muted small mt-1">Permitido: {{ comp_inicio|date:"d/m/Y" }} — {{ comp_fim|date:"d/m/Y" }}</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Data fim</label>
+        {{ form.data_fim }}
+        {% if form.data_fim.errors %}<div class="text-danger small mt-1">{{ form.data_fim.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12">
+        <div class="form-check">
+          {{ form.ausencia_parcial }}
+          <label class="form-check-label fw-semibold" for="{{ form.ausencia_parcial.id_for_label }}">
+            Ausência parcial
+          </label>
+        </div>
+        {% if form.ausencia_parcial.errors %}<div class="text-danger small mt-1">{{ form.ausencia_parcial.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12" id="falta-parcial-wrap" style="display:none;">
+        <label class="form-label fw-semibold">Período/descrição da ausência parcial</label>
+        {{ form.ausencia_parcial_descricao }}
+        {% if form.ausencia_parcial_descricao.errors %}<div class="text-danger small mt-1">{{ form.ausencia_parcial_descricao.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Motivo descrito</label>
+        {{ form.motivo_descrito }}
+        {% if form.motivo_descrito.errors %}<div class="text-danger small mt-1">{{ form.motivo_descrito.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Anexar foto/arquivo</label>
+        {{ form.anexo }}
+        {% if form.anexo.errors %}<div class="text-danger small mt-1">{{ form.anexo.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Obs.</label>
+        {{ form.observacoes }}
+        {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+      <i class="bi bi-check2-circle me-1"></i> Salvar
+    </button>
+  </div>
+</form>
+
+<script>
+  (function () {
+    const chk = document.getElementById('{{ form.ausencia_parcial.id_for_label }}');
+    const wrap = document.getElementById('falta-parcial-wrap');
+    if (!chk || !wrap) return;
+    function sync() { wrap.style.display = chk.checked ? '' : 'none'; }
+    chk.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+
+<script>
+  (function () {
+    const tipoSel = document.getElementById('{{ form.tipo.id_for_label }}');
+    const wrap = document.getElementById('falta-subtipo-wrap');
+    const subSel = document.getElementById('falta-subtipo');
+    const help = document.getElementById('falta-subtipo-help');
+    if (!tipoSel || !wrap || !subSel || !help) return;
+
+    const groups = {
+      abonada: [
+        { v: 'ab_falecimento', t: 'Falecimento', d: 'Cônjuge/companheiro, ascendente, descendente, irmão ou dependente na CTPS — até 2 dias.' },
+        { v: 'ab_casamento', t: 'Casamento', d: 'Até 3 dias.' },
+        { v: 'ab_nascimento_filho', t: 'Nascimento de filho (licença-paternidade)', d: '5 dias (regra geral).' },
+        { v: 'ab_doacao_sangue', t: 'Doação voluntária de sangue', d: '1 dia a cada 12 meses.' },
+        { v: 'ab_alistamento_eleitoral', t: 'Alistamento eleitoral', d: 'Até 2 dias.' },
+        { v: 'ab_servico_militar', t: 'Exigências do serviço militar', d: 'Tempo necessário.' },
+        { v: 'ab_vestibular', t: 'Prova de vestibular', d: 'Dias das provas.' },
+        { v: 'ab_juizo', t: 'Comparecimento em juízo', d: 'Tempo necessário.' },
+        { v: 'ab_representacao_sindical', t: 'Representação sindical (reunião oficial)', d: 'Tempo necessário.' },
+        { v: 'ab_acompanhar_gestante', t: 'Acompanhar esposa/companheira gestante', d: 'Até 6 consultas/exames (tempo necessário).' },
+        { v: 'ab_acompanhar_filho', t: 'Acompanhar filho (consulta)', d: '1 dia por ano (filho até 6 anos).' },
+        { v: 'ab_exames_cancer', t: 'Exames preventivos de câncer', d: 'Até 3 dias a cada 12 meses.' },
+        { v: 'ab_outro', t: 'Outro', d: 'Use “Motivo descrito” para detalhar.' },
+      ],
+      saude: [
+        { v: 'sa_atestado', t: 'Atestado médico/odontológico', d: 'Abono conforme regras internas/INSS e práticas do DP.' },
+        { v: 'sa_acidente_doenca', t: 'Acidente de trabalho / doença', d: 'Pode envolver afastamento/benefício; registre o contexto.' },
+        { v: 'sa_outro', t: 'Outro', d: 'Use “Motivo descrito” para detalhar.' },
+      ],
+      nao_justificada: [
+        { v: 'nj_falta_injustificada', t: 'Falta injustificada', d: 'Ausência sem justificativa legal.' },
+        { v: 'nj_atraso', t: 'Atraso', d: 'Desconto proporcional ao tempo.' },
+        { v: 'nj_saida_antecipada', t: 'Saída antecipada', d: 'Desconto proporcional ao tempo.' },
+        { v: 'nj_ausencia_parcial', t: 'Ausência parcial', d: 'Use o campo “Ausência parcial” para detalhar o período.' },
+        { v: 'nj_outro', t: 'Outro', d: 'Use “Motivo descrito” para detalhar.' },
+      ],
+    };
+
+    function renderOptions(tipo) {
+      const opts = groups[tipo] || [];
+      subSel.innerHTML = '';
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = 'Selecione...';
+      subSel.appendChild(ph);
+      opts.forEach(function (o) {
+        const op = document.createElement('option');
+        op.value = o.v;
+        op.textContent = o.t;
+        subSel.appendChild(op);
+      });
+      subSel.disabled = !(opts.length);
+      wrap.classList.toggle('opacity-75', subSel.disabled);
+      help.textContent = '';
+    }
+
+    function syncHelp(tipo) {
+      const opts = groups[tipo] || [];
+      const current = subSel.value;
+      const hit = opts.find(o => o.v === current);
+      help.textContent = hit ? hit.d : '';
+    }
+
+    tipoSel.addEventListener('change', function () {
+      renderOptions(tipoSel.value);
+    });
+    subSel.addEventListener('change', function () {
+      syncHelp(tipoSel.value);
+    });
+
+    // init (server-side value if any)
+    renderOptions(tipoSel.value);
+    const initial = '{{ form.subtipo.value|default_if_none:"" }}';
+    if (initial) {
+      subSel.value = initial;
+    }
+    syncHelp(tipoSel.value);
+  })();
+</script>
+
+ 
+

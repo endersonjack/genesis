@@ -596,6 +596,72 @@ class AnexoAvulsoFuncionario(TimeStampedModel):
         return f'{self.funcionario.nome} - {self.titulo}'
     
 
+class FaltaFuncionario(TimeStampedModel):
+    TIPO_CHOICES = (
+        ('abonada', 'Abonada'),
+        ('saude', 'Por saúde'),
+        ('nao_justificada', 'Não justificada'),
+    )
+
+    SUBTIPO_CHOICES = (
+        # Abonadas (CLT art. 473)
+        ('ab_falecimento', 'Falecimento'),
+        ('ab_casamento', 'Casamento'),
+        ('ab_nascimento_filho', 'Nascimento de filho (licença-paternidade)'),
+        ('ab_doacao_sangue', 'Doação voluntária de sangue'),
+        ('ab_alistamento_eleitoral', 'Alistamento eleitoral'),
+        ('ab_servico_militar', 'Exigências do serviço militar'),
+        ('ab_vestibular', 'Prova de vestibular'),
+        ('ab_juizo', 'Comparecimento em juízo'),
+        ('ab_representacao_sindical', 'Representação sindical (reunião oficial)'),
+        ('ab_acompanhar_gestante', 'Acompanhar esposa/companheira gestante'),
+        ('ab_acompanhar_filho', 'Acompanhar filho (consulta)'),
+        ('ab_exames_cancer', 'Exames preventivos de câncer'),
+        ('ab_outro', 'Outro'),
+
+        # Saúde
+        ('sa_atestado', 'Atestado médico/odontológico'),
+        ('sa_acidente_doenca', 'Acidente de trabalho / doença'),
+        ('sa_outro', 'Outro'),
+
+        # Não justificadas
+        ('nj_falta_injustificada', 'Falta injustificada'),
+        ('nj_atraso', 'Atraso'),
+        ('nj_saida_antecipada', 'Saída antecipada'),
+        ('nj_ausencia_parcial', 'Ausência parcial'),
+        ('nj_outro', 'Outro'),
+    )
+
+    funcionario = models.ForeignKey(
+        Funcionario,
+        on_delete=models.CASCADE,
+        related_name='faltas'
+    )
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    subtipo = models.CharField(max_length=40, choices=SUBTIPO_CHOICES, blank=True)
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+
+    ausencia_parcial = models.BooleanField(default=False)
+    ausencia_parcial_descricao = models.CharField(max_length=120, blank=True)
+
+    motivo_descrito = models.TextField(blank=True)
+    anexo = models.FileField(
+        upload_to='rh/faltas/',
+        null=True,
+        blank=True
+    )
+    observacoes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Falta'
+        verbose_name_plural = 'Faltas'
+        ordering = ['-data_inicio', '-criado_em']
+
+    def __str__(self):
+        return f'{self.funcionario.nome} - {self.get_tipo_display()}'
+
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone

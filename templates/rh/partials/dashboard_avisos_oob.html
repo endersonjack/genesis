@@ -1,103 +1,205 @@
-<div id="dashboard-slot-avisos" hx-swap-oob="true">
-<div class="calendar-head">
-    <div class="avisos-view-switch">
-        <button type="button" class="btn btn-outline-secondary btn-sm active" data-view-target="dia">
-            Por Dia
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
-            Por Semana
-        </button>
-        <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
-           hx-get="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true"
-           class="btn btn-outline-primary btn-sm">
-            Ver calendário
-        </a>
-    </div>
-</div>
-
-<div id="avisos-view-dia" class="destaques-view">
-    <div class="destaques-card">
-        <h5 class="destaques-card-title">Destaques do Dia</h5>
-        <div class="destaques-lista">
-            {% for evento in destaques_dia %}
-                {% if evento.detalhe_url %}
-                    <a href="{{ evento.detalhe_url }}"
-                       hx-get="{{ evento.detalhe_url }}"
-                       hx-target="body"
-                       hx-swap="innerHTML"
-                       hx-push-url="true"
-                       class="destaque-item-link">
-                        <div class="destaque-item {{ evento.tipo }}">
-                            <div class="destaque-item-meta">
-                                <i class="bi bi-calendar-event"></i>
-                                {{ evento.data|date:"d/m/Y" }}
-                            </div>
-                            <div class="destaque-item-titulo">{{ evento.label }}</div>
-                            <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                        </div>
-                    </a>
-                {% else %}
-                    <div class="destaque-item {{ evento.tipo }}">
-                        <div class="destaque-item-meta">
-                            <i class="bi bi-calendar-event"></i>
-                            {{ evento.data|date:"d/m/Y" }}
-                        </div>
-                        <div class="destaque-item-titulo">{{ evento.label }}</div>
-                        <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                    </div>
-                {% endif %}
-            {% empty %}
-                <div class="destaque-vazio">Nenhum aviso para hoje.</div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<div id="avisos-view-semana" class="destaques-view d-none">
-    <div class="destaques-card">
-        <h5 class="destaques-card-title">Destaques da Semana</h5>
-        <div class="destaques-lista">
-            {% regroup destaques_semana by data as destaques_semana_por_dia %}
-            {% for dia in destaques_semana_por_dia %}
-                <div class="destaques-dia-grupo">
-                    <div class="destaques-dia-titulo">{{ dia.grouper|date:"d/m/Y" }}</div>
-                    {% for evento in dia.list %}
-                        {% if evento.detalhe_url %}
-                            <a href="{{ evento.detalhe_url }}"
-                               hx-get="{{ evento.detalhe_url }}"
-                               hx-target="body"
-                               hx-swap="innerHTML"
-                               hx-push-url="true"
-                               class="destaque-item-link">
-                                <div class="destaque-item {{ evento.tipo }}">
-                                    <div class="destaque-item-meta">
-                                        <i class="bi bi-calendar-week"></i>
-                                        {{ evento.data|date:"d/m/Y" }}
-                                    </div>
-                                    <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                    <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                                </div>
-                            </a>
-                        {% else %}
-                            <div class="destaque-item {{ evento.tipo }}">
-                                <div class="destaque-item-meta">
-                                    <i class="bi bi-calendar-week"></i>
-                                    {{ evento.data|date:"d/m/Y" }}
-                                </div>
-                                <div class="destaque-item-titulo">{{ evento.label }}</div>
-                                <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            {% empty %}
-                <div class="destaque-vazio">Nenhum aviso para esta semana.</div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-</div>
-
+<div id="dashboard-slot-avisos" hx-swap-oob="true">
+
+<div class="calendar-head">
+
+    <div class="avisos-view-switch">
+
+        <button type="button" class="btn btn-outline-secondary btn-sm active" data-view-target="dia">
+
+            Por Dia
+
+        </button>
+
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-view-target="semana">
+
+            Por Semana
+
+        </button>
+
+        <a href="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
+
+           hx-get="{% url 'rh:calendario_rh' empresa_id=request.empresa_ativa.pk %}"
+
+           hx-target="body"
+
+           hx-swap="innerHTML"
+
+           hx-push-url="true"
+
+           class="btn btn-outline-primary btn-sm">
+
+            Ver calendário
+
+        </a>
+
+    </div>
+
+</div>
+
+
+
+<div id="avisos-view-dia" class="destaques-view">
+
+    <div class="destaques-card">
+
+        <h5 class="destaques-card-title">Destaques do Dia</h5>
+
+        <div class="destaques-lista">
+
+            {% for evento in destaques_dia %}
+
+                {% if evento.detalhe_url %}
+
+                    <a href="{{ evento.detalhe_url }}"
+
+                       hx-get="{{ evento.detalhe_url }}"
+
+                       hx-target="body"
+
+                       hx-swap="innerHTML"
+
+                       hx-push-url="true"
+
+                       class="destaque-item-link">
+
+                        <div class="destaque-item {{ evento.tipo }}">
+
+                            <div class="destaque-item-meta">
+
+                                <i class="bi bi-calendar-event"></i>
+
+                                {{ evento.data|date:"d/m/Y" }}
+
+                            </div>
+
+                            <div class="destaque-item-titulo">{{ evento.label }}</div>
+
+                            <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+
+                        </div>
+
+                    </a>
+
+                {% else %}
+
+                    <div class="destaque-item {{ evento.tipo }}">
+
+                        <div class="destaque-item-meta">
+
+                            <i class="bi bi-calendar-event"></i>
+
+                            {{ evento.data|date:"d/m/Y" }}
+
+                        </div>
+
+                        <div class="destaque-item-titulo">{{ evento.label }}</div>
+
+                        <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+
+                    </div>
+
+                {% endif %}
+
+            {% empty %}
+
+                <div class="destaque-vazio">Nenhum aviso para hoje.</div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div id="avisos-view-semana" class="destaques-view d-none">
+
+    <div class="destaques-card">
+
+        <h5 class="destaques-card-title">Destaques da Semana</h5>
+
+        <div class="destaques-lista">
+
+            {% regroup destaques_semana by data as destaques_semana_por_dia %}
+
+            {% for dia in destaques_semana_por_dia %}
+
+                <div class="destaques-dia-grupo">
+
+                    <div class="destaques-dia-titulo">{{ dia.grouper|date:"d/m/Y" }}</div>
+
+                    {% for evento in dia.list %}
+
+                        {% if evento.detalhe_url %}
+
+                            <a href="{{ evento.detalhe_url }}"
+
+                               hx-get="{{ evento.detalhe_url }}"
+
+                               hx-target="body"
+
+                               hx-swap="innerHTML"
+
+                               hx-push-url="true"
+
+                               class="destaque-item-link">
+
+                                <div class="destaque-item {{ evento.tipo }}">
+
+                                    <div class="destaque-item-meta">
+
+                                        <i class="bi bi-calendar-week"></i>
+
+                                        {{ evento.data|date:"d/m/Y" }}
+
+                                    </div>
+
+                                    <div class="destaque-item-titulo">{{ evento.label }}</div>
+
+                                    <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+
+                                </div>
+
+                            </a>
+
+                        {% else %}
+
+                            <div class="destaque-item {{ evento.tipo }}">
+
+                                <div class="destaque-item-meta">
+
+                                    <i class="bi bi-calendar-week"></i>
+
+                                    {{ evento.data|date:"d/m/Y" }}
+
+                                </div>
+
+                                <div class="destaque-item-titulo">{{ evento.label }}</div>
+
+                                <div class="destaque-item-sub">{{ evento.funcionario_nome|default:"Evento geral" }}</div>
+
+                            </div>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                </div>
+
+            {% empty %}
+
+                <div class="destaque-vazio">Nenhum aviso para esta semana.</div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+

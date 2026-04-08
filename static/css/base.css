@@ -18,6 +18,17 @@ body {
     background: #f3f4f6;
 }
 
+/* HTMX indicators (local loading) */
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+.htmx-request .htmx-hide-on-request {
+    display: none !important;
+}
+
 .app-wrapper {
     display: flex;
     min-height: 100vh;

@@ -49,6 +49,20 @@ urlpatterns = [
     path('funcionarios/<int:pk>/excluir/', empresa_scoped(excluir_funcionario), name='excluir_funcionario'),
 
     # ======================
+    # FALTAS / DESCONTOS (início: faltas)
+    # ======================
+    path('faltas/', empresa_scoped(faltas_home), name='faltas_home'),
+    path('faltas/busca-funcionarios/', empresa_scoped(faltas_busca_funcionarios), name='faltas_busca_funcionarios'),
+    path('faltas/funcionario/<int:pk>/', empresa_scoped(faltas_funcionario), name='faltas_funcionario'),
+    path('faltas/funcionario/<int:pk>/modal/adicionar/', empresa_scoped(modal_adicionar_falta), name='modal_adicionar_falta'),
+    path('faltas/competencia/<int:competencia_pk>/', empresa_scoped(faltas_home_competencia), name='faltas_home_competencia'),
+    path('faltas/competencia/<int:competencia_pk>/busca-funcionarios/', empresa_scoped(faltas_busca_funcionarios_competencia), name='faltas_busca_funcionarios_competencia'),
+    path('faltas/competencia/<int:competencia_pk>/funcionario/<int:pk>/', empresa_scoped(faltas_funcionario_competencia), name='faltas_funcionario_competencia'),
+    path('faltas/competencia/<int:competencia_pk>/funcionario/<int:pk>/modal/adicionar/', empresa_scoped(modal_adicionar_falta_competencia), name='modal_adicionar_falta_competencia'),
+    path('faltas/competencia/<int:competencia_pk>/funcionario/<int:pk>/modal/<int:falta_id>/editar/', empresa_scoped(modal_editar_falta_competencia), name='modal_editar_falta_competencia'),
+    path('faltas/competencia/<int:competencia_pk>/funcionario/<int:pk>/modal/<int:falta_id>/excluir/', empresa_scoped(modal_excluir_falta_competencia), name='modal_excluir_falta_competencia'),
+
+    # ======================
     # CALENDÁRIO E LEMBRETES
     # ======================
     path('calendario/', empresa_scoped(calendario_rh), name='calendario_rh'),

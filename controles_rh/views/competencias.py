@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -10,6 +10,9 @@ from core.urlutils import redirect_empresa, reverse_empresa
 
 from controles_rh.forms import CompetenciaForm
 from controles_rh.models import CestaBasicaLista, Competencia, ValeTransporteTabela
+
+from rh.models import FaltaFuncionario
+from rh.views.faltas import _month_bounds
 
 
 def _is_htmx(request):
@@ -163,6 +166,43 @@ def criar_competencia(request):
     return render(request, 'controles_rh/competencias/_form_modal.html', context)
 
 
+def _context_controles_da_competencia(competencia: Competencia, empresa):
+    """
+    Dados da coluna principal «Controles da Competência» (VT, Cesta, Faltas).
+    Usado no fragmento HTMX; mantém consultas fora do render inicial da página.
+    """
+    tabelas_vt = ValeTransporteTabela.objects.filter(
+        competencia=competencia
+    ).order_by('ordem', 'nome', 'id')
+
+    listas_cesta_basica = CestaBasicaLista.objects.filter(competencia=competencia).order_by(
+        'data_criacao', 'id'
+    )
+
+    inicio_mes, fim_mes = _month_bounds(competencia.ano, competencia.mes)
+    faltas_na_competencia = FaltaFuncionario.objects.filter(
+        funcionario__empresa=empresa,
+    ).filter(Q(data_inicio__lte=fim_mes) & Q(data_fim__gte=inicio_mes))
+    faltas_registros_count = faltas_na_competencia.count()
+    faltas_colaboradores_count = (
+        faltas_na_competencia.values('funcionario_id').distinct().count()
+        if faltas_registros_count
+        else 0
+    )
+
+    return {
+        'competencia': competencia,
+        'tabelas_vt': tabelas_vt,
+        'total_tabelas_vt': tabelas_vt.count(),
+        'listas_cesta_basica': listas_cesta_basica,
+        'faltas_registros_count': faltas_registros_count,
+        'faltas_colaboradores_count': faltas_colaboradores_count,
+        'total_faltas': faltas_registros_count,
+        'total_pagamentos': 0,
+        'total_tabelas_diversas': 0,
+    }
+
+
 @login_required
 def detalhe_competencia(request, ano, mes):
     """
@@ -177,23 +217,17 @@ def detalhe_competencia(request, ano, mes):
         mes=mes
     )
 
-    tabelas_vt = ValeTransporteTabela.objects.filter(
-        competencia=competencia
-    ).order_by('ordem', 'nome', 'id')
-
-    listas_cesta_basica = CestaBasicaLista.objects.filter(competencia=competencia).order_by(
-        'data_criacao', 'id'
-    )
+    if _is_htmx(request) and request.GET.get('partial') == 'controles':
+        ctx = _context_controles_da_competencia(competencia, empresa)
+        return render(
+            request,
+            'controles_rh/competencias/_controles_da_competencia_body.html',
+            ctx,
+        )
 
     context = {
         'page_title': f'Competência {competencia.referencia}',
         'competencia': competencia,
-        'tabelas_vt': tabelas_vt,
-        'total_tabelas_vt': tabelas_vt.count(),
-        'listas_cesta_basica': listas_cesta_basica,
-        'total_faltas': 0,
-        'total_pagamentos': 0,
-        'total_tabelas_diversas': 0,
     }
     return render(request, 'controles_rh/competencias/detalhe.html', context)
 

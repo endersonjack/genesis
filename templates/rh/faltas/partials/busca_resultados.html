@@ -1,0 +1,46 @@
+{% if muito_curto %}
+  <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">
+    Digite pelo menos <strong>2 caracteres</strong> para buscar.
+  </p>
+{% else %}
+  {% if resultados %}
+    <div class="list-group">
+      {% for f in resultados %}
+        {% if competencia %}
+          <a class="list-group-item list-group-item-action"
+             href="{% url 'rh:faltas_funcionario_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=f.pk %}"
+             hx-get="{% url 'rh:faltas_funcionario_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=f.pk %}"
+             hx-target="body"
+             hx-swap="innerHTML"
+             hx-push-url="true">
+        {% else %}
+          <a class="list-group-item list-group-item-action"
+             href="{% url 'rh:faltas_funcionario' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+             hx-get="{% url 'rh:faltas_funcionario' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+        {% endif %}
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="fw-semibold">{{ f.nome }}</div>
+              <div class="text-muted small">
+                CPF: {{ f.cpf|default:"—" }}
+                {% if f.matricula %} • Matrícula: {{ f.matricula }}{% endif %}
+              </div>
+              <div class="text-muted small">
+                {{ f.cargo|default:"—" }}{% if f.lotacao %} • {{ f.lotacao }}{% endif %}
+              </div>
+            </div>
+            <span class="badge text-bg-light border">Abrir</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">
+      Nenhum funcionário encontrado para <strong>{{ q }}</strong>.
+    </p>
+  {% endif %}
+{% endif %}
+

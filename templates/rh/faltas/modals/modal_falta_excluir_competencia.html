@@ -1,0 +1,41 @@
+<div class="modal-header">
+  <div>
+    <h5 class="modal-title fw-bold mb-1">Excluir falta</h5>
+    <small class="text-muted">Competência: {{ competencia.referencia }} • Funcionário: {{ funcionario.nome }}</small>
+  </div>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+  method="post"
+  hx-post="{% url 'rh:modal_excluir_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk falta_id=falta.pk %}"
+  hx-target="#modal-content"
+  hx-swap="innerHTML"
+  >
+  {% csrf_token %}
+
+  <div class="modal-body">
+    <div class="alert alert-warning mb-0">
+      <div class="fw-bold mb-2">Atenção</div>
+      <div class="mb-2">Deseja realmente excluir esta falta?</div>
+      <div class="small">
+        <div><strong>Tipo:</strong> {{ falta.get_tipo_display }}{% if falta.subtipo %} — {{ falta.get_subtipo_display }}{% endif %}</div>
+        <div><strong>Período:</strong>
+          {% if falta.data_inicio == falta.data_fim %}
+            {{ falta.data_inicio|date:"d/m/Y" }}
+          {% else %}
+            {{ falta.data_inicio|date:"d/m/Y" }} — {{ falta.data_fim|date:"d/m/Y" }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="btn btn-danger rounded-3 fw-semibold">
+      <i class="bi bi-trash me-1"></i> Excluir
+    </button>
+  </div>
+</form>
+

@@ -791,3 +791,68 @@ class FuncionarioCadastroRapidoForm(BaseStyledModelForm):
 
         self.fields['nome'].required = True
         self.fields['cpf'].required = True
+
+
+class FaltaFuncionarioForm(BaseStyledModelForm):
+    class Meta:
+        model = FaltaFuncionario
+        fields = [
+            'tipo',
+            'subtipo',
+            'data_inicio',
+            'data_fim',
+            'ausencia_parcial',
+            'ausencia_parcial_descricao',
+            'motivo_descrito',
+            'anexo',
+            'observacoes',
+        ]
+        widgets = {
+            'data_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',
+                }
+            ),
+            'data_fim': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',
+                }
+            ),
+            'motivo_descrito': forms.Textarea(attrs={'rows': 3}),
+            'observacoes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('empresa_ativa', None)
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+
+        self.fields['ausencia_parcial'].label = ''
+        self.fields['ausencia_parcial_descricao'].widget.attrs.setdefault(
+            'placeholder',
+            'Ex.: 2 horas / manhã / saiu 14:30'
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        tipo = cleaned.get('tipo')
+        subtipo = (cleaned.get('subtipo') or '').strip()
+        if tipo and not subtipo:
+            self.add_error('subtipo', 'Selecione o tipo específico.')
+
+        di = cleaned.get('data_inicio')
+        df = cleaned.get('data_fim')
+        if di and df and df < di:
+            self.add_error('data_fim', 'A data fim não pode ser menor que a data início.')
+
+        parcial = cleaned.get('ausencia_parcial')
+        desc = (cleaned.get('ausencia_parcial_descricao') or '').strip()
+        if parcial and not desc:
+            self.add_error('ausencia_parcial_descricao', 'Informe o período/descrição da ausência parcial.')
+        if not parcial:
+            cleaned['ausencia_parcial_descricao'] = ''
+        return cleaned

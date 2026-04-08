@@ -259,6 +259,43 @@
         padding: .35rem 0;
     }
 
+    /* Skeleton — lista de controles (carregamento assíncrono da coluna principal) */
+    @keyframes compControleSk {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+    .comp-sk-item {
+        pointer-events: none;
+        background: #fafbfc !important;
+        border-color: #eef2f7 !important;
+    }
+    .comp-sk-icon,
+    .comp-sk-line,
+    .comp-sk-chevron {
+        background: linear-gradient(90deg, #e8edf3, #f4f6f9, #e8edf3);
+        background-size: 200% 200%;
+        animation: compControleSk 1.15s ease-in-out infinite;
+    }
+    .comp-sk-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        flex: 0 0 42px;
+    }
+    .comp-sk-line {
+        height: .85rem;
+        border-radius: .35rem;
+        max-width: 100%;
+    }
+    .comp-sk-line--title { width: 58%; }
+    .comp-sk-line--short { width: 38%; height: .72rem; }
+    .comp-sk-line--tiny { width: 78%; height: .65rem; opacity: .9; }
+    .comp-sk-chevron {
+        width: 1.35rem;
+        height: 1.35rem;
+        border-radius: .3rem;
+    }
+
     .obs-box {
         margin-top: 1rem;
         background: #fff;
@@ -352,77 +389,19 @@
     <div class="section-body">
         <div class="controles-layout">
 
-            <div class="controles-col-main">
-                    {% if tabelas_vt or listas_cesta_basica %}
-                        <div class="controle-list controle-list--solo">
-                            {% for tabela in tabelas_vt %}
-                                <a href="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-                                   class="controle-list-item controle-list-item-link"
-                                   hx-get="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-                                   hx-target="body"
-                                   hx-swap="innerHTML"
-                                   hx-push-url="true">
-                                    <div class="d-flex align-items-center justify-content-between gap-3">
-                                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                                            <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
-                                                <i class="bi bi-bus-front-fill"></i>
-                                            </span>
-                                            <div class="min-w-0">
-                                            <div class="fw-bold text-dark">{{ tabela.nome }}</div>
-                                            <div class="mt-1">
-                                                {% if tabela.vt_status_efetivo == 'pago_completo' %}
-                                                    <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
-                                                {% else %}
-                                                    <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <small class="text-muted d-block mt-1">
-                                                {% if tabela.descricao %}
-                                                    {{ tabela.descricao|truncatechars:72 }}
-                                                {% else %}
-                                                    Sem descrição
-                                                {% endif %}
-                                            </small>
-                                            </div>
-                                        </div>
-                                        <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-                                    </div>
-                                </a>
-                            {% endfor %}
-                            {% for lista_cb in listas_cesta_basica %}
-                                <a href="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-                                   class="controle-list-item controle-list-item-link"
-                                   hx-get="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-                                   hx-target="body"
-                                   hx-swap="innerHTML"
-                                   hx-push-url="true">
-                                    <div class="d-flex align-items-center justify-content-between gap-3">
-                                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                                            <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
-                                                <i class="bi bi-basket3-fill"></i>
-                                            </span>
-                                            <div class="min-w-0">
-                                                <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
-                                                <div class="mt-1">
-                                                    {% if lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
-                                                        <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
-                                                    {% else %}
-                                                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>
-                                                    {% endif %}
-                                                </div>
-                                                <small class="text-muted d-block mt-1">
-                                                    Recibo de cesta básica — clique para editar linhas e exportar PDF.
-                                                </small>
-                                            </div>
-                                        </div>
-                                        <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-                                    </div>
-                                </a>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="controle-empty controle-empty--solo mb-0">Nenhum controle cadastrado nesta competência.</p>
-                    {% endif %}
+            <div
+                class="controles-col-main"
+                id="competencia-controles-main"
+                data-no-global-loading
+                hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}?partial=controles"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+                hx-on="htmx:afterSwap: this.removeAttribute('aria-busy')"
+                role="region"
+                aria-live="polite"
+                aria-busy="true"
+                aria-label="Carregando controles da competência">
+                {% include 'controles_rh/competencias/_controles_da_competencia_skeleton.html' %}
             </div>
 
             <aside class="controles-col-add" aria-label="Ações de inclusão">
@@ -479,9 +458,17 @@
                                     </span>
                                     <p class="add-mini-title mb-0">Faltas</p>
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Faltas (em breve)">
+                                <a
+                                   href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                   class="btn btn-primary btn-sm btn-add-inline"
+                                   title="Abrir"
+                                   aria-label="Abrir Faltas"
+                                   hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                   hx-target="body"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="true">
                                     <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                </button>
+                                </a>
                             </div>
                         </div>
 

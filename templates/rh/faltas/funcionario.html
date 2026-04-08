@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Faltas — {{ funcionario.nome }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+  .faltas-top-sub {
+    color: #64748b;
+    font-size: .95rem;
+  }
+  .faltas-page-card {
+    border: 1px solid #d9e2ec;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+  .faltas-page-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .faltas-page-card-body {
+    padding: 1.25rem;
+    background: #f8fafc;
+  }
+</style>
+
+<div id="employee-detalhes-topo" class="employee-sticky-top {{ funcionario.classe_resumo_status|default:'top-summary-default' }}">
+  <div class="employee-top-summary">
+    <div class="employee-summary-left">
+      <h1>Faltas</h1>
+      <p class="faltas-top-sub">Registros vinculados ao funcionário</p>
+    </div>
+
+    <div class="employee-summary-center">
+      <div class="employee-photo-box">
+        {% if funcionario.foto %}
+          <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}">
+        {% else %}
+          <div class="employee-photo-empty"><i class="bi bi-person"></i></div>
+        {% endif %}
+      </div>
+      <div class="employee-profile-info flex-grow-1">
+        <h2>{{ funcionario.nome }}</h2>
+        <div class="resume-text">Acompanhe e registre faltas e (futuramente) descontos.</div>
+        <div class="employee-profile-meta">
+          <span class="meta-badge">CPF: {{ funcionario.cpf|default:"—" }}</span>
+          <span class="meta-badge">Matrícula: {{ funcionario.matricula|default:"—" }}</span>
+          <span class="meta-badge">Cargo: {{ funcionario.cargo|default:"A definir" }}</span>
+          <span class="meta-badge">Lotação: {{ funcionario.lotacao|default:"A definir" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="employee-summary-actions d-flex flex-wrap align-items-center gap-2">
+      <a href="{% url 'rh:faltas_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+      </a>
+
+      <button
+        type="button"
+        class="btn btn-primary rounded-3 fw-semibold"
+        hx-get="{% url 'rh:modal_adicionar_falta' empresa_id=request.empresa_ativa.pk pk=funcionario.pk %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        data-bs-toggle="modal"
+        data-bs-target="#modalPadrao">
+        <i class="bi bi-plus-circle me-1"></i> Adicionar falta
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="faltas-page-card mt-3">
+  <div class="faltas-page-card-header">
+    <div class="d-flex flex-wrap align-items-center justify-content-between w-100 gap-2">
+      <div class="fw-bold">Histórico de faltas</div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge text-bg-primary fw-semibold" title="Dias justificadas (Abonada + Saúde)">{{ dias_justificadas }}</span>
+        <span class="badge text-bg-danger fw-semibold" title="Dias não justificadas">{{ dias_nao_justificadas }}</span>
+        <span class="text-muted small">
+          {{ total_registros }} registro(s) • {{ total_dias }} dia(s)
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="faltas-page-card-body">
+    {% include 'rh/faltas/partials/faltas_lista.html' with faltas=faltas %}
+  </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" id="modal-content"></div>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,37 @@
+---
+description: Botões Bootstrap do Genesis — cantos arredondados e peso de fonte padronizados (rounded-3 + fw-semibold).
+alwaysApply: true
+---
+
+# Botões Bootstrap (padrão Genesis)
+
+## Regra
+
+Em **templates HTML** (`*.html`), ao usar classes Bootstrap `btn` (links ou `<button>` com ação de interface), combine **`rounded-3`** com **`fw-semibold`**, salvo exceções abaixo.
+
+Isso alinha com telas já padronizadas (ex.: auditoria, dashboard, Faltas — home, detalhe e modais).
+
+## Padrão
+
+| Uso | Classes típicas |
+|-----|-------------------|
+| Secundário / outline (Voltar, Cancelar, Aplicar) | `btn btn-outline-secondary rounded-3 fw-semibold` |
+| Primário (Salvar, Adicionar, confirmar) | `btn btn-primary rounded-3 fw-semibold` |
+| Perigo (Excluir confirmado) | `btn btn-danger rounded-3 fw-semibold` ou `btn btn-outline-danger rounded-3 fw-semibold` conforme o contexto |
+| Sobre fundo escuro / header colorido | `btn btn-light rounded-3 fw-semibold` |
+| Ações compactas em tabela (`btn-sm`) | Manter `btn-sm` e acrescentar `rounded-3 fw-semibold` |
+
+## Campos de formulário na mesma tela
+
+Quando o layout já usa `rounded-3` nos botões (ex.: filtros, competência), **pode-se** aplicar `rounded-3` em `form-select` / `form-control` irmãos para consistência visual.
+
+## Exceções (não forçar `rounded-3` + `fw-semibold`)
+
+- **`btn-close`** do modal (controle Bootstrap padrão).
+- Botões **só ícone** muito específicos de biblioteca de terceiros, se quebrarem o layout.
+- Classes utilitárias de projeto que já definem raio (ex.: `btn-add-inline` em cards de controles), desde que sejam o padrão daquele módulo.
+
+## Checklist rápido
+
+- [ ] Todo `btn btn-*` novo ou editado inclui `rounded-3 fw-semibold` quando aplicável
+- [ ] `btn-sm` preservado quando a densidade da linha exigir

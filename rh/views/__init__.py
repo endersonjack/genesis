@@ -63,3 +63,9 @@ from .afastamentos import *
 from .dependentes import *
 from .saude import *
 from .anexos import *
+
+
+# ==========================================================
+# FALTAS / DESCONTOS (início: faltas)
+# ==========================================================
+from .faltas import *

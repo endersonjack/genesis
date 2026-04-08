@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Faltas | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+  .faltas-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+  .faltas-card {
+    border: 1px solid #d9e2ec;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+  .faltas-card-header {
+    padding: 1rem 1.25rem;
+    color: #fff;
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+      background: {{ request.empresa_ativa.cor_tema }};
+    {% else %}
+      background: #334155;
+    {% endif %}
+  }
+  .faltas-card-body {
+    padding: 1.25rem;
+    background: #f8fafc;
+  }
+  .busca-box {
+    position: relative;
+  }
+  #faltas-busca-resultados {
+    margin-top: .5rem;
+    max-height: min(320px, 46vh);
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  }
+  .faltas-lista-func a {
+    text-decoration: none;
+  }
+  @keyframes faltasSk {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+  }
+  .faltas-hx-skeleton {
+    background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7);
+    background-size: 200% 200%;
+    animation: faltasSk 1.15s ease-in-out infinite;
+    border-radius: .65rem;
+  }
+  .faltas-hx-skeleton-line { height: .9rem; }
+  .faltas-hx-skeleton-line.short { width: 55%; }
+  .faltas-hx-skeleton-line.tiny { width: 35%; height: .65rem; }
+  #faltas-busca-resultados[aria-busy="true"] { opacity: .85; }
+  .htmx-indicator { display: none; }
+  .htmx-indicator.htmx-request { display: block; }
+</style>
+
+<div class="employee-top-summary">
+  <div class="employee-summary-left">
+    <h1>Faltas</h1>
+    <p>Controle de faltas por competência e por funcionário</p>
+  </div>
+
+  <div class="employee-summary-center">
+    <div class="employee-profile-info flex-grow-1">
+      <h2 class="mb-0">Competência {{ competencia_label }}</h2>
+      <div class="resume-text">Veja quem já tem registro no mês ou use <strong>Buscar Funcionário</strong> para abrir um colaborador.</div>
+    </div>
+  </div>
+
+  <div class="employee-summary-actions d-flex flex-wrap align-items-center gap-2">
+    <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+      <i class="bi bi-arrow-left me-1"></i> Voltar
+    </a>
+  </div>
+</div>
+
+<div class="faltas-shell">
+  <div class="faltas-card">
+    <div class="faltas-card-header d-flex flex-wrap align-items-start justify-content-between gap-2">
+      <div class="min-w-0">
+        <div class="fw-bold">Funcionários com registro na competência</div>
+        <div class="small opacity-75">Faltas e (futuramente) descontos</div>
+      </div>
+      <button
+        type="button"
+        class="btn btn-light rounded-3 fw-semibold flex-shrink-0"
+        data-bs-toggle="modal"
+        data-bs-target="#modalBuscaFuncionarioFaltas"
+        title="Buscar Funcionário">
+        <i class="bi bi-search me-1"></i> Buscar Funcionário
+      </button>
+    </div>
+    <div class="faltas-card-body">
+      <div class="mb-3">
+        <label for="faltas-competencia" class="form-label fw-semibold">Competência</label>
+        <div class="d-flex gap-2 flex-wrap">
+          <select class="form-select rounded-3" id="faltas-mes" name="mes" style="max-width: 8rem;">
+            <option value="1" {% if mes == 1 %}selected{% endif %}>01</option>
+            <option value="2" {% if mes == 2 %}selected{% endif %}>02</option>
+            <option value="3" {% if mes == 3 %}selected{% endif %}>03</option>
+            <option value="4" {% if mes == 4 %}selected{% endif %}>04</option>
+            <option value="5" {% if mes == 5 %}selected{% endif %}>05</option>
+            <option value="6" {% if mes == 6 %}selected{% endif %}>06</option>
+            <option value="7" {% if mes == 7 %}selected{% endif %}>07</option>
+            <option value="8" {% if mes == 8 %}selected{% endif %}>08</option>
+            <option value="9" {% if mes == 9 %}selected{% endif %}>09</option>
+            <option value="10" {% if mes == 10 %}selected{% endif %}>10</option>
+            <option value="11" {% if mes == 11 %}selected{% endif %}>11</option>
+            <option value="12" {% if mes == 12 %}selected{% endif %}>12</option>
+          </select>
+          <input class="form-control rounded-3" type="number" min="2000" max="2100" id="faltas-ano" name="ano" value="{{ ano }}" style="max-width: 7rem;">
+          <button class="btn btn-outline-secondary rounded-3 fw-semibold" type="button" id="faltas-aplicar-competencia">
+            Aplicar
+          </button>
+        </div>
+      </div>
+
+      {% if funcionarios_com_registro %}
+        <div class="list-group faltas-lista-func">
+          {% for f in funcionarios_com_registro %}
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+               href="{% url 'rh:faltas_funcionario' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+               hx-get="{% url 'rh:faltas_funcionario' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+              <div>
+                <div class="fw-semibold">{{ f.nome }}</div>
+                <div class="text-muted small">{{ f.cargo|default:"—" }}{% if f.lotacao %} • {{ f.lotacao }}{% endif %}</div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge text-bg-primary rounded-pill" title="Justificadas (Abonada + Saúde)">
+                  {{ f.total_justificadas|default:0 }}
+                </span>
+                <span class="badge text-bg-danger rounded-pill" title="Não justificadas">
+                  {{ f.total_nao_justificadas|default:0 }}
+                </span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-3 bg-white border rounded">
+          <div class="fw-bold mb-1">Nenhum registro nesta competência</div>
+          <div class="text-muted">Use o botão <strong>Buscar Funcionário</strong> para abrir um colaborador e registrar a primeira falta.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalBuscaFuncionarioFaltas" tabindex="-1" aria-labelledby="modalBuscaFuncionarioFaltasTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="modalBuscaFuncionarioFaltasTitulo">Buscar Funcionário</h5>
+          <small class="text-muted">Digite pelo menos 2 caracteres</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body pt-2" data-no-global-loading>
+        <div class="busca-box">
+          <label for="faltas-q" class="form-label fw-semibold">Nome / CPF / Matrícula</label>
+          <input
+            type="text"
+            class="form-control"
+            id="faltas-q"
+            name="q"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Ex.: Maria, 000.000, 123..."
+            hx-get="{% url 'rh:faltas_busca_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+            hx-trigger="input delay:280ms"
+            hx-target="#faltas-busca-resultados"
+            hx-include="#faltas-q"
+            hx-indicator="#faltas-busca-indicator">
+
+          <div id="faltas-busca-indicator" class="mt-2 htmx-indicator">
+            <div class="p-3 bg-white border rounded">
+              <div class="faltas-hx-skeleton faltas-hx-skeleton-line mb-2 short"></div>
+              <div class="faltas-hx-skeleton faltas-hx-skeleton-line mb-2"></div>
+              <div class="faltas-hx-skeleton faltas-hx-skeleton-line tiny"></div>
+            </div>
+          </div>
+
+          <div id="faltas-busca-resultados" class="p-2 bg-transparent border-0" role="listbox">
+            <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">
+              Digite pelo menos <strong>2 caracteres</strong> para buscar.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const btn = document.getElementById('faltas-aplicar-competencia');
+    const selMes = document.getElementById('faltas-mes');
+    const inpAno = document.getElementById('faltas-ano');
+    if (!btn || !selMes || !inpAno) return;
+    btn.addEventListener('click', function () {
+      const mes = selMes.value;
+      const ano = inpAno.value;
+      const url = new URL(window.location.href);
+      url.searchParams.set('mes', mes);
+      url.searchParams.set('ano', ano);
+      window.location.href = url.toString();
+    });
+  })();
+
+  document.getElementById('modalBuscaFuncionarioFaltas')?.addEventListener('shown.bs.modal', function () {
+    document.getElementById('faltas-q')?.focus();
+  });
+</script>
+{% endblock %}
