@@ -3,9 +3,10 @@ from django.urls import include, path, re_path
 from django.conf import settings
 from django.views.static import serve
 
-from core.views import genesis_messages_toasts, home_root_redirect
+from core.views import genesis_messages_toasts, home_root_redirect, web_app_manifest
 
 urlpatterns = [
+    path('manifest.webmanifest', web_app_manifest, name='web_app_manifest'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('usuarios/', include('usuarios.urls')),

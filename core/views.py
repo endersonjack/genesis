@@ -1,9 +1,13 @@
+import json
+
 from django.contrib import messages as django_messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
+from django.views.decorators.http import require_GET
 
 from core.empresa_access import usuario_e_so_apontador
 
@@ -47,3 +51,42 @@ def genesis_messages_toasts(request):
         request=request,
     )
     return HttpResponse(html, content_type='text/html')
+
+
+@require_GET
+def web_app_manifest(request):
+    """
+    Web App Manifest com URLs de ícone resolvidas pelo staticfiles (hashes em produção).
+    """
+    icon = staticfiles_storage.url('img/pwa-icon.svg')
+    if icon.startswith('/'):
+        icon = request.build_absolute_uri(icon)
+    payload = {
+        'name': 'Genesis ERP',
+        'short_name': 'Genesis',
+        'description': 'Genesis ERP',
+        'start_url': request.build_absolute_uri('/'),
+        'scope': request.build_absolute_uri('/'),
+        'display': 'fullscreen',
+        'background_color': '#f3f4f6',
+        'theme_color': '#0d6efd',
+        'icons': [
+            {
+                'src': icon,
+                'sizes': 'any',
+                'type': 'image/svg+xml',
+                'purpose': 'any',
+            },
+            {
+                'src': icon,
+                'sizes': 'any',
+                'type': 'image/svg+xml',
+                'purpose': 'maskable',
+            },
+        ],
+    }
+    response = HttpResponse(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        content_type='application/manifest+json; charset=utf-8',
+    )
+    return response
