@@ -9,6 +9,8 @@ from django.views.decorators.http import require_POST
 import json
 import math
 
+from auditoria.registry import audit_rh
+
 from local.models import Local, LocalTrabalhoAtivo
 
 from ..models import Funcionario
@@ -186,13 +188,36 @@ def definir_local_trabalho_funcionario(request):
         if not novo_local:
             return HttpResponse('Local não encontrado.', status=404, content_type='text/plain; charset=utf-8')
 
+    local_anterior_id = func.local_trabalho_id
     func.local_trabalho = novo_local
     func.save(update_fields=['local_trabalho'])
 
     if novo_local:
         messages.success(request, f'{func.nome} atribuído(a) ao local: {novo_local.nome}.')
+        audit_rh(
+            request,
+            'update',
+            f'Locais de trabalho: {func.nome} alocado(a) em {novo_local.nome}.',
+            {
+                'locais_trabalho': True,
+                'funcionario_id': func.pk,
+                'local_id': novo_local.pk,
+                'local_anterior_id': local_anterior_id,
+            },
+        )
     else:
         messages.success(request, f'Local removido de {func.nome}.')
+        audit_rh(
+            request,
+            'update',
+            f'Locais de trabalho: {func.nome} removido(a) do local (sem local definido).',
+            {
+                'locais_trabalho': True,
+                'funcionario_id': func.pk,
+                'local_id': None,
+                'local_anterior_id': local_anterior_id,
+            },
+        )
 
     response = HttpResponse(status=204)
     if _is_htmx(request):
@@ -253,8 +278,35 @@ def definir_local_trabalho_funcionario_json(request):
         if not novo_local:
             return HttpResponse('Local não encontrado.', status=404, content_type='text/plain; charset=utf-8')
 
+    local_anterior_id = func.local_trabalho_id
     func.local_trabalho = novo_local
     func.save(update_fields=['local_trabalho'])
+
+    if novo_local:
+        audit_rh(
+            request,
+            'update',
+            f'Locais de trabalho: {func.nome} alocado(a) em {novo_local.nome}.',
+            {
+                'locais_trabalho': True,
+                'funcionario_id': func.pk,
+                'local_id': novo_local.pk,
+                'local_anterior_id': local_anterior_id,
+            },
+        )
+    else:
+        audit_rh(
+            request,
+            'update',
+            f'Locais de trabalho: {func.nome} removido(a) do local (sem local definido).',
+            {
+                'locais_trabalho': True,
+                'funcionario_id': func.pk,
+                'local_id': None,
+                'local_anterior_id': local_anterior_id,
+            },
+        )
+
     return HttpResponse(status=204)
 
 
@@ -290,8 +342,20 @@ def ativar_local_trabalho(request):
     obj, created = LocalTrabalhoAtivo.objects.get_or_create(empresa=empresa_ativa, local=loc)
     if created:
         messages.success(request, f'Local ativado: {loc.nome}.')
+        audit_rh(
+            request,
+            'create',
+            f'Locais de trabalho ativo: {loc.nome}.',
+            {'locais_trabalho': True, 'local_id': loc.pk},
+        )
     else:
         messages.info(request, f'Este local já está ativo: {loc.nome}.')
+        audit_rh(
+            request,
+            'other',
+            f'Locais de trabalho: tentativa de ativar local já ativo ({loc.nome}).',
+            {'locais_trabalho': True, 'local_id': loc.pk},
+        )
 
     if _is_htmx(request):
         return render(
@@ -326,11 +390,25 @@ def desativar_local_trabalho(request):
     if not ativo:
         return HttpResponse('Local ativo não encontrado.', status=404, content_type='text/plain; charset=utf-8')
 
+    nome_local = ativo.local.nome
     with transaction.atomic():
-        Funcionario.objects.filter(empresa=empresa_ativa, local_trabalho_id=local_id).update(local_trabalho=None)
+        qtd = Funcionario.objects.filter(
+            empresa=empresa_ativa, local_trabalho_id=local_id
+        ).update(local_trabalho=None)
         ativo.delete()
 
-    messages.success(request, f'Local desativado: {ativo.local.nome}. Funcionários devolvidos para “Sem local”.')
+    audit_rh(
+        request,
+        'delete',
+        f'Locais de trabalho ativo desativado: {nome_local}.',
+        {
+            'locais_trabalho': True,
+            'local_id': local_id,
+            'funcionarios_sem_local': qtd,
+        },
+    )
+
+    messages.success(request, f'Local desativado: {nome_local}. Funcionários devolvidos para “Sem local”.')
     if _is_htmx(request):
         return render(
             request,

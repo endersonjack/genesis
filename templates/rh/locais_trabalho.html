@@ -70,16 +70,26 @@
         }
     }
 
+    /* Cards principais (2 grupos) */
+    .lt-group-card {
+        background: #fff;
+        border: 2px solid #94a3b8;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    /* Cards internos (cada local ativo) */
     .lt-local-card {
         background: #fff;
-        border: 2px solid #dbe4ee;
+        border: 2px solid #cbd5e1;
         border-radius: 1rem;
         overflow: hidden;
         box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
     }
     .lt-local-head {
         padding: .9rem 1rem;
-        border-bottom: 2px solid #eef2f7;
+        border-bottom: 2px solid #cbd5e1;
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, #f1f5f9 100%);
         display: flex;
         flex-direction: column;
@@ -97,6 +107,7 @@
     }
     .lt-local-body {
         padding: .85rem 1rem;
+        background: transparent;
     }
     .lt-people {
         display: flex;
@@ -104,17 +115,27 @@
         gap: .5rem;
     }
     .lt-person {
-        display: inline-flex;
+        display: flex;
         align-items: center;
         gap: .5rem;
         padding: .35rem .55rem;
         border-radius: 999px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        background: #e2e8f0;
         color: #0f172a;
         font-weight: 700;
         font-size: .85rem;
         max-width: 100%;
+    }
+    /* Mantém tamanho consistente nos cards "pílula" em locais ativos */
+    .lt-people:not(.lt-people--vertical) .lt-person {
+        flex: 0 0 260px;
+    }
+    .lt-person-meta {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.05;
     }
     .lt-avatar {
         width: 26px;
@@ -141,6 +162,17 @@
         max-width: 220px;
         text-transform: uppercase;
     }
+    .lt-person-role {
+        font-size: .74rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+        margin-top: .15rem;
+    }
 
     .lt-empty {
         color: #64748b;
@@ -148,14 +180,80 @@
     }
 
     .lt-board {
-        display: grid;
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 1rem;
+        align-items: stretch;
+    }
+    .lt-board-row {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
     }
     @media (min-width: 992px) {
-        .lt-board {
-            grid-template-columns: 1fr 2fr;
-            align-items: start;
+        .lt-board-row {
+            flex-direction: row;
+            align-items: stretch;
+        }
+    }
+    .lt-left-pane {
+        width: 380px;
+        max-width: 100%;
+    }
+    @media (min-width: 1200px) {
+        .lt-left-pane {
+            width: 420px;
+        }
+    }
+    .lt-right-pane {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    @media (min-width: 992px) {
+        .lt-active-sticky {
+            position: sticky;
+            top: 92px; /* abaixo do topo/nav */
+            align-self: flex-start;
+            z-index: 5;
+        }
+    }
+    .lt-board-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 0;
+    }
+    .lt-board-topbar .btn {
+        border-radius: 999px;
+        font-weight: 800;
+    }
+    .lt-dnd-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .55rem .75rem;
+        border-radius: 999px;
+        border: 1px solid #c7d2fe;
+        background: #eef2ff;
+        color: #1e3a8a;
+        font-weight: 800;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+        max-width: 100%;
+    }
+    .lt-dnd-hint i {
+        font-size: 1.05rem;
+    }
+    .lt-dnd-hint span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 56vw;
+    }
+    @media (max-width: 576px) {
+        .lt-dnd-hint span {
+            max-width: 68vw;
         }
     }
     .lt-col-title {
@@ -178,6 +276,9 @@
         padding: .5rem .6rem;
     }
     .lt-dropzone.lt-people--vertical .lt-person-name {
+        max-width: none;
+    }
+    .lt-dropzone.lt-people--vertical .lt-person-role {
         max-width: none;
     }
     .lt-person {
@@ -310,8 +411,7 @@
             </div>
             <div class="col-12 col-lg-6">
                 <div class="text-muted small">
-                    Clique em <strong>Adicionar</strong> para ativar o local.
-                    Depois, arraste funcionários sem local para o local desejado.
+                    Clique em <strong>Adicionar</strong> em um local para torná-lo <strong>Local de Trabalho Ativo</strong>.
                 </div>
             </div>
         </div>
@@ -332,6 +432,35 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
+    const storageKey = 'rh_lt_sem_local_open__empresa_' + "{{ request.empresa_ativa.pk }}";
+
+    function getStoredOpen() {
+        try {
+            const v = window.localStorage.getItem(storageKey);
+            // padrão: aberto
+            return v === null ? true : v === '1';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function storeOpen(isOpen) {
+        try {
+            window.localStorage.setItem(storageKey, isOpen ? '1' : '0');
+        } catch (e) {}
+    }
+
+    function applySemLocalState(root) {
+        const scope = root || document;
+        const el = scope.querySelector('#lt-sem-local-hcollapse');
+        if (!el || typeof bootstrap === 'undefined') return;
+
+        const desiredOpen = getStoredOpen();
+        const instance = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+        if (desiredOpen) instance.show();
+        else instance.hide();
+    }
+
     function refreshBoard() {
         if (!window.htmx) {
             window.location.reload();
@@ -396,11 +525,20 @@
     }
 
     initDragAndDrop(document);
+    applySemLocalState(document);
+
+    document.body.addEventListener('shown.bs.collapse', function (e) {
+        if (e && e.target && e.target.id === 'lt-sem-local-hcollapse') storeOpen(true);
+    });
+    document.body.addEventListener('hidden.bs.collapse', function (e) {
+        if (e && e.target && e.target.id === 'lt-sem-local-hcollapse') storeOpen(false);
+    });
 
     document.body.addEventListener('htmx:afterSwap', function (e) {
         const t = e.target;
         if (t && t.id === 'lt-board-host') {
             initDragAndDrop(t);
+            applySemLocalState(t);
         }
     });
 })();

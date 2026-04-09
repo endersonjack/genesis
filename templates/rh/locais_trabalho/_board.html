@@ -1,40 +1,68 @@
 <div class="lt-board" id="lt-board-host">
-    <div class="lt-local-card">
-        <div class="lt-local-head">
-            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                <p class="lt-col-title mb-0">Funcionários sem local</p>
-                <span class="badge rounded-pill bg-secondary">{{ sem_local|length }}</span>
-            </div>
-            <div class="text-muted small">Arraste para um local ativo (à direita) para alocar.</div>
-        </div>
-        <div class="lt-local-body">
-            <div
-                id="lt-drop-sem-local"
-                class="lt-people lt-dropzone lt-people--vertical"
-                data-drop-local-id="">
-                {% for f in sem_local %}
-                    <div class="lt-person" data-funcionario-id="{{ f.pk }}" title="{{ f.nome|upper }}">
-                        <span class="lt-avatar" aria-hidden="true">
-                            {% if f.foto %}
-                                <img src="{{ f.foto.url }}" alt="" />
-                            {% else %}
-                                <i class="bi bi-person-circle"></i>
-                            {% endif %}
-                        </span>
-                        <span class="lt-person-name">{{ f.nome }}</span>
-                    </div>
-                {% endfor %}
-            </div>
-            {% if not sem_local %}
-                <div class="lt-empty mt-2">Nenhum funcionário sem local.</div>
-            {% endif %}
+    <div class="lt-board-topbar">
+        <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold"
+            data-bs-toggle="collapse"
+            data-bs-target="#lt-sem-local-hcollapse"
+            aria-controls="lt-sem-local-hcollapse">
+            <i class="bi bi-people me-1"></i> Ver Funcionários sem Local Definido
+        </button>
+
+        <div class="lt-dnd-hint" title="Arraste cartões de funcionários para alocar/desalocar.">
+            <i class="bi bi-arrows-move" aria-hidden="true"></i>
+            <span>Arraste para alocar ou desalocar Funcionários nos locais ativos.</span>
         </div>
     </div>
 
-    <div class="d-flex flex-column gap-3">
-        <div class="lt-local-card">
+    <div class="lt-board-row">
+        <div class="collapse collapse-horizontal show" id="lt-sem-local-hcollapse">
+            <div class="lt-left-pane">
+                <div class="lt-local-card lt-group-card">
+                    <div class="lt-local-head">
+                        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                            <p class="lt-col-title mb-0">Funcionários sem local</p>
+                            <span class="badge rounded-pill bg-secondary">{{ sem_local|length }}</span>
+                        </div>
+                        <div class="text-muted small">Arraste para um local ativo (à direita) para alocar.</div>
+                    </div>
+                    <div class="lt-local-body">
+                        <div
+                            id="lt-drop-sem-local"
+                            class="lt-people lt-dropzone lt-people--vertical"
+                            data-drop-local-id="">
+                            {% for f in sem_local %}
+                                <div class="lt-person" data-funcionario-id="{{ f.pk }}" title="{{ f.nome|upper }}">
+                                    <span class="lt-avatar" aria-hidden="true">
+                                        {% if f.foto %}
+                                            <img src="{{ f.foto.url }}" alt="" />
+                                        {% else %}
+                                            <i class="bi bi-person-circle"></i>
+                                        {% endif %}
+                                    </span>
+                            <span class="lt-person-meta">
+                                <span class="lt-person-name">{{ f.nome }}</span>
+                                {% if f.cargo %}
+                                    <span class="lt-person-role">{{ f.cargo.nome }}</span>
+                                {% endif %}
+                            </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if not sem_local %}
+                            <div class="lt-empty mt-2">Nenhum funcionário sem local.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lt-right-pane d-flex flex-column gap-3">
+        <div class="lt-local-card lt-group-card lt-active-sticky">
             <div class="lt-local-head">
-                <p class="lt-col-title mb-0">Locais de trabalho ativos</p>
+                <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                    <p class="lt-col-title mb-0">Locais de trabalho ativos</p>
+                </div>
                 <div class="text-muted small">Clique no local para detalhes. Arraste funcionários para alocar ou devolva para “Sem local”.</div>
             </div>
             <div class="lt-local-body">
@@ -79,7 +107,12 @@
                                                     <i class="bi bi-person-circle"></i>
                                                 {% endif %}
                                             </span>
-                                            <span class="lt-person-name">{{ f.nome }}</span>
+                                            <span class="lt-person-meta">
+                                                <span class="lt-person-name">{{ f.nome }}</span>
+                                                {% if f.cargo %}
+                                                    <span class="lt-person-role">{{ f.cargo.nome }}</span>
+                                                {% endif %}
+                                            </span>
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -93,6 +126,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </div>
 
