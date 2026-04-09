@@ -40,6 +40,16 @@ urlpatterns = [
         name='busca_funcionarios',
     ),
     path(
+        'fragment/faltas-hoje/',
+        empresa_scoped(views.faltas_hoje_fragment),
+        name='faltas_hoje_fragment',
+    ),
+    path(
+        'fragment/observacoes-hoje/',
+        empresa_scoped(views.observacoes_hoje_fragment),
+        name='observacoes_hoje_fragment',
+    ),
+    path(
         'falta/<int:pk>/status/',
         empresa_scoped(views.falta_alterar_status),
         name='falta_alterar_status',

@@ -266,7 +266,13 @@
 </style>
 
 <div class="lt-mapa-shell mb-4">
-    {% if not request.usuario_so_apontador %}
+    {% if request.usuario_so_apontador %}
+    {# Só apontador: sem faixa de título (mapa em área útil). #}
+    {% elif request.usuario_nav_mobile_apontamento %}
+    <div class="lt-mapa-titlebar d-none d-xl-block">
+        <h1 class="lt-title mb-0">Mapa de Trabalho</h1>
+    </div>
+    {% else %}
     <div class="lt-mapa-titlebar">
         <h1 class="lt-title mb-0">Mapa de Trabalho</h1>
     </div>
@@ -289,11 +295,9 @@
 </div>
 {% endblock %}
 
-{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on lt-mapa-trabalho-full{% endif %}{% endblock %}
-
-{% block fab_mobile_nav %}
-{% if request.usuario_so_apontador %}
-{% include 'apontamento/includes/bottom_nav.html' %}
+{% block body_class %}
+{% if request.usuario_so_apontador %}lt-mapa-trabalho-full
+{% elif request.usuario_nav_mobile_apontamento %}lt-mapa-trabalho-full-mobile-only
 {% endif %}
 {% endblock %}
 
@@ -500,7 +504,10 @@
         }
 
         setTimeout(function () { map.invalidateSize(); }, 80);
-        if (document.body.classList.contains('lt-mapa-trabalho-full')) {
+        if (
+            document.body.classList.contains('lt-mapa-trabalho-full')
+            || document.body.classList.contains('lt-mapa-trabalho-full-mobile-only')
+        ) {
             setTimeout(function () { map.invalidateSize(); }, 400);
             setTimeout(function () { map.invalidateSize(); }, 900);
         }

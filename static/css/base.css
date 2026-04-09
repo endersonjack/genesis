@@ -160,6 +160,91 @@ body {
     flex-shrink: 0;
 }
 
+/* Apontamento — faixa esquerda pela cor do status (2px) */
+.destaque-item.apont-status-pendente {
+    border-left: 2px solid #f59e0b !important;
+}
+.destaque-item.apont-status-visto {
+    border-left: 2px solid #16a34a !important;
+}
+.destaque-item.apont-status-arquivado {
+    border-left: 2px solid #64748b !important;
+}
+.destaque-item.apont-status-outro {
+    border-left: 2px solid #94a3b8 !important;
+}
+
+.apont-mobile-card {
+    border: 1px solid #e8ecf0;
+    border-left-width: 2px;
+    border-left-style: solid;
+}
+.apont-mobile-card.apont-status-pendente {
+    border-left-color: #f59e0b;
+}
+.apont-mobile-card.apont-status-visto {
+    border-left-color: #16a34a;
+}
+.apont-mobile-card.apont-status-arquivado {
+    border-left-color: #64748b;
+}
+.apont-mobile-card.apont-status-outro {
+    border-left-color: #94a3b8;
+}
+.apont-mobile-card--editing {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.28);
+}
+
+/* Dashboard RH — filtros do card Apontamento: uma linha; datas compactas; scroll horizontal se faltar largura */
+.apont-filtro-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.35rem 0.45rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+}
+.apont-filtro-bar .apont-filtro-datas {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.2rem;
+}
+.apont-filtro-bar input[type="date"].form-control-sm {
+    width: 6.75rem;
+    min-width: 6.75rem;
+    max-width: 6.75rem;
+    padding: 0.12rem 0.25rem;
+    font-size: 0.7rem;
+    line-height: 1.2;
+}
+.apont-filtro-bar .apont-filtro-sep {
+    font-size: 0.65rem;
+    color: #64748b;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.apont-filtro-bar .form-label.small {
+    font-size: 0.65rem;
+    line-height: 1.15;
+    margin-bottom: 0.1rem;
+}
+.apont-filtro-bar .form-select-sm {
+    padding: 0.18rem 1.65rem 0.18rem 0.32rem;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    background-position: right 0.3rem center;
+    background-size: 0.9rem;
+}
+.apont-filtro-bar .apont-filtro-btn {
+    padding: 0.18rem 0.4rem;
+    min-width: 2rem;
+    min-height: 1.75rem;
+}
+
 .sidebar-backdrop {
     display: none;
 }

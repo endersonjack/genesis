@@ -1,0 +1,88 @@
+{% if observacoes_hoje %}
+<div class="mb-4">
+    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Suas anotações hoje</h3>
+    <div class="d-flex flex-column gap-2">
+        {% for o in observacoes_hoje %}
+        <div class="rounded-3 p-3 bg-white shadow-sm apont-mobile-card {% if o.status == 'pendente' %}apont-status-pendente{% elif o.status == 'visto' or o.status == 'finalizado' %}apont-status-visto{% elif o.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}{% if edit_pk and o.pk == edit_pk %} apont-mobile-card--editing{% endif %}">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="min-w-0 flex-grow-1">
+                <div class="fw-semibold">{{ o.local.nome }}</div>
+                <div class="small text-muted mb-1">Data: {{ o.data|date:"d/m/Y" }}</div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-1 mb-2">
+                    {% if o.status == 'pendente' %}
+                        <span class="badge text-bg-warning">Pendente</span>
+                    {% elif o.status == 'visto' or o.status == 'finalizado' %}
+                        <span class="badge text-bg-success">Visto</span>
+                    {% elif o.status == 'arquivado' %}
+                        <span class="badge text-bg-secondary">Arquivado</span>
+                    {% else %}
+                        <span class="badge text-bg-light text-dark">{{ o.get_status_display }}</span>
+                    {% endif %}
+                </div>
+                <div class="small mb-0">{{ o.texto|truncatechars:200 }}</div>
+                {% if o.status_alterado_por %}
+                <div class="apont-item-meta-status text-muted mt-2 mb-0">
+                    <i class="bi bi-person-check" aria-hidden="true"></i>
+                    Status alterado por
+                    <strong>{{ o.status_alterado_por.nome_completo|default:o.status_alterado_por.username }}</strong>
+                    {% if o.status_alterado_em %}
+                        em {{ o.status_alterado_em|date:"d/m/Y H:i" }}
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+                <a href="{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                   class="btn btn-sm btn-outline-primary p-2 rounded-3"
+                   title="Editar"
+                   aria-label="Editar anotação — {{ o.local.nome }}"
+                   hx-get="{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                </a>
+                <form method="post"
+                      action="{% url 'apontamento:observacao_excluir' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                      class="d-inline m-0"
+                      onsubmit="return confirm('Excluir esta anotação?');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger p-2 rounded-3"
+                            title="Excluir"
+                            aria-label="Excluir anotação — {{ o.local.nome }}">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                </form>
+            </div>
+            </div>
+            {% if pode_gerir_status_apontamento %}
+            <form method="post"
+                  class="mt-3 pt-2 border-top"
+                  hx-post="{% url 'apontamento:observacao_alterar_status' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                  hx-target="#apont-observacoes-hoje-slot"
+                  hx-swap="innerHTML"
+                  data-no-global-loading
+                  action="{% url 'apontamento:observacao_alterar_status' empresa_id=request.empresa_ativa.pk pk=o.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="retorno" value="mobile_obs">
+                {% if edit_pk %}
+                <input type="hidden" name="edit_pk" value="{{ edit_pk }}">
+                {% endif %}
+                <label class="form-label small text-muted mb-1">Status (RH)</label>
+                <select name="status" class="form-select form-select-sm" aria-label="Alterar status da anotação" onchange="this.form.requestSubmit()">
+                    {% for value, label in status_apontamento_choices %}
+                    <option value="{{ value }}" {% if o.status == value or o.status == 'finalizado' and value == 'visto' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-light border small text-muted mb-4">
+    Nenhuma anotação registrada por você hoje.
+</div>
+{% endif %}

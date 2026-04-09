@@ -1,4 +1,5 @@
 from functools import wraps
+from typing import Optional
 
 from django.contrib import messages
 from django.db.models import Q
@@ -13,6 +14,63 @@ from rh.views.base import _empresa_ativa_or_redirect
 
 from .forms import ApontamentoFaltaForm, ApontamentoObservacaoLocalForm
 from .models import ApontamentoFalta, ApontamentoObservacaoLocal, StatusApontamento
+from .permissions import usuario_rh_pode_gerir_status_apontamento
+
+
+def _ctx_status_apontamento_mobile(request: HttpRequest) -> dict:
+    return {
+        'pode_gerir_status_apontamento': usuario_rh_pode_gerir_status_apontamento(
+            request
+        ),
+        'status_apontamento_choices': StatusApontamento.choices,
+    }
+
+
+def _is_htmx(request: HttpRequest) -> bool:
+    return request.headers.get('HX-Request') == 'true'
+
+
+def _parse_edit_pk(request: HttpRequest, *, post: bool) -> Optional[int]:
+    raw = ((request.POST if post else request.GET).get('edit_pk') or '').strip()
+    if raw.isdigit():
+        return int(raw)
+    return None
+
+
+def _render_faltas_hoje_slot_inner(
+    request: HttpRequest,
+    empresa_ativa,
+    edit_pk: Optional[int] = None,
+) -> HttpResponse:
+    if edit_pk is None:
+        edit_pk = _parse_edit_pk(request, post=False)
+    return render(
+        request,
+        'apontamento/partials/faltas_hoje_slot_inner.html',
+        {
+            'faltas_hoje': _faltas_registradas_hoje_queryset(request, empresa_ativa),
+            'edit_pk': edit_pk,
+            **_ctx_status_apontamento_mobile(request),
+        },
+    )
+
+
+def _render_observacoes_hoje_slot_inner(
+    request: HttpRequest,
+    empresa_ativa,
+    edit_pk: Optional[int] = None,
+) -> HttpResponse:
+    if edit_pk is None:
+        edit_pk = _parse_edit_pk(request, post=False)
+    return render(
+        request,
+        'apontamento/partials/observacoes_hoje_slot_inner.html',
+        {
+            'observacoes_hoje': _observacoes_registradas_hoje_queryset(request, empresa_ativa),
+            'edit_pk': edit_pk,
+            **_ctx_status_apontamento_mobile(request),
+        },
+    )
 
 
 def _pode_modulo_apontamento(request: HttpRequest) -> bool:
@@ -20,13 +78,6 @@ def _pode_modulo_apontamento(request: HttpRequest) -> bool:
         request.user.is_superuser
         or getattr(request, 'usuario_admin_empresa', False)
         or getattr(request, 'usuario_apontador', False)
-    )
-
-
-def _pode_alterar_status_apontamento(request: HttpRequest) -> bool:
-    return bool(
-        request.user.is_superuser
-        or getattr(request, 'usuario_admin_empresa', False)
     )
 
 
@@ -38,7 +89,7 @@ def _faltas_registradas_hoje_queryset(request: HttpRequest, empresa_ativa):
             registrado_por=request.user,
             criado_em__date=hoje,
         )
-        .select_related('funcionario')
+        .select_related('funcionario', 'funcionario__local_trabalho', 'status_alterado_por')
         .order_by('-criado_em')
     )
 
@@ -51,7 +102,7 @@ def _observacoes_registradas_hoje_queryset(request: HttpRequest, empresa_ativa):
             registrado_por=request.user,
             criado_em__date=hoje,
         )
-        .select_related('local')
+        .select_related('local', 'status_alterado_por')
         .order_by('-criado_em')
     )
 
@@ -139,15 +190,14 @@ def falta_nova(request: HttpRequest) -> HttpResponse:
 
     faltas_hoje = _faltas_registradas_hoje_queryset(request, empresa_ativa)
 
-    return render(
-        request,
-        'apontamento/falta_form.html',
-        {
-            'form': form,
-            'faltas_hoje': faltas_hoje,
-            'modo_edicao': False,
-        },
-    )
+    ctx = {
+        'form': form,
+        'faltas_hoje': faltas_hoje,
+        'modo_edicao': False,
+        'edit_pk': None,
+    }
+    ctx.update(_ctx_status_apontamento_mobile(request))
+    return render(request, 'apontamento/falta_form.html', ctx)
 
 
 @require_apontamento
@@ -179,16 +229,15 @@ def falta_editar(request: HttpRequest, pk: int) -> HttpResponse:
 
     faltas_hoje = _faltas_registradas_hoje_queryset(request, empresa_ativa)
 
-    return render(
-        request,
-        'apontamento/falta_form.html',
-        {
-            'form': form,
-            'faltas_hoje': faltas_hoje,
-            'modo_edicao': True,
-            'falta_edicao': falta,
-        },
-    )
+    ctx = {
+        'form': form,
+        'faltas_hoje': faltas_hoje,
+        'modo_edicao': True,
+        'falta_edicao': falta,
+        'edit_pk': falta.pk,
+    }
+    ctx.update(_ctx_status_apontamento_mobile(request))
+    return render(request, 'apontamento/falta_form.html', ctx)
 
 
 @require_apontamento
@@ -242,16 +291,15 @@ def observacao_nova(request: HttpRequest) -> HttpResponse:
 
     observacoes_hoje = _observacoes_registradas_hoje_queryset(request, empresa_ativa)
 
-    return render(
-        request,
-        'apontamento/observacao_form.html',
-        {
-            'form': form,
-            'tem_locais': tem_locais,
-            'observacoes_hoje': observacoes_hoje,
-            'modo_edicao': False,
-        },
-    )
+    ctx = {
+        'form': form,
+        'tem_locais': tem_locais,
+        'observacoes_hoje': observacoes_hoje,
+        'modo_edicao': False,
+        'edit_pk': None,
+    }
+    ctx.update(_ctx_status_apontamento_mobile(request))
+    return render(request, 'apontamento/observacao_form.html', ctx)
 
 
 @require_apontamento
@@ -291,17 +339,16 @@ def observacao_editar(request: HttpRequest, pk: int) -> HttpResponse:
 
     observacoes_hoje = _observacoes_registradas_hoje_queryset(request, empresa_ativa)
 
-    return render(
-        request,
-        'apontamento/observacao_form.html',
-        {
-            'form': form,
-            'tem_locais': tem_locais,
-            'observacoes_hoje': observacoes_hoje,
-            'modo_edicao': True,
-            'observacao_edicao': obs,
-        },
-    )
+    ctx = {
+        'form': form,
+        'tem_locais': tem_locais,
+        'observacoes_hoje': observacoes_hoje,
+        'modo_edicao': True,
+        'observacao_edicao': obs,
+        'edit_pk': obs.pk,
+    }
+    ctx.update(_ctx_status_apontamento_mobile(request))
+    return render(request, 'apontamento/observacao_form.html', ctx)
 
 
 @require_apontamento
@@ -355,9 +402,35 @@ def busca_funcionarios(request: HttpRequest) -> HttpResponse:
     )
 
 
+@require_apontamento
+def faltas_hoje_fragment(request: HttpRequest) -> HttpResponse:
+    """HTMX: lista «Suas faltas hoje» (polling ou uso interno)."""
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    return _render_faltas_hoje_slot_inner(request, empresa_ativa)
+
+
+@require_apontamento
+def observacoes_hoje_fragment(request: HttpRequest) -> HttpResponse:
+    """HTMX: lista «Suas anotações hoje» (polling ou uso interno)."""
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    return _render_observacoes_hoje_slot_inner(request, empresa_ativa)
+
+
 @require_POST
 def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
-    """RH (admin empresa / superuser): altera status da falta de apontamento."""
+    """RH: altera status da falta de apontamento (dashboard ou tela mobile)."""
     from rh.views.dashboard import render_dashboard_apontamento_partial
 
     empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
@@ -367,7 +440,7 @@ def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     if redirect_response:
         return redirect_response
 
-    if not _pode_alterar_status_apontamento(request):
+    if not usuario_rh_pode_gerir_status_apontamento(request):
         messages.error(request, 'Sem permissão para alterar o status.')
         return redirect('rh:dashboard_rh', empresa_id=empresa_ativa.pk)
 
@@ -378,19 +451,34 @@ def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     )
     raw = (request.POST.get('status') or '').strip()
     valid = {c[0] for c in StatusApontamento.choices}
+    retorno = (request.POST.get('retorno') or '').strip()
     if raw not in valid:
         messages.error(request, 'Status inválido.')
-    else:
+    elif raw != obj.status:
         obj.status = raw
-        obj.save(update_fields=['status', 'atualizado_em'])
+        obj.status_alterado_por = request.user
+        obj.status_alterado_em = timezone.now()
+        obj.save(
+            update_fields=[
+                'status',
+                'atualizado_em',
+                'status_alterado_por',
+                'status_alterado_em',
+            ]
+        )
         messages.success(request, 'Status da falta atualizado.')
 
+    if retorno == 'mobile_falta':
+        if _is_htmx(request):
+            edit_pk = _parse_edit_pk(request, post=True)
+            return _render_faltas_hoje_slot_inner(request, empresa_ativa, edit_pk=edit_pk)
+        return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
     return render_dashboard_apontamento_partial(request)
 
 
 @require_POST
 def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
-    """RH (admin empresa / superuser): altera status da observação de local."""
+    """RH: altera status da observação de local (dashboard ou tela mobile)."""
     from rh.views.dashboard import render_dashboard_apontamento_partial
 
     empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
@@ -400,7 +488,7 @@ def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     if redirect_response:
         return redirect_response
 
-    if not _pode_alterar_status_apontamento(request):
+    if not usuario_rh_pode_gerir_status_apontamento(request):
         messages.error(request, 'Sem permissão para alterar o status.')
         return redirect('rh:dashboard_rh', empresa_id=empresa_ativa.pk)
 
@@ -411,11 +499,26 @@ def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     )
     raw = (request.POST.get('status') or '').strip()
     valid = {c[0] for c in StatusApontamento.choices}
+    retorno = (request.POST.get('retorno') or '').strip()
     if raw not in valid:
         messages.error(request, 'Status inválido.')
-    else:
+    elif raw != obj.status:
         obj.status = raw
-        obj.save(update_fields=['status', 'atualizado_em'])
+        obj.status_alterado_por = request.user
+        obj.status_alterado_em = timezone.now()
+        obj.save(
+            update_fields=[
+                'status',
+                'atualizado_em',
+                'status_alterado_por',
+                'status_alterado_em',
+            ]
+        )
         messages.success(request, 'Status da observação atualizado.')
 
+    if retorno == 'mobile_obs':
+        if _is_htmx(request):
+            edit_pk = _parse_edit_pk(request, post=True)
+            return _render_observacoes_hoje_slot_inner(request, empresa_ativa, edit_pk=edit_pk)
+        return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
     return render_dashboard_apontamento_partial(request)

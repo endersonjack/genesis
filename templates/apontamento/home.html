@@ -56,6 +56,23 @@
            hx-push-url="true">
             <i class="bi bi-pin-map"></i> Locais de Trabalho
         </a>
+        {% elif request.usuario_nav_mobile_apontamento %}
+        <a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn d-xl-none"
+           hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-pin-map"></i> Locais de Trabalho
+        </a>
+        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn d-none d-xl-flex"
+           hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-pin-map"></i> Locais de Trabalho
+        </a>
         {% else %}
         <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
            class="apont-link-btn"
@@ -76,10 +93,4 @@
         </a>
     </div>
 </div>
-{% endblock %}
-
-{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
-
-{% block fab_mobile_nav %}
-{% include 'apontamento/includes/bottom_nav.html' %}
 {% endblock %}

@@ -8,7 +8,7 @@ from rh.models import Funcionario, TimeStampedModel
 
 class StatusApontamento(models.TextChoices):
     PENDENTE = 'pendente', 'Pendente'
-    FINALIZADO = 'finalizado', 'Finalizado'
+    VISTO = 'visto', 'Visto'
     ARQUIVADO = 'arquivado', 'Arquivado'
 
 
@@ -42,6 +42,14 @@ class ApontamentoFalta(TimeStampedModel):
         default=StatusApontamento.PENDENTE,
         db_index=True,
     )
+    status_alterado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='apontamentos_falta_status_alterados',
+    )
+    status_alterado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Falta (apontamento)'
@@ -78,6 +86,14 @@ class ApontamentoObservacaoLocal(TimeStampedModel):
         default=StatusApontamento.PENDENTE,
         db_index=True,
     )
+    status_alterado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='apontamentos_observacao_status_alterados',
+    )
+    status_alterado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Observação de local (apontamento)'

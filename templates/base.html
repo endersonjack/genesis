@@ -34,7 +34,7 @@
     {% endif %}
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}{% if request.usuario_nav_mobile_apontamento and request.empresa_ativa %} apont-bottom-nav-on{% endif %}">
 
 <div class="app-wrapper">
     {% if request.user.is_authenticated %}
@@ -60,7 +60,9 @@
     </div>
 </div>
 
-{% block fab_mobile_nav %}{% endblock %}
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}
 
 <div class="mobile-bottom-space d-lg-none"></div>
 

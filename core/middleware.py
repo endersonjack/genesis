@@ -20,6 +20,7 @@ class EmpresaAtivaMiddleware:
         request.usuario_admin_empresa = False
         request.usuario_apontador = False
         request.usuario_so_apontador = False
+        request.usuario_nav_mobile_apontamento = False
         response = self.get_response(request)
         return response
 
@@ -50,6 +51,13 @@ class EmpresaAtivaMiddleware:
         request.usuario_admin_empresa = bool(vinculo.admin_empresa)
         request.usuario_apontador = bool(vinculo.apontador)
         request.usuario_so_apontador = usuario_e_so_apontador(request.user, vinculo)
+        # Mesmo critério do link «Apontamento» no sidebar (apontador / admin empresa / superuser).
+        request.usuario_nav_mobile_apontamento = bool(
+            request.usuario_so_apontador
+            or request.usuario_apontador
+            or request.usuario_admin_empresa
+            or request.user.is_superuser
+        )
         request.session['empresa_id'] = empresa.id
 
         if request.usuario_so_apontador:

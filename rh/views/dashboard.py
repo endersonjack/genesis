@@ -1,16 +1,23 @@
 import calendar
 from datetime import date, timedelta
+from typing import Any, Optional
 
+from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, Q, When
 from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from core.urlutils import reverse_empresa
+
+from local.models import Local
 
 from apontamento.models import (
     ApontamentoFalta,
     ApontamentoObservacaoLocal,
     StatusApontamento,
 )
+from apontamento.permissions import usuario_rh_pode_gerir_status_apontamento
 from controles_rh.models import Competencia
 
 from ..perfil_secao import perfil_funcionario_url_por_tipo
@@ -679,36 +686,137 @@ def dashboard_partial_gestao_rh(request):
     )
 
 
-def _usuario_pode_alterar_status_apontamento(request):
-    return bool(
-        request.user.is_superuser
-        or getattr(request, "usuario_admin_empresa", False)
-    )
-
-
 def _ordem_status_apontamento():
     return Case(
         When(status=StatusApontamento.PENDENTE, then=0),
-        When(status=StatusApontamento.FINALIZADO, then=1),
+        When(status=StatusApontamento.VISTO, then=1),
         When(status=StatusApontamento.ARQUIVADO, then=2),
         default=0,
         output_field=IntegerField(),
     )
 
 
-def _contexto_card_apontamento(empresa_ativa):
+def _parse_apontamento_filtros(request) -> dict[str, Any]:
+    """
+    Lê filtros do GET (painel) ou POST (ex.: após alterar status, campos hidden afd_ini…aff).
+    Padrão: afd_ini e afd_fim vazios → início = hoje, fim = hoje (fuso local); demais = «Todos» (sem restrição).
+    """
+    src = request.POST if request.method == "POST" else request.GET
+    hoje = timezone.localdate()
+    raw_ini = (src.get("afd_ini") or "").strip()
+    raw_fim = (src.get("afd_fim") or "").strip()
+    d_ini = parse_date(raw_ini) if raw_ini else None
+    d_fim = parse_date(raw_fim) if raw_fim else None
+    if d_ini is None and d_fim is None:
+        d_ini = d_fim = hoje
+    elif d_ini is None:
+        d_ini = d_fim
+    elif d_fim is None:
+        d_fim = d_ini
+    if d_ini > d_fim:
+        d_ini, d_fim = d_fim, d_ini
+
+    reg = (src.get("afr") or "").strip()
+    reg_id = int(reg) if reg.isdigit() else None
+
+    tipo = (src.get("aft") or "todos").strip()
+    if tipo not in ("todos", "falta", "observacao"):
+        tipo = "todos"
+
+    loc = (src.get("afl") or "").strip()
+    local_id = int(loc) if loc.isdigit() else None
+
+    fn = (src.get("aff") or "").strip()
+    func_id = int(fn) if fn.isdigit() else None
+
+    return {
+        "data_ini": d_ini,
+        "data_fim": d_fim,
+        "data_ini_iso": d_ini.isoformat(),
+        "data_fim_iso": d_fim.isoformat(),
+        "reg_id": reg_id,
+        "tipo": tipo,
+        "local_id": local_id,
+        "func_id": func_id,
+    }
+
+
+def _opciones_filtros_apontamento(empresa_ativa):
+    """Listas para selects (apontadores com registro na empresa)."""
+    User = get_user_model()
+    ids_f = set(
+        ApontamentoFalta.objects.filter(empresa=empresa_ativa).values_list(
+            "registrado_por_id", flat=True
+        )
+    )
+    ids_o = set(
+        ApontamentoObservacaoLocal.objects.filter(empresa=empresa_ativa).values_list(
+            "registrado_por_id", flat=True
+        )
+    )
+    apontadores = User.objects.filter(pk__in=ids_f | ids_o).order_by(
+        "nome_completo", "username"
+    )
+    locais = Local.objects.filter(empresa=empresa_ativa).order_by("nome", "id")
+    funcionarios = (
+        Funcionario.objects.filter(empresa=empresa_ativa)
+        .exclude(situacao_atual__in=["demitido", "inativo"])
+        .order_by("nome", "id")
+    )
+    return {
+        "apont_apontadores": apontadores,
+        "apont_locais": locais,
+        "apont_funcionarios": funcionarios,
+    }
+
+
+def _contexto_card_apontamento(empresa_ativa, filtros: dict[str, Any]):
     ord_case = _ordem_status_apontamento()
+    d_ini = filtros["data_ini"]
+    d_fim = filtros["data_fim"]
+
+    faltas_qs = ApontamentoFalta.objects.filter(
+        empresa=empresa_ativa,
+        data__gte=d_ini,
+        data__lte=d_fim,
+    )
+    if filtros["reg_id"]:
+        faltas_qs = faltas_qs.filter(registrado_por_id=filtros["reg_id"])
+    if filtros["func_id"]:
+        faltas_qs = faltas_qs.filter(funcionario_id=filtros["func_id"])
+    if filtros["local_id"]:
+        faltas_qs = faltas_qs.filter(funcionario__local_trabalho_id=filtros["local_id"])
+
+    obs_qs = ApontamentoObservacaoLocal.objects.filter(
+        empresa=empresa_ativa,
+        data__gte=d_ini,
+        data__lte=d_fim,
+    )
+    if filtros["reg_id"]:
+        obs_qs = obs_qs.filter(registrado_por_id=filtros["reg_id"])
+    if filtros["local_id"]:
+        obs_qs = obs_qs.filter(local_id=filtros["local_id"])
+
+    tipo = filtros["tipo"]
+    if tipo == "falta":
+        obs_qs = obs_qs.none()
+    elif tipo == "observacao":
+        faltas_qs = faltas_qs.none()
+
     apont_faltas = (
-        ApontamentoFalta.objects.filter(empresa=empresa_ativa)
-        .select_related("funcionario", "registrado_por")
+        faltas_qs.select_related(
+            "funcionario",
+            "funcionario__local_trabalho",
+            "registrado_por",
+            "status_alterado_por",
+        )
         .annotate(_st_ord=ord_case)
-        .order_by("_st_ord", "-criado_em")[:15]
+        .order_by("_st_ord", "-criado_em")[:60]
     )
     apont_observacoes = (
-        ApontamentoObservacaoLocal.objects.filter(empresa=empresa_ativa)
-        .select_related("local", "registrado_por")
+        obs_qs.select_related("local", "registrado_por", "status_alterado_por")
         .annotate(_st_ord=ord_case)
-        .order_by("_st_ord", "-criado_em")[:15]
+        .order_by("_st_ord", "-criado_em")[:60]
     )
     return {
         "apont_faltas": apont_faltas,
@@ -727,8 +835,11 @@ def render_dashboard_apontamento_partial(request):
     if redirect_response:
         return redirect_response
 
-    ctx = _contexto_card_apontamento(empresa_ativa)
-    ctx["pode_alterar_status_apontamento"] = _usuario_pode_alterar_status_apontamento(
+    filtros = _parse_apontamento_filtros(request)
+    ctx = _contexto_card_apontamento(empresa_ativa, filtros)
+    ctx["apont_filtros"] = filtros
+    ctx.update(_opciones_filtros_apontamento(empresa_ativa))
+    ctx["pode_alterar_status_apontamento"] = usuario_rh_pode_gerir_status_apontamento(
         request
     )
     ctx["status_apontamento_choices"] = StatusApontamento.choices

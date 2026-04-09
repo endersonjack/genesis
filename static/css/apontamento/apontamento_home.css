@@ -72,6 +72,12 @@
     }
 }
 
+/* Lista do dia — status RH / apontador */
+.apont-item-meta-status {
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
 .apont-link-btn {
     border-radius: 0.9rem;
     font-weight: 700;
