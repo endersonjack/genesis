@@ -3,6 +3,7 @@ from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from core.empresa_access import usuario_e_so_apontador
 from core.urlutils import build_url_after_empresa_swap, is_safe_internal_path
 
 from .models import UsuarioEmpresa
@@ -34,6 +35,8 @@ def selecionar_empresa(request):
             empresa__ativa=True
         )
         request.session['empresa_id'] = vinculo.empresa.id
+        if usuario_e_so_apontador(request.user, vinculo):
+            return redirect('apontamento:home', empresa_id=vinculo.empresa.id)
         return redirect('dashboard_home', empresa_id=vinculo.empresa.id)
 
     return render(request, 'usuarios/selecionar_empresa.html', {
@@ -61,12 +64,18 @@ def pagina_trocar_empresa(request, empresa_id):
     if vinculos.count() <= 1:
         v = vinculos.first()
         if v:
+            if usuario_e_so_apontador(request.user, v):
+                return redirect('apontamento:home', empresa_id=v.empresa_id)
             return redirect('dashboard_home', empresa_id=v.empresa_id)
         return redirect('selecionar_empresa')
 
     next_path = request.GET.get('next')
     if not next_path or not is_safe_internal_path(next_path):
-        next_path = reverse('dashboard_home', kwargs={'empresa_id': empresa_id})
+        v_padrao = vinculos.filter(empresa_id=empresa_id).first()
+        if v_padrao and usuario_e_so_apontador(request.user, v_padrao):
+            next_path = reverse('apontamento:home', kwargs={'empresa_id': empresa_id})
+        else:
+            next_path = reverse('dashboard_home', kwargs={'empresa_id': empresa_id})
     empresa_sessao_id = (
         getattr(getattr(request, 'empresa_ativa', None), 'pk', None)
         or request.session.get('empresa_id')
@@ -117,6 +126,12 @@ def trocar_empresa(request):
     new_url = build_url_after_empresa_swap(next_path, vinculo.empresa.id)
     if not new_url:
         new_url = reverse('dashboard_home', kwargs={'empresa_id': vinculo.empresa.id})
+
+    if usuario_e_so_apontador(request.user, vinculo):
+        dash = reverse('dashboard_home', kwargs={'empresa_id': vinculo.empresa.id})
+        ap_home = reverse('apontamento:home', kwargs={'empresa_id': vinculo.empresa.id})
+        if new_url.rstrip('/') == dash.rstrip('/'):
+            new_url = ap_home
 
     if _is_htmx(request):
         response = HttpResponse(status=200)

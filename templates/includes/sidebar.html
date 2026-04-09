@@ -28,6 +28,35 @@
                 </strong>
             </div>
 
+            {% if request.usuario_so_apontador %}
+            {# Menu exclusivo: apontador (sem admin) — só Apontamento + locais autorizados #}
+            <nav class="menu-section">
+                <p class="menu-title">Apontamento</p>
+                {% if request.empresa_ativa %}
+                <a href="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/apontamento/' in request.path %}active{% endif %}">
+                    <i class="bi bi-phone"></i>
+                    <span>Início</span>
+                </a>
+                {% endif %}
+            </nav>
+            <nav class="menu-section mt-3">
+                <p class="menu-title">Locais</p>
+                {% if request.empresa_ativa %}
+                <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
+                    <i class="bi bi-geo-alt"></i>
+                    <span>Locais</span>
+                </a>
+                <a href="{% if request.usuario_so_apontador %}{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}{% else %}{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="menu-link {% if '/rh/locais-trabalho/' in request.path and '/mapa/' not in request.path %}active{% endif %}">
+                    <i class="bi bi-pin-map"></i>
+                    <span>Locais de Trabalho</span>
+                </a>
+                <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/locais-trabalho/mapa/' in request.path %}active{% endif %}">
+                    <i class="bi bi-map"></i>
+                    <span>Mapa de Trabalho</span>
+                </a>
+                {% endif %}
+            </nav>
+            {% else %}
             <nav class="menu-section">
                 <p class="menu-title">Principal</p>
 
@@ -37,10 +66,17 @@
                     <span>Início</span>
                 </a>
 
-                <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/rh/' in request.path and '/rh/gestao/' not in request.path %}active{% endif %}">
+                <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/rh/' in request.path and '/rh/gestao/' not in request.path and '/apontamento/' not in request.path %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>Recursos Humanos</span>
                 </a>
+
+                {% if request.usuario_apontador or request.usuario_admin_empresa or request.user.is_superuser %}
+                <a href="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/apontamento/' in request.path %}active{% endif %}">
+                    <i class="bi bi-phone"></i>
+                    <span>Apontamento</span>
+                </a>
+                {% endif %}
 
                 <a href="#" class="menu-link">
                     <i class="bi bi-cash-stack"></i>
@@ -53,12 +89,14 @@
                 </a>
                 {% endif %}
             </nav>
+            {% endif %}
         </div>
 
         <div class="sidebar-bottom">
             <nav class="menu-section">
                 <p class="menu-title">Sistema</p>
 
+                {% if not request.usuario_so_apontador %}
                 {% if request.empresa_ativa %}
                     <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
                         <i class="bi bi-geo-alt"></i>
@@ -88,6 +126,7 @@
                         <span>Preferências</span>
                     </a>
                 {% endif %}
+                {% endif %}
 
                 {% if usuario_mostrar_troca_empresa %}
                 <a href="{% url 'selecionar_empresa' %}" class="menu-link {% if request.resolver_match.url_name == 'selecionar_empresa' %}active{% endif %}">
@@ -95,6 +134,18 @@
                     <span>Trocar empresa</span>
                 </a>
                 {% endif %}
+
+                <div class="sidebar-user-mobile d-lg-none" role="status">
+                    <div class="sidebar-user-mobile-inner">
+                        <div class="sidebar-user-mobile-avatar" aria-hidden="true">
+                            <i class="bi bi-person"></i>
+                        </div>
+                        <div class="sidebar-user-mobile-text">
+                            <strong class="sidebar-user-mobile-name">{{ request.user.nome_completo|default:request.user.username }}</strong>
+                            <small class="sidebar-user-mobile-label">Usuário logado</small>
+                        </div>
+                    </div>
+                </div>
 
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}

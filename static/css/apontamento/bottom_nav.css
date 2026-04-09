@@ -1,0 +1,74 @@
+/* Menu inferior fixo — mobile, módulo Apontamento (usuário somente apontador) */
+
+.apont-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    body.apont-bottom-nav-on .page-content {
+        /* 5 itens no menu inferior */
+        padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .apont-bottom-nav {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* Abaixo do drawer do sidebar no mobile (1060 em sidebar.css) para não cobrir o botão Sair. */
+        z-index: 1038;
+        padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+        background: rgba(255, 255, 255, 0.96);
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        justify-content: space-around;
+        align-items: stretch;
+        gap: 0.15rem;
+    }
+
+    .apont-bottom-nav__link {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        padding: 0.35rem 0.2rem;
+        border: none;
+        border-radius: 0.75rem;
+        background: transparent;
+        color: #64748b;
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 1.15;
+        text-align: center;
+        text-decoration: none;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .apont-bottom-nav__link i {
+        font-size: 1.35rem;
+        line-height: 1;
+    }
+
+    .apont-bottom-nav__link:hover,
+    .apont-bottom-nav__link:focus {
+        color: #0f172a;
+        background: rgba(15, 23, 42, 0.05);
+    }
+
+    .apont-bottom-nav__link.active {
+        color: #fff;
+        background: var(--apont-bottom-nav-active, #2563eb);
+    }
+
+    .apont-bottom-nav__link.active:hover,
+    .apont-bottom-nav__link.active:focus {
+        color: #fff;
+        filter: brightness(0.96);
+    }
+}

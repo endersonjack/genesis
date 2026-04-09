@@ -19,6 +19,7 @@ urlpatterns = [
             path('auditoria/', include('auditoria.urls')),
             path('rh/gestao/', include('controles_rh.urls')),
             path('rh/', include('rh.urls')),
+            path('apontamento/', include('apontamento.urls')),
             path('usuarios/', include('usuarios.urls_empresa')),
         ]),
     ),

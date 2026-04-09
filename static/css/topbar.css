@@ -141,34 +141,19 @@
     .topbar {
         padding: 0.9rem 1rem;
         height: auto;
-        min-height: 72px;
-        flex-wrap: wrap;
+        min-height: 64px;
+        flex-wrap: nowrap;
     }
 
-    .topbar-left,
-    .topbar-right {
+    .topbar-left {
         width: 100%;
+        min-width: 0;
     }
 
-    .topbar-right {
-        justify-content: flex-start;
-    }
-
-    .user-box {
-        width: 100%;
-    }
+    /* Nome do usuário no sidebar no mobile (topbar-right oculto) */
 }
 
 @media (max-width: 767.98px) {
-    .topbar-left,
-    .topbar-right {
-        align-items: stretch;
-    }
-
-    .user-box {
-        padding: 0.65rem 0.75rem;
-    }
-
     .topbar-company {
         font-size: 0.88rem;
     }

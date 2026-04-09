@@ -1,0 +1,74 @@
+/* Mapa de trabalho — apontador: mapa em tela útil (topbar → menu inferior), sem card/título. */
+
+body.lt-mapa-trabalho-full {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+}
+
+body.lt-mapa-trabalho-full .app-wrapper {
+    min-height: 100dvh;
+    height: 100dvh;
+}
+
+body.lt-mapa-trabalho-full .main-content {
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.lt-mapa-trabalho-full .page-content {
+    padding: 0 !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.lt-mapa-trabalho-full .page-content > .container-fluid {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+body.lt-mapa-trabalho-full .lt-mapa-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: hidden;
+}
+
+body.lt-mapa-trabalho-full .lt-mapa-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 !important;
+    background: transparent !important;
+    display: flex;
+    flex-direction: column;
+}
+
+body.lt-mapa-trabalho-full .lt-mapa-map-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+body.lt-mapa-trabalho-full .lt-map-wrap {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}

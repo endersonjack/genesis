@@ -859,6 +859,43 @@
     </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="rh-board-card">
+            <div class="rh-board-header flex-column align-items-stretch gap-2">
+                <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                    <h3 class="rh-board-title mb-0">
+                        <span class="rh-board-icon">
+                            <i class="bi bi-journal-richtext"></i>
+                        </span>
+                        <span class="text-uppercase">Apontamento</span>
+                    </h3>
+                </div>
+                <p class="text-muted small mb-0">Diário de Local de trabalho pelos apontadores</p>
+            </div>
+            <div class="rh-board-body">
+                <div
+                    id="dashboard-slot-apontamento"
+                    data-no-global-loading
+                    hx-get="{% url 'rh:dashboard_partial_apontamento' empresa_id=request.empresa_ativa.pk %}"
+                    hx-trigger="load"
+                    hx-swap="innerHTML">
+                    <div class="row g-3" aria-hidden="true">
+                        <div class="col-lg-6">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-2" style="width:40%;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-block" style="height:100px;"></div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-line mb-2" style="width:40%;"></div>
+                            <div class="dashboard-hx-skeleton dashboard-hx-skeleton-block" style="height:100px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-12 col-xl-8">
         <div class="rh-board-card">

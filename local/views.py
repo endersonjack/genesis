@@ -15,6 +15,19 @@ def _is_htmx(request):
     return request.headers.get('HX-Request') == 'true'
 
 
+def _negar_mutacao_local_para_apontador(request):
+    """
+    Apontador «puro» só consulta o cadastro de locais; não cria, edita nem exclui.
+    """
+    if getattr(request, 'usuario_so_apontador', False):
+        messages.warning(
+            request,
+            'Como apontador, você só pode visualizar os locais cadastrados.',
+        )
+        return redirect_empresa(request, 'local:lista')
+    return None
+
+
 def _redirect_lista_htmx(request):
     response = HttpResponse(status=200)
     response['HX-Redirect'] = reverse_empresa(request, 'local:lista')
@@ -65,6 +78,10 @@ def local_criar(request):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
+
     form = LocalForm(request.POST or None)
     if request.method == 'POST':
         if form.is_valid():
@@ -102,6 +119,10 @@ def local_criar_page(request):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
+
     form = LocalForm(request.POST or None)
     if request.method == 'POST':
         if form.is_valid():
@@ -132,6 +153,10 @@ def local_editar(request, pk):
     if not empresa:
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
+
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
 
     local = get_object_or_404(Local, pk=pk, empresa=empresa)
     form = LocalForm(request.POST or None, instance=local)
@@ -169,6 +194,10 @@ def local_editar_page(request, pk):
     if not empresa:
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
+
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
 
     local = get_object_or_404(Local, pk=pk, empresa=empresa)
     form = LocalForm(request.POST or None, instance=local)
@@ -221,6 +250,10 @@ def local_excluir(request, pk):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
+
     local = get_object_or_404(Local, pk=pk, empresa=empresa)
 
     if request.method == 'POST':
@@ -252,6 +285,10 @@ def local_excluir_page(request, pk):
     if not empresa:
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
+
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
 
     local = get_object_or_404(Local, pk=pk, empresa=empresa)
 

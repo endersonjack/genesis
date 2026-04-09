@@ -18,6 +18,21 @@ urlpatterns = [
         empresa_scoped(locais_trabalho_mapa),
         name='locais_trabalho_mapa',
     ),
+    path(
+        'locais-trabalho/apontamento/',
+        empresa_scoped(locais_trabalho_apontamento),
+        name='locais_trabalho_apontamento',
+    ),
+    path(
+        'locais-trabalho/apontamento/<int:local_pk>/',
+        empresa_scoped(locais_trabalho_apontamento_local),
+        name='locais_trabalho_apontamento_local',
+    ),
+    path(
+        'locais-trabalho/apontamento/buscar-funcionarios/',
+        empresa_scoped(buscar_funcionarios_locais_trabalho_apont),
+        name='buscar_funcionarios_locais_trabalho_apont',
+    ),
     path('locais-trabalho/board/', empresa_scoped(locais_trabalho_board), name='locais_trabalho_board'),
     path(
         'locais-trabalho/definir-local/',
@@ -68,6 +83,11 @@ urlpatterns = [
         'dashboard/partials/gestao-rh/',
         empresa_scoped(dashboard_partial_gestao_rh),
         name='dashboard_partial_gestao_rh',
+    ),
+    path(
+        'dashboard/partials/apontamento/',
+        empresa_scoped(dashboard_partial_apontamento),
+        name='dashboard_partial_apontamento',
     ),
 
     # ======================

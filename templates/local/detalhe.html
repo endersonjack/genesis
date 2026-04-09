@@ -103,13 +103,25 @@
     <div class="local-card-head">
         <div>
             <h1 class="local-title">{{ local.nome }}</h1>
-            <p class="local-sub mb-0">Detalhes do local da empresa ativa.</p>
+            <p class="local-sub mb-0">
+                Detalhes do local da empresa ativa.
+                {% if request.usuario_so_apontador %}
+                    <span class="d-block mt-1 small fw-semibold text-secondary">Somente visualização.</span>
+                {% endif %}
+            </p>
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
-               class="btn btn-outline-secondary rounded-3 fw-semibold">
+               class="btn btn-outline-secondary rounded-3 fw-semibold"
+               {% if request.usuario_so_apontador %}
+               hx-get="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true"
+               {% endif %}>
                 <i class="bi bi-arrow-left me-1"></i> Voltar à lista
             </a>
+            {% if not request.usuario_so_apontador %}
             <a href="{% url 'local:criar_page' empresa_id=request.empresa_ativa.pk %}"
                class="btn btn-primary rounded-3 fw-semibold">
                 <i class="bi bi-plus-circle me-1"></i> Novo local
@@ -122,6 +134,7 @@
                class="btn btn-outline-danger rounded-3 fw-semibold">
                 <i class="bi bi-trash me-1"></i> Excluir
             </a>
+            {% endif %}
         </div>
     </div>
     <div class="local-body">
@@ -176,3 +189,10 @@
 </div>
 {% endblock %}
 
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% if request.usuario_so_apontador %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endif %}
+{% endblock %}

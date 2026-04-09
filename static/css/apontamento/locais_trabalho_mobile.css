@@ -1,0 +1,143 @@
+/* Locais de trabalho — mobile (lista + detalhe). Carregado em base.html para funcionar com HTMX body-swap. */
+
+/* Respiro nas bordas — apontador mobile (exceto mapa em tela cheia, sobrescrito em mapa_trabalho_full.css) */
+@media (max-width: 991.98px) {
+    body.apont-bottom-nav-on:not(.lt-mapa-trabalho-full) .page-content {
+        padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
+        padding-right: max(1.15rem, env(safe-area-inset-right, 0px));
+        padding-top: max(0.85rem, env(safe-area-inset-top, 0px));
+    }
+
+    body.apont-bottom-nav-on .topbar {
+        padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
+        padding-right: max(1.15rem, env(safe-area-inset-right, 0px));
+    }
+}
+
+.lt-ap-loc-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #fff;
+    text-decoration: none;
+    color: #0f172a;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.lt-ap-loc-link:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.lt-ap-loc-link .lt-ap-loc-name {
+    min-width: 0;
+    text-align: left;
+}
+
+.lt-ap-loc-link .bi-chevron-right {
+    flex-shrink: 0;
+    color: #94a3b8;
+}
+
+.lt-ap-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.lt-ap-local-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 1rem;
+    line-height: 1.25;
+}
+
+.lt-ap-card {
+    border: 1px solid #d9e2ec;
+    border-radius: 1.15rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.lt-ap-card h2 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.75rem;
+}
+
+.lt-ap-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #0f172a;
+    max-width: 100%;
+}
+
+.lt-ap-pill.is-empty {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.lt-ap-person-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.lt-ap-person-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.lt-ap-person-row:first-child {
+    padding-top: 0;
+}
+
+.lt-ap-remove-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #dc2626;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.lt-ap-remove-x:hover {
+    background: rgba(220, 38, 38, 0.1);
+    color: #b91c1c;
+}
+
+.lt-ap-remove-x:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+}

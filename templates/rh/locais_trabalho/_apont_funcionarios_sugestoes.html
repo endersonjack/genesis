@@ -1,0 +1,26 @@
+{% if muito_curto %}
+    <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">
+        Digite pelo menos <strong>2 caracteres</strong> para buscar o funcionário.
+    </p>
+{% else %}
+    {% if resultados %}
+        <div class="list-group list-group-flush shadow-sm rounded border lt-ap-sug-list">
+            {% for f in resultados %}
+                <button
+                    type="button"
+                    class="list-group-item list-group-item-action text-start py-2"
+                    onclick="window.ltApSelectFunc({{ f.pk }}, '{{ f.nome|escapejs }}')">
+                    <div class="fw-semibold">{{ f.nome }}</div>
+                    <div class="text-muted small">
+                        {% if f.cargo %}{{ f.cargo.nome }}{% else %}—{% endif %}
+                        {% if f.matricula %} · Mat. {{ f.matricula }}{% endif %}
+                    </div>
+                </button>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted small mb-0 px-2 py-2 bg-light rounded border">
+            Nenhum funcionário encontrado para <strong>{{ q }}</strong>.
+        </p>
+    {% endif %}
+{% endif %}

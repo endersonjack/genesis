@@ -1,0 +1,53 @@
+{% if request.usuario_so_apontador and request.empresa_ativa %}
+{# Início = home apontamento | Faltas | Anotações | Locais = locais de trabalho (mobile) #}
+{% with ns=request.resolver_match.namespace urln=request.resolver_match.url_name %}
+<nav class="apont-bottom-nav d-lg-none" aria-label="Apontamento — menu inferior"
+    {% if request.empresa_ativa.cor_tema %}style="--apont-bottom-nav-active: {{ request.empresa_ativa.cor_tema }};"{% endif %}>
+    <a href="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}"
+       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'home' %}active{% endif %}"
+       hx-get="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
+    </a>
+    <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'falta_nova' or ns == 'apontamento' and urln == 'falta_editar' %}active{% endif %}"
+       hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-person-x"></i>
+        <span>Faltas</span>
+    </a>
+    <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'observacao_nova' or ns == 'apontamento' and urln == 'observacao_editar' %}active{% endif %}"
+       hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-journal-text"></i>
+        <span>Anotações</span>
+    </a>
+    <a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+       class="apont-bottom-nav__link {% if ns == 'rh' and urln == 'locais_trabalho_apontamento' or ns == 'rh' and urln == 'locais_trabalho_apontamento_local' or ns == 'local' %}active{% endif %}"
+       hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-pin-map"></i>
+        <span>Locais</span>
+    </a>
+    <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+       class="apont-bottom-nav__link {% if ns == 'rh' and urln == 'locais_trabalho_mapa' %}active{% endif %}"
+       hx-get="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-map"></i>
+        <span>Mapa</span>
+    </a>
+</nav>
+{% endwith %}
+{% endif %}

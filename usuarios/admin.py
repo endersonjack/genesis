@@ -14,6 +14,28 @@ class UsuarioAdmin(UserAdmin):
 
 @admin.register(UsuarioEmpresa)
 class UsuarioEmpresaAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'empresa', 'ativo', 'admin_empresa', 'criado_em')
-    list_filter = ('ativo', 'admin_empresa', 'empresa')
+    fieldsets = (
+        (
+            None,
+            {
+                'fields': ('usuario', 'empresa'),
+            },
+        ),
+        (
+            'Acesso nesta empresa',
+            {
+                'fields': ('ativo', 'admin_empresa', 'apontador'),
+                'description': 'Apontador: acesso ao módulo Apontamento (celular/campo) para esta empresa.',
+            },
+        ),
+        (
+            'Auditoria',
+            {
+                'fields': ('criado_em',),
+            },
+        ),
+    )
+    readonly_fields = ('criado_em',)
+    list_display = ('usuario', 'empresa', 'ativo', 'admin_empresa', 'apontador', 'criado_em')
+    list_filter = ('ativo', 'admin_empresa', 'apontador', 'empresa')
     search_fields = ('usuario__username', 'usuario__nome_completo', 'empresa__razao_social')

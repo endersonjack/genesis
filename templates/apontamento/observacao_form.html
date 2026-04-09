@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if modo_edicao %}Editar anotação{% else %}Anotações{% endif %} | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h2 class="fw-bold mb-1">{% if modo_edicao %}Editar anotação{% else %}Anotações{% endif %}</h2>
+    <p class="text-muted mb-0 small">Registros feitos por você hoje ({% now "d/m/Y" %}).</p>
+</div>
+
+{% if observacoes_hoje %}
+<div class="mb-4">
+    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Suas anotações hoje</h3>
+    <div class="d-flex flex-column gap-2">
+        {% for o in observacoes_hoje %}
+        <div class="border rounded-3 p-3 bg-white shadow-sm d-flex justify-content-between align-items-start gap-2 {% if modo_edicao and observacao_edicao and o.pk == observacao_edicao.pk %}border-primary border-2{% endif %}">
+            <div class="min-w-0 flex-grow-1">
+                <div class="fw-semibold">{{ o.local.nome }}</div>
+                <div class="small text-muted mb-1">Data: {{ o.data|date:"d/m/Y" }}</div>
+                <div class="small mb-0">{{ o.texto|truncatechars:200 }}</div>
+            </div>
+            <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+                <a href="{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                   class="btn btn-sm btn-outline-primary p-2 rounded-3"
+                   title="Editar"
+                   aria-label="Editar anotação — {{ o.local.nome }}"
+                   hx-get="{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                </a>
+                <form method="post"
+                      action="{% url 'apontamento:observacao_excluir' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                      class="d-inline m-0"
+                      onsubmit="return confirm('Excluir esta anotação?');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger p-2 rounded-3"
+                            title="Excluir"
+                            aria-label="Excluir anotação — {{ o.local.nome }}">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-light border small text-muted mb-4">
+    Nenhuma anotação registrada por você hoje.
+</div>
+{% endif %}
+
+{% if not tem_locais %}
+    <div class="alert alert-warning rounded-3">
+        Não há locais cadastrados para esta empresa.
+        <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}">Cadastre um local</a> antes.
+    </div>
+{% else %}
+{% if not modo_edicao %}
+<hr class="my-4">
+<div class="mb-3">
+    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Nova anotação</h3>
+    <p class="text-muted small mb-0">Registro sobre o local de trabalho no dia indicado.</p>
+</div>
+{% endif %}
+
+<form method="post"
+      action="{% if modo_edicao %}{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=observacao_edicao.pk %}{% else %}{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}{% endif %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_local">Local</label>
+        {{ form.local }}
+        {% if form.local.errors %}<div class="text-danger small">{{ form.local.errors }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_data">Data</label>
+        {{ form.data }}
+        {% if form.data.errors %}<div class="text-danger small">{{ form.data.errors }}</div>{% endif %}
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label fw-semibold" for="id_texto">Observação</label>
+        {{ form.texto }}
+        {% if form.texto.errors %}<div class="text-danger small">{{ form.texto.errors }}</div>{% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
+        {% if modo_edicao %}Salvar alterações{% else %}Salvar anotação{% endif %}
+    </button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Locais de trabalho | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h2 class="fw-bold mb-1">Locais de trabalho ativos</h2>
+    <p class="text-muted mb-0 small">Toque em um local para ver ou alterar as alocações.</p>
+</div>
+
+{% if locais_cards %}
+    {% for card in locais_cards %}
+        {% with loc=card.local pessoas=card.pessoas %}
+        <a href="{% url 'rh:locais_trabalho_apontamento_local' empresa_id=request.empresa_ativa.pk local_pk=loc.pk %}"
+           class="lt-ap-loc-link"
+           hx-get="{% url 'rh:locais_trabalho_apontamento_local' empresa_id=request.empresa_ativa.pk local_pk=loc.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <span class="lt-ap-loc-name text-truncate">{{ loc.nome }}</span>
+            <span class="d-flex align-items-center gap-2 flex-shrink-0">
+                <span class="badge bg-primary rounded-pill">{{ pessoas|length }}</span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </span>
+        </a>
+        {% endwith %}
+    {% endfor %}
+{% else %}
+    <div class="alert alert-light border text-muted rounded-4 mb-0">
+        Nenhum local de trabalho ativo. Ative locais no cadastro ou na visão completa de locais de trabalho (PC).
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}

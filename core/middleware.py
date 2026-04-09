@@ -2,6 +2,12 @@ from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import redirect
 
+from core.empresa_access import (
+    empresa_url_rest,
+    path_permitido_para_so_apontador,
+    usuario_e_so_apontador,
+)
+
 from usuarios.models import UsuarioEmpresa
 
 
@@ -12,6 +18,8 @@ class EmpresaAtivaMiddleware:
     def __call__(self, request):
         request.empresa_ativa = None
         request.usuario_admin_empresa = False
+        request.usuario_apontador = False
+        request.usuario_so_apontador = False
         response = self.get_response(request)
         return response
 
@@ -40,5 +48,20 @@ class EmpresaAtivaMiddleware:
         empresa = vinculo.empresa
         request.empresa_ativa = empresa
         request.usuario_admin_empresa = bool(vinculo.admin_empresa)
+        request.usuario_apontador = bool(vinculo.apontador)
+        request.usuario_so_apontador = usuario_e_so_apontador(request.user, vinculo)
         request.session['empresa_id'] = empresa.id
+
+        if request.usuario_so_apontador:
+            rest = empresa_url_rest(request.path, empresa_id)
+            if not path_permitido_para_so_apontador(rest):
+                messages.warning(
+                    request,
+                    'Seu acesso é limitado ao Apontamento e às telas de locais autorizadas.',
+                )
+                return redirect(
+                    'apontamento:home',
+                    empresa_id=empresa_id,
+                )
+
         return None

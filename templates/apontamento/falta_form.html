@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if modo_edicao %}Editar falta (apontamento){% else %}Nova falta (apontamento){% endif %} | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h2 class="fw-bold mb-1">{% if modo_edicao %}Editar falta{% else %}Faltas{% endif %}</h2>
+    <p class="text-muted mb-0 small">Registros feitos por você hoje ({% now "d/m/Y" %}).</p>
+</div>
+
+{% if faltas_hoje %}
+<div class="mb-4">
+    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Suas faltas hoje</h3>
+    <div class="d-flex flex-column gap-2">
+        {% for f in faltas_hoje %}
+        <div class="border rounded-3 p-3 bg-white shadow-sm d-flex justify-content-between align-items-start gap-2 {% if modo_edicao and falta_edicao and f.pk == falta_edicao.pk %}border-primary border-2{% endif %}">
+            <div class="min-w-0 flex-grow-1">
+                <div class="fw-semibold">{{ f.funcionario.nome }}</div>
+                <div class="small text-muted mb-1">Data da falta: {{ f.data|date:"d/m/Y" }}</div>
+                <div class="small mb-0">{{ f.motivo }}{% if f.observacao %} — {{ f.observacao|truncatechars:120 }}{% endif %}</div>
+            </div>
+            <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+                <a href="{% url 'apontamento:falta_editar' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+                   class="btn btn-sm btn-outline-primary p-2 rounded-3"
+                   title="Editar"
+                   aria-label="Editar falta de {{ f.funcionario.nome }}"
+                   hx-get="{% url 'apontamento:falta_editar' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                </a>
+                <form method="post"
+                      action="{% url 'apontamento:falta_excluir' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+                      class="d-inline m-0"
+                      onsubmit="return confirm('Excluir esta falta?');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger p-2 rounded-3"
+                            title="Excluir"
+                            aria-label="Excluir falta de {{ f.funcionario.nome }}">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-light border small text-muted mb-4">
+    Nenhuma falta registrada por você hoje.
+</div>
+{% endif %}
+
+{% if not modo_edicao %}
+<hr class="my-4">
+<div class="mb-3">
+    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Nova falta</h3>
+    <p class="text-muted small mb-0">Informe o funcionário e o motivo.</p>
+</div>
+{% endif %}
+
+<form method="post"
+      action="{% if modo_edicao %}{% url 'apontamento:falta_editar' empresa_id=request.empresa_ativa.pk pk=falta_edicao.pk %}{% else %}{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}{% endif %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Funcionário</label>
+        {{ form.funcionario }}
+        <p class="form-text mb-1" id="apont-funcionario-label">
+            {% if modo_edicao and falta_edicao %}
+                {{ falta_edicao.funcionario.nome }}
+            {% elif form.funcionario.value %}
+                Selecionado (ID {{ form.funcionario.value }})
+            {% else %}
+                Nenhum selecionado — busque abaixo.
+            {% endif %}
+        </p>
+        <input type="search" id="apont-busca-q" name="q" class="form-control" placeholder="Nome, CPF ou matrícula…" autocomplete="off"
+               hx-get="{% url 'apontamento:busca_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+               hx-trigger="keyup changed delay:350ms"
+               hx-target="#apont-busca-resultados"
+               hx-swap="innerHTML">
+        <div id="apont-busca-resultados" class="mt-2"></div>
+        {% if form.funcionario.errors %}<div class="text-danger small">{{ form.funcionario.errors }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_data">Data</label>
+        {{ form.data }}
+        {% if form.data.errors %}<div class="text-danger small">{{ form.data.errors }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_motivo">Motivo</label>
+        {{ form.motivo }}
+        {% if form.motivo.errors %}<div class="text-danger small">{{ form.motivo.errors }}</div>{% endif %}
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label fw-semibold" for="id_observacao">Observação</label>
+        {{ form.observacao }}
+        {% if form.observacao.errors %}<div class="text-danger small">{{ form.observacao.errors }}</div>{% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
+        {% if modo_edicao %}Salvar alterações{% else %}Salvar falta{% endif %}
+    </button>
+</form>
+
+<script>
+(function () {
+    const res = document.getElementById('apont-busca-resultados');
+    const label = document.getElementById('apont-funcionario-label');
+    const q = document.getElementById('apont-busca-q');
+    const fid = document.getElementById('id_funcionario');
+    if (!res || !label || !fid) return;
+    res.addEventListener('click', function (e) {
+        const btn = e.target.closest('.apont-pick');
+        if (!btn) return;
+        const id = btn.getAttribute('data-apont-fid');
+        const nome = btn.getAttribute('data-apont-nome') || '';
+        fid.value = id;
+        label.textContent = nome;
+        res.innerHTML = '';
+        if (q) q.value = '';
+    });
+})();
+</script>
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}

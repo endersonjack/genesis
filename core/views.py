@@ -5,12 +5,27 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 
+from core.empresa_access import usuario_e_so_apontador
+
+from usuarios.models import UsuarioEmpresa
+
 
 @login_required
 def home_root_redirect(request):
     """Raiz `/`: envia para o dashboard da empresa na sessão ou para seleção."""
     empresa_id = request.session.get('empresa_id')
     if empresa_id:
+        try:
+            v = UsuarioEmpresa.objects.get(
+                usuario=request.user,
+                empresa_id=empresa_id,
+                ativo=True,
+                empresa__ativa=True,
+            )
+            if usuario_e_so_apontador(request.user, v):
+                return redirect('apontamento:home', empresa_id=empresa_id)
+        except UsuarioEmpresa.DoesNotExist:
+            pass
         return redirect('dashboard_home', empresa_id=empresa_id)
     return redirect('selecionar_empresa')
 

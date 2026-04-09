@@ -28,7 +28,7 @@
         </button>
 
         <div class="d-flex flex-column">
-            <h4 class="page-title mb-0 text-white fw-semibold">Painel</h4>
+            <h4 class="page-title mb-0 text-white fw-semibold">{% if request.usuario_so_apontador %}Apontamento{% else %}Painel{% endif %}</h4>
 
             {% if request.empresa_ativa %}
                 <small class="topbar-company text-white d-flex align-items-center gap-2 flex-wrap">
@@ -70,7 +70,7 @@
         </div>
     </div>
 
-    <div class="topbar-right d-flex align-items-center">
+    <div class="topbar-right d-none d-lg-flex align-items-center">
         <div class="user-box d-flex align-items-center gap-2 px-3 py-2 rounded-pill"
              style="background: rgba(255,255,255,0.18);">
             <div class="user-avatar d-flex align-items-center justify-content-center"

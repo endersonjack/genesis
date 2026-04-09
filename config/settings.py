@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'estoque',
     'auditoria',
     'controles_rh',
-    
+    'apontamento',
 ]
 
 MIDDLEWARE = [

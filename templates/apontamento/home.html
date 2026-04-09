@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Apontamento | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="fw-bold mb-1">Apontamento</h2>
+    <p class="text-muted mb-0">Registros de campo para análise do RH.</p>
+</div>
+
+<div class="apont-hero p-3 p-md-4 mb-4">
+    <div class="ps-2">
+        <p class="text-uppercase small fw-bold text-secondary mb-1" style="letter-spacing:.06em;">Diário</p>
+        <h3 class="fw-bold mb-3 mb-md-4">O que deseja registrar?</h3>
+
+        <div class="apont-actions-grid">
+            <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+               class="apont-big-btn"
+               hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                <i class="bi bi-person-x"></i>
+                <span>Adicionar Falta</span>
+            </a>
+            <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+               class="apont-big-btn"
+               hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                <i class="bi bi-chat-left-text"></i>
+                <span>Adicionar Observação</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="mb-2">
+    <p class="text-uppercase small fw-bold text-secondary mb-2" style="letter-spacing:.06em;">Locais</p>
+    <div class="apont-links-row">
+        <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn"
+           hx-get="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-geo-alt"></i> Local
+        </a>
+        {% if request.usuario_so_apontador %}
+        <a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn"
+           hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-pin-map"></i> Locais de Trabalho
+        </a>
+        {% else %}
+        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn"
+           hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-pin-map"></i> Locais de Trabalho
+        </a>
+        {% endif %}
+        <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+           class="apont-link-btn"
+           hx-get="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            <i class="bi bi-map"></i> Mapa de Trabalho
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}

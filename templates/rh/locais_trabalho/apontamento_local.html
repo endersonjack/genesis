@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ local_obj.nome }} — Locais | Genesis ERP{% endblock %}
+
+{% block content %}
+<a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+   class="lt-ap-back text-decoration-none text-secondary"
+   hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
+   hx-target="body"
+   hx-swap="innerHTML"
+   hx-push-url="true">
+    <i class="bi bi-arrow-left"></i> Voltar
+</a>
+
+<h1 class="lt-ap-local-title">{{ local_obj.nome }}</h1>
+
+<div class="lt-ap-card">
+    <h2 class="d-flex align-items-center gap-2">
+        <i class="bi bi-people text-primary"></i> Pessoas neste local
+    </h2>
+    {% if pessoas %}
+        {% for f in pessoas %}
+        <div class="lt-ap-person-row">
+            <div class="min-w-0">
+                <div class="fw-semibold text-truncate">{{ f.nome }}</div>
+                {% if f.cargo %}<div class="small text-muted text-truncate">{{ f.cargo.nome }}</div>{% endif %}
+            </div>
+            <form method="post"
+                  action="{% url 'rh:definir_local_trabalho_funcionario' empresa_id=request.empresa_ativa.pk %}"
+                  hx-post="{% url 'rh:definir_local_trabalho_funcionario' empresa_id=request.empresa_ativa.pk %}"
+                  hx-target="body"
+                  hx-swap="none"
+                  class="flex-shrink-0 m-0">
+                {% csrf_token %}
+                <input type="hidden" name="funcionario_id" value="{{ f.pk }}">
+                <input type="hidden" name="local_id" value="">
+                <button type="submit" class="lt-ap-remove-x" title="Remover deste local" aria-label="Remover {{ f.nome }} deste local">
+                    <i class="bi bi-x-lg" style="font-size: 1.25rem;" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted small mb-0">Ninguém alocado neste local ainda.</p>
+    {% endif %}
+</div>
+
+<div class="lt-ap-card" id="lt-ap-adicionar">
+    <h2 class="d-flex align-items-center gap-2">
+        <i class="bi bi-person-plus text-primary"></i> Adicionar ao local
+    </h2>
+    <div class="mb-2" data-no-global-loading>
+        <label class="form-label fw-semibold small mb-1" for="lt-ap-func-q">Buscar funcionário</label>
+        <input id="lt-ap-func-q" type="search" name="q" class="form-control rounded-3" autocomplete="off" form=""
+               placeholder="Nome, CPF ou matrícula…"
+               hx-get="{% url 'rh:buscar_funcionarios_locais_trabalho_apont' empresa_id=request.empresa_ativa.pk %}"
+               hx-trigger="keyup changed delay:280ms"
+               hx-target="#lt-ap-func-sug"
+               hx-swap="innerHTML" />
+        <div class="mt-2 mb-1 small text-muted">Selecionado:</div>
+        <div id="lt-ap-func-display" class="lt-ap-pill is-empty">Ninguém selecionado</div>
+        <div id="lt-ap-func-sug" class="mt-2"></div>
+    </div>
+    <form id="lt-ap-add-form"
+          method="post"
+          action="{% url 'rh:definir_local_trabalho_funcionario' empresa_id=request.empresa_ativa.pk %}"
+          hx-post="{% url 'rh:definir_local_trabalho_funcionario' empresa_id=request.empresa_ativa.pk %}"
+          hx-target="body"
+          hx-swap="none">
+        {% csrf_token %}
+        <input type="hidden" name="funcionario_id" id="lt-ap-func-id" value="">
+        <input type="hidden" name="local_id" value="{{ local_pk }}">
+        <button type="submit" class="btn btn-primary rounded-3 fw-bold w-100" id="lt-ap-btn-add" disabled>
+            Adicionar ao local
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function el(id) { return document.getElementById(id); }
+
+    window.ltApSelectFunc = function (id, nome) {
+        el('lt-ap-func-id').value = String(id);
+        var d = el('lt-ap-func-display');
+        d.textContent = nome;
+        d.classList.remove('is-empty');
+        el('lt-ap-func-sug').innerHTML = '';
+        el('lt-ap-func-q').value = '';
+        el('lt-ap-btn-add').disabled = false;
+    };
+})();
+</script>
+{% endblock %}

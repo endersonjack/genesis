@@ -16,9 +16,19 @@
     <link rel="stylesheet" href="{% static 'css/funcionarios/secao.css' %}">
     <link rel="stylesheet" href="{% static 'css/funcionarios/modal_edicao.css' %}">
     <link rel="stylesheet" href="{% static 'css/funcionarios/detalhes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/apontamento/bottom_nav.css' %}">
+    {# Estilos mobile apontamento/locais no <head>: navegação HTMX (hx-target=body) não reaplica extra_css das páginas filhas. #}
+    <link rel="stylesheet" href="{% static 'css/apontamento/apontamento_home.css' %}">
+    <link rel="stylesheet" href="{% static 'css/apontamento/locais_trabalho_mobile.css' %}">
+    <link rel="stylesheet" href="{% static 'css/apontamento/mapa_trabalho_full.css' %}">
+    {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+    <style>:root { --apont-accent: {{ request.empresa_ativa.cor_tema }}; }</style>
+    {% else %}
+    <style>:root { --apont-accent: #2563eb; }</style>
+    {% endif %}
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
 <div class="app-wrapper">
     {% if request.user.is_authenticated %}
@@ -43,6 +53,8 @@
         </main>
     </div>
 </div>
+
+{% block fab_mobile_nav %}{% endblock %}
 
 <div class="mobile-bottom-space d-lg-none"></div>
 

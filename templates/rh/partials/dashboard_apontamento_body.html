@@ -1,0 +1,95 @@
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if 'error' in message.tags %}danger{% elif 'warning' in message.tags %}warning{% else %}success{% endif %} small py-1 px-2 mb-2">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-12 col-lg-6">
+        <p class="text-uppercase small fw-bold text-secondary mb-2" style="letter-spacing:.06em;">Faltas informadas</p>
+        {% if apont_faltas %}
+            <div class="destaques-lista">
+                {% for item in apont_faltas %}
+                    <div class="destaque-item border-start border-4" style="border-color: #f59e0b !important;">
+                        <div class="destaque-item-meta d-flex flex-wrap align-items-center gap-2">
+                            <span>{{ item.data|date:"d/m/Y" }}</span>
+                            <span>·</span>
+                            <span>Por {{ item.registrado_por.nome_completo|default:item.registrado_por.username }}</span>
+                            <span>·</span>
+                            {% if item.status == 'pendente' %}
+                                <span class="badge text-bg-warning">Pendente</span>
+                            {% elif item.status == 'finalizado' %}
+                                <span class="badge text-bg-success">Finalizado</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Arquivado</span>
+                            {% endif %}
+                        </div>
+                        <div class="destaque-item-titulo">{{ item.funcionario.nome }}</div>
+                        <div class="destaque-item-sub">{{ item.motivo }}{% if item.observacao %} — {{ item.observacao }}{% endif %}</div>
+                        {% if pode_alterar_status_apontamento %}
+                            <form class="mt-2"
+                                  hx-post="{% url 'apontamento:falta_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                                  hx-target="#dashboard-slot-apontamento"
+                                  hx-swap="innerHTML"
+                                  data-no-global-loading>
+                                {% csrf_token %}
+                                <label class="form-label small text-muted mb-0">Status</label>
+                                <select name="status" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
+                                    {% for value, label in status_apontamento_choices %}
+                                        <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="destaque-vazio mb-0">Nenhuma falta de apontamento recente.</p>
+        {% endif %}
+    </div>
+    <div class="col-12 col-lg-6">
+        <p class="text-uppercase small fw-bold text-secondary mb-2" style="letter-spacing:.06em;">Observações de local</p>
+        {% if apont_observacoes %}
+            <div class="destaques-lista">
+                {% for item in apont_observacoes %}
+                    <div class="destaque-item border-start border-4" style="border-color: #2563eb !important;">
+                        <div class="destaque-item-meta d-flex flex-wrap align-items-center gap-2">
+                            <span>{{ item.data|date:"d/m/Y" }}</span>
+                            <span>·</span>
+                            <span>{{ item.local.nome }}</span>
+                            <span>·</span>
+                            <span>Por {{ item.registrado_por.nome_completo|default:item.registrado_por.username }}</span>
+                            <span>·</span>
+                            {% if item.status == 'pendente' %}
+                                <span class="badge text-bg-warning">Pendente</span>
+                            {% elif item.status == 'finalizado' %}
+                                <span class="badge text-bg-success">Finalizado</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Arquivado</span>
+                            {% endif %}
+                        </div>
+                        <div class="destaque-item-sub">{{ item.texto|truncatechars:220 }}</div>
+                        {% if pode_alterar_status_apontamento %}
+                            <form class="mt-2"
+                                  hx-post="{% url 'apontamento:observacao_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                                  hx-target="#dashboard-slot-apontamento"
+                                  hx-swap="innerHTML"
+                                  data-no-global-loading>
+                                {% csrf_token %}
+                                <label class="form-label small text-muted mb-0">Status</label>
+                                <select name="status" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
+                                    {% for value, label in status_apontamento_choices %}
+                                        <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="destaque-vazio mb-0">Nenhuma observação de local recente.</p>
+        {% endif %}
+    </div>
+</div>

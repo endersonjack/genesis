@@ -10,6 +10,7 @@ import json
 import math
 
 from auditoria.registry import audit_rh
+from core.urlutils import redirect_empresa
 
 from local.models import Local, LocalTrabalhoAtivo
 
@@ -131,7 +132,7 @@ def locais_trabalho_mapa(request):
         request,
         'rh/locais_trabalho_mapa.html',
         {
-            'page_title': 'Mapa — Locais de Trabalho',
+            'page_title': 'Mapa de Trabalho',
             'markers': markers,
             'funcionarios_alocados_count': len(funcionarios),
             'locais_ativos_count': len(locais_ativos),
@@ -187,6 +188,8 @@ def definir_local_trabalho_funcionario(request):
         novo_local = Local.objects.filter(pk=local_id_int, empresa=empresa_ativa).first()
         if not novo_local:
             return HttpResponse('Local não encontrado.', status=404, content_type='text/plain; charset=utf-8')
+        if not LocalTrabalhoAtivo.objects.filter(empresa=empresa_ativa, local_id=local_id_int).exists():
+            return HttpResponse('Local não está ativo.', status=400, content_type='text/plain; charset=utf-8')
 
     local_anterior_id = func.local_trabalho_id
     func.local_trabalho = novo_local
@@ -416,6 +419,102 @@ def desativar_local_trabalho(request):
             _context_locais_trabalho(empresa_ativa),
         )
     return HttpResponse(status=204)
+
+
+@login_required
+def locais_trabalho_apontamento(request):
+    """
+    Menu flutuante «Locais»: lista clicável dos locais de trabalho ativos.
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para visualizar os locais de trabalho.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    context = {
+        'page_title': 'Locais de trabalho',
+        **_context_locais_trabalho(empresa_ativa),
+    }
+    return render(request, 'rh/locais_trabalho/apontamento.html', context)
+
+
+@login_required
+def locais_trabalho_apontamento_local(request, local_pk: int):
+    """
+    Detalhe de um local ativo: lista de pessoas; adicionar ou remover alocação.
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para visualizar os locais de trabalho.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    ativo = (
+        LocalTrabalhoAtivo.objects.filter(empresa=empresa_ativa, local_id=local_pk)
+        .select_related('local')
+        .first()
+    )
+    if not ativo:
+        messages.error(request, 'Local não encontrado ou não está ativo como local de trabalho.')
+        return redirect_empresa(request, 'rh:locais_trabalho_apontamento')
+
+    loc = ativo.local
+    pessoas = list(
+        Funcionario.objects.filter(empresa=empresa_ativa, local_trabalho_id=local_pk)
+        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        .select_related('cargo')
+        .order_by('nome', 'id')
+    )
+
+    return render(
+        request,
+        'rh/locais_trabalho/apontamento_local.html',
+        {
+            'page_title': loc.nome,
+            'local_obj': loc,
+            'local_pk': local_pk,
+            'pessoas': pessoas,
+        },
+    )
+
+
+@login_required
+def buscar_funcionarios_locais_trabalho_apont(request):
+    """HTMX: sugestões de funcionário para adicionar em um local (tela apontamento/local/)."""
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa antes de continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    q = (request.GET.get('q') or '').strip()
+    muito_curto = len(q) < 2
+    resultados = []
+
+    if not muito_curto:
+        qs = (
+            Funcionario.objects.filter(empresa=empresa_ativa)
+            .exclude(situacao_atual__in=['demitido', 'inativo'])
+            .filter(
+                Q(nome__icontains=q)
+                | Q(cpf__icontains=q)
+                | Q(matricula__icontains=q)
+                | Q(pis__icontains=q)
+            )
+            .select_related('cargo', 'lotacao')
+            .order_by('nome')
+        )
+        resultados = list(qs[:25])
+
+    return render(
+        request,
+        'rh/locais_trabalho/_apont_funcionarios_sugestoes.html',
+        {'resultados': resultados, 'q': q, 'muito_curto': muito_curto},
+    )
 
 
 @login_required

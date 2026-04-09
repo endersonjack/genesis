@@ -1,0 +1,95 @@
+/* Home do apontamento — usa --apont-accent definido em base.html */
+
+.apont-hero {
+    border: 1px solid #d9e2ec;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+    position: relative;
+}
+
+.apont-hero::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--apont-accent, #2563eb);
+}
+
+.apont-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .apont-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.apont-big-btn {
+    min-height: 120px;
+    border-radius: 1rem;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apont-big-btn:hover {
+    color: #0f172a;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.apont-big-btn i {
+    font-size: 2rem;
+    color: var(--apont-accent, #2563eb);
+}
+
+.apont-links-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+@media (max-width: 575.98px) {
+    .apont-links-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.apont-link-btn {
+    border-radius: 0.9rem;
+    font-weight: 700;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.88rem;
+    text-align: center;
+    border: 1px solid #dbe4ee;
+    background: #fff;
+    color: #0f172a;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.apont-link-btn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}

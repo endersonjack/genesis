@@ -1,11 +1,16 @@
 import calendar
 from datetime import date, timedelta
 
-from django.db.models import Q
-from django.shortcuts import render
+from django.db.models import Case, IntegerField, Q, When
+from django.shortcuts import redirect, render
 
 from core.urlutils import reverse_empresa
 
+from apontamento.models import (
+    ApontamentoFalta,
+    ApontamentoObservacaoLocal,
+    StatusApontamento,
+)
 from controles_rh.models import Competencia
 
 from ..perfil_secao import perfil_funcionario_url_por_tipo
@@ -672,6 +677,69 @@ def dashboard_partial_gestao_rh(request):
         "rh/partials/dashboard_gestao_rh_hero.html",
         {"ultima_competencia": ultima_competencia},
     )
+
+
+def _usuario_pode_alterar_status_apontamento(request):
+    return bool(
+        request.user.is_superuser
+        or getattr(request, "usuario_admin_empresa", False)
+    )
+
+
+def _ordem_status_apontamento():
+    return Case(
+        When(status=StatusApontamento.PENDENTE, then=0),
+        When(status=StatusApontamento.FINALIZADO, then=1),
+        When(status=StatusApontamento.ARQUIVADO, then=2),
+        default=0,
+        output_field=IntegerField(),
+    )
+
+
+def _contexto_card_apontamento(empresa_ativa):
+    ord_case = _ordem_status_apontamento()
+    apont_faltas = (
+        ApontamentoFalta.objects.filter(empresa=empresa_ativa)
+        .select_related("funcionario", "registrado_por")
+        .annotate(_st_ord=ord_case)
+        .order_by("_st_ord", "-criado_em")[:15]
+    )
+    apont_observacoes = (
+        ApontamentoObservacaoLocal.objects.filter(empresa=empresa_ativa)
+        .select_related("local", "registrado_por")
+        .annotate(_st_ord=ord_case)
+        .order_by("_st_ord", "-criado_em")[:15]
+    )
+    return {
+        "apont_faltas": apont_faltas,
+        "apont_observacoes": apont_observacoes,
+    }
+
+
+def render_dashboard_apontamento_partial(request):
+    """
+    HTML do card «Apontamento» (dashboard RH): uso em HTMX e após alterar status.
+    """
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        "Selecione uma empresa para visualizar o RH.",
+    )
+    if redirect_response:
+        return redirect_response
+
+    ctx = _contexto_card_apontamento(empresa_ativa)
+    ctx["pode_alterar_status_apontamento"] = _usuario_pode_alterar_status_apontamento(
+        request
+    )
+    ctx["status_apontamento_choices"] = StatusApontamento.choices
+    return render(request, "rh/partials/dashboard_apontamento_body.html", ctx)
+
+
+def dashboard_partial_apontamento(request):
+    """
+    Card «Apontamento»: faltas e observações registradas em campo (não oficiais).
+    """
+    return render_dashboard_apontamento_partial(request)
 
 
 def dashboard_rh(request):

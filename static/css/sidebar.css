@@ -429,6 +429,11 @@ button.menu-link {
         z-index: 1050;
     }
 
+    /* Com menu inferior do apontamento (z-index 1038), o drawer precisa ficar acima para o último item (ex.: Sair) não ser coberto. */
+    body.apont-bottom-nav-on .sidebar {
+        z-index: 1060;
+    }
+
     .sidebar.mobile-open {
         transform: translateX(0);
     }
@@ -549,4 +554,54 @@ button.menu-link {
         min-height: 50px;
         font-size: 0.97rem;
     }
+}
+
+/* =========================
+   USUÁRIO NO SIDEBAR (mobile — nome sai do topbar)
+========================= */
+
+.sidebar-user-mobile {
+    margin-top: 0.35rem;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: var(--sidebar-radius-sm);
+    background: var(--sidebar-company-bg);
+    border: 1px solid var(--sidebar-company-border);
+}
+
+.sidebar-user-mobile-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.sidebar-user-mobile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--sidebar-icon-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    color: var(--sidebar-text);
+}
+
+.sidebar-user-mobile-name {
+    display: block;
+    font-size: 0.98rem;
+    line-height: 1.25;
+    color: var(--sidebar-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-user-mobile-label {
+    display: block;
+    color: var(--sidebar-muted);
+    font-size: 0.78rem;
+    margin-top: 0.1rem;
 }

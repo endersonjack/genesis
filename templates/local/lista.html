@@ -105,11 +105,24 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <h2 class="page-header-title">Locais</h2>
-            <p class="page-header-desc">
+            <p class="page-header-desc mb-0">
                 Locais da empresa ativa.
+                {% if request.usuario_so_apontador %}
+                    <span class="d-block mt-1 small text-secondary">Somente visualização.</span>
+                {% endif %}
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            {% if request.usuario_so_apontador %}
+            <a href="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-outline-secondary rounded-3 fw-semibold"
+               hx-get="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            {% else %}
             <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
@@ -118,6 +131,7 @@
                 class="btn btn-primary rounded-3 fw-semibold">
                 <i class="bi bi-plus-circle me-1"></i> Novo local
             </a>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -252,14 +266,24 @@
             <div class="empty-state m-3">
                 <div class="mb-2"><i class="bi bi-geo-alt fs-1"></i></div>
                 <div class="fw-bold mb-1">Nenhum local cadastrado</div>
-                <div class="mb-3">Cadastre o primeiro local da empresa ativa.</div>
-                <a
-                    href="{% url 'local:criar_page' empresa_id=request.empresa_ativa.pk %}"
-                    class="btn btn-primary rounded-3 fw-semibold">
-                    <i class="bi bi-plus-circle me-1"></i> Novo local
-                </a>
+                {% if request.usuario_so_apontador %}
+                    <div class="mb-0 text-muted small">Aguarde o cadastro de locais pela administração.</div>
+                {% else %}
+                    <div class="mb-3">Cadastre o primeiro local da empresa ativa.</div>
+                    <a
+                        href="{% url 'local:criar_page' empresa_id=request.empresa_ativa.pk %}"
+                        class="btn btn-primary rounded-3 fw-semibold">
+                        <i class="bi bi-plus-circle me-1"></i> Novo local
+                    </a>
+                {% endif %}
             </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% include 'apontamento/includes/bottom_nav.html' %}
 {% endblock %}

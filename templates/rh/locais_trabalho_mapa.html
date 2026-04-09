@@ -1,43 +1,28 @@
 {% extends 'base.html' %}
 
-{% block title %}Mapa — Locais de Trabalho | Genesis ERP{% endblock %}
+{% block title %}Mapa de Trabalho | Genesis ERP{% endblock %}
 
 {% block content %}
 <style>
-    .lt-card {
+    .lt-mapa-shell {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
         background: #fff;
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
         overflow: hidden;
     }
-    .lt-header {
+    .lt-mapa-titlebar {
         padding: 1rem 1.25rem;
         border-bottom: 1px solid #e5edf5;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
         background: #fff;
     }
-    .lt-title {
+    .lt-mapa-titlebar .lt-title {
         font-size: 1.25rem;
         font-weight: 800;
         color: #0f172a;
         margin: 0;
     }
-    .lt-actions {
-        display: flex;
-        gap: .75rem;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .lt-actions .btn {
-        border-radius: .85rem;
-        font-weight: 700;
-    }
-    .lt-body {
+    .lt-mapa-body {
         padding: 1.25rem;
         background: #f8fafc;
     }
@@ -280,47 +265,36 @@
     }
 </style>
 
-<div class="lt-card mb-4">
-    <div class="lt-header">
-        <div>
-            <h1 class="lt-title mb-1">Mapa — Locais de Trabalho</h1>
-            <div class="text-muted">Visão geral de onde os funcionários estão alocados hoje.</div>
-        </div>
-        <div class="lt-actions">
-            <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-               class="btn btn-outline-secondary rounded-3 fw-semibold"
-               hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <i class="bi bi-arrow-left me-1"></i> Voltar
-            </a>
-        </div>
+<div class="lt-mapa-shell mb-4">
+    {% if not request.usuario_so_apontador %}
+    <div class="lt-mapa-titlebar">
+        <h1 class="lt-title mb-0">Mapa de Trabalho</h1>
     </div>
-    <div class="lt-body">
-        <div id="lt-map-all" class="lt-map-wrap">
-            <div id="lt-map-loading" class="lt-map-loading is-on" aria-busy="true">
-                <div class="spinner-border text-primary" role="status" style="width: 2.25rem; height: 2.25rem;">
-                    <span class="visually-hidden">Carregando...</span>
+    {% endif %}
+    <div class="lt-mapa-body">
+        <div class="lt-mapa-map-area">
+            <div id="lt-map-all" class="lt-map-wrap">
+                <div id="lt-map-loading" class="lt-map-loading is-on" aria-busy="true">
+                    <div class="spinner-border text-primary" role="status" style="width: 2.25rem; height: 2.25rem;">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <div class="small fw-semibold">Carregando mapa…</div>
+                    <div class="small text-muted">Carregando pins e tiles.</div>
                 </div>
-                <div class="small fw-semibold">Carregando mapa…</div>
-                <div class="small text-muted">Carregando pins e tiles.</div>
             </div>
-        </div>
-        <div class="lt-map-note">
-            {% if locais_ativos_count %}
-                Mostrando <strong>{{ funcionarios_alocados_count }}</strong> funcionários nos <strong>{{ locais_ativos_count }}</strong> locais ativos.
-                {% if locais_sem_coords %}
-                    <span class="ms-1">({{ locais_sem_coords }} sem coordenadas, não exibidos no mapa.)</span>
-                {% endif %}
-            {% else %}
-                Nenhum local ativo ainda.
-            {% endif %}
         </div>
 
         {{ markers|json_script:"ltMarkersAll" }}
     </div>
 </div>
+{% endblock %}
+
+{% block body_class %}{% if request.usuario_so_apontador %}apont-bottom-nav-on lt-mapa-trabalho-full{% endif %}{% endblock %}
+
+{% block fab_mobile_nav %}
+{% if request.usuario_so_apontador %}
+{% include 'apontamento/includes/bottom_nav.html' %}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -526,6 +500,10 @@
         }
 
         setTimeout(function () { map.invalidateSize(); }, 80);
+        if (document.body.classList.contains('lt-mapa-trabalho-full')) {
+            setTimeout(function () { map.invalidateSize(); }, 400);
+            setTimeout(function () { map.invalidateSize(); }, 900);
+        }
         // fallback: se tiles demorarem, não trava loading
         setTimeout(function () { if (!tilesLoaded) setLoading(false); }, 3500);
     }
