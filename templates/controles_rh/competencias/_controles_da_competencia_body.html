@@ -71,7 +71,9 @@
                     <div class="min-w-0">
                         <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
                         <div class="mt-1">
-                            {% if lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
+                            {% if lista_cb.cb_total_ativos == 0 %}
+                                <span class="badge rounded-pill bg-secondary">Vazio</span>
+                            {% elif lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
                                 <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
                             {% else %}
                                 <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>

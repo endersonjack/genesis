@@ -385,7 +385,9 @@
             <div class="summary-box">
                 <div class="summary-label">Entrega (cesta)</div>
                 <div class="summary-value">
-                    {% if lista.cb_status_efetivo == 'entregue_totalmente' %}
+                    {% if total_ativos == 0 %}
+                        <span class="badge rounded-pill bg-secondary">Vazio</span>
+                    {% elif lista.cb_status_efetivo == 'entregue_totalmente' %}
                         <span class="badge rounded-pill bg-success">{{ lista.cb_status_efetivo_label }}</span>
                     {% else %}
                         <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista.cb_status_efetivo_label }}</span>
@@ -415,6 +417,14 @@
                 hx-swap="innerHTML"
                 hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el) { if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); } }">
                 + Funcionário
+            </button>
+            <button
+                type="button"
+                class="btn btn-outline-primary btn-sm"
+                hx-post="{% url 'controles_rh:adicionar_todos_funcionarios_cesta_basica' empresa_id=request.empresa_ativa.pk lista_pk=lista.pk %}"
+                hx-confirm="Adicionar todos os funcionários admitidos nesta empresa à lista? Quem já estiver na lista não será duplicado."
+                hx-swap="none">
+                Adicionar todos os funcionários
             </button>
             <button
                 type="button"

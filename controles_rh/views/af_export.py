@@ -185,8 +185,8 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         'af_legend',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=5,
-        leading=6.5,
+        fontSize=6,
+        leading=7.5,
         spaceBefore=0,
         spaceAfter=0,
         textColor=colors.HexColor('#475569'),
@@ -209,25 +209,8 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         'OUT.\nDESC.',
     ]
 
-    legend_texts = [
-        'Ordem na lista',
-        'Nome do funcionário (cadastro)',
-        'Cargo / função',
-        'Recebe vale transporte (Sim/Não)',
-        'Salário família (quantidade ou —)',
-        'Total de horas extras no mês',
-        'Total de horas em feriado',
-        'Valores adicionais em reais',
-        'Prêmio em reais',
-        'Outro adicional em reais',
-        'Descontos em reais (manual)',
-        'Faltas não justificadas (dias no mês)',
-        'Faltas justificadas (dias no mês)',
-        'Outro desconto em reais',
-    ]
-    legend_row = [Paragraph(xml_escape(t), legend_style) for t in legend_texts]
-
-    data_rows = [headers, legend_row]
+    # Tabela principal: somente cabeçalho + dados (legendas ficam após a tabela).
+    data_rows = [headers]
     for row in linhas:
         vt_txt = 'Sim' if row['passagem_sim'] else 'Não'
         nome_cell = Paragraph(xml_escape((row['funcionario'].nome or '').upper()), nome_style)
@@ -252,8 +235,8 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         )
 
     totals_row = [
-        'TOTAIS',
         '',
+        'TOTAIS',
         '',
         '',
         '',
@@ -298,25 +281,16 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
 
     cw = [w * mm for w in _af_col_widths_mm()]
     last_idx = len(data_rows) - 1
-    i_first_data = 2
+    i_first_data = 1
     i_last_data = last_idx - 1
-    n_data = max(0, last_idx - 2)
+    n_data = max(0, last_idx - 1)
 
-    table = Table(data_rows, colWidths=cw, repeatRows=2)
+    table = Table(data_rows, colWidths=cw, repeatRows=1)
     pdf_style = [
         # Linha 0 — títulos abreviados (blocos)
         ('BACKGROUND', (0, 0), (AF_COL_LAST_CADASTRO, 0), AF_COLOR_HEADER_CAD),
         ('BACKGROUND', (5, 0), (AF_COL_LAST_ADICIONAIS, 0), AF_COLOR_HEADER_AD),
         ('BACKGROUND', (10, 0), (AF_COL_LAST_DESC, 0), AF_COLOR_HEADER_DESC),
-        # Linha 1 — legenda dos títulos
-        ('BACKGROUND', (0, 1), (AF_COL_LAST_CADASTRO, 1), AF_COLOR_LEGEND_ROW_CAD),
-        ('BACKGROUND', (5, 1), (AF_COL_LAST_ADICIONAIS, 1), AF_COLOR_LEGEND_ROW_AD),
-        ('BACKGROUND', (10, 1), (AF_COL_LAST_DESC, 1), AF_COLOR_LEGEND_ROW_DESC),
-        ('FONTSIZE', (0, 1), (-1, 1), 5),
-        ('TEXTCOLOR', (0, 1), (-1, 1), colors.HexColor('#475569')),
-        ('VALIGN', (0, 1), (-1, 1), 'MIDDLE'),
-        ('TOPPADDING', (0, 1), (-1, 1), 3),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 3),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 7),
@@ -336,6 +310,7 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         ('FONTNAME', (0, last_idx), (-1, last_idx), 'Helvetica-Bold'),
         ('FONTSIZE', (0, last_idx), (-1, last_idx), 7),
         ('ALIGN', (0, last_idx), (0, last_idx), 'CENTER'),
+        ('ALIGN', (1, last_idx), (1, last_idx), 'LEFT'),
         ('ALIGN', (5, last_idx), (10, last_idx), 'RIGHT'),
         ('ALIGN', (11, last_idx), (12, last_idx), 'CENTER'),
         ('ALIGN', (13, last_idx), (13, last_idx), 'RIGHT'),
@@ -373,13 +348,63 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
     if last_idx >= 3:
         pdf_style.extend(
             [
-                ('FONTSIZE', (0, 2), (-1, last_idx - 1), 7),
-                ('VALIGN', (0, 2), (-1, last_idx - 1), 'TOP'),
+                ('FONTSIZE', (0, 1), (-1, last_idx - 1), 7),
+                ('VALIGN', (0, 1), (-1, last_idx - 1), 'TOP'),
             ]
         )
 
     table.setStyle(TableStyle(pdf_style))
     story.append(table)
+
+    # Legendas (após a tabela): somente siglas abreviadas do cabeçalho.
+    legend_items = [
+        ('VT', 'Vale transporte'),
+        ('SAL. FAM.', 'Salário família'),
+        ('H.EX. (h)', 'Horas extras (horas)'),
+        ('H.FER. (h)', 'Horas em feriado (horas)'),
+        ('ADIC. (R$)', 'Adicionais (R$)'),
+        ('PRÊM. (R$)', 'Prêmio (R$)'),
+        ('OUT. ADIC.', 'Outro adicional'),
+        ('DESC. (R$)', 'Descontos (R$)'),
+        ('FALT. N.J.', 'Faltas não justificadas (dias)'),
+        ('FALT. J.', 'Faltas justificadas (dias)'),
+        ('OUT. DESC.', 'Outro desconto'),
+    ]
+    legend_cells = []
+    for sigla, desc in legend_items:
+        legend_cells.append(
+            Paragraph(
+                f'<font name="Helvetica-Bold">{xml_escape(sigla)}</font> — {xml_escape(desc)}',
+                legend_style,
+            )
+        )
+
+    # Grid para caber em paisagem A4: 3 colunas (ajusta bem no espaço).
+    legend_cols = 3
+    legend_rows = []
+    for i in range(0, len(legend_cells), legend_cols):
+        row = legend_cells[i : i + legend_cols]
+        if len(row) < legend_cols:
+            row.extend([''] * (legend_cols - len(row)))
+        legend_rows.append(row)
+
+    story.append(Spacer(1, 3 * mm))
+    legend_table = Table(
+        legend_rows,
+        colWidths=[(AF_PDF_TABLE_WIDTH_MM / legend_cols) * mm] * legend_cols,
+    )
+    legend_table.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 1),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    story.append(legend_table)
 
     story.extend(flowables_rodape_impressao(request, styles, space_before_mm=3))
 

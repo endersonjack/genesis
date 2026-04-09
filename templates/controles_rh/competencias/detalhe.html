@@ -477,17 +477,28 @@
                                     </span>
                                     <p class="add-mini-title mb-0">Faltas</p>
                                 </div>
-                                <a
-                                   href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-                                   class="btn btn-primary btn-sm btn-add-inline"
-                                   title="Abrir"
-                                   aria-label="Abrir Faltas"
-                                   hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-                                   hx-target="body"
-                                   hx-swap="innerHTML"
-                                   hx-push-url="true">
-                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                </a>
+                                {% if faltas_registros_count %}
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary btn-sm btn-add-inline"
+                                        disabled
+                                        title="Já há faltas registradas nesta competência."
+                                        aria-label="Faltas já cadastradas">
+                                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                    </button>
+                                {% else %}
+                                    <a
+                                       href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                       class="btn btn-primary btn-sm btn-add-inline"
+                                       title="Abrir"
+                                       aria-label="Abrir Faltas"
+                                       hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                       hx-target="body"
+                                       hx-swap="innerHTML"
+                                       hx-push-url="true">
+                                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
 

@@ -17,6 +17,7 @@ from auditoria.registry import audit_controles_rh
 from controles_rh.forms import CestaBasicaItemForm, CestaBasicaListaForm
 from controles_rh.models import CestaBasicaItem, CestaBasicaLista
 from controles_rh.views.competencias import _get_competencia_empresa
+from rh.models import Funcionario
 
 
 def _is_htmx(request):
@@ -180,6 +181,74 @@ def receber_todos_cesta_basica(request, lista_pk):
         )
     else:
         messages.info(request, 'Não há linhas nesta lista.')
+    response = HttpResponse(status=204)
+    if _is_htmx(request):
+        response['HX-Refresh'] = 'true'
+    return response
+
+
+@login_required
+@require_POST
+def adicionar_todos_funcionarios_cesta_basica(request, lista_pk):
+    """
+    Adiciona todos os funcionários admitidos da empresa à lista.
+    Não duplica quem já estiver presente via FK `funcionario`.
+    """
+    lista = _get_lista_cesta_empresa(request, lista_pk)
+    empresa = lista.competencia.empresa
+
+    # Funcionários elegíveis (mesmo filtro do form)
+    funcs = (
+        Funcionario.objects.filter(empresa=empresa, situacao_atual='admitido')
+        .select_related('cargo', 'lotacao')
+        .order_by('nome', 'id')
+    )
+
+    existentes_ids = set(
+        lista.itens.exclude(funcionario_id__isnull=True).values_list('funcionario_id', flat=True)
+    )
+
+    ultima_ordem = lista.itens.order_by('-ordem').values_list('ordem', flat=True).first() or 0
+    novos = []
+    ordem = ultima_ordem
+    for f in funcs:
+        if f.pk in existentes_ids:
+            continue
+        ordem += 1
+        cargo = getattr(f, 'cargo', None)
+        lot = getattr(f, 'lotacao', None)
+        novos.append(
+            CestaBasicaItem(
+                lista=lista,
+                funcionario=f,
+                nome=getattr(f, 'nome', '') or '',
+                funcao=str(cargo) if cargo else '',
+                lotacao=(lot.nome if getattr(lot, 'nome', None) else ''),
+                ordem=ordem,
+                ativo=True,
+                recebido=False,
+                data_recebimento=None,
+            )
+        )
+
+    if not novos:
+        messages.info(request, 'Todos os funcionários admitidos já estão na lista.')
+        response = HttpResponse(status=204)
+        if _is_htmx(request):
+            response['HX-Refresh'] = 'true'
+        return response
+
+    with transaction.atomic():
+        # bulk_create não chama save()/clean(): já preenchemos os campos derivados.
+        CestaBasicaItem.objects.bulk_create(novos, batch_size=500)
+
+    audit_controles_rh(
+        request,
+        'create',
+        f'Funcionários adicionados em massa à cesta básica — {lista.titulo} ({len(novos)} linhas).',
+        {'cesta_lista_id': lista.pk, 'qtd_itens': len(novos)},
+    )
+    messages.success(request, f'{len(novos)} funcionário(s) adicionados à lista.')
     response = HttpResponse(status=204)
     if _is_htmx(request):
         response['HX-Refresh'] = 'true'

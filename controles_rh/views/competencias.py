@@ -180,8 +180,15 @@ def _context_controles_da_competencia(competencia: Competencia, empresa):
         competencia=competencia
     ).order_by('ordem', 'nome', 'id')
 
-    listas_cesta_basica = CestaBasicaLista.objects.filter(competencia=competencia).order_by(
-        'data_criacao', 'id'
+    listas_cesta_basica = (
+        CestaBasicaLista.objects.filter(competencia=competencia)
+        .annotate(
+            cb_total_ativos=Count('itens', filter=Q(itens__ativo=True)),
+            cb_total_recebidos=Count(
+                'itens', filter=Q(itens__ativo=True, itens__recebido=True)
+            ),
+        )
+        .order_by('data_criacao', 'id')
     )
 
     inicio_mes, fim_mes = _month_bounds(competencia.ano, competencia.mes)
@@ -235,15 +242,12 @@ def detalhe_competencia(request, ano, mes):
             ctx,
         )
 
-    alteracao_folha_gerada = AlteracaoFolhaControle.objects.filter(
-        competencia_id=competencia.pk
-    ).exists()
-
-    context = {
-        'page_title': f'Competência {competencia.referencia}',
-        'competencia': competencia,
-        'alteracao_folha_gerada': alteracao_folha_gerada,
-    }
+    context = _context_controles_da_competencia(competencia, empresa)
+    context.update(
+        {
+            'page_title': f'Competência {competencia.referencia}',
+        }
+    )
     return render(request, 'controles_rh/competencias/detalhe.html', context)
 
 

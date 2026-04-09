@@ -32,6 +32,7 @@ from controles_rh.views.vale_transporte import (
 )
 from controles_rh.views.cesta_basica import (
     adicionar_item_cesta_basica,
+    adicionar_todos_funcionarios_cesta_basica,
     criar_cesta_basica,
     definir_recebido_item_cesta_basica,
     detalhe_cesta_basica,
@@ -131,6 +132,11 @@ urlpatterns = [
     ),
     path('cesta-basica/<int:pk>/exportar/pdf/', empresa_scoped(exportar_cesta_basica_pdf), name='exportar_cesta_basica_pdf'),
     path('cesta-basica/<int:lista_pk>/itens/novo/', empresa_scoped(adicionar_item_cesta_basica), name='adicionar_item_cesta_basica'),
+    path(
+        'cesta-basica/<int:lista_pk>/itens/adicionar-todos/',
+        empresa_scoped(adicionar_todos_funcionarios_cesta_basica),
+        name='adicionar_todos_funcionarios_cesta_basica',
+    ),
     path(
         'cesta-basica/<int:lista_pk>/limpar-recebido/',
         empresa_scoped(limpar_recebido_cesta_basica),
