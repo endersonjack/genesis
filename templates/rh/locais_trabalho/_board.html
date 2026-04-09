@@ -1,0 +1,98 @@
+<div class="lt-board" id="lt-board-host">
+    <div class="lt-local-card">
+        <div class="lt-local-head">
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                <p class="lt-col-title mb-0">Funcionários sem local</p>
+                <span class="badge rounded-pill bg-secondary">{{ sem_local|length }}</span>
+            </div>
+            <div class="text-muted small">Arraste para um local ativo (à direita) para alocar.</div>
+        </div>
+        <div class="lt-local-body">
+            <div
+                id="lt-drop-sem-local"
+                class="lt-people lt-dropzone lt-people--vertical"
+                data-drop-local-id="">
+                {% for f in sem_local %}
+                    <div class="lt-person" data-funcionario-id="{{ f.pk }}" title="{{ f.nome|upper }}">
+                        <span class="lt-avatar" aria-hidden="true">
+                            {% if f.foto %}
+                                <img src="{{ f.foto.url }}" alt="" />
+                            {% else %}
+                                <i class="bi bi-person-circle"></i>
+                            {% endif %}
+                        </span>
+                        <span class="lt-person-name">{{ f.nome }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if not sem_local %}
+                <div class="lt-empty mt-2">Nenhum funcionário sem local.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex flex-column gap-3">
+        <div class="lt-local-card">
+            <div class="lt-local-head">
+                <p class="lt-col-title mb-0">Locais de trabalho ativos</p>
+                <div class="text-muted small">Clique no local para detalhes. Arraste funcionários para alocar ou devolva para “Sem local”.</div>
+            </div>
+            <div class="lt-local-body">
+                {% if not locais_ativos %}
+                    <div class="lt-empty">
+                        Nenhum local ativo. Use a busca acima para ativar um local.
+                    </div>
+                {% endif %}
+                <div class="lt-locais-grid">
+                    {% for card in locais_cards %}
+                        {% with loc=card.local pessoas=card.pessoas %}
+                        <div class="lt-local-card">
+                            <div class="lt-local-head">
+                                <div class="d-flex justify-content-between align-items-center gap-2 flex-nowrap">
+                                    <button
+                                        type="button"
+                                        class="btn btn-link p-0 fw-bold text-decoration-none"
+                                        style="text-align:left;color:#0f172a;min-width:0;"
+                                        hx-get="{% url 'rh:modal_detalhes_local_trabalho' empresa_id=request.empresa_ativa.pk local_pk=loc.pk %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPadrao">
+                                        <span class="d-inline-block text-truncate" style="max-width: 100%;">
+                                            {{ loc.nome|upper }}
+                                        </span>
+                                    </button>
+                                    <span class="badge rounded-pill bg-primary flex-shrink-0">{{ pessoas|length }}</span>
+                                </div>
+                                <div class="lt-local-sub">
+                                    {% if loc.endereco %}{{ loc.endereco }}{% else %}Endereço não informado.{% endif %}
+                                </div>
+                            </div>
+                            <div class="lt-local-body">
+                                <div class="lt-people lt-dropzone" data-drop-local-id="{{ loc.pk }}">
+                                    {% for f in pessoas %}
+                                        <div class="lt-person" data-funcionario-id="{{ f.pk }}" title="{{ f.nome|upper }}">
+                                            <span class="lt-avatar" aria-hidden="true">
+                                                {% if f.foto %}
+                                                    <img src="{{ f.foto.url }}" alt="" />
+                                                {% else %}
+                                                    <i class="bi bi-person-circle"></i>
+                                                {% endif %}
+                                            </span>
+                                            <span class="lt-person-name">{{ f.nome }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% if not pessoas %}
+                                    <div class="lt-empty mt-2">Nenhum funcionário neste local.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -12,6 +12,48 @@ urlpatterns = [
     # DASHBOARD RH
     # ======================
     path('', empresa_scoped(dashboard_rh), name='dashboard_rh'),
+    path('locais-trabalho/', empresa_scoped(locais_trabalho), name='locais_trabalho'),
+    path(
+        'locais-trabalho/mapa/',
+        empresa_scoped(locais_trabalho_mapa),
+        name='locais_trabalho_mapa',
+    ),
+    path('locais-trabalho/board/', empresa_scoped(locais_trabalho_board), name='locais_trabalho_board'),
+    path(
+        'locais-trabalho/definir-local/',
+        empresa_scoped(definir_local_trabalho_funcionario),
+        name='definir_local_trabalho_funcionario',
+    ),
+    path(
+        'locais-trabalho/definir-local-json/',
+        empresa_scoped(definir_local_trabalho_funcionario_json),
+        name='definir_local_trabalho_funcionario_json',
+    ),
+    path(
+        'locais-trabalho/ativar/',
+        empresa_scoped(ativar_local_trabalho),
+        name='ativar_local_trabalho',
+    ),
+    path(
+        'locais-trabalho/desativar/',
+        empresa_scoped(desativar_local_trabalho),
+        name='desativar_local_trabalho',
+    ),
+    path(
+        'locais-trabalho/buscar-locais/',
+        empresa_scoped(buscar_locais_trabalho),
+        name='buscar_locais_trabalho',
+    ),
+    path(
+        'locais-trabalho/local/<int:local_pk>/modal-ativar/',
+        empresa_scoped(modal_ativar_local_trabalho),
+        name='modal_ativar_local_trabalho',
+    ),
+    path(
+        'locais-trabalho/local/<int:local_pk>/modal-detalhes/',
+        empresa_scoped(modal_detalhes_local_trabalho),
+        name='modal_detalhes_local_trabalho',
+    ),
     path(
         'dashboard/partials/funcionarios/',
         empresa_scoped(dashboard_partial_funcionarios),

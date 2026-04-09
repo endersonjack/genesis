@@ -61,6 +61,44 @@
     .table-locais td {
         vertical-align: middle;
     }
+    .local-row-link {
+        color: inherit;
+        text-decoration: none;
+        display: inline-block;
+        max-width: 100%;
+    }
+    .local-row-link:hover {
+        text-decoration: underline;
+    }
+    tr.local-row {
+        cursor: pointer;
+    }
+    .local-map-icons {
+        display: inline-flex;
+        align-items: center;
+        gap: .6rem;
+    }
+    .local-map-icons .bi {
+        font-size: 1.05rem;
+        line-height: 1;
+    }
+    .local-map-icons .is-off {
+        color: #cbd5e1; /* cinza claro */
+    }
+    .local-map-icons .local-pin-btn {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        display: inline-flex;
+        align-items: center;
+    }
+    .local-map-modal-iframe {
+        width: 100%;
+        height: 340px;
+        border: 0;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
 </style>
 
 <div class="page-header-card">
@@ -75,16 +113,11 @@
             <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
-            <button
-                type="button"
-                class="btn btn-primary rounded-3 fw-semibold"
-                hx-get="{% url 'local:criar' empresa_id=request.empresa_ativa.pk %}"
-                hx-target="#modal-content"
-                hx-swap="innerHTML"
-                data-bs-toggle="modal"
-                data-bs-target="#modalPadrao">
+            <a
+                href="{% url 'local:criar_page' empresa_id=request.empresa_ativa.pk %}"
+                class="btn btn-primary rounded-3 fw-semibold">
                 <i class="bi bi-plus-circle me-1"></i> Novo local
-            </button>
+            </a>
         </div>
     </div>
 </div>
@@ -103,75 +136,130 @@
                             <th class="ps-4">Local</th>
                             <th>Endereço</th>
                             <th>Mapa</th>
-                            <th class="text-end pe-4" style="width: 140px;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for local in locais %}
-                            <tr>
-                                <td class="ps-4 fw-semibold text-dark">{{ local.nome }}</td>
+                            <tr class="local-row" onclick="window.location.href='{% url 'local:detalhe' empresa_id=request.empresa_ativa.pk pk=local.pk %}'">
+                                <td class="ps-4 fw-semibold text-dark">
+                                    <a class="local-row-link" href="{% url 'local:detalhe' empresa_id=request.empresa_ativa.pk pk=local.pk %}">
+                                        {{ local.nome }}
+                                    </a>
+                                </td>
                                 <td class="text-secondary small">{{ local.endereco|default:"—" }}</td>
                                 <td class="small">
-                                    {% if local.link_maps %}
-                                        <a href="{{ local.link_maps }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
-                                        </a>
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end pe-4">
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline-primary"
-                                        title="Editar"
-                                        hx-get="{% url 'local:editar' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
-                                        hx-target="#modal-content"
-                                        hx-swap="innerHTML"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalPadrao">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline-danger"
-                                        title="Excluir"
-                                        hx-get="{% url 'local:excluir' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
-                                        hx-target="#modal-content"
-                                        hx-swap="innerHTML"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalPadrao">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <div class="local-map-icons" onclick="event.stopPropagation()">
+                                        {% if local.latitude and local.longitude %}
+                                            <button
+                                                type="button"
+                                                class="local-pin-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#localMapModal"
+                                                data-local-nome="{{ local.nome|escape }}"
+                                                data-local-embed="{{ local.link_maps_embed|default:''|escape }}"
+                                                title="Ver mapa (embed)">
+                                                <i class="bi bi-pin-map-fill text-success"></i>
+                                            </button>
+                                        {% else %}
+                                            <i class="bi bi-pin-map-fill is-off" title="Sem coordenadas"></i>
+                                        {% endif %}
+
+                                        {% if local.link_maps %}
+                                            <a href="{{ local.link_maps }}"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="text-decoration-none">
+                                                <i class="bi bi-map-fill text-success" title="Abrir no Maps"></i>
+                                            </a>
+                                        {% else %}
+                                            <i class="bi bi-map-fill is-off" title="Sem link do Maps"></i>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            <div class="px-4 py-2 d-flex justify-content-end">
+                <div class="small text-muted d-inline-flex align-items-center gap-3">
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-pin-map-fill text-success"></i>
+                        Preview (embed)
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-map-fill text-success"></i>
+                        Link do Maps
+                    </span>
+                </div>
+            </div>
+
+            <div class="modal fade" id="localMapModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold" id="localMapModalTitle">Mapa</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <iframe
+                                id="localMapModalIframe"
+                                class="local-map-modal-iframe"
+                                src=""
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                allowfullscreen></iframe>
+                            <div id="localMapModalEmpty" class="text-muted small mt-2 d-none">
+                                Este local não possui link embed configurado.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            (function () {
+                const modalEl = document.getElementById('localMapModal');
+                if (!modalEl) return;
+                const titleEl = document.getElementById('localMapModalTitle');
+                const iframeEl = document.getElementById('localMapModalIframe');
+                const emptyEl = document.getElementById('localMapModalEmpty');
+
+                modalEl.addEventListener('show.bs.modal', function (event) {
+                    const btn = event.relatedTarget;
+                    const nome = btn ? (btn.getAttribute('data-local-nome') || 'Mapa') : 'Mapa';
+                    const embed = btn ? (btn.getAttribute('data-local-embed') || '') : '';
+                    if (titleEl) titleEl.textContent = nome;
+                    if (embed) {
+                        if (iframeEl) iframeEl.src = embed;
+                        if (emptyEl) emptyEl.classList.add('d-none');
+                    } else {
+                        if (iframeEl) iframeEl.src = '';
+                        if (emptyEl) emptyEl.classList.remove('d-none');
+                    }
+                });
+
+                modalEl.addEventListener('hidden.bs.modal', function () {
+                    if (iframeEl) iframeEl.src = '';
+                    if (emptyEl) emptyEl.classList.add('d-none');
+                });
+            })();
+            </script>
         {% else %}
             <div class="empty-state m-3">
                 <div class="mb-2"><i class="bi bi-geo-alt fs-1"></i></div>
                 <div class="fw-bold mb-1">Nenhum local cadastrado</div>
                 <div class="mb-3">Cadastre o primeiro local da empresa ativa.</div>
-                <button
-                    type="button"
-                    class="btn btn-primary rounded-3 fw-semibold"
-                    hx-get="{% url 'local:criar' empresa_id=request.empresa_ativa.pk %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalPadrao">
+                <a
+                    href="{% url 'local:criar_page' empresa_id=request.empresa_ativa.pk %}"
+                    class="btn btn-primary rounded-3 fw-semibold">
                     <i class="bi bi-plus-circle me-1"></i> Novo local
-                </button>
+                </a>
             </div>
         {% endif %}
-    </div>
-</div>
-
-<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" id="modal-content"></div>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+
+{% block title %}Mapa — Locais de Trabalho | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .lt-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .lt-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        background: #fff;
+    }
+    .lt-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+    .lt-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .lt-actions .btn {
+        border-radius: .85rem;
+        font-weight: 700;
+    }
+    .lt-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+    .lt-map-wrap {
+        width: 100%;
+        height: min(74vh, 820px);
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        position: relative;
+    }
+    .lt-map-loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: .5rem;
+        background: rgba(248, 250, 252, 0.9);
+        color: #334155;
+        z-index: 500;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .15s ease;
+    }
+    .lt-map-loading.is-on {
+        opacity: 1;
+    }
+    .lt-map-note {
+        color: #64748b;
+        font-size: .85rem;
+        margin-top: .65rem;
+    }
+
+    .lt-pin {
+        display: grid;
+        justify-items: center;
+        gap: .25rem;
+        transform: translateY(-6px);
+    }
+    .lt-pin-bubble {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #dbe4ee;
+        border-radius: 14px;
+        padding: .35rem .5rem;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.10);
+        min-width: 130px;
+        max-width: 190px;
+        text-align: center;
+    }
+    .lt-pin-person {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+    }
+    .lt-pin-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        overflow: hidden;
+        flex: 0 0 28px;
+        background: #e2e8f0;
+        color: #334155;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+    }
+    .lt-pin-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .lt-pin-name {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: .78rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 130px;
+    }
+    .lt-pin-local {
+        color: #64748b;
+        font-weight: 800;
+        font-size: .72rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 170px;
+        margin-top: .2rem;
+    }
+    .lt-pin-tip {
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 12px solid rgba(255, 255, 255, 0.98);
+        filter: drop-shadow(0 6px 8px rgba(15, 23, 42, 0.15));
+        margin-top: -2px;
+    }
+    .lt-pin-count {
+        position: absolute;
+        bottom: -10px;
+        right: -10px;
+        min-width: 26px;
+        height: 26px;
+        padding: 0 .45rem;
+        border-radius: 999px;
+        background: #2563eb;
+        color: #fff;
+        font-weight: 900;
+        font-size: .78rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
+    }
+    .lt-pin-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .lt-pin--mini {
+        transform: translateY(-4px);
+    }
+    /* Avatares presos na borda do "cartão" do pin maior (perímetro retangular) */
+    .lt-mini-perim {
+        position: absolute;
+        inset: -18px;
+        pointer-events: none; /* não roubar clique do pin */
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        justify-items: center;
+        gap: 0;
+    }
+    .lt-mini-perim-top {
+        grid-row: 1;
+        grid-column: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .lt-mini-perim-right {
+        grid-row: 2;
+        grid-column: 3;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .lt-mini-perim-bottom {
+        grid-row: 3;
+        grid-column: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .lt-mini-perim-left {
+        grid-row: 2;
+        grid-column: 1;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .lt-mini-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: 2px solid #fff;
+        background: #e2e8f0;
+        color: #334155;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.16);
+    }
+    /* leve sobreposição para caber mais sem "espalhar" */
+    .lt-mini-perim-top .lt-mini-avatar + .lt-mini-avatar,
+    .lt-mini-perim-bottom .lt-mini-avatar + .lt-mini-avatar {
+        margin-left: -10px;
+    }
+    .lt-mini-perim-left .lt-mini-avatar + .lt-mini-avatar,
+    .lt-mini-perim-right .lt-mini-avatar + .lt-mini-avatar {
+        margin-top: -10px;
+    }
+    .lt-mini-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .lt-popup {
+        min-width: 260px;
+        max-width: 360px;
+    }
+    .lt-popup-title {
+        font-weight: 900;
+        color: #0f172a;
+        margin-bottom: .35rem;
+        text-transform: uppercase;
+        font-size: .9rem;
+    }
+    .lt-popup-list {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+        max-height: 260px;
+        overflow: auto;
+        padding-right: .15rem;
+    }
+    .lt-popup-item {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .35rem .4rem;
+        border-radius: .75rem;
+        text-decoration: none;
+        color: #0f172a;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+    .lt-popup-item:hover {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #0f172a;
+    }
+</style>
+
+<div class="lt-card mb-4">
+    <div class="lt-header">
+        <div>
+            <h1 class="lt-title mb-1">Mapa — Locais de Trabalho</h1>
+            <div class="text-muted">Visão geral de onde os funcionários estão alocados hoje.</div>
+        </div>
+        <div class="lt-actions">
+            <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-outline-secondary rounded-3 fw-semibold"
+               hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+    </div>
+    <div class="lt-body">
+        <div id="lt-map-all" class="lt-map-wrap">
+            <div id="lt-map-loading" class="lt-map-loading is-on" aria-busy="true">
+                <div class="spinner-border text-primary" role="status" style="width: 2.25rem; height: 2.25rem;">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <div class="small fw-semibold">Carregando mapa…</div>
+                <div class="small text-muted">Carregando pins e tiles.</div>
+            </div>
+        </div>
+        <div class="lt-map-note">
+            {% if locais_ativos_count %}
+                Mostrando <strong>{{ funcionarios_alocados_count }}</strong> funcionários nos <strong>{{ locais_ativos_count }}</strong> locais ativos.
+                {% if locais_sem_coords %}
+                    <span class="ms-1">({{ locais_sem_coords }} sem coordenadas, não exibidos no mapa.)</span>
+                {% endif %}
+            {% else %}
+                Nenhum local ativo ainda.
+            {% endif %}
+        </div>
+
+        {{ markers|json_script:"ltMarkersAll" }}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.2/Control.FullScreen.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.2/Control.FullScreen.js"></script>
+
+<script>
+(function () {
+    function initLtAllMap() {
+        const el = document.getElementById('lt-map-all');
+        if (!el) return;
+        if (typeof L === 'undefined') return;
+        if (el._ltMapInited) return;
+        el._ltMapInited = true;
+
+        const loading = document.getElementById('lt-map-loading');
+        function setLoading(on) {
+            if (!loading) return;
+            if (on) loading.classList.add('is-on');
+            else loading.classList.remove('is-on');
+        }
+        setLoading(true);
+
+        let markers = [];
+        try {
+            const raw = document.getElementById('ltMarkersAll');
+            markers = raw ? JSON.parse(raw.textContent || '[]') : [];
+        } catch (e) {
+            markers = [];
+        }
+
+        const map = L.map(el, {
+            scrollWheelZoom: true,
+            zoomControl: true,
+            fullscreenControl: true,
+        });
+        const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd',
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(map);
+
+        let tilesLoaded = false;
+        tiles.on('load', function () {
+            tilesLoaded = true;
+            setLoading(false);
+        });
+        tiles.on('tileerror', function () {
+            // Se der erro de tile, ainda assim tira o loading pra não ficar travado.
+            setLoading(false);
+        });
+
+        function esc(s) {
+            return String(s || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function jitter(lat, lng, idx, n) {
+            if (!n || n <= 1) return [lat, lng];
+            const r = Math.min(14, 6 + n * 1.2);
+            const angle = (2 * Math.PI * idx) / n;
+            const dx = r * Math.cos(angle);
+            const dy = r * Math.sin(angle);
+            const dLat = dy / 111111.0;
+            const dLng = dx / (111111.0 * Math.cos((lat * Math.PI) / 180.0));
+            return [lat + dLat, lng + dLng];
+        }
+
+        const detailTmpl = "{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=0 %}";
+        function detailUrl(funcId) {
+            const id = Number(funcId);
+            if (!isFinite(id) || id <= 0) return '';
+            return detailTmpl.replace('/0/', '/' + id + '/');
+        }
+
+        const bounds = [];
+        markers.forEach(function (m) {
+            const lat = Number(m.lat);
+            const lng = Number(m.lng);
+            if (!isFinite(lat) || !isFinite(lng)) return;
+            const p = [lat, lng];
+
+            const localLabel = esc(m.local_nome);
+            const qtd = Number(m.qtd || 0);
+            const employees = Array.isArray(m.employees) ? m.employees : [];
+            const maxMini = 16;
+            const perimCount = Math.min(maxMini, employees.length);
+            const top = [];
+            const bottom = [];
+            const right = [];
+            const left = [];
+            function avatarSpan(e) {
+                return e.foto_url
+                    ? ('<span class="lt-mini-avatar" title="' + esc(e.nome) + '"><img src="' + esc(e.foto_url) + '" alt=""></span>')
+                    : ('<span class="lt-mini-avatar" title="' + esc(e.nome) + '"><i class="bi bi-person-circle"></i></span>');
+            }
+            const caps = { top: 10, bottom: 8, right: 6, left: 6 };
+            employees.slice(0, perimCount).forEach(function (e) {
+                const a = avatarSpan(e);
+                if (top.length < caps.top) top.push(a);
+                else if (bottom.length < caps.bottom) bottom.push(a);
+                else if (right.length < caps.right) right.push(a);
+                else left.push(a);
+            });
+            const minis =
+                '<div class="lt-mini-perim">' +
+                  '<div class="lt-mini-perim-top">' + top.join('') + '</div>' +
+                  '<div class="lt-mini-perim-bottom">' + bottom.join('') + '</div>' +
+                  '<div class="lt-mini-perim-right">' + right.join('') + '</div>' +
+                  '<div class="lt-mini-perim-left">' + left.join('') + '</div>' +
+                '</div>';
+
+            const html =
+                '<div class="lt-pin">' +
+                  '<div class="lt-pin-wrap">' +
+                    (perimCount ? minis : '') +
+                    '<div class="lt-pin-bubble">' +
+                      '<div class="lt-popup-title" style="margin:0;">' + localLabel + '</div>' +
+                    '</div>' +
+                    (qtd > 1 ? ('<span class="lt-pin-count">' + qtd + '</span>') : '') +
+                  '</div>' +
+                  '<div class="lt-pin-tip"></div>' +
+                '</div>';
+
+            const icon = L.divIcon({
+                className: '',
+                html: html,
+                iconSize: [200, 64],
+                iconAnchor: [100, 64],
+            });
+
+            const mk = L.marker(p, { icon: icon }).addTo(map);
+
+            // Popup com todos os funcionários do local
+            const items = employees
+                .map(function (e) {
+                    const u = detailUrl(e.id);
+                    const avatar = e.foto_url
+                        ? ('<span class="lt-pin-avatar"><img src="' + esc(e.foto_url) + '" alt=""></span>')
+                        : ('<span class="lt-pin-avatar"><i class="bi bi-person-circle"></i></span>');
+                    return (
+                        '<a class="lt-popup-item" href="' + esc(u) + '">' +
+                          avatar +
+                          '<div class="lt-pin-name" style="max-width: 240px;">' + esc(e.nome) + '</div>' +
+                        '</a>'
+                    );
+                })
+                .join('');
+
+            const popupHtml =
+                '<div class="lt-popup">' +
+                  '<div class="lt-popup-title">' + localLabel + '</div>' +
+                  (employees.length
+                    ? ('<div class="lt-popup-list">' + items + '</div>')
+                    : ('<div class="text-muted small">Nenhum funcionário alocado neste local.</div>')
+                  ) +
+                '</div>';
+
+            mk.bindPopup(popupHtml, { maxWidth: 380, closeButton: true, autoClose: false, closeOnClick: false });
+            let closeTimer = null;
+            function scheduleClose() {
+                if (closeTimer) clearTimeout(closeTimer);
+                closeTimer = setTimeout(function () {
+                    try { mk.closePopup(); } catch (e) {}
+                }, 700);
+            }
+            function cancelClose() {
+                if (closeTimer) clearTimeout(closeTimer);
+                closeTimer = null;
+            }
+
+            mk.on('mouseover', function () {
+                cancelClose();
+                this.openPopup();
+            });
+            mk.on('mouseout', function () {
+                scheduleClose();
+            });
+            mk.on('popupopen', function (e) {
+                const popupEl = e && e.popup ? e.popup.getElement() : null;
+                if (!popupEl) return;
+                popupEl.addEventListener('mouseenter', cancelClose);
+                popupEl.addEventListener('mouseleave', scheduleClose);
+            });
+            bounds.push(p);
+        });
+
+        if (bounds.length) {
+            map.fitBounds(bounds, { padding: [22, 22], maxZoom: 16 });
+        } else {
+            map.setView([-14.2350, -51.9253], 4);
+        }
+
+        setTimeout(function () { map.invalidateSize(); }, 80);
+        // fallback: se tiles demorarem, não trava loading
+        setTimeout(function () { if (!tilesLoaded) setLoading(false); }, 3500);
+    }
+
+    function boot(retriesLeft) {
+        const loading = document.getElementById('lt-map-loading');
+        if (typeof L === 'undefined') {
+            if (retriesLeft > 0) return setTimeout(function () { boot(retriesLeft - 1); }, 120);
+            if (loading) loading.classList.remove('is-on');
+            return;
+        }
+        initLtAllMap();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { boot(40); });
+    } else {
+        boot(40);
+    }
+    document.body.addEventListener('htmx:load', function () { boot(40); });
+})();
+</script>
+{% endblock %}
+

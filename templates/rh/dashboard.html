@@ -799,6 +799,11 @@
             <i class="bi bi-search"></i>
             <span>Buscar</span>
         </a>
+        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+           class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-geo-alt"></i>
+            <span>Locais de Trabalho</span>
+        </a>
 
         <button
             type="button"

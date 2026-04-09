@@ -1,0 +1,28 @@
+{% if q and locais_result %}
+    <div class="list-group shadow-sm">
+        {% for loc in locais_result %}
+            <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                <span class="fw-semibold text-truncate" style="max-width: 70%;">{{ loc.nome|upper }}</span>
+                {% if loc.pk in ativos_ids %}
+                    <span class="badge rounded-pill bg-success flex-shrink-0">Ativo</span>
+                {% else %}
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm rounded-pill fw-semibold flex-shrink-0"
+                        data-no-global-loading
+                        hx-post="{% url 'rh:ativar_local_trabalho' empresa_id=request.empresa_ativa.pk %}"
+                        hx-include="#lt-htmx-csrf"
+                        hx-vals='js:{"local_id":"{{ loc.pk }}"}'
+                        hx-target="#lt-board-host"
+                        hx-swap="outerHTML"
+                        hx-on="htmx:afterRequest: if (event.detail.successful) { const i = document.getElementById('lt-busca-locais'); if (i) { i.value=''; } const s = document.getElementById('lt-locais-sugestoes'); if (s) { s.innerHTML=''; } }">
+                        Adicionar
+                    </button>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% elif q %}
+    <div class="text-muted small">Nenhum local encontrado.</div>
+{% endif %}
+

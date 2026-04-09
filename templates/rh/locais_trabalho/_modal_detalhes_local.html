@@ -1,0 +1,105 @@
+<style>
+    .lt-mini-map {
+        width: 100%;
+        height: 220px;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        background: #fff;
+    }
+    .lt-mini-iframe {
+        width: 100%;
+        height: 320px;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        background: #fff;
+    }
+</style>
+
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Detalhes do local</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body">
+    <div class="fw-semibold mb-1">{{ local.nome|upper }}</div>
+    {% if local.endereco %}
+        <div class="text-muted mb-2">{{ local.endereco }}</div>
+    {% else %}
+        <div class="text-muted mb-2">Endereço não informado.</div>
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <span class="badge rounded-pill bg-primary">{{ qtd_funcionarios }} funcionário(s)</span>
+        {% if local.link_maps %}
+            <a class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold"
+               href="{{ local.link_maps }}"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Abrir no Maps
+            </a>
+        {% endif %}
+    </div>
+
+    {% if local.link_maps_embed %}
+        <iframe
+            class="lt-mini-iframe"
+            src="{{ local.link_maps_embed }}"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen></iframe>
+        <div class="text-muted small mt-2">
+            Mapa (embed) do local.
+        </div>
+    {% else %}
+        <div id="lt-mini-map" class="lt-mini-map"></div>
+        <div class="text-muted small mt-2">
+            Mini-mapa aparece quando o local tiver latitude/longitude cadastradas.
+        </div>
+    {% endif %}
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
+        Fechar
+    </button>
+    <button
+        type="button"
+        class="btn btn-outline-danger rounded-3 fw-semibold"
+        hx-post="{% url 'rh:desativar_local_trabalho' empresa_id=request.empresa_ativa.pk %}"
+        hx-include="#lt-htmx-csrf"
+        hx-vals='js:{"local_id":"{{ local.pk }}"}'
+        hx-confirm="Desativar este local? Os funcionários serão devolvidos para “Sem local”."
+        hx-swap="none"
+        data-bs-dismiss="modal">
+        Tirar local de trabalho ativo
+    </button>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script>
+(function () {
+    const el = document.getElementById('lt-mini-map');
+    if (!el || typeof L === 'undefined') return;
+    const lat = {% if local.latitude is not None %}{{ local.latitude }}{% else %}null{% endif %};
+    const lng = {% if local.longitude is not None %}{{ local.longitude }}{% else %}null{% endif %};
+    const map = L.map(el, { scrollWheelZoom: false, dragging: true, zoomControl: true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+    if (typeof lat === 'number' && typeof lng === 'number') {
+        map.setView([lat, lng], 16);
+        L.marker([lat, lng]).addTo(map);
+    } else {
+        map.setView([-14.2350, -51.9253], 4);
+    }
+    setTimeout(function () { map.invalidateSize(); }, 50);
+})();
+</script>
+

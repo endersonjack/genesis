@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if modo == 'editar' and local and local.pk %}
+        Editar local | Genesis ERP
+    {% else %}
+        Novo local | Genesis ERP
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .page-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .page-card-head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .page-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+    .page-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+    .local-iframe {
+        width: 100%;
+        height: 240px;
+        border: 0;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+</style>
+
+<div class="page-card mb-4">
+    <div class="page-card-head">
+        <div>
+            <h1 class="page-title">
+                {% if modo == 'editar' and local and local.pk %}
+                    Editar local
+                {% else %}
+                    Novo local
+                {% endif %}
+            </h1>
+            <p class="text-muted mb-0">Cadastro de locais da empresa ativa.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if modo == 'editar' and local and local.pk %}
+                <a href="{% url 'local:detalhe' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
+                   class="btn btn-outline-secondary rounded-3 fw-semibold">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar aos detalhes
+                </a>
+                {% if ativo_em_trabalho %}
+                    <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+                       class="btn btn-primary rounded-3 fw-semibold">
+                        <i class="bi bi-geo-alt me-1"></i> Locais de Trabalho
+                    </a>
+                {% else %}
+                    <button type="button"
+                            class="btn btn-outline-primary rounded-3 fw-semibold"
+                            disabled
+                            title="Ative este local como 'Local de trabalho ativo' para acessar Locais de Trabalho.">
+                        <i class="bi bi-geo-alt me-1"></i> Locais de Trabalho
+                    </button>
+                {% endif %}
+            {% else %}
+                <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+                   class="btn btn-outline-secondary rounded-3 fw-semibold">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar à lista
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="page-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                    {{ form.endereco }}
+                    {% if form.endereco.errors %}
+                        <div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.link_maps.id_for_label }}">{{ form.link_maps.label }}</label>
+                    {{ form.link_maps }}
+                    {% if form.link_maps.help_text %}
+                        <div class="form-text">{{ form.link_maps.help_text }}</div>
+                    {% endif %}
+                    {% if form.link_maps.errors %}
+                        <div class="text-danger small mt-1">{{ form.link_maps.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ form.link_maps_embed.id_for_label }}">{{ form.link_maps_embed.label }}</label>
+                    {{ form.link_maps_embed }}
+                    {% if form.link_maps_embed.help_text %}
+                        <div class="form-text">{{ form.link_maps_embed.help_text }}</div>
+                    {% endif %}
+                    {% if form.link_maps_embed.errors %}
+                        <div class="text-danger small mt-1">{{ form.link_maps_embed.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="mt-2">
+                        <iframe
+                            id="local-embed-preview"
+                            src="{% if form.link_maps_embed.value %}{{ form.link_maps_embed.value }}{% endif %}"
+                            class="local-iframe"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            allowfullscreen></iframe>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.obter_lat_lng_do_maps }}
+                        <label class="form-check-label fw-semibold" for="{{ form.obter_lat_lng_do_maps.id_for_label }}">
+                            {{ form.obter_lat_lng_do_maps.label }}
+                        </label>
+                    </div>
+                    {% if form.obter_lat_lng_do_maps.help_text %}
+                        <div class="form-text">{{ form.obter_lat_lng_do_maps.help_text }}</div>
+                    {% endif %}
+                </div>
+                {% if modo == 'editar' and local and local.pk %}
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input
+                                type="checkbox"
+                                class="form-check-input"
+                                id="ativar_como_local_trabalho"
+                                name="ativar_como_local_trabalho"
+                                {% if ativo_em_trabalho %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="ativar_como_local_trabalho">
+                                Ativar como Local de trabalho ativo
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Quando ativo, este local aparece em <strong>Locais de Trabalho</strong> para receber funcionários por arraste.
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.latitude.id_for_label }}">{{ form.latitude.label }}</label>
+                    {{ form.latitude }}
+                    {% if form.latitude.errors %}
+                        <div class="text-danger small mt-1">{{ form.latitude.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.longitude.id_for_label }}">{{ form.longitude.label }}</label>
+                    {{ form.longitude }}
+                    {% if form.longitude.errors %}
+                        <div class="text-danger small mt-1">{{ form.longitude.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <div id="latlng-auto-msg" class="text-muted small"></div>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                {% if modo == 'editar' and local and local.pk %}
+                    <a href="{% url 'local:detalhe' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
+                       class="btn btn-outline-secondary rounded-3 fw-semibold">
+                        Cancelar
+                    </a>
+                {% else %}
+                    <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+                       class="btn btn-outline-secondary rounded-3 fw-semibold">
+                        Cancelar
+                    </a>
+                {% endif %}
+                <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    const input = document.getElementById('{{ form.link_maps_embed.id_for_label }}');
+    const iframe = document.getElementById('local-embed-preview');
+    const latEl = document.getElementById('{{ form.latitude.id_for_label }}');
+    const lngEl = document.getElementById('{{ form.longitude.id_for_label }}');
+    const autoChk = document.getElementById('{{ form.obter_lat_lng_do_maps.id_for_label }}');
+    const msg = document.getElementById('latlng-auto-msg');
+    if (!input || !iframe) return;
+
+    function extractSrc(v) {
+        const s = String(v || '').trim();
+        if (!s) return '';
+        if (s.toLowerCase().includes('<iframe')) {
+            const m1 = s.match(/\bsrc\s*=\s*"([^"]+)"/i);
+            if (m1 && m1[1]) return m1[1].trim();
+            const m2 = s.match(/\bsrc\s*=\s*'([^']+)'/i);
+            if (m2 && m2[1]) return m2[1].trim();
+        }
+        return s;
+    }
+
+    function parseLatLngFromText(value) {
+        const s = String(value || '');
+        let m = s.match(/\/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[1], lng: m[2] };
+        m = s.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[1], lng: m[2] };
+        m = s.match(/!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[2], lng: m[1] };
+        return null;
+    }
+
+    function round6(n) {
+        const x = Number(n);
+        if (!isFinite(x)) return '';
+        return (Math.round(x * 1e6) / 1e6).toFixed(6);
+    }
+
+    function tryAutoFillLatLng() {
+        if (!latEl || !lngEl || !msg) return;
+        if (autoChk && !autoChk.checked) {
+            msg.textContent = '';
+            return;
+        }
+        const src = extractSrc(input.value);
+        if (!src) {
+            msg.textContent = '';
+            return;
+        }
+        const r = parseLatLngFromText(src);
+        if (r) {
+            latEl.value = round6(r.lat);
+            lngEl.value = round6(r.lng);
+            msg.textContent = 'Latitude/longitude preenchidas automaticamente pelo link.';
+        } else {
+            msg.textContent = 'Não foi possível extrair latitude/longitude desse link. Preencha manualmente.';
+        }
+    }
+
+    function onEmbedInputChanged() {
+        iframe.src = extractSrc(input.value);
+        tryAutoFillLatLng();
+    }
+
+    input.addEventListener('input', onEmbedInputChanged);
+    if (autoChk) autoChk.addEventListener('change', tryAutoFillLatLng);
+    tryAutoFillLatLng();
+})();
+</script>
+{% endblock %}
+

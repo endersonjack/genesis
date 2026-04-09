@@ -1,0 +1,41 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Ativar local de trabalho</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body">
+    <div class="mb-2">
+        <div class="fw-semibold">Local</div>
+        <div class="text-muted">{{ local.nome|upper }}</div>
+        {% if local.endereco %}
+            <div class="text-muted small mt-1">{{ local.endereco }}</div>
+        {% endif %}
+    </div>
+    {% if ja_ativo %}
+        <div class="alert alert-success mb-0">
+            Este local já está ativo.
+        </div>
+    {% else %}
+        <div class="text-muted small">
+            Ao ativar, este local aparecerá na coluna da direita para receber funcionários por arraste.
+        </div>
+    {% endif %}
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
+        Cancelar
+    </button>
+    {% if not ja_ativo %}
+        <button
+            type="button"
+            class="btn btn-primary rounded-3 fw-semibold"
+            hx-post="{% url 'rh:ativar_local_trabalho' empresa_id=request.empresa_ativa.pk %}"
+            hx-include="#lt-htmx-csrf"
+            hx-vals='js:{"local_id": "{{ local.pk }}"}'
+            hx-confirm="Ativar este local como Local de Trabalho ativo?"
+            hx-swap="none"
+            data-bs-dismiss="modal">
+            Ativar
+        </button>
+    {% endif %}
+</div>
+

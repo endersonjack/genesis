@@ -46,6 +46,59 @@
                     <div class="text-danger small mt-1">{{ form.link_maps.errors|join:", " }}</div>
                 {% endif %}
             </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.link_maps_embed.id_for_label }}">{{ form.link_maps_embed.label }}</label>
+                {{ form.link_maps_embed }}
+                {% if form.link_maps_embed.help_text %}
+                    <div class="form-text">{{ form.link_maps_embed.help_text }}</div>
+                {% endif %}
+                {% if form.link_maps_embed.errors %}
+                    <div class="text-danger small mt-1">{{ form.link_maps_embed.errors|join:", " }}</div>
+                {% endif %}
+                <div class="mt-2">
+                    <iframe
+                        id="local-embed-preview"
+                        src="{% if form.link_maps_embed.value %}{{ form.link_maps_embed.value }}{% endif %}"
+                        style="width: 100%; height: 240px; border: 0; border-radius: 12px; background: #f8fafc;"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        allowfullscreen></iframe>
+                </div>
+                <div class="text-muted small mt-1">
+                    Dica: pegue o link do atributo <strong>src</strong> do iframe do Google Maps (embed).
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.obter_lat_lng_do_maps }}
+                    <label class="form-check-label fw-semibold" for="{{ form.obter_lat_lng_do_maps.id_for_label }}">
+                        {{ form.obter_lat_lng_do_maps.label }}
+                    </label>
+                </div>
+                {% if form.obter_lat_lng_do_maps.help_text %}
+                    <div class="form-text">{{ form.obter_lat_lng_do_maps.help_text }}</div>
+                {% endif %}
+                {% if form.obter_lat_lng_do_maps.errors %}
+                    <div class="text-danger small mt-1">{{ form.obter_lat_lng_do_maps.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.latitude.id_for_label }}">{{ form.latitude.label }}</label>
+                {{ form.latitude }}
+                {% if form.latitude.errors %}
+                    <div class="text-danger small mt-1">{{ form.latitude.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.longitude.id_for_label }}">{{ form.longitude.label }}</label>
+                {{ form.longitude }}
+                {% if form.longitude.errors %}
+                    <div class="text-danger small mt-1">{{ form.longitude.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <div id="latlng-auto-msg" class="text-muted small"></div>
+            </div>
         </div>
         {% if form.non_field_errors %}
             <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
@@ -59,3 +112,79 @@
         </button>
     </div>
 </form>
+
+<script>
+(function () {
+    const input = document.getElementById('{{ form.link_maps_embed.id_for_label }}');
+    const iframe = document.getElementById('local-embed-preview');
+    const latEl = document.getElementById('{{ form.latitude.id_for_label }}');
+    const lngEl = document.getElementById('{{ form.longitude.id_for_label }}');
+    const autoChk = document.getElementById('{{ form.obter_lat_lng_do_maps.id_for_label }}');
+    const msg = document.getElementById('latlng-auto-msg');
+    if (!input || !iframe) return;
+    function extractSrc(v) {
+        const s = String(v || '').trim();
+        if (!s) return '';
+        if (s.toLowerCase().includes('<iframe')) {
+            const m1 = s.match(/\bsrc\s*=\s*"([^"]+)"/i);
+            if (m1 && m1[1]) return m1[1].trim();
+            const m2 = s.match(/\bsrc\s*=\s*'([^']+)'/i);
+            if (m2 && m2[1]) return m2[1].trim();
+        }
+        return s;
+    }
+
+    function parseLatLngFromText(value) {
+        const s = String(value || '');
+        // /@lat,lng
+        let m = s.match(/\/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[1], lng: m[2] };
+        // ?q=lat,lng / ?query=lat,lng / ?ll=lat,lng
+        m = s.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[1], lng: m[2] };
+        // embed pb: !2dLNG!3dLAT
+        m = s.match(/!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/);
+        if (m) return { lat: m[2], lng: m[1] };
+        return null;
+    }
+
+    function round6(n) {
+        const x = Number(n);
+        if (!isFinite(x)) return '';
+        return (Math.round(x * 1e6) / 1e6).toFixed(6);
+    }
+
+    function tryAutoFillLatLng() {
+        if (!latEl || !lngEl || !msg) return;
+        if (autoChk && !autoChk.checked) {
+            msg.textContent = '';
+            return;
+        }
+        const src = extractSrc(input.value);
+        if (!src) {
+            msg.textContent = '';
+            return;
+        }
+        const r = parseLatLngFromText(src);
+        if (r) {
+            latEl.value = round6(r.lat);
+            lngEl.value = round6(r.lng);
+            msg.textContent = 'Latitude/longitude preenchidas automaticamente pelo link.';
+        } else {
+            msg.textContent = 'Não foi possível extrair latitude/longitude desse link. Preencha manualmente.';
+        }
+    }
+
+    function onEmbedInputChanged() {
+        iframe.src = extractSrc(input.value);
+        tryAutoFillLatLng();
+    }
+
+    input.addEventListener('input', onEmbedInputChanged);
+    if (autoChk) {
+        autoChk.addEventListener('change', tryAutoFillLatLng);
+    }
+    // inicial
+    tryAutoFillLatLng();
+})();
+</script>

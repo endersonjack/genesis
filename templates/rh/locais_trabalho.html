@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+
+{% block title %}Locais de Trabalho | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .lt-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .lt-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        background: #fff;
+    }
+    .lt-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+    .lt-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+    .lt-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .lt-actions .btn {
+        border-radius: .85rem;
+        font-weight: 700;
+    }
+
+    .lt-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    @media (min-width: 992px) {
+        .lt-grid {
+            grid-template-columns: 1fr 1fr;
+            align-items: start;
+        }
+    }
+
+    .lt-locais-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    @media (min-width: 992px) {
+        .lt-locais-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (min-width: 1200px) {
+        .lt-locais-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .lt-local-card {
+        background: #fff;
+        border: 2px solid #dbe4ee;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+    .lt-local-head {
+        padding: .9rem 1rem;
+        border-bottom: 2px solid #eef2f7;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, #f1f5f9 100%);
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+    }
+    .lt-local-name {
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        font-size: 1rem;
+    }
+    .lt-local-sub {
+        color: #64748b;
+        font-size: .9rem;
+    }
+    .lt-local-body {
+        padding: .85rem 1rem;
+    }
+    .lt-people {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+    .lt-person {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .35rem .55rem;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: .85rem;
+        max-width: 100%;
+    }
+    .lt-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex: 0 0 26px;
+        background: #e2e8f0;
+        color: #334155;
+    }
+    .lt-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .lt-person-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+        text-transform: uppercase;
+    }
+
+    .lt-empty {
+        color: #64748b;
+        font-size: .9rem;
+    }
+
+    .lt-board {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    @media (min-width: 992px) {
+        .lt-board {
+            grid-template-columns: 1fr 2fr;
+            align-items: start;
+        }
+    }
+    .lt-col-title {
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 .65rem 0;
+        font-size: 1rem;
+    }
+    .lt-dropzone {
+        min-height: 70px;
+    }
+    .lt-dropzone.lt-people--vertical {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .lt-dropzone.lt-people--vertical .lt-person {
+        width: 100%;
+        border-radius: .85rem;
+        justify-content: flex-start;
+        padding: .5rem .6rem;
+    }
+    .lt-dropzone.lt-people--vertical .lt-person-name {
+        max-width: none;
+    }
+    .lt-person {
+        cursor: grab;
+        user-select: none;
+    }
+    .lt-person:active {
+        cursor: grabbing;
+    }
+    .lt-ghost {
+        opacity: 0.55;
+    }
+    .lt-chosen {
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+    }
+
+    .lt-input-wrap {
+        position: relative;
+    }
+    .lt-input-indicator {
+        position: absolute;
+        right: .75rem;
+        top: 2.55rem;
+        display: none;
+        align-items: center;
+        gap: .35rem;
+        color: #64748b;
+        font-size: .85rem;
+        pointer-events: none;
+    }
+    .lt-input-indicator .spinner-border {
+        width: 1rem;
+        height: 1rem;
+    }
+    .lt-input-wrap.htmx-request .lt-input-indicator {
+        display: inline-flex;
+    }
+
+    #lt-map {
+        width: 100%;
+        min-height: 420px;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        background: #fff;
+    }
+    .lt-map-note {
+        color: #64748b;
+        font-size: .85rem;
+        margin-top: .5rem;
+    }
+
+    .lt-popup-title {
+        font-weight: 800;
+        margin: 0 0 .25rem 0;
+        color: #0f172a;
+    }
+    .lt-popup-people {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+        margin-top: .4rem;
+    }
+    .lt-popup-person {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        font-weight: 700;
+        color: #0f172a;
+        font-size: .88rem;
+    }
+    .lt-popup-person .lt-avatar {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+    }
+</style>
+
+<div class="lt-card mb-4">
+    <div class="lt-header">
+        <div>
+            <h1 class="lt-title mb-1">Locais de Trabalho</h1>
+            <div class="text-muted">Veja onde os trabalhadores estão alocados hoje e ajuste as atribuições.</div>
+        </div>
+        <div class="lt-actions">
+            <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-outline-secondary rounded-3 fw-semibold"
+               hx-get="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}"
+               hx-target="body"
+               hx-swap="innerHTML"
+               hx-push-url="true">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <button
+                type="button"
+                class="btn btn-outline-primary rounded-3 fw-semibold"
+                hx-get="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="body"
+                hx-swap="innerHTML"
+                hx-push-url="true">
+                <i class="bi bi-map me-1"></i> Ver Mapa
+            </button>
+        </div>
+    </div>
+    <div class="lt-body">
+        <div id="lt-htmx-csrf" class="d-none">{% csrf_token %}</div>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-6">
+                <div class="lt-input-wrap" id="lt-busca-locais-wrap" data-no-global-loading>
+                    <label class="form-label fw-semibold mb-1" for="lt-busca-locais">Buscar locais</label>
+                    <input
+                        id="lt-busca-locais"
+                        type="text"
+                        name="q"
+                        class="form-control rounded-3"
+                        placeholder="Digite para buscar (ex.: OB, FI, SE...)"
+                        autocomplete="off"
+                        data-no-global-loading
+                        hx-get="{% url 'rh:buscar_locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
+                        hx-trigger="keyup changed delay:250ms"
+                        hx-target="#lt-locais-sugestoes"
+                        hx-swap="innerHTML" />
+                    <div class="lt-input-indicator" aria-hidden="true">
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        <span>Buscando…</span>
+                    </div>
+                </div>
+                <div class="mt-2" id="lt-locais-sugestoes"></div>
+            </div>
+            <div class="col-12 col-lg-6">
+                <div class="text-muted small">
+                    Clique em <strong>Adicionar</strong> para ativar o local.
+                    Depois, arraste funcionários sem local para o local desejado.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'rh/locais_trabalho/_board.html' %}
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+    function refreshBoard() {
+        if (!window.htmx) {
+            window.location.reload();
+            return;
+        }
+        const host = document.getElementById('lt-board-host');
+        if (!host) return;
+        window.htmx.ajax('GET', "{% url 'rh:locais_trabalho_board' empresa_id=request.empresa_ativa.pk %}", { target: host, swap: 'outerHTML' });
+    }
+
+    function getCsrfToken() {
+        const input = document.querySelector('#lt-htmx-csrf input[name=csrfmiddlewaretoken]');
+        return input ? input.value : '';
+    }
+
+    function postMove(funcionarioId, localId) {
+        const url = "{% url 'rh:definir_local_trabalho_funcionario_json' empresa_id=request.empresa_ativa.pk %}";
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                funcionario_id: funcionarioId,
+                local_id: localId || null,
+            })
+        });
+    }
+
+    function initDragAndDrop(root) {
+        const scope = root || document;
+        const dropzones = Array.prototype.slice.call(scope.querySelectorAll('.lt-dropzone'));
+        if (!dropzones.length || typeof Sortable === 'undefined') return;
+
+        dropzones.forEach(function (zone) {
+            if (zone._ltSortable) return;
+            zone._ltSortable = Sortable.create(zone, {
+            group: 'lt-funcionarios',
+            animation: 160,
+            draggable: '.lt-person',
+            ghostClass: 'lt-ghost',
+            chosenClass: 'lt-chosen',
+            onAdd: function (evt) {
+                const item = evt.item;
+                const funcionarioId = item && item.getAttribute('data-funcionario-id');
+                const localId = evt.to && evt.to.getAttribute('data-drop-local-id');
+                if (!funcionarioId) return;
+                postMove(funcionarioId, localId)
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('Falha ao salvar');
+                        refreshBoard();
+                    })
+                    .catch(function () {
+                        window.location.reload();
+                    });
+            },
+        });
+        });
+    }
+
+    initDragAndDrop(document);
+
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        const t = e.target;
+        if (t && t.id === 'lt-board-host') {
+            initDragAndDrop(t);
+        }
+    });
+})();
+</script>
+{% endblock %}
+

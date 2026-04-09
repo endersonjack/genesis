@@ -203,6 +203,14 @@ class Funcionario(TimeStampedModel):
         blank=True,
         related_name='funcionarios'
     )
+    local_trabalho = models.ForeignKey(
+        'local.Local',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='funcionarios',
+        verbose_name='Local de trabalho',
+    )
 
     salario = models.DecimalField(
         max_digits=12,
