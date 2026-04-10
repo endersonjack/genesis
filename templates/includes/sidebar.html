@@ -1,8 +1,14 @@
+{% load static %}
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="brand-box">
             <div class="brand-icon">
-                <i class="bi bi-building"></i>
+                <img src="{% static brand_main_logo_static %}"
+                     alt="Genesis ERP"
+                     class="sidebar-brand-system-logo"
+                     width="58"
+                     height="58"
+                     decoding="async">
             </div>
             <div class="brand-text">
                 <h5 class="brand-title mb-0">Genesis ERP</h5>

@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.usuario_empresas',
                 'core.context_processors.modulo_topbar',
+                'core.context_processors.brand_icons',
             ],
         },
     },
@@ -129,7 +130,11 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Em DEBUG, o storage com manifest não vê ficheiros só em STATICFILES_DIRS (sem collectstatic).
+if DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Arquivos de mídia (MEDIA_ROOT pode apontar para volume montado no Railway, ex.: /data/media)
 MEDIA_URL = '/media/'
