@@ -10,6 +10,11 @@ urlpatterns = [
     path('', empresa_scoped(views.home), name='home'),
     path('falta/nova/', empresa_scoped(views.falta_nova), name='falta_nova'),
     path(
+        'falta/registros-anteriores/',
+        empresa_scoped(views.faltas_anteriores),
+        name='faltas_anteriores',
+    ),
+    path(
         'falta/<int:pk>/editar/',
         empresa_scoped(views.falta_editar),
         name='falta_editar',
@@ -23,6 +28,11 @@ urlpatterns = [
         'observacao/nova/',
         empresa_scoped(views.observacao_nova),
         name='observacao_nova',
+    ),
+    path(
+        'observacao/registros-anteriores/',
+        empresa_scoped(views.observacoes_anteriores),
+        name='observacoes_anteriores',
     ),
     path(
         'observacao/<int:pk>/editar/',

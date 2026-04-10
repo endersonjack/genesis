@@ -2,15 +2,10 @@ import calendar
 from datetime import date, timedelta
 from typing import Any, Optional
 
-from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, Q, When
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.utils.dateparse import parse_date
-
 from core.urlutils import reverse_empresa
-
-from local.models import Local
 
 from apontamento.models import (
     ApontamentoFalta,
@@ -696,25 +691,84 @@ def _ordem_status_apontamento():
     )
 
 
+APONT_MESES_PT = [
+    (1, "Janeiro"),
+    (2, "Fevereiro"),
+    (3, "Março"),
+    (4, "Abril"),
+    (5, "Maio"),
+    (6, "Junho"),
+    (7, "Julho"),
+    (8, "Agosto"),
+    (9, "Setembro"),
+    (10, "Outubro"),
+    (11, "Novembro"),
+    (12, "Dezembro"),
+]
+
+
 def _parse_apontamento_filtros(request) -> dict[str, Any]:
     """
-    Lê filtros do GET (painel) ou POST (ex.: após alterar status, campos hidden afd_ini…aff).
-    Padrão: afd_ini e afd_fim vazios → início = hoje, fim = hoje (fuso local); demais = «Todos» (sem restrição).
+    Lê filtros do GET (painel) ou POST (ex.: após alterar status, campos hidden aper, mna…).
+
+    - dia / semana: intervalo é sempre hoje ou a semana (seg–dom) de hoje. Mês/ano nos campos só afetam a lista quando o utilizador os alterou (mna=1).
+    - mna=0: em dia/semana, mês e ano exibidos voltam ao mês/ano correntes; o período
+      da query ignora mês/ano.
+    - mna=1: período por mês (1–12) ou «Todos» (ames vazio = ano civil de aano), conforme aper.
     """
     src = request.POST if request.method == "POST" else request.GET
     hoje = timezone.localdate()
-    raw_ini = (src.get("afd_ini") or "").strip()
-    raw_fim = (src.get("afd_fim") or "").strip()
-    d_ini = parse_date(raw_ini) if raw_ini else None
-    d_fim = parse_date(raw_fim) if raw_fim else None
-    if d_ini is None and d_fim is None:
-        d_ini = d_fim = hoje
-    elif d_ini is None:
-        d_ini = d_fim
-    elif d_fim is None:
-        d_fim = d_ini
-    if d_ini > d_fim:
-        d_ini, d_fim = d_fim, d_ini
+
+    aper = (src.get("aper") or "dia").strip().lower()
+    if aper not in ("dia", "semana", "mes", "ano"):
+        aper = "dia"
+
+    mna = (src.get("mna") or "").strip().lower() in ("1", "true", "on", "yes")
+
+    raw_aano = (src.get("aano") or "").strip()
+    try:
+        aano = int(raw_aano) if raw_aano else hoje.year
+    except ValueError:
+        aano = hoje.year
+    if aano < 2000 or aano > 2100:
+        aano = hoje.year
+
+    raw_ames = (src.get("ames") or "").strip().lower()
+    ames: Optional[int]
+    if raw_ames in ("", "0", "todos"):
+        ames = None
+    else:
+        try:
+            ames = int(raw_ames)
+        except ValueError:
+            ames = None
+        if ames is not None and (ames < 1 or ames > 12):
+            ames = None
+
+    if aper in ("mes", "ano") and not mna:
+        aper = "dia"
+        mna = False
+
+    if aper in ("dia", "semana"):
+        if aper == "dia":
+            d_ini = d_fim = hoje
+        else:
+            d_ini = hoje - timedelta(days=hoje.weekday())
+            d_fim = d_ini + timedelta(days=6)
+        if not mna:
+            ames = hoje.month
+            aano = hoje.year
+    elif aper == "mes":
+        if ames is None:
+            d_ini = date(aano, 1, 1)
+            d_fim = date(aano, 12, 31)
+        else:
+            d_ini = date(aano, ames, 1)
+            _, ultimo = calendar.monthrange(aano, ames)
+            d_fim = date(aano, ames, ultimo)
+    else:
+        d_ini = date(aano, 1, 1)
+        d_fim = date(aano, 12, 31)
 
     reg = (src.get("afr") or "").strip()
     reg_id = int(reg) if reg.isdigit() else None
@@ -734,39 +788,14 @@ def _parse_apontamento_filtros(request) -> dict[str, Any]:
         "data_fim": d_fim,
         "data_ini_iso": d_ini.isoformat(),
         "data_fim_iso": d_fim.isoformat(),
+        "aper": aper,
+        "mna": 1 if mna else 0,
+        "ames": ames,
+        "aano": aano,
         "reg_id": reg_id,
         "tipo": tipo,
         "local_id": local_id,
         "func_id": func_id,
-    }
-
-
-def _opciones_filtros_apontamento(empresa_ativa):
-    """Listas para selects (apontadores com registro na empresa)."""
-    User = get_user_model()
-    ids_f = set(
-        ApontamentoFalta.objects.filter(empresa=empresa_ativa).values_list(
-            "registrado_por_id", flat=True
-        )
-    )
-    ids_o = set(
-        ApontamentoObservacaoLocal.objects.filter(empresa=empresa_ativa).values_list(
-            "registrado_por_id", flat=True
-        )
-    )
-    apontadores = User.objects.filter(pk__in=ids_f | ids_o).order_by(
-        "nome_completo", "username"
-    )
-    locais = Local.objects.filter(empresa=empresa_ativa).order_by("nome", "id")
-    funcionarios = (
-        Funcionario.objects.filter(empresa=empresa_ativa)
-        .exclude(situacao_atual__in=["demitido", "inativo"])
-        .order_by("nome", "id")
-    )
-    return {
-        "apont_apontadores": apontadores,
-        "apont_locais": locais,
-        "apont_funcionarios": funcionarios,
     }
 
 
@@ -838,7 +867,7 @@ def render_dashboard_apontamento_partial(request):
     filtros = _parse_apontamento_filtros(request)
     ctx = _contexto_card_apontamento(empresa_ativa, filtros)
     ctx["apont_filtros"] = filtros
-    ctx.update(_opciones_filtros_apontamento(empresa_ativa))
+    ctx["apont_meses"] = APONT_MESES_PT
     ctx["pode_alterar_status_apontamento"] = usuario_rh_pode_gerir_status_apontamento(
         request
     )

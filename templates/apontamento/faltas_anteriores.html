@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Faltas anteriores | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+       class="btn btn-link text-body-secondary text-decoration-none p-0 mb-2 d-inline-flex align-items-center gap-1 fw-semibold"
+       hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        Voltar
+    </a>
+    <h2 class="fw-bold mb-1">Faltas anteriores</h2>
+    <p class="text-muted mb-0 small">
+        {% if apont_ve_todos_registros %}
+            Todos os registros da empresa no período.
+        {% else %}
+            Seus registros no período (data da falta).
+        {% endif %}
+    </p>
+</div>
+
+<form method="get" class="apont-resumo-card mb-4 py-3 px-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-auto">
+            <label class="form-label small text-muted mb-0" for="fa-de">De</label>
+            <input type="date" class="form-control rounded-3" id="fa-de" name="de"
+                   value="{{ periodo_de|date:'Y-m-d' }}">
+        </div>
+        <div class="col-6 col-md-auto">
+            <label class="form-label small text-muted mb-0" for="fa-ate">Até</label>
+            <input type="date" class="form-control rounded-3" id="fa-ate" name="ate"
+                   value="{{ periodo_ate|date:'Y-m-d' }}">
+        </div>
+        <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-primary rounded-3 fw-semibold">Aplicar</button>
+        </div>
+    </div>
+</form>
+
+{% if faltas %}
+    <div class="d-flex flex-column gap-2">
+        {% for f in faltas %}
+            <div class="rounded-3 p-3 bg-white shadow-sm apont-mobile-card apont-falta-card mb-0 {% if f.status == 'pendente' %}apont-status-pendente{% elif f.status == 'visto' %}apont-status-visto{% elif f.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            {% if f.status == 'pendente' %}
+                                <span class="badge text-bg-warning">Pendente</span>
+                            {% elif f.status == 'visto' %}
+                                <span class="badge text-bg-success">Visto</span>
+                            {% elif f.status == 'arquivado' %}
+                                <span class="badge text-bg-secondary">Arquivado</span>
+                            {% else %}
+                                <span class="badge text-bg-light text-dark">{{ f.get_status_display }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="fw-semibold">{{ f.funcionario.nome }}</div>
+                        <div class="small text-muted mb-0">Data da falta: {{ f.data|date:"d/m/Y" }}</div>
+                        {% if apont_ve_todos_registros %}
+                        <p class="apont-registrado-por small text-muted mb-0 mt-2">
+                            {{ f.registrado_por.get_full_name|default:f.registrado_por.username }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary p-2 rounded-3 apont-falta-card__toggle fw-semibold flex-shrink-0 collapsed"
+                            data-bs-target="#apont-falta-anteriores-{{ f.pk }}"
+                            aria-expanded="false"
+                            aria-controls="apont-falta-anteriores-{{ f.pk }}"
+                            title="Ver detalhes"
+                            aria-label="Expandir ou recolher detalhes da falta de {{ f.funcionario.nome }}">
+                        <i class="bi bi-chevron-down apont-falta-card__chevron" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div id="apont-falta-anteriores-{{ f.pk }}"
+                     class="collapse mt-2 pt-2 border-top">
+                    {% if f.funcionario.cargo %}
+                    <div class="small text-muted mb-1">
+                        <span class="fw-semibold">Cargo:</span> {{ f.funcionario.cargo.nome }}
+                    </div>
+                    {% endif %}
+                    {% if f.funcionario.local_trabalho %}
+                    <div class="small text-muted mb-1">
+                        <span class="fw-semibold">Local de trabalho:</span> {{ f.funcionario.local_trabalho.nome }}
+                    </div>
+                    {% endif %}
+                    <div class="small mb-1"><span class="fw-semibold">Motivo:</span> {{ f.motivo }}</div>
+                    {% if f.observacao %}
+                    <div class="small text-muted mb-0"><span class="fw-semibold">Obs.:</span> {{ f.observacao }}</div>
+                    {% endif %}
+                    {% if f.status_alterado_por %}
+                    <div class="apont-item-meta-status text-muted mt-2 mb-0">
+                        <i class="bi bi-person-check" aria-hidden="true"></i>
+                        Status alterado por
+                        <strong>{{ f.status_alterado_por.nome_completo|default:f.status_alterado_por.username }}</strong>
+                        {% if f.status_alterado_em %}
+                            em {{ f.status_alterado_em|date:"d/m/Y H:i" }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-muted small">Nenhuma falta no período.</p>
+{% endif %}
+{% endblock %}

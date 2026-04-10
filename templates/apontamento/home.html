@@ -3,94 +3,142 @@
 {% block title %}Apontamento | Genesis ERP{% endblock %}
 
 {% block content %}
+<div class="apont-welcome mb-4 mb-md-5">
+    <span class="d-block">Bem vindo, {{ apont_nome }}.</span>
+    <span class="d-block">Hoje é {{ apont_hoje|date:"l, d \d\e F \d\e Y" }}.</span>
+</div>
+
 <div class="mb-4">
     <h2 class="fw-bold mb-1">Apontamento</h2>
     <p class="text-muted mb-0">Registros de campo para análise do RH.</p>
 </div>
 
-<div class="apont-hero p-3 p-md-4 mb-4">
-    <div class="ps-2">
-        <p class="text-uppercase small fw-bold text-secondary mb-1" style="letter-spacing:.06em;">Diário</p>
-        <h3 class="fw-bold mb-3 mb-md-4">O que deseja registrar?</h3>
+<section class="apont-resumo-mes mb-4" aria-labelledby="apont-registro-mes-titulo">
+    <h3 id="apont-registro-mes-titulo" class="h5 fw-bold mb-3">
+        Registro do Mês ({{ apont_hoje|date:"F"|capfirst }})
+    </h3>
 
-        <div class="apont-actions-grid">
-            <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
-               class="apont-big-btn"
-               hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <i class="bi bi-person-x"></i>
-                <span>Adicionar Falta</span>
-            </a>
-            <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
-               class="apont-big-btn"
-               hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
-               hx-target="body"
-               hx-swap="innerHTML"
-               hx-push-url="true">
-                <i class="bi bi-chat-left-text"></i>
-                <span>Adicionar Observação</span>
-            </a>
+    <div class="apont-resumo-card mb-3">
+        <h4 class="apont-resumo-card__titulo">Faltas</h4>
+        <p class="apont-resumo-card__texto mb-3">
+            {% if apont_ve_todos_registros %}
+                {% if apont_faltas_mes_count == 1 %}1 falta{% else %}{{ apont_faltas_mes_count }} faltas{% endif %}
+                registradas no mês (toda a equipe).
+            {% else %}
+                Você registrou
+                {% if apont_faltas_mes_count == 1 %}1 falta{% else %}{{ apont_faltas_mes_count }} faltas{% endif %}.
+            {% endif %}
+        </p>
+        <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+           class="btn btn-primary rounded-3 fw-semibold mb-3"
+           hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            Ir para Faltas
+        </a>
+        <p class="apont-resumo-card__sub mb-1 small text-uppercase text-secondary fw-semibold">Último registro</p>
+        {% if apont_ultima_falta_mes %}
+            <p class="apont-resumo-card__ultimo mb-0">
+                {{ apont_ultima_falta_mes.funcionario }}
+                · {{ apont_ultima_falta_mes.data|date:"d/m/Y" }}
+                · {{ apont_ultima_falta_mes.get_status_display }}
+            </p>
+            {% if apont_ve_todos_registros %}
+            <p class="apont-registrado-por small text-muted mb-0 mt-2">
+                {{ apont_ultima_falta_mes.registrado_por.get_full_name|default:apont_ultima_falta_mes.registrado_por.username }}
+            </p>
+            {% endif %}
+        {% else %}
+            <p class="apont-resumo-card__ultimo mb-0 text-muted">Nenhum registro neste mês.</p>
+        {% endif %}
+    </div>
+
+    <div class="apont-resumo-card mb-3">
+        <h4 class="apont-resumo-card__titulo">Anotações</h4>
+        <p class="apont-resumo-card__texto mb-3">
+            {% if apont_ve_todos_registros %}
+                {% if apont_observacoes_mes_count == 1 %}1 anotação{% else %}{{ apont_observacoes_mes_count }} anotações{% endif %}
+                registradas no mês (toda a equipe).
+            {% else %}
+                Você registrou
+                {% if apont_observacoes_mes_count == 1 %}1 anotação{% else %}{{ apont_observacoes_mes_count }} anotações{% endif %}.
+            {% endif %}
+        </p>
+        <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+           class="btn btn-primary rounded-3 fw-semibold mb-3"
+           hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+           hx-target="body"
+           hx-swap="innerHTML"
+           hx-push-url="true">
+            Ir para Anotações
+        </a>
+        <p class="apont-resumo-card__sub mb-1 small text-uppercase text-secondary fw-semibold">Último registro</p>
+        {% if apont_ultima_observacao_mes %}
+            <p class="apont-resumo-card__ultimo mb-0">
+                {{ apont_ultima_observacao_mes.local }}
+                · {{ apont_ultima_observacao_mes.data|date:"d/m/Y" }}
+                · {{ apont_ultima_observacao_mes.get_status_display }}
+            </p>
+            {% if apont_ve_todos_registros %}
+            <p class="apont-registrado-por small text-muted mb-0 mt-2">
+                {{ apont_ultima_observacao_mes.registrado_por.get_full_name|default:apont_ultima_observacao_mes.registrado_por.username }}
+            </p>
+            {% endif %}
+        {% else %}
+            <p class="apont-resumo-card__ultimo mb-0 text-muted">Nenhum registro neste mês.</p>
+        {% endif %}
+    </div>
+</section>
+
+<section class="apont-faq-status mb-4" aria-labelledby="apont-faq-status-titulo">
+    <h3 id="apont-faq-status-titulo" class="h5 fw-bold mb-3">Status dos registros</h3>
+    <div class="accordion apont-faq-accordion" id="apontFaqStatus">
+        <div class="accordion-item">
+            <h4 class="accordion-header">
+                <button class="accordion-button collapsed rounded-0 fw-semibold" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#apontFaqPendente"
+                        aria-expanded="false" aria-controls="apontFaqPendente">
+                    Pendente
+                </button>
+            </h4>
+            <div id="apontFaqPendente" class="accordion-collapse collapse" data-bs-parent="#apontFaqStatus">
+                <div class="accordion-body text-muted small">
+                    O RH ainda não marcou o registro como visto. Ele segue na fila para análise e pode ser editado ou
+                    excluído por você no mesmo dia em que foi criado, conforme as regras da tela de registro.
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h4 class="accordion-header">
+                <button class="accordion-button collapsed rounded-0 fw-semibold" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#apontFaqVisto"
+                        aria-expanded="false" aria-controls="apontFaqVisto">
+                    Visto
+                </button>
+            </h4>
+            <div id="apontFaqVisto" class="accordion-collapse collapse" data-bs-parent="#apontFaqStatus">
+                <div class="accordion-body text-muted small">
+                    O RH confirmou que viu o registro. Indica que a informação foi recebida e considerada no fluxo de
+                    trabalho, sem necessariamente encerrar o assunto no sistema de folha.
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h4 class="accordion-header">
+                <button class="accordion-button collapsed rounded-0 fw-semibold" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#apontFaqArquivado"
+                        aria-expanded="false" aria-controls="apontFaqArquivado">
+                    Arquivado
+                </button>
+            </h4>
+            <div id="apontFaqArquivado" class="accordion-collapse collapse" data-bs-parent="#apontFaqStatus">
+                <div class="accordion-body text-muted small">
+                    O RH encerrou o registro no apontamento. Registros arquivados não podem ser editados nem excluídos
+                    pelo apontador; servem apenas para histórico e transparência.
+                </div>
+            </div>
         </div>
     </div>
-</div>
-
-<div class="mb-2">
-    <p class="text-uppercase small fw-bold text-secondary mb-2" style="letter-spacing:.06em;">Locais</p>
-    <div class="apont-links-row">
-        <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn"
-           hx-get="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-geo-alt"></i> Local
-        </a>
-        {% if request.usuario_so_apontador %}
-        <a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn"
-           hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-pin-map"></i> Locais de Trabalho
-        </a>
-        {% elif request.usuario_nav_mobile_apontamento %}
-        <a href="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn d-xl-none"
-           hx-get="{% url 'rh:locais_trabalho_apontamento' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-pin-map"></i> Locais de Trabalho
-        </a>
-        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn d-none d-xl-flex"
-           hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-pin-map"></i> Locais de Trabalho
-        </a>
-        {% else %}
-        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn"
-           hx-get="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-pin-map"></i> Locais de Trabalho
-        </a>
-        {% endif %}
-        <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
-           class="apont-link-btn"
-           hx-get="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <i class="bi bi-map"></i> Mapa de Trabalho
-        </a>
-    </div>
-</div>
+</section>
 {% endblock %}

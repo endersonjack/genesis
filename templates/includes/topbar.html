@@ -28,7 +28,7 @@
         </button>
 
         <div class="d-flex flex-column">
-            <h4 class="page-title mb-0 text-white fw-semibold">{% if request.usuario_so_apontador %}Apontamento{% else %}Painel{% endif %}</h4>
+            <h4 class="page-title mb-0 text-white fw-semibold">{{ modulo_topbar_titulo }}</h4>
 
             {% if request.empresa_ativa %}
                 <small class="topbar-company text-white d-flex align-items-center gap-2 flex-wrap">

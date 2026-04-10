@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Anotações anteriores | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+       class="btn btn-link text-body-secondary text-decoration-none p-0 mb-2 d-inline-flex align-items-center gap-1 fw-semibold"
+       hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
+       hx-target="body"
+       hx-swap="innerHTML"
+       hx-push-url="true">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        Voltar
+    </a>
+    <h2 class="fw-bold mb-1">Anotações anteriores</h2>
+    <p class="text-muted mb-0 small">
+        {% if apont_ve_todos_registros %}
+            Todos os registros da empresa no período.
+        {% else %}
+            Seus registros no período (data da anotação).
+        {% endif %}
+    </p>
+</div>
+
+<form method="get" class="apont-resumo-card mb-4 py-3 px-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-auto">
+            <label class="form-label small text-muted mb-0" for="oa-de">De</label>
+            <input type="date" class="form-control rounded-3" id="oa-de" name="de"
+                   value="{{ periodo_de|date:'Y-m-d' }}">
+        </div>
+        <div class="col-6 col-md-auto">
+            <label class="form-label small text-muted mb-0" for="oa-ate">Até</label>
+            <input type="date" class="form-control rounded-3" id="oa-ate" name="ate"
+                   value="{{ periodo_ate|date:'Y-m-d' }}">
+        </div>
+        <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-primary rounded-3 fw-semibold">Aplicar</button>
+        </div>
+    </div>
+</form>
+
+{% if observacoes %}
+    <div class="d-flex flex-column gap-2">
+        {% for o in observacoes %}
+            <div class="apont-resumo-card py-3 px-3 mb-0">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    {% if o.status == 'pendente' %}
+                        <span class="badge text-bg-warning">Pendente</span>
+                    {% elif o.status == 'visto' %}
+                        <span class="badge text-bg-success">Visto</span>
+                    {% elif o.status == 'arquivado' %}
+                        <span class="badge text-bg-secondary">Arquivado</span>
+                    {% else %}
+                        <span class="badge text-bg-light text-dark">{{ o.get_status_display }}</span>
+                    {% endif %}
+                </div>
+                <div class="fw-semibold">{{ o.local }}</div>
+                <div class="small text-muted">Data: {{ o.data|date:"d/m/Y" }}</div>
+                <div class="small mt-1 mb-0">{{ o.texto|truncatechars:160 }}</div>
+                {% if apont_ve_todos_registros %}
+                    <p class="apont-registrado-por small text-muted mb-0 mt-2">
+                        {{ o.registrado_por.get_full_name|default:o.registrado_por.username }}
+                    </p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-muted small">Nenhuma anotação no período.</p>
+{% endif %}
+{% endblock %}

@@ -71,6 +71,10 @@
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
     padding: 1rem 1.1rem;
     margin-bottom: 1rem;
+    /* Evita que linhas flex (nome + botão) estourem a largura do card no mobile */
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .lt-ap-card h2 {
@@ -106,6 +110,17 @@
     gap: 0.75rem;
     padding: 0.65rem 0;
     border-bottom: 1px solid #f1f5f9;
+    min-width: 0;
+}
+
+.lt-ap-person-row .lt-ap-person-info {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.lt-ap-person-row form {
+    flex-shrink: 0;
+    margin: 0;
 }
 
 .lt-ap-person-row:last-child {

@@ -1,67 +1,70 @@
 {# Feedback via toast global (htmx:afterRequest → /messages/toasts/) — não iterar messages aqui #}
+{# Formulário de período só no cabeçalho: <form> aninhado nos cartões de status é inválido em HTML5 e quebra o DOM / HTMX. #}
 <form id="form-apont-filtros"
-      class="mb-3 pb-3 border-bottom"
+      method="get"
       hx-get="{% url 'rh:dashboard_partial_apontamento' empresa_id=request.empresa_ativa.pk %}"
       hx-target="#dashboard-slot-apontamento"
       hx-swap="innerHTML"
-      hx-trigger="change, submit"
-      data-no-global-loading>
-    <p class="small text-muted mb-2 mb-md-3">Padrão: período com <strong>início hoje</strong> e <strong>fim hoje</strong> (data de referência do apontamento). Use «Todos» para ampliar cada critério.</p>
-    <div class="apont-filtro-bar">
-        <div class="flex-shrink-0">
-            <span class="form-label small text-muted text-nowrap">Período</span>
-            <div class="apont-filtro-datas">
-                <label class="visually-hidden" for="apont-filtro-afd-ini">De</label>
-                <input type="date" name="afd_ini" id="apont-filtro-afd-ini" class="form-control form-control-sm" value="{{ apont_filtros.data_ini_iso }}" title="Data inicial">
-                <span class="apont-filtro-sep">até</span>
-                <label class="visually-hidden" for="apont-filtro-afd-fim">Até</label>
-                <input type="date" name="afd_fim" id="apont-filtro-afd-fim" class="form-control form-control-sm" value="{{ apont_filtros.data_fim_iso }}" title="Data final">
+      hx-trigger="submit"
+      data-no-global-loading
+      novalidate>
+    <input type="hidden" name="aper" id="apont-aper-hidden" value="{{ apont_filtros.aper }}">
+    <input type="hidden" name="mna" id="apont-mna-hidden" value="{{ apont_filtros.mna }}">
+
+    <div class="rh-board-header flex-column align-items-stretch gap-2">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+            <h3 class="rh-board-title mb-0 flex-grow-1 min-w-0">
+                <span class="rh-board-icon">
+                    <i class="bi bi-journal-richtext"></i>
+                </span>
+                <span class="text-uppercase">Apontamento</span>
+            </h3>
+            <div class="d-flex flex-wrap align-items-center gap-2 apont-period-toolbar ms-md-auto">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Período">
+                    <button type="button"
+                            class="btn {% if apont_filtros.aper == 'dia' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                            onclick="document.getElementById('apont-mna-hidden').value='0';document.getElementById('apont-aper-hidden').value='dia';document.getElementById('form-apont-filtros').requestSubmit();">
+                        Dia
+                    </button>
+                    <button type="button"
+                            class="btn {% if apont_filtros.aper == 'semana' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                            onclick="document.getElementById('apont-mna-hidden').value='0';document.getElementById('apont-aper-hidden').value='semana';document.getElementById('form-apont-filtros').requestSubmit();">
+                        Semana
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="small text-muted text-nowrap mb-0" for="apont-filtro-mes">Mês</label>
+                    <select name="ames"
+                            id="apont-filtro-mes"
+                            class="form-select form-select-sm apont-filtro-mes-select"
+                            title="Mês do ano ou Todos os meses do ano indicado"
+                            onchange="(function(){document.getElementById('apont-mna-hidden').value='1';var a=document.getElementById('apont-aper-hidden');var s=document.getElementById('apont-filtro-mes');a.value=s.value===''?'ano':'mes';document.getElementById('form-apont-filtros').requestSubmit();})();">
+                        <option value="" {% if apont_filtros.mna and apont_filtros.ames is None %}selected{% endif %}>Todos</option>
+                        {% for num, nome in apont_meses %}
+                            <option value="{{ num }}" {% if apont_filtros.ames == num %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="small text-muted text-nowrap mb-0" for="apont-filtro-ano">Ano</label>
+                    <input type="number"
+                           name="aano"
+                           id="apont-filtro-ano"
+                           class="form-control form-control-sm apont-filtro-ano-input"
+                           min="2000"
+                           max="2100"
+                           value="{{ apont_filtros.aano }}"
+                           title="Ano (com mês específico ou Todos)"
+                           onchange="(function(){document.getElementById('apont-mna-hidden').value='1';var f=document.getElementById('form-apont-filtros');var a=document.getElementById('apont-aper-hidden');var s=document.getElementById('apont-filtro-mes');a.value=s.value===''?'ano':'mes';f.requestSubmit();})();">
+                </div>
             </div>
         </div>
-        <div class="flex-shrink-0" style="width: 8rem; min-width: 8rem;">
-            <label class="form-label small text-muted mb-0 text-truncate d-block" for="apont-filtro-afr" title="Apontador">Apontador</label>
-            <select name="afr" id="apont-filtro-afr" class="form-select form-select-sm">
-                <option value="" {% if not apont_filtros.reg_id %}selected{% endif %}>Todos</option>
-                {% for u in apont_apontadores %}
-                    <option value="{{ u.pk }}" {% if apont_filtros.reg_id == u.pk %}selected{% endif %}>{{ u.nome_completo|default:u.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex-shrink-0" style="width: 5.5rem; min-width: 5.5rem;">
-            <label class="form-label small text-muted mb-0" for="apont-filtro-aft">Tipo</label>
-            <select name="aft" id="apont-filtro-aft" class="form-select form-select-sm">
-                <option value="todos" {% if apont_filtros.tipo == 'todos' %}selected{% endif %}>Todos</option>
-                <option value="falta" {% if apont_filtros.tipo == 'falta' %}selected{% endif %}>Falta</option>
-                <option value="observacao" {% if apont_filtros.tipo == 'observacao' %}selected{% endif %}>Anotação</option>
-            </select>
-        </div>
-        <div class="flex-shrink-0" style="width: 7rem; min-width: 7rem;">
-            <label class="form-label small text-muted mb-0 text-truncate d-block" for="apont-filtro-afl" title="Local">Local</label>
-            <select name="afl" id="apont-filtro-afl" class="form-select form-select-sm">
-                <option value="" {% if not apont_filtros.local_id %}selected{% endif %}>Todos</option>
-                {% for loc in apont_locais %}
-                    <option value="{{ loc.pk }}" {% if apont_filtros.local_id == loc.pk %}selected{% endif %}>{{ loc.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex-shrink-0" style="width: 9rem; min-width: 9rem;">
-            <label class="form-label small text-muted mb-0 text-truncate d-block" for="apont-filtro-aff" title="Funcionário">Funcionário</label>
-            <select name="aff" id="apont-filtro-aff" class="form-select form-select-sm">
-                <option value="" {% if not apont_filtros.func_id %}selected{% endif %}>Todos</option>
-                {% for f in apont_funcionarios %}
-                    <option value="{{ f.pk }}" {% if apont_filtros.func_id == f.pk %}selected{% endif %}>{{ f.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex-shrink-0 align-self-end">
-            <button type="submit" class="btn btn-sm btn-outline-primary apont-filtro-btn d-flex align-items-center justify-content-center" title="Aplicar filtros" aria-label="Aplicar filtros">
-                <i class="bi bi-search" aria-hidden="true"></i>
-            </button>
-        </div>
+        <p class="text-muted small mb-0">Diário de Local de trabalho pelos apontadores</p>
     </div>
 </form>
 
-<div class="row g-4">
+    <div class="rh-board-body">
+        <div class="row g-4">
     <div class="col-12 col-lg-6">
         <p class="text-uppercase small fw-bold text-secondary mb-2" style="letter-spacing:.06em;">Faltas informadas</p>
         {% if apont_faltas %}
@@ -73,7 +76,24 @@
                             <span>·</span>
                             <span>Por {{ item.registrado_por.nome_completo|default:item.registrado_por.username }}</span>
                             <span>·</span>
-                            {% if item.status == 'pendente' %}
+                            {% if pode_alterar_status_apontamento %}
+                                <form class="apont-status-badge-form"
+                                      hx-post="{% url 'apontamento:falta_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                                      hx-target="#dashboard-slot-apontamento"
+                                      hx-swap="innerHTML"
+                                      data-no-global-loading>
+                                    {% csrf_token %}
+                                    {% include 'rh/partials/apontamento_filtros_hidden.html' %}
+                                    <select name="status"
+                                            class="apont-status-badge-select {% if item.status == 'pendente' %}apont-status-badge-select--pendente{% elif item.status == 'visto' or item.status == 'finalizado' %}apont-status-badge-select--visto{% elif item.status == 'arquivado' %}apont-status-badge-select--arquivado{% else %}apont-status-badge-select--outro{% endif %}"
+                                            aria-label="Alterar status da falta"
+                                            onchange="this.form.requestSubmit()">
+                                        {% for value, label in status_apontamento_choices %}
+                                            <option value="{{ value }}" {% if item.status == value or item.status == 'finalizado' and value == 'visto' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            {% elif item.status == 'pendente' %}
                                 <span class="badge text-bg-warning">Pendente</span>
                             {% elif item.status == 'visto' or item.status == 'finalizado' %}
                                 <span class="badge text-bg-success">Visto</span>
@@ -96,22 +116,6 @@
                         {% if item.observacao %}
                         <div class="destaque-item-sub small text-muted mt-1 mb-0">Obs.: {{ item.observacao|truncatechars:200 }}</div>
                         {% endif %}
-                        {% if pode_alterar_status_apontamento %}
-                            <form class="mt-2"
-                                  hx-post="{% url 'apontamento:falta_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
-                                  hx-target="#dashboard-slot-apontamento"
-                                  hx-swap="innerHTML"
-                                  data-no-global-loading>
-                                {% csrf_token %}
-                                {% include 'rh/partials/apontamento_filtros_hidden.html' %}
-                                <label class="form-label small text-muted mb-0">Status</label>
-                                <select name="status" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
-                                    {% for value, label in status_apontamento_choices %}
-                                        <option value="{{ value }}" {% if item.status == value or item.status == 'finalizado' and value == 'visto' %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </form>
-                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -132,7 +136,24 @@
                             <span>·</span>
                             <span>Por {{ item.registrado_por.nome_completo|default:item.registrado_por.username }}</span>
                             <span>·</span>
-                            {% if item.status == 'pendente' %}
+                            {% if pode_alterar_status_apontamento %}
+                                <form class="apont-status-badge-form"
+                                      hx-post="{% url 'apontamento:observacao_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                                      hx-target="#dashboard-slot-apontamento"
+                                      hx-swap="innerHTML"
+                                      data-no-global-loading>
+                                    {% csrf_token %}
+                                    {% include 'rh/partials/apontamento_filtros_hidden.html' %}
+                                    <select name="status"
+                                            class="apont-status-badge-select {% if item.status == 'pendente' %}apont-status-badge-select--pendente{% elif item.status == 'visto' or item.status == 'finalizado' %}apont-status-badge-select--visto{% elif item.status == 'arquivado' %}apont-status-badge-select--arquivado{% else %}apont-status-badge-select--outro{% endif %}"
+                                            aria-label="Alterar status da observação"
+                                            onchange="this.form.requestSubmit()">
+                                        {% for value, label in status_apontamento_choices %}
+                                            <option value="{{ value }}" {% if item.status == value or item.status == 'finalizado' and value == 'visto' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            {% elif item.status == 'pendente' %}
                                 <span class="badge text-bg-warning">Pendente</span>
                             {% elif item.status == 'visto' or item.status == 'finalizado' %}
                                 <span class="badge text-bg-success">Visto</span>
@@ -143,22 +164,6 @@
                             {% endif %}
                         </div>
                         <div class="destaque-item-sub">{{ item.texto|truncatechars:220 }}</div>
-                        {% if pode_alterar_status_apontamento %}
-                            <form class="mt-2"
-                                  hx-post="{% url 'apontamento:observacao_alterar_status' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
-                                  hx-target="#dashboard-slot-apontamento"
-                                  hx-swap="innerHTML"
-                                  data-no-global-loading>
-                                {% csrf_token %}
-                                {% include 'rh/partials/apontamento_filtros_hidden.html' %}
-                                <label class="form-label small text-muted mb-0">Status</label>
-                                <select name="status" class="form-select form-select-sm" onchange="this.form.requestSubmit()">
-                                    {% for value, label in status_apontamento_choices %}
-                                        <option value="{{ value }}" {% if item.status == value or item.status == 'finalizado' and value == 'visto' %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </form>
-                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -166,4 +171,5 @@
             <p class="destaque-vazio mb-0">Nenhuma observação para os filtros selecionados.</p>
         {% endif %}
     </div>
-</div>
+        </div>
+    </div>

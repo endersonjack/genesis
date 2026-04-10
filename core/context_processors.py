@@ -1,5 +1,11 @@
 from usuarios.models import UsuarioEmpresa
 
+from core.modulo_topbar import titulo_modulo_topbar
+
+
+def modulo_topbar(request):
+    return {'modulo_topbar_titulo': titulo_modulo_topbar(request)}
+
 
 def usuario_empresas(request):
     """

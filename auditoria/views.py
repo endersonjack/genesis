@@ -19,6 +19,7 @@ MODULO_FILTRO_CHOICES = [
     ('empresas', 'Empresa'),
     ('controles_rh', 'Controles RH'),
     ('local', 'Locais'),
+    ('apontamento', 'Apontamento'),
     ('outros', 'Outros'),
 ]
 
@@ -29,7 +30,15 @@ def _q_modulo(modulo_val: str) -> Q:
     if modulo_val == 'rh':
         return Q(modulo__in=['rh', 'controles_rh'])
     if modulo_val == 'outros':
-        conhecidos = {'rh', 'controles_rh', 'financeiro', 'estoque', 'empresas', 'local'}
+        conhecidos = {
+            'rh',
+            'controles_rh',
+            'financeiro',
+            'estoque',
+            'empresas',
+            'local',
+            'apontamento',
+        }
         return Q(modulo='') | ~Q(modulo__in=conhecidos)
     return Q(modulo=modulo_val)
 

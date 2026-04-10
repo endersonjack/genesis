@@ -1,5 +1,71 @@
 /* Home do apontamento — usa --apont-accent definido em base.html */
 
+.apont-welcome {
+    font-size: 1.05rem;
+    line-height: 1.45;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.apont-resumo-mes .apont-resumo-card {
+    border: 1px solid #d9e2ec;
+    border-radius: 1.1rem;
+    padding: 1.1rem 1.25rem;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+.apont-resumo-card__titulo {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+
+.apont-resumo-card__texto {
+    margin-bottom: 0;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.apont-resumo-card__ultimo {
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: #0f172a;
+}
+
+.apont-registrado-por {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.5rem;
+}
+
+.apont-faq-accordion.apont-faq-accordion {
+    --bs-accordion-border-color: #d9e2ec;
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--apont-accent, #2563eb) 22%, transparent);
+}
+
+.apont-faq-accordion .accordion-item {
+    border-radius: 0.65rem !important;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    border: 1px solid #d9e2ec;
+}
+
+.apont-faq-accordion .accordion-item:last-child {
+    margin-bottom: 0;
+}
+
+.apont-faq-accordion .accordion-button:not(.collapsed) {
+    background: color-mix(in srgb, var(--apont-accent, #2563eb) 10%, #fff);
+    color: #0f172a;
+    box-shadow: none;
+}
+
+.apont-faq-accordion .accordion-body {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
 .apont-hero {
     border: 1px solid #d9e2ec;
     border-radius: 1.25rem;
@@ -31,33 +97,107 @@
     }
 }
 
+/* Terceiro botão (Local de Trabalho): linha inteira abaixo de Falta | Observação em telas ≥sm */
+@media (min-width: 576px) {
+    .apont-actions-grid .apont-big-btn--locais-row {
+        grid-column: 1 / -1;
+    }
+}
+
 .apont-big-btn {
-    min-height: 120px;
-    border-radius: 1rem;
+    min-height: 132px;
+    border-radius: 1.1rem;
     font-weight: 800;
-    font-size: 1.05rem;
+    font-size: 1.08rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.55rem;
     text-decoration: none;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border: 2px solid color-mix(in srgb, var(--apont-accent, #2563eb) 38%, #cbd5e1);
+    background: linear-gradient(
+        160deg,
+        #ffffff 0%,
+        color-mix(in srgb, var(--apont-accent, #2563eb) 7%, #ffffff) 100%
+    );
     color: #0f172a;
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow:
+        0 4px 6px rgba(15, 23, 42, 0.04),
+        0 14px 32px color-mix(in srgb, var(--apont-accent, #2563eb) 16%, transparent);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.apont-big-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--apont-accent, #2563eb);
+    border-radius: 1.1rem 0 0 1.1rem;
 }
 
 .apont-big-btn:hover {
     color: #0f172a;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--apont-accent, #2563eb) 55%, #94a3b8);
+    box-shadow:
+        0 8px 16px rgba(15, 23, 42, 0.06),
+        0 20px 40px color-mix(in srgb, var(--apont-accent, #2563eb) 22%, transparent);
 }
 
 .apont-big-btn i {
-    font-size: 2rem;
+    font-size: 2.15rem;
     color: var(--apont-accent, #2563eb);
+    filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--apont-accent, #2563eb) 25%, transparent));
+}
+
+/* Formulário «Nova falta» / «Nova anotação» — mesmo shell visual do card Diário (hero): borda, faixa, sombra */
+.apont-nova-registro-card {
+    border: 1px solid #d9e2ec;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+    position: relative;
+}
+
+.apont-nova-registro-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--apont-accent, #2563eb);
+}
+
+.apont-nova-registro-card__inner > form {
+    margin-top: 1.125rem;
+}
+
+/* Título do bloco — mesmo tamanho em mobile e desktop */
+.apont-nova-registro-card__titulo {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.apont-nova-registro-card__sub {
+    margin-bottom: 0;
+    line-height: 1.45;
+}
+
+/* Rótulos do formulário dentro do card: igual em todas as larguras */
+.apont-nova-registro-card .form-label.fw-semibold {
+    font-weight: 700;
+    color: #0f172a;
 }
 
 .apont-links-row {
@@ -70,6 +210,18 @@
     .apont-links-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* Card falta do dia — chevron do bloco retrátil (Bootstrap 5 usa .collapsed no trigger) */
+.apont-falta-card__toggle .apont-falta-card__chevron {
+    display: block;
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.apont-falta-card__toggle:not(.collapsed) .apont-falta-card__chevron,
+.apont-falta-card__toggle[aria-expanded='true'] .apont-falta-card__chevron {
+    transform: rotate(180deg);
 }
 
 /* Lista do dia — status RH / apontador */
@@ -98,4 +250,106 @@
     background: #f8fafc;
     color: #0f172a;
     border-color: #cbd5e1;
+}
+
+/* Falta (apontamento) — destaque do funcionário escolhido no autocomplete */
+.apont-funcionario-display {
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    margin-top: 0.35rem;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apont-funcionario-display--empty {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.apont-funcionario-display--empty .apont-funcionario-display__check {
+    display: none;
+}
+
+.apont-funcionario-display--empty .apont-funcionario-display__nome {
+    font-weight: 500;
+}
+
+.apont-funcionario-display--picked {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+    border: 2px solid var(--apont-accent, #2563eb);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.14);
+    color: #0c4a6e;
+}
+
+.apont-funcionario-display--picked .apont-funcionario-display__check {
+    display: block;
+    color: var(--apont-accent, #2563eb);
+    font-size: 1.2rem;
+    line-height: 1;
+    margin-top: 0.15rem;
+}
+
+.apont-funcionario-display--picked .apont-funcionario-display__nome {
+    font-weight: 800;
+    font-size: 1.08rem;
+    line-height: 1.35;
+    color: #0f172a;
+}
+
+/* Título de seção (listas «Suas faltas hoje», etc.) — base; mobile refinado abaixo */
+.apont-secao-titulo {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #0f172a;
+}
+
+/*
+ * Mobile / tablet apontamento: mesma família visual do título de página (ex.: «Faltas»)
+ * e títulos em negrito (700).
+ */
+@media (max-width: 991.98px) {
+    body.apont-bottom-nav-on .page-content {
+        -webkit-font-smoothing: antialiased;
+    }
+
+    body.apont-bottom-nav-on .page-content h2.fw-bold {
+        font-size: 1.5rem;
+        font-weight: 700 !important;
+        line-height: 1.25;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+
+    body.apont-bottom-nav-on .page-content .apont-secao-titulo {
+        font-size: 0.8125rem;
+        font-weight: 700 !important;
+        letter-spacing: 0.06em;
+        color: #0f172a;
+    }
+
+    body.apont-bottom-nav-on .page-content .apont-hero h3.fw-bold {
+        font-size: 1.35rem;
+        font-weight: 700 !important;
+        line-height: 1.3;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+
+    body.apont-bottom-nav-on .page-content .apont-hero > .ps-2 > p.text-uppercase.small {
+        font-weight: 700 !important;
+        color: #475569;
+    }
+
+    body.apont-bottom-nav-on .page-content .form-label.fw-semibold {
+        font-weight: 700 !important;
+        color: #0f172a;
+    }
+
+    body.apont-bottom-nav-on .page-content .apont-mobile-card .fw-semibold {
+        font-weight: 700 !important;
+    }
 }

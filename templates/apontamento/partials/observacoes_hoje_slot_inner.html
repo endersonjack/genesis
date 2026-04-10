@@ -1,6 +1,6 @@
 {% if observacoes_hoje %}
 <div class="mb-4">
-    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Suas anotações hoje</h3>
+    <h3 class="apont-secao-titulo mb-2">{% if apont_ve_todos_registros %}Anotações de hoje{% else %}Suas anotações hoje{% endif %}</h3>
     <div class="d-flex flex-column gap-2">
         {% for o in observacoes_hoje %}
         <div class="rounded-3 p-3 bg-white shadow-sm apont-mobile-card {% if o.status == 'pendente' %}apont-status-pendente{% elif o.status == 'visto' or o.status == 'finalizado' %}apont-status-visto{% elif o.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}{% if edit_pk and o.pk == edit_pk %} apont-mobile-card--editing{% endif %}">
@@ -20,6 +20,11 @@
                     {% endif %}
                 </div>
                 <div class="small mb-0">{{ o.texto|truncatechars:200 }}</div>
+                {% if apont_ve_todos_registros %}
+                <p class="apont-registrado-por small text-muted mb-0 mt-2">
+                    {{ o.registrado_por.get_full_name|default:o.registrado_por.username }}
+                </p>
+                {% endif %}
                 {% if o.status_alterado_por %}
                 <div class="apont-item-meta-status text-muted mt-2 mb-0">
                     <i class="bi bi-person-check" aria-hidden="true"></i>
@@ -32,6 +37,7 @@
                 {% endif %}
             </div>
             <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+                {% if o.status != 'arquivado' and o.registrado_por_id == request.user.id %}
                 <a href="{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
                    class="btn btn-sm btn-outline-primary p-2 rounded-3"
                    title="Editar"
@@ -54,6 +60,7 @@
                         <i class="bi bi-trash" aria-hidden="true"></i>
                     </button>
                 </form>
+                {% endif %}
             </div>
             </div>
             {% if pode_gerir_status_apontamento %}
@@ -83,6 +90,6 @@
 </div>
 {% else %}
 <div class="alert alert-light border small text-muted mb-4">
-    Nenhuma anotação registrada por você hoje.
+    {% if apont_ve_todos_registros %}Nenhuma anotação registrada hoje.{% else %}Nenhuma anotação registrada por você hoje.{% endif %}
 </div>
 {% endif %}

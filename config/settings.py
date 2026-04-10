@@ -73,6 +73,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.usuario_empresas',
+                'core.context_processors.modulo_topbar',
             ],
         },
     },

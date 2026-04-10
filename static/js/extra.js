@@ -355,17 +355,55 @@ function initBootstrapDropdowns() {
     });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initBootstrapDropdowns);
-} else {
+/**
+ * Cards de falta (Apontamento): o Collapse do Bootstrap quebra após navegação HTMX
+ * (abre e não fecha). Usamos toggle delegado só com classes `.show` / `.collapsed`
+ * (mesmo CSS do Bootstrap para .collapse).
+ */
+function setupApontamentoFaltaCollapseDelegate() {
+    if (window.__genesisApontFaltaCollapseDelegate) return;
+    window.__genesisApontFaltaCollapseDelegate = true;
+
+    document.body.addEventListener(
+        'click',
+        function (e) {
+            var btn = e.target.closest('.apont-falta-card .apont-falta-card__toggle');
+            if (!btn) return;
+
+            var sel = btn.getAttribute('data-bs-target');
+            if (!sel || sel.charAt(0) !== '#') return;
+
+            var panel = document.getElementById(sel.slice(1));
+            if (!panel || !panel.classList.contains('collapse')) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            var willShow = !panel.classList.contains('show');
+            panel.classList.toggle('show', willShow);
+            btn.classList.toggle('collapsed', !willShow);
+            btn.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        },
+        true
+    );
+}
+
+function runBootstrapHtmxReinit() {
     initBootstrapDropdowns();
 }
 
-document.body.addEventListener('htmx:afterSettle', function () {
-    initBootstrapDropdowns();
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runBootstrapHtmxReinit);
+} else {
+    runBootstrapHtmxReinit();
+}
+
+document.body.addEventListener('htmx:afterSettle', runBootstrapHtmxReinit);
+
+setupApontamentoFaltaCollapseDelegate();
 
 window.initBootstrapDropdowns = initBootstrapDropdowns;
+window.runBootstrapHtmxReinit = runBootstrapHtmxReinit;
 
 /**
  * Voltar com o botão do browser / bfcache: o overlay de loading e o contador podem
@@ -379,8 +417,8 @@ window.addEventListener('pageshow', function (event) {
     if (typeof window.resetGlobalHtmxLoading === 'function') {
         window.resetGlobalHtmxLoading();
     }
-    if (typeof initBootstrapDropdowns === 'function') {
-        initBootstrapDropdowns();
+    if (typeof window.runBootstrapHtmxReinit === 'function') {
+        window.runBootstrapHtmxReinit();
     }
 });
 
@@ -395,18 +433,46 @@ document.body.addEventListener('htmx:historyRestore', function () {
     if (typeof window.resetGlobalHtmxLoading === 'function') {
         window.resetGlobalHtmxLoading();
     }
-    if (typeof initBootstrapDropdowns === 'function') {
-        initBootstrapDropdowns();
+    if (typeof window.runBootstrapHtmxReinit === 'function') {
+        window.runBootstrapHtmxReinit();
     }
 });
 document.body.addEventListener('htmx:popped', function () {
     if (typeof window.resetGlobalHtmxLoading === 'function') {
         window.resetGlobalHtmxLoading();
     }
-    if (typeof initBootstrapDropdowns === 'function') {
-        initBootstrapDropdowns();
+    if (typeof window.runBootstrapHtmxReinit === 'function') {
+        window.runBootstrapHtmxReinit();
     }
 });
+
+/**
+ * Apontamento: evita duplo clique no envio — botão com `.apont-submit-spinner` + `.apont-submit-label`.
+ */
+window.genesisApontFormSubmitBusy = function (form, busy) {
+    if (!form) return;
+    var btn = form.querySelector('button[type="submit"]');
+    if (!btn) return;
+    var spin = btn.querySelector('.apont-submit-spinner');
+    var label = btn.querySelector('.apont-submit-label');
+    if (busy) {
+        if (label && !label.dataset.apontOrigTxt) {
+            label.dataset.apontOrigTxt = (label.textContent || '').trim();
+        }
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        if (spin) spin.classList.remove('d-none');
+        if (label) label.textContent = 'Salvando…';
+    } else {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        if (spin) spin.classList.add('d-none');
+        if (label && label.dataset.apontOrigTxt) {
+            label.textContent = label.dataset.apontOrigTxt;
+            delete label.dataset.apontOrigTxt;
+        }
+    }
+};
 
 function limparFormulario(btn) {
     if (!confirm('Deseja realmente limpar todos os campos?')) return;

@@ -5,7 +5,13 @@
 {% block content %}
 <div class="mb-3">
     <h2 class="fw-bold mb-1">{% if modo_edicao %}Editar falta{% else %}Faltas{% endif %}</h2>
-    <p class="text-muted mb-0 small">Registros feitos por você hoje ({% now "d/m/Y" %}).</p>
+    <p class="text-muted mb-0 small">
+        {% if apont_ve_todos_registros %}
+            Registros de hoje ({% now "d/m/Y" %}) — todas as faltas da equipe.
+        {% else %}
+            Registros feitos por você hoje ({% now "d/m/Y" %}).
+        {% endif %}
+    </p>
 </div>
 
 <div id="apont-faltas-hoje-slot"
@@ -18,13 +24,14 @@
 
 {% if not modo_edicao %}
 <hr class="my-4">
-<div class="mb-3">
-    <h3 class="h6 fw-bold text-secondary text-uppercase mb-2" style="letter-spacing:.04em;">Nova falta</h3>
-    <p class="text-muted small mb-0">Informe o funcionário e o motivo.</p>
-</div>
+<div class="apont-nova-registro-card p-3 p-md-4 mb-4">
+    <div class="apont-nova-registro-card__inner ps-2">
+        <h3 class="apont-nova-registro-card__titulo fw-bold mb-2 mb-md-3">Nova falta</h3>
+        <p class="apont-nova-registro-card__sub text-muted small">Informe o funcionário e o motivo.</p>
 {% endif %}
 
-<form method="post"
+<form id="apont-falta-form"
+      method="post"
       action="{% if modo_edicao %}{% url 'apontamento:falta_editar' empresa_id=request.empresa_ativa.pk pk=falta_edicao.pk %}{% else %}{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}{% endif %}">
     {% csrf_token %}
     {% if form.non_field_errors %}
@@ -34,16 +41,23 @@
     <div class="mb-3">
         <label class="form-label fw-semibold">Funcionário</label>
         {{ form.funcionario }}
-        <p class="form-text mb-1" id="apont-funcionario-label">
-            {% if modo_edicao and falta_edicao %}
-                {{ falta_edicao.funcionario.nome }}
-            {% elif form.funcionario.value %}
-                Selecionado (ID {{ form.funcionario.value }})
-            {% else %}
-                Nenhum selecionado — busque abaixo.
-            {% endif %}
-        </p>
-        <input type="search" id="apont-busca-q" name="q" class="form-control" placeholder="Nome, CPF ou matrícula…" autocomplete="off"
+        <div id="apont-funcionario-display"
+             class="apont-funcionario-display {% if modo_edicao and falta_edicao or form.funcionario.value %}apont-funcionario-display--picked{% else %}apont-funcionario-display--empty{% endif %}"
+             aria-live="polite">
+            <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-check-circle-fill apont-funcionario-display__check flex-shrink-0" aria-hidden="true"></i>
+                <p class="mb-0 apont-funcionario-display__nome flex-grow-1 min-w-0" id="apont-funcionario-label">
+                    {% if modo_edicao and falta_edicao %}
+                        {{ falta_edicao.funcionario.nome }}
+                    {% elif form.funcionario.value %}
+                        Selecionado (ID {{ form.funcionario.value }})
+                    {% else %}
+                        Nenhum selecionado — busque abaixo.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <input type="search" id="apont-busca-q" name="q" class="form-control rounded-3 mt-2" placeholder="Nome, CPF ou matrícula…" autocomplete="off"
                hx-get="{% url 'apontamento:busca_funcionarios' empresa_id=request.empresa_ativa.pk %}"
                hx-trigger="keyup changed delay:350ms"
                hx-target="#apont-busca-resultados"
@@ -70,18 +84,30 @@
         {% if form.observacao.errors %}<div class="text-danger small">{{ form.observacao.errors }}</div>{% endif %}
     </div>
 
-    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
-        {% if modo_edicao %}Salvar alterações{% else %}Salvar falta{% endif %}
+    <button type="submit"
+            class="btn btn-primary btn-lg w-100 rounded-3 fw-bold d-inline-flex align-items-center justify-content-center gap-2">
+        <span class="spinner-border spinner-border-sm apont-submit-spinner text-white d-none" role="status" aria-hidden="true"></span>
+        <span class="apont-submit-label">{% if modo_edicao %}Salvar alterações{% else %}Salvar falta{% endif %}</span>
     </button>
 </form>
+
+{% if not modo_edicao %}
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-3">
+    {% include 'apontamento/includes/link_faltas_anteriores.html' %}
+</div>
 
 <script>
 (function () {
     const res = document.getElementById('apont-busca-resultados');
+    const display = document.getElementById('apont-funcionario-display');
     const label = document.getElementById('apont-funcionario-label');
     const q = document.getElementById('apont-busca-q');
     const fid = document.getElementById('id_funcionario');
-    if (!res || !label || !fid) return;
+    if (!res || !label || !fid || !display) return;
     res.addEventListener('click', function (e) {
         const btn = e.target.closest('.apont-pick');
         if (!btn) return;
@@ -89,8 +115,52 @@
         const nome = btn.getAttribute('data-apont-nome') || '';
         fid.value = id;
         label.textContent = nome;
+        display.classList.remove('apont-funcionario-display--empty');
+        display.classList.add('apont-funcionario-display--picked');
         res.innerHTML = '';
         if (q) q.value = '';
+    });
+})();
+
+(function () {
+    const form = document.getElementById('apont-falta-form');
+    const dataEl = document.getElementById('id_data');
+    if (!form || !dataEl) return;
+
+    function todayISO() {
+        var t = new Date();
+        return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    }
+
+    form.addEventListener('submit', function (e) {
+        var val = (dataEl.value || '').trim();
+        if (!val || val === todayISO()) {
+            if (typeof window.genesisApontFormSubmitBusy === 'function') {
+                window.genesisApontFormSubmitBusy(form, true);
+            }
+            return;
+        }
+
+        e.preventDefault();
+        var ok = window.confirm(
+            'A data da falta não é a data de hoje (é anterior ou posterior). Deseja salvar o registro mesmo assim?'
+        );
+        if (!ok) return;
+
+        if (typeof window.genesisApontFormSubmitBusy === 'function') {
+            window.genesisApontFormSubmitBusy(form, true);
+        }
+        /* requestSubmit() a partir do próprio handler do submit falha em vários browsers; HTMLFormElement.submit() envia sem re-disparar o evento. */
+        setTimeout(function () {
+            if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                if (typeof window.genesisApontFormSubmitBusy === 'function') {
+                    window.genesisApontFormSubmitBusy(form, false);
+                }
+                form.reportValidity();
+                return;
+            }
+            form.submit();
+        }, 0);
     });
 })();
 </script>

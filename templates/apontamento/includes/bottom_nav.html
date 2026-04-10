@@ -13,7 +13,7 @@
         <span>Início</span>
     </a>
     <a href="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
-       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'falta_nova' or ns == 'apontamento' and urln == 'falta_editar' %}active{% endif %}"
+       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'falta_nova' or ns == 'apontamento' and urln == 'falta_editar' or ns == 'apontamento' and urln == 'faltas_anteriores' %}active{% endif %}"
        hx-get="{% url 'apontamento:falta_nova' empresa_id=request.empresa_ativa.pk %}"
        hx-target="body"
        hx-swap="innerHTML"
@@ -22,7 +22,7 @@
         <span>Faltas</span>
     </a>
     <a href="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
-       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'observacao_nova' or ns == 'apontamento' and urln == 'observacao_editar' %}active{% endif %}"
+       class="apont-bottom-nav__link {% if ns == 'apontamento' and urln == 'observacao_nova' or ns == 'apontamento' and urln == 'observacao_editar' or ns == 'apontamento' and urln == 'observacoes_anteriores' %}active{% endif %}"
        hx-get="{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}"
        hx-target="body"
        hx-swap="innerHTML"

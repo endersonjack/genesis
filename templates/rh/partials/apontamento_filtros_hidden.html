@@ -1,7 +1,5 @@
-{# Preserva filtros do painel ao dar POST em «alterar status» (HTMX). #}
-<input type="hidden" name="afd_ini" value="{{ apont_filtros.data_ini_iso }}">
-<input type="hidden" name="afd_fim" value="{{ apont_filtros.data_fim_iso }}">
-<input type="hidden" name="afr" value="{% if apont_filtros.reg_id %}{{ apont_filtros.reg_id }}{% endif %}">
-<input type="hidden" name="aft" value="{{ apont_filtros.tipo }}">
-<input type="hidden" name="afl" value="{% if apont_filtros.local_id %}{{ apont_filtros.local_id }}{% endif %}">
-<input type="hidden" name="aff" value="{% if apont_filtros.func_id %}{{ apont_filtros.func_id }}{% endif %}">
+{# Preserva período ao dar POST em «alterar status» (HTMX). #}
+<input type="hidden" name="aper" value="{{ apont_filtros.aper }}">
+<input type="hidden" name="mna" value="{{ apont_filtros.mna }}">
+<input type="hidden" name="ames" value="{% if apont_filtros.ames is not None %}{{ apont_filtros.ames }}{% endif %}">
+<input type="hidden" name="aano" value="{{ apont_filtros.aano }}">

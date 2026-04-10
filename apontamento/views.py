@@ -1,5 +1,7 @@
+import calendar
+from datetime import date, timedelta
 from functools import wraps
-from typing import Optional
+from typing import Optional, Tuple
 
 from django.contrib import messages
 from django.db.models import Q
@@ -9,12 +11,16 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from local.models import Local
+from auditoria.registry import audit_apontamento
 from rh.models import Funcionario
 from rh.views.base import _empresa_ativa_or_redirect
 
 from .forms import ApontamentoFaltaForm, ApontamentoObservacaoLocalForm
 from .models import ApontamentoFalta, ApontamentoObservacaoLocal, StatusApontamento
-from .permissions import usuario_rh_pode_gerir_status_apontamento
+from .permissions import (
+    usuario_apontamento_ve_registros_de_todos,
+    usuario_rh_pode_gerir_status_apontamento,
+)
 
 
 def _ctx_status_apontamento_mobile(request: HttpRequest) -> dict:
@@ -24,6 +30,14 @@ def _ctx_status_apontamento_mobile(request: HttpRequest) -> dict:
         ),
         'status_apontamento_choices': StatusApontamento.choices,
     }
+
+
+def _ctx_apontamento_listas(request: HttpRequest) -> dict:
+    ctx = _ctx_status_apontamento_mobile(request)
+    ctx['apont_ve_todos_registros'] = usuario_apontamento_ve_registros_de_todos(
+        request
+    )
+    return ctx
 
 
 def _is_htmx(request: HttpRequest) -> bool:
@@ -50,7 +64,7 @@ def _render_faltas_hoje_slot_inner(
         {
             'faltas_hoje': _faltas_registradas_hoje_queryset(request, empresa_ativa),
             'edit_pk': edit_pk,
-            **_ctx_status_apontamento_mobile(request),
+            **_ctx_apontamento_listas(request),
         },
     )
 
@@ -66,9 +80,11 @@ def _render_observacoes_hoje_slot_inner(
         request,
         'apontamento/partials/observacoes_hoje_slot_inner.html',
         {
-            'observacoes_hoje': _observacoes_registradas_hoje_queryset(request, empresa_ativa),
+            'observacoes_hoje': _observacoes_registradas_hoje_queryset(
+                request, empresa_ativa
+            ),
             'edit_pk': edit_pk,
-            **_ctx_status_apontamento_mobile(request),
+            **_ctx_apontamento_listas(request),
         },
     )
 
@@ -83,26 +99,81 @@ def _pode_modulo_apontamento(request: HttpRequest) -> bool:
 
 def _faltas_registradas_hoje_queryset(request: HttpRequest, empresa_ativa):
     hoje = timezone.localdate()
+    filtro = dict(empresa=empresa_ativa, criado_em__date=hoje)
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
     return (
-        ApontamentoFalta.objects.filter(
-            empresa=empresa_ativa,
-            registrado_por=request.user,
-            criado_em__date=hoje,
+        ApontamentoFalta.objects.filter(**filtro)
+        .select_related(
+            'funcionario',
+            'funcionario__cargo',
+            'funcionario__local_trabalho',
+            'status_alterado_por',
+            'registrado_por',
         )
-        .select_related('funcionario', 'funcionario__local_trabalho', 'status_alterado_por')
         .order_by('-criado_em')
     )
 
 
 def _observacoes_registradas_hoje_queryset(request: HttpRequest, empresa_ativa):
     hoje = timezone.localdate()
+    filtro = dict(empresa=empresa_ativa, criado_em__date=hoje)
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
     return (
-        ApontamentoObservacaoLocal.objects.filter(
-            empresa=empresa_ativa,
-            registrado_por=request.user,
-            criado_em__date=hoje,
+        ApontamentoObservacaoLocal.objects.filter(**filtro)
+        .select_related('local', 'status_alterado_por', 'registrado_por')
+        .order_by('-criado_em')
+    )
+
+
+def _intervalo_mes_corrente_local() -> Tuple[date, date]:
+    hoje = timezone.localdate()
+    inicio = hoje.replace(day=1)
+    _, ultimo_dia = calendar.monthrange(hoje.year, hoje.month)
+    fim = hoje.replace(day=ultimo_dia)
+    return inicio, fim
+
+
+def _nome_exibicao_apontador(request: HttpRequest) -> str:
+    u = request.user
+    nome = (u.get_full_name() or u.first_name or u.username or '').strip()
+    return nome or 'apontador'
+
+
+def _faltas_mes_queryset(request: HttpRequest, empresa_ativa):
+    inicio, fim = _intervalo_mes_corrente_local()
+    filtro = dict(
+        empresa=empresa_ativa,
+        criado_em__date__gte=inicio,
+        criado_em__date__lte=fim,
+    )
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
+    return (
+        ApontamentoFalta.objects.filter(**filtro)
+        .select_related(
+            'funcionario',
+            'funcionario__cargo',
+            'funcionario__local_trabalho',
+            'registrado_por',
         )
-        .select_related('local', 'status_alterado_por')
+        .order_by('-criado_em')
+    )
+
+
+def _observacoes_mes_queryset(request: HttpRequest, empresa_ativa):
+    inicio, fim = _intervalo_mes_corrente_local()
+    filtro = dict(
+        empresa=empresa_ativa,
+        criado_em__date__gte=inicio,
+        criado_em__date__lte=fim,
+    )
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
+    return (
+        ApontamentoObservacaoLocal.objects.filter(**filtro)
+        .select_related('local', 'registrado_por')
         .order_by('-criado_em')
     )
 
@@ -112,7 +183,9 @@ def _get_observacao_editavel_hoje(
 ) -> ApontamentoObservacaoLocal:
     hoje = timezone.localdate()
     return get_object_or_404(
-        ApontamentoObservacaoLocal.objects.filter(criado_em__date=hoje),
+        ApontamentoObservacaoLocal.objects.filter(
+            criado_em__date=hoje,
+        ).select_related('local'),
         pk=pk,
         empresa=empresa_ativa,
         registrado_por=request.user,
@@ -123,11 +196,21 @@ def _get_falta_editavel_hoje(request: HttpRequest, empresa_ativa, pk: int) -> Ap
     """Falta desta empresa, registrada por mim hoje (criação no dia)."""
     hoje = timezone.localdate()
     return get_object_or_404(
-        ApontamentoFalta.objects.filter(criado_em__date=hoje),
+        ApontamentoFalta.objects.filter(criado_em__date=hoje).select_related(
+            'funcionario',
+        ),
         pk=pk,
         empresa=empresa_ativa,
         registrado_por=request.user,
     )
+
+
+_MSG_APONT_FALTA_ARQUIVADA = (
+    'Faltas marcadas como Arquivado pelo RH não podem ser editadas nem excluídas.'
+)
+_MSG_APONT_OBS_ARQUIVADA = (
+    'Anotações marcadas como Arquivado pelo RH não podem ser editadas nem excluídas.'
+)
 
 
 def require_apontamento(view_func):
@@ -157,10 +240,23 @@ def home(request: HttpRequest) -> HttpResponse:
     if redirect_response:
         return redirect_response
 
+    qs_faltas_mes = _faltas_mes_queryset(request, empresa_ativa)
+    qs_obs_mes = _observacoes_mes_queryset(request, empresa_ativa)
+
     return render(
         request,
         'apontamento/home.html',
-        {},
+        {
+            'apont_nome': _nome_exibicao_apontador(request),
+            'apont_hoje': timezone.localdate(),
+            'apont_faltas_mes_count': qs_faltas_mes.count(),
+            'apont_ultima_falta_mes': qs_faltas_mes.first(),
+            'apont_observacoes_mes_count': qs_obs_mes.count(),
+            'apont_ultima_observacao_mes': qs_obs_mes.first(),
+            'apont_ve_todos_registros': usuario_apontamento_ve_registros_de_todos(
+                request
+            ),
+        },
     )
 
 
@@ -183,6 +279,22 @@ def falta_nova(request: HttpRequest) -> HttpResponse:
             obj.empresa = empresa_ativa
             obj.registrado_por = request.user
             obj.save()
+            audit_apontamento(
+                request,
+                acao='create',
+                resumo=(
+                    f'Apontamento: inclusão de falta — {obj.funcionario.nome} '
+                    f'(id {obj.pk}, data da falta {obj.data.strftime("%d/%m/%Y")})'
+                ),
+                detalhes={
+                    'tipo': 'falta',
+                    'pk': obj.pk,
+                    'funcionario_id': obj.funcionario_id,
+                    'funcionario_nome': obj.funcionario.nome,
+                    'data': str(obj.data),
+                    'status': obj.status,
+                },
+            )
             messages.success(request, 'Falta registrada para análise do RH.')
             return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
     else:
@@ -196,7 +308,7 @@ def falta_nova(request: HttpRequest) -> HttpResponse:
         'modo_edicao': False,
         'edit_pk': None,
     }
-    ctx.update(_ctx_status_apontamento_mobile(request))
+    ctx.update(_ctx_apontamento_listas(request))
     return render(request, 'apontamento/falta_form.html', ctx)
 
 
@@ -210,6 +322,9 @@ def falta_editar(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect_response
 
     falta = _get_falta_editavel_hoje(request, empresa_ativa, pk)
+    if falta.status == StatusApontamento.ARQUIVADO:
+        messages.error(request, _MSG_APONT_FALTA_ARQUIVADA)
+        return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
 
     if request.method == 'POST':
         form = ApontamentoFaltaForm(
@@ -218,7 +333,25 @@ def falta_editar(request: HttpRequest, pk: int) -> HttpResponse:
             instance=falta,
         )
         if form.is_valid():
-            form.save()
+            falta_atualizada = form.save()
+            audit_apontamento(
+                request,
+                acao='update',
+                resumo=(
+                    f'Apontamento: alteração de falta — '
+                    f'{falta_atualizada.funcionario.nome} '
+                    f'(id {falta_atualizada.pk}, '
+                    f'data da falta {falta_atualizada.data.strftime("%d/%m/%Y")})'
+                ),
+                detalhes={
+                    'tipo': 'falta',
+                    'pk': falta_atualizada.pk,
+                    'funcionario_id': falta_atualizada.funcionario_id,
+                    'funcionario_nome': falta_atualizada.funcionario.nome,
+                    'data': str(falta_atualizada.data),
+                    'status': falta_atualizada.status,
+                },
+            )
             messages.success(request, 'Falta atualizada.')
             return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
     else:
@@ -236,7 +369,7 @@ def falta_editar(request: HttpRequest, pk: int) -> HttpResponse:
         'falta_edicao': falta,
         'edit_pk': falta.pk,
     }
-    ctx.update(_ctx_status_apontamento_mobile(request))
+    ctx.update(_ctx_apontamento_listas(request))
     return render(request, 'apontamento/falta_form.html', ctx)
 
 
@@ -251,7 +384,28 @@ def falta_excluir(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect_response
 
     falta = _get_falta_editavel_hoje(request, empresa_ativa, pk)
+    if falta.status == StatusApontamento.ARQUIVADO:
+        messages.error(request, _MSG_APONT_FALTA_ARQUIVADA)
+        return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
+    detalhes_excl = {
+        'tipo': 'falta',
+        'pk': falta.pk,
+        'funcionario_id': falta.funcionario_id,
+        'funcionario_nome': falta.funcionario.nome,
+        'data': str(falta.data),
+        'status': falta.status,
+    }
+    resumo_excl = (
+        f'Apontamento: exclusão de falta — {falta.funcionario.nome} '
+        f'(id {falta.pk}, data da falta {falta.data.strftime("%d/%m/%Y")})'
+    )
     falta.delete()
+    audit_apontamento(
+        request,
+        acao='delete',
+        resumo=resumo_excl,
+        detalhes=detalhes_excl,
+    )
     messages.success(request, 'Falta excluída.')
     return redirect('apontamento:falta_nova', empresa_id=empresa_ativa.pk)
 
@@ -284,6 +438,22 @@ def observacao_nova(request: HttpRequest) -> HttpResponse:
             obj.empresa = empresa_ativa
             obj.registrado_por = request.user
             obj.save()
+            audit_apontamento(
+                request,
+                acao='create',
+                resumo=(
+                    f'Apontamento: inclusão de anotação — {obj.local.nome} '
+                    f'({obj.data.strftime("%d/%m/%Y")})'
+                ),
+                detalhes={
+                    'tipo': 'anotacao',
+                    'pk': obj.pk,
+                    'local_id': obj.local_id,
+                    'local_nome': obj.local.nome,
+                    'data': str(obj.data),
+                    'status': obj.status,
+                },
+            )
             messages.success(request, 'Observação registrada.')
             return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
     else:
@@ -298,7 +468,7 @@ def observacao_nova(request: HttpRequest) -> HttpResponse:
         'modo_edicao': False,
         'edit_pk': None,
     }
-    ctx.update(_ctx_status_apontamento_mobile(request))
+    ctx.update(_ctx_apontamento_listas(request))
     return render(request, 'apontamento/observacao_form.html', ctx)
 
 
@@ -312,6 +482,10 @@ def observacao_editar(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect_response
 
     obs = _get_observacao_editavel_hoje(request, empresa_ativa, pk)
+    if obs.status == StatusApontamento.ARQUIVADO:
+        messages.error(request, _MSG_APONT_OBS_ARQUIVADA)
+        return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
+
     tem_locais = Local.objects.filter(empresa=empresa_ativa).exists()
 
     if not tem_locais:
@@ -328,7 +502,23 @@ def observacao_editar(request: HttpRequest, pk: int) -> HttpResponse:
             instance=obs,
         )
         if form.is_valid():
-            form.save()
+            obs_atual = form.save()
+            audit_apontamento(
+                request,
+                acao='update',
+                resumo=(
+                    f'Apontamento: alteração de anotação — '
+                    f'{obs_atual.local.nome} (id {obs_atual.pk})'
+                ),
+                detalhes={
+                    'tipo': 'anotacao',
+                    'pk': obs_atual.pk,
+                    'local_id': obs_atual.local_id,
+                    'local_nome': obs_atual.local.nome,
+                    'data': str(obs_atual.data),
+                    'status': obs_atual.status,
+                },
+            )
             messages.success(request, 'Observação atualizada.')
             return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
     else:
@@ -347,7 +537,7 @@ def observacao_editar(request: HttpRequest, pk: int) -> HttpResponse:
         'observacao_edicao': obs,
         'edit_pk': obs.pk,
     }
-    ctx.update(_ctx_status_apontamento_mobile(request))
+    ctx.update(_ctx_apontamento_listas(request))
     return render(request, 'apontamento/observacao_form.html', ctx)
 
 
@@ -362,7 +552,27 @@ def observacao_excluir(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect_response
 
     obs = _get_observacao_editavel_hoje(request, empresa_ativa, pk)
+    if obs.status == StatusApontamento.ARQUIVADO:
+        messages.error(request, _MSG_APONT_OBS_ARQUIVADA)
+        return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
+    detalhes_obs_excl = {
+        'tipo': 'anotacao',
+        'pk': obs.pk,
+        'local_id': obs.local_id,
+        'local_nome': obs.local.nome,
+        'data': str(obs.data),
+        'status': obs.status,
+    }
+    resumo_obs_excl = (
+        f'Apontamento: exclusão de anotação — {obs.local.nome} (id {obs.pk})'
+    )
     obs.delete()
+    audit_apontamento(
+        request,
+        acao='delete',
+        resumo=resumo_obs_excl,
+        detalhes=detalhes_obs_excl,
+    )
     messages.success(request, 'Observação excluída.')
     return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
 
@@ -428,6 +638,122 @@ def observacoes_hoje_fragment(request: HttpRequest) -> HttpResponse:
     return _render_observacoes_hoje_slot_inner(request, empresa_ativa)
 
 
+_PERIODO_APONTAMENTO_ANTERIORES_MAX_DIAS = 366
+
+
+def _parse_periodo_apontamento_anteriores(request: HttpRequest) -> tuple[date, date]:
+    """Intervalo [de, ate] a partir de GET (de/ate ISO), com limites e mensagens como nas telas de histórico."""
+    hoje = timezone.localdate()
+    default_de = hoje - timedelta(days=30)
+    raw_de = (request.GET.get('de') or '').strip()
+    raw_ate = (request.GET.get('ate') or '').strip()
+    try:
+        data_de = date.fromisoformat(raw_de) if raw_de else default_de
+        data_ate = date.fromisoformat(raw_ate) if raw_ate else hoje
+    except ValueError:
+        messages.error(request, 'Informe datas válidas no período.')
+        data_de, data_ate = default_de, hoje
+
+    if data_de > data_ate:
+        data_de, data_ate = data_ate, data_de
+
+    if (data_ate - data_de).days > _PERIODO_APONTAMENTO_ANTERIORES_MAX_DIAS:
+        messages.warning(
+            request,
+            f'O período máximo de busca é de {_PERIODO_APONTAMENTO_ANTERIORES_MAX_DIAS} dias. '
+            'A data final foi ajustada.',
+        )
+        data_ate = data_de + timedelta(days=_PERIODO_APONTAMENTO_ANTERIORES_MAX_DIAS)
+
+    return data_de, data_ate
+
+
+@require_apontamento
+def faltas_anteriores(request: HttpRequest) -> HttpResponse:
+    """Lista faltas de apontamento do utilizador, filtradas pela data da falta."""
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    data_de, data_ate = _parse_periodo_apontamento_anteriores(request)
+
+    filtro = dict(
+        empresa=empresa_ativa,
+        data__gte=data_de,
+        data__lte=data_ate,
+    )
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
+
+    faltas = (
+        ApontamentoFalta.objects.filter(**filtro)
+        .select_related(
+            'funcionario',
+            'funcionario__cargo',
+            'funcionario__local_trabalho',
+            'status_alterado_por',
+            'registrado_por',
+        )
+        .order_by('-data', '-criado_em')
+    )
+
+    return render(
+        request,
+        'apontamento/faltas_anteriores.html',
+        {
+            'faltas': faltas,
+            'periodo_de': data_de,
+            'periodo_ate': data_ate,
+            'apont_ve_todos_registros': usuario_apontamento_ve_registros_de_todos(
+                request
+            ),
+        },
+    )
+
+
+@require_apontamento
+def observacoes_anteriores(request: HttpRequest) -> HttpResponse:
+    """Lista anotações de local do utilizador, filtradas pela data do registro."""
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    data_de, data_ate = _parse_periodo_apontamento_anteriores(request)
+
+    filtro = dict(
+        empresa=empresa_ativa,
+        data__gte=data_de,
+        data__lte=data_ate,
+    )
+    if not usuario_apontamento_ve_registros_de_todos(request):
+        filtro['registrado_por'] = request.user
+
+    observacoes = (
+        ApontamentoObservacaoLocal.objects.filter(**filtro)
+        .select_related('local', 'status_alterado_por', 'registrado_por')
+        .order_by('-data', '-criado_em')
+    )
+
+    return render(
+        request,
+        'apontamento/observacoes_anteriores.html',
+        {
+            'observacoes': observacoes,
+            'periodo_de': data_de,
+            'periodo_ate': data_ate,
+            'apont_ve_todos_registros': usuario_apontamento_ve_registros_de_todos(
+                request
+            ),
+        },
+    )
+
+
 @require_POST
 def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     """RH: altera status da falta de apontamento (dashboard ou tela mobile)."""
@@ -445,7 +771,7 @@ def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect('rh:dashboard_rh', empresa_id=empresa_ativa.pk)
 
     obj = get_object_or_404(
-        ApontamentoFalta,
+        ApontamentoFalta.objects.select_related('funcionario'),
         pk=pk,
         empresa=empresa_ativa,
     )
@@ -455,6 +781,7 @@ def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     if raw not in valid:
         messages.error(request, 'Status inválido.')
     elif raw != obj.status:
+        old_status = obj.status
         obj.status = raw
         obj.status_alterado_por = request.user
         obj.status_alterado_em = timezone.now()
@@ -465,6 +792,23 @@ def falta_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
                 'status_alterado_por',
                 'status_alterado_em',
             ]
+        )
+        audit_apontamento(
+            request,
+            acao='update',
+            resumo=(
+                f'Apontamento: alteração de status (RH) — falta '
+                f'{obj.funcionario.nome} '
+                f'(id {obj.pk}, data da falta {obj.data.strftime("%d/%m/%Y")})'
+            ),
+            detalhes={
+                'tipo': 'falta_status',
+                'pk': obj.pk,
+                'funcionario_nome': obj.funcionario.nome,
+                'data_falta': str(obj.data),
+                'status_anterior': old_status,
+                'status_novo': raw,
+            },
         )
         messages.success(request, 'Status da falta atualizado.')
 
@@ -493,7 +837,7 @@ def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect('rh:dashboard_rh', empresa_id=empresa_ativa.pk)
 
     obj = get_object_or_404(
-        ApontamentoObservacaoLocal,
+        ApontamentoObservacaoLocal.objects.select_related('local'),
         pk=pk,
         empresa=empresa_ativa,
     )
@@ -503,6 +847,7 @@ def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
     if raw not in valid:
         messages.error(request, 'Status inválido.')
     elif raw != obj.status:
+        old_status = obj.status
         obj.status = raw
         obj.status_alterado_por = request.user
         obj.status_alterado_em = timezone.now()
@@ -513,6 +858,21 @@ def observacao_alterar_status(request: HttpRequest, pk: int) -> HttpResponse:
                 'status_alterado_por',
                 'status_alterado_em',
             ]
+        )
+        audit_apontamento(
+            request,
+            acao='update',
+            resumo=(
+                f'Apontamento: alteração de status (RH) — anotação '
+                f'{obj.local.nome} (id {obj.pk})'
+            ),
+            detalhes={
+                'tipo': 'anotacao_status',
+                'pk': obj.pk,
+                'local_nome': obj.local.nome,
+                'status_anterior': old_status,
+                'status_novo': raw,
+            },
         )
         messages.success(request, 'Status da observação atualizado.')
 

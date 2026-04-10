@@ -64,3 +64,19 @@ def audit_controles_rh(
         modulo='controles_rh',
         detalhes=detalhes,
     )
+
+
+def audit_apontamento(
+    request: HttpRequest,
+    acao: str,
+    resumo: str,
+    detalhes: dict[str, Any] | None = None,
+) -> None:
+    """Atalho para Apontamento — faltas e anotações de campo (`modulo='apontamento'`)."""
+    registrar_auditoria(
+        request,
+        acao=acao,
+        resumo=resumo,
+        modulo='apontamento',
+        detalhes=detalhes,
+    )
