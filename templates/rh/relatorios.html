@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios de RH | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .rh-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .rh-card-header {
+        padding: 1rem 1.25rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #334155;
+        {% endif %}
+    }
+
+    .rh-card-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+
+    .rh-report-row {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .85rem;
+        padding: 1rem 1.15rem;
+        margin-bottom: .75rem;
+    }
+
+    .rh-report-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .rh-report-actions .btn {
+        font-weight: 600;
+    }
+
+    .rh-relatorios-tabs-wrap {
+        background: transparent;
+        padding: .35rem .25rem 0 !important;
+    }
+
+    .rh-relatorios-tabs {
+        gap: .35rem;
+        flex-wrap: wrap;
+    }
+
+    .rh-relatorios-tabs .nav-link {
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-bottom: none;
+        border-radius: .5rem .5rem 0 0;
+        color: #0f172a;
+        font-weight: 700;
+        padding: .5rem 1rem;
+        background: rgba(255, 255, 255, 0.45);
+    }
+
+    .rh-relatorios-tabs .nav-link:hover {
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.65);
+        border-color: rgba(255, 255, 255, 0.85);
+    }
+
+    .rh-relatorios-tabs .nav-link:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+    }
+
+    .rh-relatorios-tabs .nav-link.active {
+        color: #0f172a;
+        background: #f8fafc;
+        border: 1px solid #d9e2ec;
+        border-bottom: 1px solid #f8fafc;
+        margin-bottom: -1px;
+        position: relative;
+        z-index: 1;
+    }
+</style>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Relatórios de RH</h2>
+        <p class="text-muted mb-0">
+            Imprima ou exporte dados da empresa
+            {% if request.empresa_ativa %}
+                <strong>{{ request.empresa_ativa }}</strong>
+            {% endif %}
+        </p>
+    </div>
+
+    <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Voltar ao RH
+    </a>
+</div>
+
+<div class="rh-card mb-4">
+    <div class="rh-card-header rh-relatorios-tabs-wrap">
+        <ul class="nav nav-tabs rh-relatorios-tabs border-0" id="relatoriosTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link active"
+                        id="rel-tab-situacao"
+                        data-bs-toggle="tab"
+                        data-bs-target="#rel-pane-situacao"
+                        role="tab"
+                        aria-controls="rel-pane-situacao"
+                        aria-selected="true">
+                    Situação
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link"
+                        id="rel-tab-saude"
+                        data-bs-toggle="tab"
+                        data-bs-target="#rel-pane-saude"
+                        role="tab"
+                        aria-controls="rel-pane-saude"
+                        aria-selected="false">
+                    Saúde
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="tab-content rh-card-body">
+        <div class="tab-pane fade show active" id="rel-pane-situacao" role="tabpanel" aria-labelledby="rel-tab-situacao" tabindex="0">
+            <p class="text-muted small mb-3">
+                Situação de vínculo, experiência, aviso prévio e férias. Cada export abre numa nova aba.
+            </p>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Funcionários ativos</div>
+                        <div class="small text-muted">Exclui demitidos e inativos (padrão da busca).</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=ativos"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=ativos"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Em experiência</div>
+                        <div class="small text-muted">Admitidos com prorrogação de experiência em curso.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?experiencia=1&amp;relatorio=experiencia"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?experiencia=1&amp;relatorio=experiencia"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Demitidos</div>
+                        <div class="small text-muted">Funcionários com data de demissão preenchida.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?situacao=demitido&amp;relatorio=demitidos"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?situacao=demitido&amp;relatorio=demitidos"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Aviso prévio ativo</div>
+                        <div class="small text-muted">Período de aviso prévio coincide com a data de hoje.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1&amp;relatorio=aviso_previo"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?aviso_ativo=1&amp;relatorio=aviso_previo"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Em férias</div>
+                        <div class="small text-muted">Com período de gozo que inclui a data de hoje.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?em_ferias=1&amp;relatorio=ferias"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?em_ferias=1&amp;relatorio=ferias"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="rel-pane-saude" role="tabpanel" aria-labelledby="rel-tab-saude" tabindex="0">
+            <p class="text-muted small mb-3">
+                Saúde ocupacional: vencimentos de PCMSO e acompanhamento de ASO (último registro por funcionário ativo).
+            </p>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">PCMSO — vencimentos</div>
+                        <div class="small text-muted">
+                            Funcionários ativos: próximo vencimento (menor data futura) ou último vencido, e dias até ou desde o vencimento.
+                        </div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=pcmso_vencimentos"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=pcmso_vencimentos"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">ASO — último registro</div>
+                        <div class="small text-muted">Data do exame mais recente e dias corridos desde então.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=aso_ultimo"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=aso_ultimo"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

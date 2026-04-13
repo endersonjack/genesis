@@ -12,6 +12,7 @@ urlpatterns = [
     # DASHBOARD RH
     # ======================
     path('', empresa_scoped(dashboard_rh), name='dashboard_rh'),
+    path('relatorios/', empresa_scoped(relatorios_rh), name='relatorios_rh'),
     path('locais-trabalho/', empresa_scoped(locais_trabalho), name='locais_trabalho'),
     path(
         'locais-trabalho/mapa/',

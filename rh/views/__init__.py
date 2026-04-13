@@ -26,6 +26,7 @@ from .base import *
 # DASHBOARD / CALENDÁRIO
 # ==========================================================
 from .dashboard import *
+from .relatorios import *
 
 # ==========================================================
 # LOCAIS DE TRABALHO

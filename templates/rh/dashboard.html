@@ -809,10 +809,10 @@
             <i class="bi bi-search"></i>
             <span>Buscar</span>
         </a>
-        <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}"
+        <a href="{% url 'rh:relatorios_rh' empresa_id=request.empresa_ativa.pk %}"
            class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-map"></i>
-            <span>Ver Mapa de Locais de Trabalho</span>
+            <i class="bi bi-file-earmark-bar-graph"></i>
+            <span>Relatórios</span>
         </a>
         <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
            class="rh-top-btn rh-top-btn-light">
@@ -844,6 +844,13 @@
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2"
+                            href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}">
+                            <i class="bi bi-map"></i>
+                            Ver mapa de locais de trabalho
+                        </a>
+                    </li>
                     <li>
                         <a class="dropdown-item d-flex align-items-center gap-2"
                             href="{% url 'rh:lista_cargos' empresa_id=request.empresa_ativa.pk %}">
