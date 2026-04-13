@@ -1,0 +1,39 @@
+<form
+    method="post"
+    hx-post="{% if modo == 'editar' and cargo %}{% url 'rh:modal_cargo_editar' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}{% else %}{% url 'rh:modal_cargo_criar' empresa_id=request.empresa_ativa.pk %}{% endif %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading>
+    {% csrf_token %}
+    <input type="hidden" name="return_q" value="{{ return_q|default:'' }}">
+
+    <div class="modal-header">
+        <div>
+            <h5 class="modal-title fw-bold mb-1">{{ titulo }}</h5>
+            <small class="text-muted">Nome do cargo como aparece nos cadastros e relatórios.</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body">
+        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
+            Nome do cargo <span class="text-danger">*</span>
+        </label>
+        {{ form.nome }}
+        {% if form.nome.errors %}
+            <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+        {% endif %}
+        {% if form.non_field_errors %}
+            <div class="text-danger small mt-2">{{ form.non_field_errors|join:", " }}</div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>

@@ -665,6 +665,7 @@ class CargoForm(forms.ModelForm):
         fields = ['nome']
 
     def __init__(self, *args, **kwargs):
+        kwargs.pop('empresa_ativa', None)
         super().__init__(*args, **kwargs)
         self.fields['nome'].widget.attrs.update({
             'class': 'form-control',

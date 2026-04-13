@@ -57,6 +57,7 @@ from .lembretes import *
 # CADASTROS AUXILIARES
 # ==========================================================
 from .cargos import *
+from .modais_cargo import *
 from .lotacoes import *
 
 

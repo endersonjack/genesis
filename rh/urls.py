@@ -145,6 +145,9 @@ urlpatterns = [
     path('cargos/novo/', empresa_scoped(criar_cargo), name='criar_cargo'),
     path('cargos/<int:pk>/editar/', empresa_scoped(editar_cargo), name='editar_cargo'),
     path('cargos/<int:pk>/excluir/', empresa_scoped(excluir_cargo), name='excluir_cargo'),
+    path('cargos/modal/novo/', empresa_scoped(modal_cargo_criar), name='modal_cargo_criar'),
+    path('cargos/modal/<int:pk>/editar/', empresa_scoped(modal_cargo_editar), name='modal_cargo_editar'),
+    path('cargos/modal/<int:pk>/excluir/', empresa_scoped(modal_cargo_excluir), name='modal_cargo_excluir'),
 
     # ======================
     # LOTAÇÕES

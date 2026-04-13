@@ -52,9 +52,17 @@
         <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
-        <a href="{% url 'rh:criar_cargo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
+        <button
+            type="button"
+            class="btn btn-primary"
+            hx-get="{% url 'rh:modal_cargo_criar' empresa_id=request.empresa_ativa.pk %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
             <i class="bi bi-plus-circle me-1"></i> Novo cargo
-        </a>
+        </button>
     </div>
 </div>
 
@@ -92,12 +100,30 @@
                                 <td>{{ cargo.total_funcionarios }}</td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <a href="{% url 'rh:editar_cargo' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            title="Editar"
+                                            hx-get="{% url 'rh:modal_cargo_editar' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+                                            hx-target="#modal-content"
+                                            hx-swap="innerHTML"
+                                            data-no-global-loading
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalPadrao">
                                             <i class="bi bi-pencil-square"></i>
-                                        </a>
-                                        <a href="{% url 'rh:excluir_cargo' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}" class="btn btn-sm btn-outline-danger">
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            title="Excluir"
+                                            hx-get="{% url 'rh:modal_cargo_excluir' empresa_id=request.empresa_ativa.pk pk=cargo.pk %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+                                            hx-target="#modal-content"
+                                            hx-swap="innerHTML"
+                                            data-no-global-loading
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalPadrao">
                                             <i class="bi bi-trash"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -110,11 +136,25 @@
                 <i class="bi bi-briefcase fs-1 d-block mb-3"></i>
                 <h5 class="fw-semibold">Nenhum cargo encontrado</h5>
                 <p class="mb-3">Cadastre o primeiro cargo para começar a organizar o RH.</p>
-                <a href="{% url 'rh:criar_cargo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary">
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    hx-get="{% url 'rh:modal_cargo_criar' empresa_id=request.empresa_ativa.pk %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-no-global-loading
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
                     <i class="bi bi-plus-circle me-1"></i> Cadastrar cargo
-                </a>
+                </button>
             </div>
         {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" id="modal-content"></div>
     </div>
 </div>
 {% endblock %}

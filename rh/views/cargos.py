@@ -12,6 +12,7 @@ Observação:
 """
 
 from django.contrib import messages
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
 from auditoria.registry import audit_rh
@@ -37,15 +38,21 @@ def lista_cargos(request):
     if redirect_response:
         return redirect_response
 
-    cargos = Cargo.objects.filter(
-        empresa=empresa_ativa
-    ).order_by('nome')
+    q = (request.GET.get('q') or '').strip()
+    cargos = (
+        Cargo.objects.filter(empresa=empresa_ativa)
+        .annotate(total_funcionarios=Count('funcionarios', distinct=True))
+        .order_by('nome')
+    )
+    if q:
+        cargos = cargos.filter(nome__icontains=q)
 
     return render(
         request,
         'rh/cargos/lista.html',
         {
             'cargos': cargos,
+            'q': q,
         }
     )
 
@@ -180,7 +187,7 @@ def excluir_cargo(request, pk):
 
     return render(
         request,
-        'rh/cargos/excluir.html',
+        'rh/cargos/confirmar_exclusao.html',
         {
             'cargo': cargo,
         }
