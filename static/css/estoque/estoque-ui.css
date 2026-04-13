@@ -1,0 +1,283 @@
+/* Estoque — botões (pílula como no dashboard), skeletons e painel de lista */
+
+@keyframes estoqueSkeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.estoque-hx-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 0%, #e8eef5 45%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: estoqueSkeletonShimmer 1.15s ease-in-out infinite;
+    border-radius: 0.65rem;
+}
+
+.estoque-hx-skeleton-line {
+    height: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.estoque-hx-skeleton-line.short {
+    width: 55%;
+}
+
+.estoque-top-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.estoque-btn {
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 46px;
+    padding: 0.78rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1;
+    transition: all 0.2s ease;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+}
+
+.estoque-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.estoque-btn i {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.estoque-btn-light {
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid #dbe4ee;
+}
+
+.estoque-btn-light:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.estoque-btn-primary {
+    color: #fff;
+    border: 1px solid transparent;
+    background: var(--estoque-accent, #2563eb);
+}
+
+.estoque-btn-primary:hover {
+    color: #fff;
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
+.estoque-btn-danger-outline {
+    background: #fff;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.estoque-btn-danger-outline:hover {
+    background: #fef2f2;
+    color: #991b1b;
+    border-color: #f87171;
+    transform: translateY(-1px);
+}
+
+.estoque-btn-danger {
+    color: #fff;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.estoque-btn-danger:hover {
+    color: #fff;
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
+.estoque-list-panel {
+    position: relative;
+    min-height: 4rem;
+}
+
+.estoque-list-hx-skeleton {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    align-items: flex-start;
+    justify-content: stretch;
+    padding: 0.75rem 0;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.estoque-list-hx-skeleton.htmx-request {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.estoque-list-hx-skeleton-row {
+    height: 2.35rem;
+    border-radius: 0.5rem;
+}
+
+.estoque-list-hx-skeleton-row.short {
+    width: 72%;
+}
+
+tbody tr.estoque-row-modal {
+    cursor: pointer;
+}
+
+/* Movimentar — saldo como botão (cores por faixa) */
+.movimentar-saldo-btn {
+    font-weight: 700;
+    min-width: 6.5rem;
+    border-width: 2px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.movimentar-saldo-btn:hover {
+    transform: translateY(-1px);
+}
+
+.movimentar-saldo-btn--acima {
+    color: #0f5132;
+    background: #d1e7dd;
+    border-color: #a3cfbb;
+}
+
+.movimentar-saldo-btn--acima:hover {
+    background: #badbcc;
+    border-color: #87b8a3;
+    color: #0a3622;
+}
+
+.movimentar-saldo-btn--igual {
+    color: #664d03;
+    background: #fff3cd;
+    border-color: #ffecb5;
+}
+
+.movimentar-saldo-btn--igual:hover {
+    background: #ffe69c;
+    border-color: #ffd666;
+    color: #523e02;
+}
+
+.movimentar-saldo-btn--abaixo {
+    color: #984c0c;
+    background: #ffe5d0;
+    border-color: #ffc9a3;
+}
+
+.movimentar-saldo-btn--abaixo:hover {
+    background: #ffd0b3;
+    border-color: #ffb380;
+    color: #7a3d0a;
+}
+
+.movimentar-saldo-btn--zerado {
+    color: #842029;
+    background: #f8d7da;
+    border-color: #f1aeb5;
+}
+
+.movimentar-saldo-btn--zerado:hover {
+    background: #f1aeb5;
+    border-color: #e35d6a;
+    color: #58151c;
+}
+
+/* Modal movimentar saldo — borda do #modal-content */
+#modal-content.movimentar-saldo--add {
+    border: 3px solid #0d6efd !important;
+    box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
+}
+
+#modal-content.movimentar-saldo--retirar {
+    border: 3px solid #dc3545 !important;
+    box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.22);
+}
+
+/* Modal movimentar saldo — loading no envio (evita duplo clique) */
+form.js-movimentar-saldo-modal.htmx-request #movimentar-saldo-submit-btn .js-movimentar-saldo-submit-label {
+    display: none !important;
+}
+
+form.js-movimentar-saldo-modal.htmx-request #movimentar-saldo-submit-btn .js-movimentar-saldo-submit-wait {
+    display: inline-block !important;
+}
+
+tbody tr.estoque-row-modal td {
+    border-color: inherit;
+}
+
+.item-thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+/* Lista de itens: miniatura — preview grande via JS (fixed, ver estoque-item-thumb-preview.js) */
+.estoque-item-thumb-wrap {
+    display: inline-block;
+    line-height: 0;
+    vertical-align: middle;
+    cursor: zoom-in;
+}
+
+.estoque-item-thumb-preview-float {
+    position: fixed;
+    z-index: 10050;
+    display: none;
+    padding: 8px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
+    border: 1px solid #e2e8f0;
+    max-width: min(360px, calc(100vw - 24px));
+    max-height: min(360px, calc(100vh - 24px));
+    pointer-events: auto;
+}
+
+.estoque-item-thumb-preview-float img {
+    display: block;
+    max-width: 100%;
+    max-height: min(320px, calc(100vh - 48px));
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+@media (max-width: 767.98px) {
+    .estoque-top-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .estoque-top-actions > .estoque-btn,
+    .estoque-top-actions > a.estoque-btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}

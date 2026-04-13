@@ -1,0 +1,57 @@
+{# Filtros HTMX para a página Movimentar (texto: nome/descrição, marca, categoria; selects: categoria, situação). #}
+<form id="movimentar-busca-form"
+      class="row g-2 g-md-3 mb-3 align-items-end"
+      method="get"
+      action="{% url 'estoque:movimentar_estoque' empresa_id=request.empresa_ativa.pk %}"
+      hx-get="{% url 'estoque:movimentar_estoque' empresa_id=request.empresa_ativa.pk %}"
+      hx-target="#movimentar-list-inner"
+      hx-swap="innerHTML"
+      hx-indicator="#movimentar-list-hx-skeleton"
+      hx-push-url="true"
+      hx-trigger="change from:select, keyup changed delay:400ms from:#movimentar-busca-q, submit"
+      data-no-global-loading>
+    <input type="hidden" name="partial" value="movimentar">
+    <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label small text-muted mb-1" for="movimentar-busca-q">Nome, marca ou categoria</label>
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="search"
+                   name="q"
+                   id="movimentar-busca-q"
+                   class="form-control border-start-0"
+                   value="{{ q|default:'' }}"
+                   placeholder="Buscar…"
+                   autocomplete="off">
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <label class="form-label small text-muted mb-1" for="movimentar-busca-categoria">Categoria</label>
+        <select name="categoria"
+                id="movimentar-busca-categoria"
+                class="form-select shadow-sm rounded-3">
+            <option value="">Todas</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.pk }}"{% if cat.pk|stringformat:"s" == categoria_filtro %} selected{% endif %}>{{ cat.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <label class="form-label small text-muted mb-1" for="movimentar-busca-situacao">Situação</label>
+        <select name="situacao"
+                id="movimentar-busca-situacao"
+                class="form-select shadow-sm rounded-3">
+            <option value="" {% if not situacao_filtro %}selected{% endif %}>Todas</option>
+            <option value="zerado" {% if situacao_filtro == 'zerado' %}selected{% endif %}>Zerado</option>
+            <option value="abaixo_min" {% if situacao_filtro == 'abaixo_min' %}selected{% endif %}>Abaixo do mínimo</option>
+        </select>
+    </div>
+    <div class="col-12 col-lg-3 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-secondary rounded-3 d-none d-md-inline-flex align-items-center">
+            <i class="bi bi-funnel me-1"></i> Aplicar
+        </button>
+        <a href="{% url 'estoque:movimentar_estoque' empresa_id=request.empresa_ativa.pk %}"
+           class="btn btn-outline-secondary rounded-3 align-self-end">
+            Limpar
+        </a>
+    </div>
+</form>

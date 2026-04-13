@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Estoque | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10 col-xxl-8">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+                <p class="text-muted small mb-0">
+                    Campos com <span class="text-danger">*</span> são obrigatórios.
+                </p>
+            </div>
+            <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-outline-secondary rounded-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar à lista
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                {% if item and item.imagens.exists %}
+                <div class="mb-4">
+                    <span class="form-label fw-semibold d-block">Imagens atuais</span>
+                    <div class="d-flex flex-wrap gap-3 mt-2">
+                        {% for img in item.imagens.all %}
+                        <div class="border rounded-3 p-2 bg-light" style="max-width:140px;">
+                            <img src="{{ img.imagem.url }}" alt="" class="img-fluid rounded-2 mb-2 w-100" style="max-height:100px;object-fit:cover;">
+                            <form method="post"
+                                  action="{% url 'estoque:item_imagem_excluir' empresa_id=request.empresa_ativa.pk item_pk=item.pk imagem_pk=img.pk %}"
+                                  class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-3">Remover</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">
+                            {{ form.descricao.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.descricao }}
+                        {% if form.descricao.errors %}<div class="text-danger small mt-1">{{ form.descricao.errors|join:", " }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.marca.id_for_label }}">{{ form.marca.label }}</label>
+                            {{ form.marca }}
+                            {% if form.marca.errors %}<div class="text-danger small mt-1">{{ form.marca.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.categoria.id_for_label }}">
+                                {{ form.categoria.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}<div class="text-danger small mt-1">{{ form.categoria.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.peso.id_for_label }}">{{ form.peso.label }}</label>
+                            {{ form.peso }}
+                            {% if form.peso.help_text %}<div class="form-text">{{ form.peso.help_text }}</div>{% endif %}
+                            {% if form.peso.errors %}<div class="text-danger small mt-1">{{ form.peso.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.unidade_medida.id_for_label }}">
+                                {{ form.unidade_medida.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.unidade_medida }}
+                            {% if form.unidade_medida.errors %}<div class="text-danger small mt-1">{{ form.unidade_medida.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="{{ form.preco.id_for_label }}">{{ form.preco.label }}</label>
+                            {{ form.preco }}
+                            {% if form.preco.errors %}<div class="text-danger small mt-1">{{ form.preco.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.fornecedor.id_for_label }}">{{ form.fornecedor.label }}</label>
+                            {{ form.fornecedor }}
+                            {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.quantidade_minima.id_for_label }}">{{ form.quantidade_minima.label }}</label>
+                            {{ form.quantidade_minima }}
+                            {% if form.quantidade_minima.help_text %}<div class="form-text">{{ form.quantidade_minima.help_text }}</div>{% endif %}
+                            {% if form.quantidade_minima.errors %}<div class="text-danger small mt-1">{{ form.quantidade_minima.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.quantidade_estoque.id_for_label }}">{{ form.quantidade_estoque.label }}</label>
+                            {{ form.quantidade_estoque }}
+                            {% if form.quantidade_estoque.help_text %}<div class="form-text">{{ form.quantidade_estoque.help_text }}</div>{% endif %}
+                            {% if form.quantidade_estoque.errors %}<div class="text-danger small mt-1">{{ form.quantidade_estoque.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                {{ form.ativo }}
+                                <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                                {% if form.ativo.help_text %}<div class="form-text">{{ form.ativo.help_text }}</div>{% endif %}
+                                {% if form.ativo.errors %}<div class="text-danger small mt-1">{{ form.ativo.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.qrcode_imagem.id_for_label }}">{{ form.qrcode_imagem.label }}</label>
+                        {{ form.qrcode_imagem }}
+                        {% if form.qrcode_imagem.help_text %}<div class="form-text">{{ form.qrcode_imagem.help_text }}</div>{% endif %}
+                        {% if form.qrcode_imagem.errors %}<div class="text-danger small mt-1">{{ form.qrcode_imagem.errors|join:", " }}</div>{% endif %}
+                        {% if item and item.qrcode_imagem %}
+                            <div class="mt-2">
+                                <span class="small text-muted d-block mb-1">Atual:</span>
+                                <img src="{{ item.qrcode_imagem.url }}" alt="QR Code" class="rounded border" style="max-height:120px;">
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" for="id_imagens_galeria">Imagens</label>
+                        <input type="file"
+                               name="imagens"
+                               id="id_imagens_galeria"
+                               class="form-control rounded-3"
+                               accept="image/*"
+                               multiple>
+                        <div class="form-text">Envie uma ou mais imagens (opcional). Novas imagens são acrescentadas ao salvar.</div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary rounded-3 px-4">
+                            <i class="bi bi-check2-circle me-1"></i> Salvar
+                        </button>
+                        <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

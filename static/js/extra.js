@@ -525,6 +525,57 @@ document.body.addEventListener('htmx:popped', function () {
 });
 
 /**
+ * Estoque: overlay de navegação em cliques em links internos (carregamento entre páginas).
+ * Páginas com `body.estoque-pages`. Respeita `data-no-page-loading`, modais, atalhos e hx-boost.
+ */
+(function () {
+    function isEstoquePage() {
+        return document.body && document.body.classList.contains('estoque-pages');
+    }
+
+    function showNavLoading() {
+        var el = document.getElementById('global-htmx-loading');
+        if (!el) return;
+        el.classList.add('global-htmx-loading--show');
+        el.setAttribute('aria-hidden', 'false');
+        el.setAttribute('aria-busy', 'true');
+    }
+
+    document.addEventListener(
+        'click',
+        function (e) {
+            if (!isEstoquePage()) return;
+            var a = e.target.closest('a[href]');
+            if (!a) return;
+            if (a.hasAttribute('data-no-page-loading')) return;
+            if (a.getAttribute('target') === '_blank') return;
+            if (a.getAttribute('download')) return;
+            if (e.defaultPrevented) return;
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            if (a.closest('.modal')) return;
+            if (a.closest('[data-bs-toggle]')) return;
+            var href = a.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return;
+            try {
+                var u = new URL(href, window.location.origin);
+                if (u.origin !== window.location.origin) return;
+            } catch (err) {
+                return;
+            }
+            showNavLoading();
+        },
+        true
+    );
+
+    window.addEventListener('pageshow', function () {
+        if (!isEstoquePage()) return;
+        if (typeof window.resetGlobalHtmxLoading === 'function') {
+            window.resetGlobalHtmxLoading();
+        }
+    });
+})();
+
+/**
  * Dashboard RH — card Apontamento: miniaturas abrem modal com carrossel (álbum).
  */
 (function () {

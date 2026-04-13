@@ -1,0 +1,36 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Excluir unidade</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{{ excluir_url }}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading>
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <p class="text-muted mb-0">
+            Confirma a exclusão de <strong title="{{ unidade.completa }}">{{ unidade.abreviada }}</strong>?
+        </p>
+    </div>
+
+    <div class="modal-footer d-flex flex-wrap align-items-center gap-2 justify-content-between">
+        <button type="button"
+                class="estoque-btn estoque-btn-light js-estoque-modal-hx"
+                hx-get="{{ voltar_editar_url }}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading>
+            Voltar
+        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Fechar</button>
+            <button type="submit" class="estoque-btn estoque-btn-danger">
+                <i class="bi bi-trash me-1"></i> Excluir
+            </button>
+        </div>
+    </div>
+</form>

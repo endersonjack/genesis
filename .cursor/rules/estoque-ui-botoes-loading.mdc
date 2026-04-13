@@ -1,0 +1,28 @@
+---
+description: Estoque — botões pílula, loading entre páginas, busca HTMX e skeleton nas listas
+globs: templates/estoque/**/*.html,static/css/estoque/**/*.css,static/js/extra.js,estoque/**/*.py
+alwaysApply: false
+---
+
+# Módulo Estoque — UI, botões e loading
+
+## Botões (dashboard / listas / modais)
+
+- Incluir **`{% include 'estoque/includes/estoque_ui_assets.html' %}`** no início do `{% block content %}` de cada página de estoque (define `--estoque-accent` e carrega `estoque-ui.css`).
+- Usar classes **`estoque-top-actions`**, **`estoque-btn`**, **`estoque-btn-light`**, **`estoque-btn-primary`**, **`estoque-btn-danger-outline`** (excluir no formulário de edição), **`estoque-btn-danger`** (confirmar exclusão). Não duplicar o bloco de estilos `.rh-top-btn` nas templates.
+- **Rodapé de modal de edição**: uma linha `justify-content-between` — **Excluir** à esquerda (outline vermelho); **Cancelar** + **Salvar** à direita.
+
+## Páginas com overlay de navegação
+
+- Listas e dashboard: **`{% block body_class %}estoque-pages{% endblock %}`** — ativa em `extra.js` o overlay `#global-htmx-loading` em cliques em links internos (exceto `data-no-page-loading`, `_blank`, modais, atalhos).
+- Pedidos HTMX que não devem usar o overlay global: manter **`data-no-global-loading`** (ex.: abrir modal, busca na lista).
+
+## Listas e busca
+
+- Barra: **`{% include 'estoque/includes/lista_busca_estoque.html' with list_url_name='…' busca_placeholder='…' %}`** — o input usa `data-no-global-loading` e **`hx-indicator="#estoque-list-hx-skeleton"`**.
+- Envolver conteúdo trocável em **`#estoque-list-inner`**; skeleton **`#estoque-list-hx-skeleton`** com classes `htmx-indicator estoque-list-hx-skeleton`.
+- View: parâmetro **`q`**, filtro nos campos adequados; se **`HX-Request`**, devolver só o partial **`_lista_conteudo.html`** correspondente.
+
+## Modal cadastro
+
+- **`modal_cadastro_estoque.html`**: só o markup do modal + script do skeleton; CSS do shimmer vem de **`estoque-ui.css`** (página deve incluir `estoque_ui_assets` antes).

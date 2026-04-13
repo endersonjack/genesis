@@ -1,0 +1,44 @@
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if categorias %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in categorias %}
+                    <tr class="estoque-row-modal js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_editar_categoria_item' empresa_id=request.empresa_ativa.pk pk=c.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <td class="fw-semibold">{{ c.nome }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <p class="mb-3">Nenhuma categoria {% if q %}encontrada{% else %}cadastrada{% endif %}.</p>
+            <button
+                type="button"
+                class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                hx-get="{% url 'estoque:modal_novo_categoria_item' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-plus-lg"></i>
+                <span>Nova categoria</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>

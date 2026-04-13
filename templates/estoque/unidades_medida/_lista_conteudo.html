@@ -1,0 +1,46 @@
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if unidades %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Abreviada</th>
+                        <th>Descrição (completa)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in unidades %}
+                    <tr class="estoque-row-modal js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_editar_unidade_medida' empresa_id=request.empresa_ativa.pk pk=u.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <td class="fw-semibold text-nowrap">{{ u.abreviada }}</td>
+                        <td class="text-secondary">{{ u.completa }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <p class="mb-3">Nenhuma unidade {% if q %}encontrada{% else %}cadastrada{% endif %}.</p>
+            <button
+                type="button"
+                class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                hx-get="{% url 'estoque:modal_novo_unidade_medida' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-plus-lg"></i>
+                <span>Nova unidade</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>

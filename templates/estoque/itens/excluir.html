@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir item | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-2">Excluir item</h2>
+                <p class="text-muted">Confirma a exclusão deste item?</p>
+                <p class="fw-semibold mb-0">{{ item.descricao|truncatechars:200 }}</p>
+                <form method="post" class="d-flex flex-wrap gap-2 mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="estoque-btn estoque-btn-danger">Excluir</button>
+                    <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
+                       class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

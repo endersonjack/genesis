@@ -1,0 +1,7 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/estoque/estoque-ui.css' %}">
+<style>
+:root {
+    --estoque-accent: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+}
+</style>

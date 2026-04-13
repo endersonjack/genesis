@@ -1,0 +1,67 @@
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold mb-0">Movimentar estoque</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+    <p class="text-muted small mb-3">
+        <span class="fw-semibold text-body">{{ item.descricao|truncatechars:120 }}</span>
+    </p>
+
+    {% if errors %}
+    <div class="alert alert-danger small mb-3">
+        {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form
+        class="js-movimentar-saldo-modal"
+        method="post"
+        action="{{ post_url }}"
+        hx-post="{{ post_url }}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        hx-disabled-elt="#movimentar-saldo-submit-btn"
+        data-no-global-loading
+        data-saldo-atual="{{ item.quantidade_estoque }}"
+        data-unidade="{{ item.unidade_medida.abreviada|escape }}">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="movimentar-saldo-operacao">Operação</label>
+            <select name="operacao"
+                    id="movimentar-saldo-operacao"
+                    class="form-select form-select-lg rounded-3 shadow-sm">
+                <option value="retirar"{% if operacao != 'adicionar' %} selected{% endif %}>Retirar do estoque</option>
+                <option value="adicionar"{% if operacao == 'adicionar' %} selected{% endif %}>Adicionar ao estoque</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="movimentar-saldo-qtd">Quantidade</label>
+            <input type="number"
+                   name="quantidade"
+                   id="movimentar-saldo-qtd"
+                   class="form-control form-control-lg rounded-3 shadow-sm"
+                   step="0.0001"
+                   min="0"
+                   inputmode="decimal"
+                   placeholder="0,0000"
+                   value="{{ quantidade_val|default:'' }}"
+                   autocomplete="off">
+        </div>
+
+        <p class="js-movimentar-saldo-legenda small text-muted mb-4 border rounded-3 px-3 py-3 bg-light"></p>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <button type="button" class="btn btn-outline-secondary rounded-3 px-4" data-bs-dismiss="modal">
+                Cancelar
+            </button>
+            <button type="submit"
+                    id="movimentar-saldo-submit-btn"
+                    class="btn rounded-3 px-4 js-movimentar-saldo-submit d-inline-flex align-items-center justify-content-center gap-2{% if operacao == 'adicionar' %} btn-primary{% else %} btn-danger{% endif %}">
+                <span class="js-movimentar-saldo-submit-label">Movimentar</span>
+                <span class="js-movimentar-saldo-submit-wait spinner-border spinner-border-sm flex-shrink-0 d-none" role="status" aria-hidden="true"></span>
+            </button>
+        </div>
+    </form>
+</div>

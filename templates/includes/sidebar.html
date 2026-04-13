@@ -89,7 +89,7 @@
                     <span>Financeiro</span>
                 </a>
 
-                <a href="#" class="menu-link">
+                <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/estoque/' in request.path %}active{% endif %}">
                     <i class="bi bi-box-seam"></i>
                     <span>Estoque</span>
                 </a>

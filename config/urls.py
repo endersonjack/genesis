@@ -18,6 +18,7 @@ urlpatterns = [
             path('preferencias/', include('empresas.urls')),
             path('local/', include('local.urls')),
             path('fornecedores/', include('fornecedores.urls')),
+            path('estoque/', include('estoque.urls')),
             path('clientes/', include('clientes.urls')),
             path('obras/', include('obras.urls')),
             path('auditoria/', include('auditoria.urls')),

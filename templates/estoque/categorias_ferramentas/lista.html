@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias de ferramentas | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Categorias de ferramentas</h2>
+        <p class="text-muted mb-0">Cadastro por empresa.</p>
+    </div>
+
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Estoque</span>
+        </a>
+
+        <button
+            type="button"
+            class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+            hx-get="{% url 'estoque:modal_novo_categoria_ferramenta' empresa_id=request.empresa_ativa.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-plus-lg"></i>
+            <span>Nova categoria</span>
+        </button>
+    </div>
+</div>
+
+{% include 'estoque/includes/lista_busca_estoque.html' with list_url_name='estoque:lista_categorias_ferramentas' busca_placeholder='Buscar por nome da categoria…' %}
+
+<div id="estoque-list-panel" class="estoque-list-panel">
+    <div id="estoque-list-hx-skeleton" class="htmx-indicator estoque-list-hx-skeleton">
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row short"></div>
+    </div>
+    <div id="estoque-list-inner">
+        {% include 'estoque/categorias_ferramentas/_lista_conteudo.html' %}
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}

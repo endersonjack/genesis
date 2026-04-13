@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir categoria | Estoque | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-2">Excluir categoria</h2>
+                <p class="text-muted">Confirma a exclusão de <strong>{{ categoria.nome }}</strong>?</p>
+                <form method="post" class="d-flex flex-wrap gap-2 mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger rounded-3">Excluir</button>
+                    <a href="{% url 'estoque:lista_categorias_ferramentas' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

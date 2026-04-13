@@ -1,0 +1,140 @@
+{% load humanize %}
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if page_obj.paginator.count %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Und.</th>
+                        <th class="text-end">Saldo</th>
+                        <th class="text-end">Mín.</th>
+                        <th class="pe-3">Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for it in page_obj %}
+                    <tr class="estoque-row-modal js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_editar_item' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <td class="ps-3">
+                            {% with im=it.imagens.first %}
+                                {% if im %}
+                                    <span class="estoque-item-thumb-wrap">
+                                        <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                    </span>
+                                {% else %}
+                                    <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="fw-semibold">{{ it.descricao|truncatechars:80 }}</td>
+                        <td>{{ it.categoria.nome }}</td>
+                        <td class="text-nowrap">{{ it.unidade_medida.abreviada }}</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button"
+                                    class="btn btn-sm rounded-3 movimentar-saldo-btn js-estoque-modal-hx{% if it.quantidade_estoque <= 0 %} movimentar-saldo-btn--zerado{% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %} movimentar-saldo-btn--abaixo{% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %} movimentar-saldo-btn--igual{% else %} movimentar-saldo-btn--acima{% endif %}"
+                                    onclick="event.stopPropagation();"
+                                    hx-get="{% url 'estoque:modal_movimentar_saldo' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao"
+                                    data-no-global-loading
+                                    title="Movimentar estoque">
+                                {{ it.quantidade_estoque|floatformat:4|intcomma }}
+                            </button>
+                        </td>
+                        <td class="text-end text-nowrap">{{ it.quantidade_minima|floatformat:4|intcomma }}</td>
+                        <td class="pe-3">
+                            {% if it.quantidade_estoque <= 0 %}
+                                <span class="badge text-bg-warning rounded-pill">Zerado</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
+                                <span class="badge text-bg-danger rounded-pill">Abaixo do mín.</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary rounded-pill">Atenção</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj.paginator.count and page_obj.start_index %}
+        <div class="px-3 py-2 border-top small text-muted">
+            Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} itens
+        </div>
+        {% endif %}
+        {% if movimentar_pagination_items %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Páginas">
+            <div class="small text-muted d-none d-sm-block">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </div>
+            <ul class="pagination pagination-sm mb-0 ms-sm-auto">
+                {% if movimentar_url_prev %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-3"
+                       href="{{ movimentar_url_prev }}"
+                       hx-get="{{ movimentar_url_prev }}"
+                       hx-target="#movimentar-list-inner"
+                       hx-swap="innerHTML"
+                       hx-indicator="#movimentar-list-hx-skeleton"
+                       hx-push-url="true"
+                       data-no-global-loading>Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                {% endif %}
+                {% for p in movimentar_pagination_items %}
+                    {% if p.ellipsis %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% elif p.current %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ p.num }}</span></li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ p.url }}"
+                           hx-get="{{ p.url }}"
+                           hx-target="#movimentar-list-inner"
+                           hx-swap="innerHTML"
+                           hx-indicator="#movimentar-list-hx-skeleton"
+                           hx-push-url="true"
+                           data-no-global-loading>{{ p.num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                {% if movimentar_url_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-3"
+                       href="{{ movimentar_url_next }}"
+                       hx-get="{{ movimentar_url_next }}"
+                       hx-target="#movimentar-list-inner"
+                       hx-swap="innerHTML"
+                       hx-indicator="#movimentar-list-hx-skeleton"
+                       hx-push-url="true"
+                       data-no-global-loading>Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            {% if movimentar_busca_expandida %}
+                <p class="mb-0">Nenhum item encontrado com os filtros atuais.</p>
+            {% else %}
+                <p class="mb-0">Nenhum item ativo com estoque zerado ou abaixo do mínimo no momento.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

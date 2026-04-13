@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}Movimentar estoque | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Movimentar</h2>
+        <p class="text-muted mb-0">
+            Movimente o Estoque retirando ou adicionando aos itens.
+        </p>
+    </div>
+
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Estoque</span>
+        </a>
+        <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-box-seam"></i>
+            <span>Itens</span>
+        </a>
+    </div>
+</div>
+
+{% include 'estoque/includes/movimentar_busca_estoque.html' %}
+
+<div id="movimentar-list-panel" class="estoque-list-panel">
+    <div id="movimentar-list-hx-skeleton" class="htmx-indicator estoque-list-hx-skeleton">
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row short"></div>
+    </div>
+    <div id="movimentar-list-inner">
+        {% include 'estoque/itens/_movimentar_conteudo.html' %}
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+<script src="{% static 'js/estoque-movimentar-saldo-modal.js' %}"></script>
+{% endblock %}

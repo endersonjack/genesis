@@ -30,6 +30,15 @@ _EMPRESA_SWAP_DASHBOARD_REST_PATTERNS = tuple(
         r'^/fornecedores/\d+',
         r'^/clientes/\d+',
         r'^/obras/\d+',
+        r'^/estoque/categorias-itens/\d+',
+        r'^/estoque/categorias-itens/modal/\d+',
+        r'^/estoque/categorias-ferramentas/\d+',
+        r'^/estoque/categorias-ferramentas/modal/\d+',
+        r'^/estoque/unidades-medida/\d+',
+        r'^/estoque/unidades-medida/modal/\d+',
+        r'^/estoque/itens/modal/\d+',
+        r'^/estoque/itens/\d+/imagens/\d+/excluir/',
+        r'^/estoque/itens/\d+',
     )
 )
 

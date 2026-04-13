@@ -43,6 +43,8 @@ def titulo_modulo_topbar(request: HttpRequest) -> str:
         return 'Clientes'
     if re.search(r'/empresa/\d+/obras(/|$)', path):
         return 'Obras'
+    if re.search(r'/empresa/\d+/estoque(/|$)', path):
+        return 'Estoque'
     if re.search(r'/empresa/\d+/local(/|$)', path):
         return 'Locais'
     if re.search(r'/empresa/\d+/preferencias(/|$)', path):

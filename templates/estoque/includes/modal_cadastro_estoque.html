@@ -1,0 +1,34 @@
+{# Modal padrão + skeleton para HTMX (cadastros Estoque). Requer estoque_ui_assets.html na página (CSS .estoque-hx-skeleton). #}
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    function skeletonHtml() {
+        return (
+            '<div class="modal-header border-0 pb-0">' +
+            '<div class="w-100">' +
+            '<div class="estoque-hx-skeleton estoque-hx-skeleton-line short mb-3" style="width:40%;"></div>' +
+            '<div class="estoque-hx-skeleton estoque-hx-skeleton-line mb-2"></div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="modal-body pt-2">' +
+            '<div class="estoque-hx-skeleton mb-3" style="height:2.75rem;border-radius:.5rem;"></div>' +
+            '<div class="estoque-hx-skeleton estoque-hx-skeleton-line short"></div>' +
+            '</div>' +
+            '<div class="modal-footer border-0 pt-0">' +
+            '<div class="estoque-hx-skeleton ms-auto" style="width:5rem;height:2.25rem;border-radius:.5rem;"></div>' +
+            '</div>'
+        );
+    }
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        var el = e.detail.elt;
+        if (!el || !el.classList || !el.classList.contains('js-estoque-modal-hx')) return;
+        var mc = document.getElementById('modal-content');
+        if (mc) mc.innerHTML = skeletonHtml();
+    });
+})();
+</script>
