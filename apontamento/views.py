@@ -599,6 +599,55 @@ def observacao_excluir(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_apontamento
+@require_POST
+def observacao_foto_excluir(
+    request: HttpRequest, observacao_pk: int, foto_pk: int
+) -> HttpResponse:
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para continuar.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    obs = _get_observacao_editavel_hoje(request, empresa_ativa, observacao_pk)
+    if obs.status == StatusApontamento.ARQUIVADO:
+        messages.error(request, _MSG_APONT_OBS_ARQUIVADA)
+        return redirect('apontamento:observacao_nova', empresa_id=empresa_ativa.pk)
+
+    foto = get_object_or_404(
+        ApontamentoObservacaoFoto.objects.filter(observacao=obs),
+        pk=foto_pk,
+    )
+    if foto.imagem and getattr(foto.imagem, 'name', ''):
+        try:
+            foto.imagem.delete(save=False)
+        except OSError:
+            pass
+    foto.delete()
+    audit_apontamento(
+        request,
+        acao='delete',
+        resumo=(
+            f'Apontamento: exclusão de foto de anotação — '
+            f'{obs.local.nome} (obs. {obs.pk}, foto {foto_pk})'
+        ),
+        detalhes={
+            'tipo': 'anotacao_foto',
+            'observacao_pk': obs.pk,
+            'foto_pk': foto_pk,
+            'local_nome': obs.local.nome,
+        },
+    )
+    messages.success(request, 'Foto excluída.')
+    return redirect(
+        'apontamento:observacao_editar',
+        empresa_id=empresa_ativa.pk,
+        pk=observacao_pk,
+    )
+
+
+@require_apontamento
 def busca_funcionarios(request: HttpRequest) -> HttpResponse:
     empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
         request,

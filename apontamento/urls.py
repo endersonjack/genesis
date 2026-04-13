@@ -45,6 +45,11 @@ urlpatterns = [
         name='observacao_excluir',
     ),
     path(
+        'observacao/<int:observacao_pk>/foto/<int:foto_pk>/excluir/',
+        empresa_scoped(views.observacao_foto_excluir),
+        name='observacao_foto_excluir',
+    ),
+    path(
         'busca-funcionarios/',
         empresa_scoped(views.busca_funcionarios),
         name='busca_funcionarios',

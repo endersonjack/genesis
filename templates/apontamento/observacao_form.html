@@ -36,6 +36,12 @@
         <p class="apont-nova-registro-card__sub text-muted small">Registro sobre o local de trabalho no dia indicado.</p>
 {% endif %}
 
+{% if modo_edicao %}
+<form id="apont-foto-excluir-csrf" method="post" class="d-none" aria-hidden="true" tabindex="-1">
+    {% csrf_token %}
+</form>
+{% endif %}
+
 <form id="apont-observacao-form"
       method="post"
       enctype="multipart/form-data"
@@ -67,7 +73,7 @@
     {% if modo_edicao and observacao_edicao.fotos.all %}
     <div class="mb-3" data-apont-album-scope>
         <div class="form-label fw-semibold">Fotos já enviadas</div>
-        <p class="form-text small text-muted mb-2 d-md-none mb-md-2">Toque numa miniatura para ver em tela cheia e deslizar entre as fotos.</p>
+        <p class="form-text small text-muted mb-2">Toque na miniatura para ver o álbum. Use o <strong class="text-danger">X</strong> no canto para excluir uma foto.</p>
         <div class="apont-fotos-album-data d-none" hidden aria-hidden="true">
             {% for foto in observacao_edicao.fotos.all %}
             <span data-src="{{ foto.imagem.url }}"></span>
@@ -75,17 +81,29 @@
         </div>
         <div class="apont-mobile-album-row d-flex flex-wrap gap-2">
             {% for foto in observacao_edicao.fotos.all %}
-            <button type="button"
-                    class="apont-mobile-album-btn apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-3 border bg-light overflow-hidden d-block p-0"
-                    data-apont-album-idx="{{ forloop.counter0 }}"
-                    title="Ver álbum (foto {{ forloop.counter }})">
-                <img src="{{ foto.imagem.url }}"
-                     alt=""
-                     class="apont-mobile-album-thumb apont-anotacao-foto-thumb d-block"
-                     loading="lazy"
-                     width="96"
-                     height="96">
-            </button>
+            <div class="apont-edit-foto-tile position-relative">
+                <button type="submit"
+                        class="apont-edit-foto-remove-btn"
+                        form="apont-foto-excluir-csrf"
+                        formaction="{% url 'apontamento:observacao_foto_excluir' empresa_id=request.empresa_ativa.pk observacao_pk=observacao_edicao.pk foto_pk=foto.pk %}"
+                        formmethod="post"
+                        title="Excluir esta foto"
+                        aria-label="Excluir foto {{ forloop.counter }}"
+                        onclick="return confirm('Excluir esta foto?');">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="apont-mobile-album-btn apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-3 border bg-light overflow-hidden d-block p-0"
+                        data-apont-album-idx="{{ forloop.counter0 }}"
+                        title="Ver álbum (foto {{ forloop.counter }})">
+                    <img src="{{ foto.imagem.url }}"
+                         alt=""
+                         class="apont-mobile-album-thumb apont-anotacao-foto-thumb d-block"
+                         loading="lazy"
+                         width="96"
+                         height="96">
+                </button>
+            </div>
             {% endfor %}
         </div>
         <p class="form-text small text-muted mb-0">Novas fotos abaixo são <strong>adicionadas</strong> às existentes.</p>
