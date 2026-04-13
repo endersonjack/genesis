@@ -38,6 +38,8 @@
 
 <form id="apont-observacao-form"
       method="post"
+      enctype="multipart/form-data"
+      hx-encoding="multipart/form-data"
       action="{% if modo_edicao %}{% url 'apontamento:observacao_editar' empresa_id=request.empresa_ativa.pk pk=observacao_edicao.pk %}{% else %}{% url 'apontamento:observacao_nova' empresa_id=request.empresa_ativa.pk %}{% endif %}">
     {% csrf_token %}
     {% if form.non_field_errors %}
@@ -56,10 +58,69 @@
         {% if form.data.errors %}<div class="text-danger small">{{ form.data.errors }}</div>{% endif %}
     </div>
 
-    <div class="mb-4">
+    <div class="mb-3">
         <label class="form-label fw-semibold" for="id_texto">Observação</label>
         {{ form.texto }}
         {% if form.texto.errors %}<div class="text-danger small">{{ form.texto.errors }}</div>{% endif %}
+    </div>
+
+    {% if modo_edicao and observacao_edicao.fotos.all %}
+    <div class="mb-3" data-apont-album-scope>
+        <div class="form-label fw-semibold">Fotos já enviadas</div>
+        <p class="form-text small text-muted mb-2 d-md-none mb-md-2">Toque numa miniatura para ver em tela cheia e deslizar entre as fotos.</p>
+        <div class="apont-fotos-album-data d-none" hidden aria-hidden="true">
+            {% for foto in observacao_edicao.fotos.all %}
+            <span data-src="{{ foto.imagem.url }}"></span>
+            {% endfor %}
+        </div>
+        <div class="apont-mobile-album-row d-flex flex-wrap gap-2">
+            {% for foto in observacao_edicao.fotos.all %}
+            <button type="button"
+                    class="apont-mobile-album-btn apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-3 border bg-light overflow-hidden d-block p-0"
+                    data-apont-album-idx="{{ forloop.counter0 }}"
+                    title="Ver álbum (foto {{ forloop.counter }})">
+                <img src="{{ foto.imagem.url }}"
+                     alt=""
+                     class="apont-mobile-album-thumb apont-anotacao-foto-thumb d-block"
+                     loading="lazy"
+                     width="96"
+                     height="96">
+            </button>
+            {% endfor %}
+        </div>
+        <p class="form-text small text-muted mb-0">Novas fotos abaixo são <strong>adicionadas</strong> às existentes.</p>
+    </div>
+    {% endif %}
+
+    <div class="mb-4">
+        <label class="form-label fw-semibold" for="id_fotos_novas">{% if modo_edicao %}Adicionar fotos{% else %}Fotos{% endif %} <span class="fw-normal text-muted">(opcional)</span></label>
+        <div class="d-grid gap-2 d-md-none mb-2">
+            <button type="button"
+                    id="apont-foto-btn-camera"
+                    class="btn btn-outline-primary rounded-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-camera-fill" aria-hidden="true"></i>
+                Tirar foto
+            </button>
+            <button type="button"
+                    id="apont-foto-btn-galeria"
+                    class="btn btn-outline-secondary rounded-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-images" aria-hidden="true"></i>
+                Galeria
+            </button>
+        </div>
+        <input type="file"
+               id="apont-foto-mobile-helper"
+               accept="image/*"
+               class="visually-hidden"
+               tabindex="-1"
+               aria-hidden="true">
+        {{ form.fotos_novas }}
+        {% if form.fotos_novas.errors %}<div class="text-danger small">{{ form.fotos_novas.errors }}</div>{% endif %}
+        <p class="form-text small text-muted mb-0">
+            <span class="d-md-none">No celular, use <strong>Tirar foto</strong> ou <strong>Galeria</strong> várias vezes para anexar mais de uma imagem, ou selecione várias na galeria. </span>
+            <span class="d-none d-md-inline">Você pode selecionar várias imagens de uma vez. </span>
+            Até 8 MB por imagem; máximo 25 fotos por envio.
+        </p>
     </div>
 
     <button type="submit"
@@ -78,10 +139,50 @@
     {% include 'apontamento/includes/link_observacoes_anteriores.html' %}
 </div>
 
+{% include 'apontamento/includes/fotos_album_modal.html' %}
+
 <script>
 (function () {
     var form = document.getElementById('apont-observacao-form');
     if (!form) return;
+
+    var mainFoto = document.getElementById('id_fotos_novas');
+    var helper = document.getElementById('apont-foto-mobile-helper');
+    var btnCam = document.getElementById('apont-foto-btn-camera');
+    var btnGal = document.getElementById('apont-foto-btn-galeria');
+
+    if (mainFoto && helper && btnCam && btnGal) {
+        function syncHelperToMain() {
+            if (!helper.files || !helper.files.length) return;
+            try {
+                var dt = new DataTransfer();
+                var i, j;
+                for (i = 0; i < mainFoto.files.length; i++) {
+                    dt.items.add(mainFoto.files[i]);
+                }
+                for (j = 0; j < helper.files.length; j++) {
+                    dt.items.add(helper.files[j]);
+                }
+                mainFoto.files = dt.files;
+                mainFoto.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (e) {
+                console.warn('Não foi possível anexar as fotos automaticamente; use o campo de arquivo.', e);
+            }
+            helper.value = '';
+        }
+        helper.addEventListener('change', syncHelperToMain);
+        btnCam.addEventListener('click', function () {
+            helper.setAttribute('capture', 'environment');
+            helper.value = '';
+            helper.click();
+        });
+        btnGal.addEventListener('click', function () {
+            helper.removeAttribute('capture');
+            helper.value = '';
+            helper.click();
+        });
+    }
+
     form.addEventListener('submit', function () {
         if (typeof window.genesisApontFormSubmitBusy === 'function') {
             window.genesisApontFormSubmitBusy(form, true);

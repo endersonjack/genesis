@@ -128,6 +128,18 @@
                     Saúde
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link"
+                        id="rel-tab-locais"
+                        data-bs-toggle="tab"
+                        data-bs-target="#rel-pane-locais"
+                        role="tab"
+                        aria-controls="rel-pane-locais"
+                        aria-selected="false">
+                    Locais de trabalho
+                </button>
+            </li>
         </ul>
     </div>
     <div class="tab-content rh-card-body">
@@ -283,6 +295,54 @@
                             <i class="bi bi-file-earmark-pdf me-1"></i> PDF
                         </a>
                         <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=aso_ultimo"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="rel-pane-locais" role="tabpanel" aria-labelledby="rel-tab-locais" tabindex="0">
+            <p class="text-muted small mb-3">
+                Locais de trabalho da empresa. Cada export abre numa nova aba.
+            </p>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Funcionários em local de trabalho</div>
+                        <div class="small text-muted">Ativos com local de trabalho definido.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_local_trabalho"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_local_trabalho"
+                           class="btn btn-sm btn-outline-success"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Locais de trabalho ativos</div>
+                        <div class="small text-muted">Catálogo de locais ativos, endereço e quantidade de funcionários ativos por local.</div>
+                    </div>
+                    <div class="rh-report-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=locais_trabalho_ativos"
+                           class="btn btn-sm btn-outline-danger"
+                           target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </a>
+                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=locais_trabalho_ativos"
                            class="btn btn-sm btn-outline-success"
                            target="_blank" rel="noopener noreferrer">
                             <i class="bi bi-file-earmark-excel me-1"></i> Excel

@@ -2,7 +2,7 @@ import calendar
 from datetime import date, timedelta
 from typing import Any, Optional
 
-from django.db.models import Case, IntegerField, Q, When
+from django.db.models import Case, Count, IntegerField, Q, When
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from core.urlutils import reverse_empresa
@@ -844,7 +844,8 @@ def _contexto_card_apontamento(empresa_ativa, filtros: dict[str, Any]):
     )
     apont_observacoes = (
         obs_qs.select_related("local", "registrado_por", "status_alterado_por")
-        .annotate(_st_ord=ord_case)
+        .prefetch_related("fotos")
+        .annotate(_st_ord=ord_case, num_fotos=Count("fotos"))
         .order_by("_st_ord", "-criado_em")[:60]
     )
     return {

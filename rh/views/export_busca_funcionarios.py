@@ -37,12 +37,15 @@ from controles_rh.views.cesta_export import (
 )
 from controles_rh.views.pdf_rodape import flowables_rodape_impressao
 
+from local.models import LocalTrabalhoAtivo
+
 from ..models import Funcionario
 
 from .base import _empresa_ativa_or_redirect
 from .funcionarios import queryset_funcionarios_busca_avancada
 
 RELATORIOS_SAUDE = frozenset({'pcmso_vencimentos', 'aso_ultimo'})
+RELATORIOS_LOCAIS = frozenset({'funcionarios_local_trabalho', 'locais_trabalho_ativos'})
 
 
 def _safe_filename_part(text):
@@ -124,6 +127,19 @@ def _queryset_ativos_saude_export(empresa_ativa):
     )
 
 
+def _queryset_funcionarios_com_local_trabalho(empresa_ativa):
+    return (
+        Funcionario.objects.filter(
+            empresa=empresa_ativa,
+            local_trabalho__isnull=False,
+        )
+        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        .select_related('cargo', 'local_trabalho', 'tipo_contrato')
+        .prefetch_related('ferias', 'afastamentos')
+        .order_by('local_trabalho__nome', 'nome')
+    )
+
+
 def _faltam_dias_experiencia(fim: Optional[date], hoje: date) -> str:
     if fim is None:
         return '—'
@@ -151,6 +167,8 @@ def _relatorio_key(request) -> Optional[str]:
             'ferias',
             'pcmso_vencimentos',
             'aso_ultimo',
+            'funcionarios_local_trabalho',
+            'locais_trabalho_ativos',
         }
     )
     return key if key in allowed else None
@@ -162,16 +180,21 @@ def _pdf_widths_from_weights(weights):
     return [total * w / s for w in weights]
 
 
-def build_export_table(request, funcionarios: list, hoje: Optional[date] = None):
+def build_export_table(
+    request,
+    funcionarios: list,
+    hoje: Optional[date] = None,
+    empresa_ativa=None,
+):
     """
     Monta cabeçalhos, linhas e metadados para PDF e XLSX.
     ``funcionarios`` deve ser lista já avaliada do queryset (com prefetch esperado).
+    Relatórios de catálogo de locais ignoram ``funcionarios`` e usam ``empresa_ativa``.
     """
     if hoje is None:
         hoje = timezone.localdate()
 
     rk = _relatorio_key(request)
-    total = len(funcionarios)
     agora = timezone.localtime(timezone.now())
     emit = agora.strftime('%d/%m/%Y %H:%M')
 
@@ -495,9 +518,105 @@ def build_export_table(request, funcionarios: list, hoje: Optional[date] = None)
                     aso_r.dias,
                 ]
             )
+    elif rk == 'funcionarios_local_trabalho':
+        headers = [
+            '#',
+            'Nome',
+            'Matrícula',
+            'CPF',
+            'Cargo',
+            'Local de trabalho',
+            'Data de admissão',
+        ]
+        headers_pdf = [
+            '#',
+            'NOME',
+            'MATRÍCULA',
+            'CPF',
+            'CARGO',
+            'LOCAL TRABALHO',
+            'DATA ADMISSÃO',
+        ]
+        weights = [0.3, 1.45, 0.78, 0.84, 1.0, 1.35, 1.08]
+        titulo = 'LISTAGEM — FUNCIONÁRIOS EM LOCAL DE TRABALHO'
+        subtitulo_ctx = f'Locais de trabalho · Funcionários alocados · Emitido em {emit}'
+        xlsx_head = f'Funcionários em local de trabalho — Emitido em {emit}'
+        filename_slug = 'Relatorio_funcionarios_local_trabalho'
+        sheet_title = 'Func. local'
+        pdf_doc_title = 'Funcionários em local de trabalho'
+        body_font = 6
+        rows = []
+        for n, f in enumerate(funcionarios, start=1):
+            loc_txt = (
+                (f.local_trabalho.nome or '').strip().upper()
+                if f.local_trabalho
+                else '—'
+            )
+            rows.append(
+                [
+                    str(n),
+                    _nome_maiusculo(f),
+                    (f.matricula or '—').strip(),
+                    (f.cpf or '—').strip(),
+                    (f.cargo.nome if f.cargo else '—'),
+                    loc_txt or '—',
+                    _fmt_date(f.data_admissao),
+                ]
+            )
+    elif rk == 'locais_trabalho_ativos':
+        ea = empresa_ativa or getattr(request, 'empresa_ativa', None)
+        if ea is None:
+            raise ValueError('empresa_ativa é obrigatória para locais_trabalho_ativos.')
+        headers = [
+            '#',
+            'Local',
+            'Endereço',
+            'Funcionários ativos',
+        ]
+        headers_pdf = [
+            '#',
+            'LOCAL',
+            'ENDEREÇO',
+            'FUNCIONÁRIOS ATIVOS',
+        ]
+        weights = [0.28, 1.35, 2.35, 0.82]
+        titulo = 'LISTAGEM — LOCAIS DE TRABALHO ATIVOS'
+        subtitulo_ctx = f'Locais de trabalho · Ativos na empresa · Emitido em {emit}'
+        xlsx_head = f'Locais de trabalho ativos — Emitido em {emit}'
+        filename_slug = 'Relatorio_locais_trabalho_ativos'
+        sheet_title = 'Locais ativos'
+        pdf_doc_title = 'Locais de trabalho ativos'
+        body_font = 6.5
+        rows = []
+        ativos_qs = (
+            LocalTrabalhoAtivo.objects.filter(empresa=ea)
+            .select_related('local')
+            .order_by('local__nome', 'id')
+        )
+        for n, lta in enumerate(ativos_qs, start=1):
+            loc = lta.local
+            qtd = (
+                Funcionario.objects.filter(
+                    empresa=ea,
+                    local_trabalho_id=loc.pk,
+                )
+                .exclude(situacao_atual__in=['demitido', 'inativo'])
+                .count()
+            )
+            nome_loc = ((loc.nome or '').strip().upper() or '—')
+            end = (loc.endereco or '').strip() or '—'
+            rows.append(
+                [
+                    str(n),
+                    nome_loc,
+                    end,
+                    str(qtd),
+                ]
+            )
     else:
         raise ValueError(f'Layout de relatório não tratado: {rk!r}')
 
+    total = len(rows)
     data_rows_pdf = [headers_pdf] + rows
     cw_mm = _pdf_widths_from_weights(weights)
 
@@ -533,9 +652,18 @@ def exportar_busca_funcionarios_pdf(request):
     rk = _relatorio_key(request)
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
+    elif rk == 'funcionarios_local_trabalho':
+        funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
+    elif rk == 'locais_trabalho_ativos':
+        funcionarios = []
     else:
         funcionarios = list(queryset_funcionarios_busca_avancada(request, empresa_ativa))
-    cfg = build_export_table(request, funcionarios, hoje=hoje)
+    cfg = build_export_table(
+        request,
+        funcionarios,
+        hoje=hoje,
+        empresa_ativa=empresa_ativa,
+    )
 
     agora = timezone.localtime(timezone.now())
     ctx_header = SimpleNamespace(
@@ -644,9 +772,18 @@ def exportar_busca_funcionarios_xlsx(request):
     rk = _relatorio_key(request)
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
+    elif rk == 'funcionarios_local_trabalho':
+        funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
+    elif rk == 'locais_trabalho_ativos':
+        funcionarios = []
     else:
         funcionarios = list(queryset_funcionarios_busca_avancada(request, empresa_ativa))
-    cfg = build_export_table(request, funcionarios, hoje=hoje)
+    cfg = build_export_table(
+        request,
+        funcionarios,
+        hoje=hoje,
+        empresa_ativa=empresa_ativa,
+    )
 
     headers = cfg.headers
     ncols = len(headers)

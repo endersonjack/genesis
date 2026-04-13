@@ -102,3 +102,22 @@ class ApontamentoObservacaoLocal(TimeStampedModel):
 
     def __str__(self):
         return f'{self.local} — {self.data}'
+
+
+class ApontamentoObservacaoFoto(TimeStampedModel):
+    """Fotos anexadas a uma anotação de local (várias por registro)."""
+
+    observacao = models.ForeignKey(
+        ApontamentoObservacaoLocal,
+        on_delete=models.CASCADE,
+        related_name='fotos',
+    )
+    imagem = models.ImageField(upload_to='apontamento/anotacoes/')
+
+    class Meta:
+        verbose_name = 'Foto da anotação (apontamento)'
+        verbose_name_plural = 'Fotos das anotações (apontamento)'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'Foto #{self.pk} — {self.observacao_id}'

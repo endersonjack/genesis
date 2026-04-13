@@ -16,7 +16,12 @@ from rh.models import Funcionario
 from rh.views.base import _empresa_ativa_or_redirect
 
 from .forms import ApontamentoFaltaForm, ApontamentoObservacaoLocalForm
-from .models import ApontamentoFalta, ApontamentoObservacaoLocal, StatusApontamento
+from .models import (
+    ApontamentoFalta,
+    ApontamentoObservacaoFoto,
+    ApontamentoObservacaoLocal,
+    StatusApontamento,
+)
 from .permissions import (
     usuario_apontamento_ve_registros_de_todos,
     usuario_rh_pode_gerir_status_apontamento,
@@ -123,6 +128,7 @@ def _observacoes_registradas_hoje_queryset(request: HttpRequest, empresa_ativa):
     return (
         ApontamentoObservacaoLocal.objects.filter(**filtro)
         .select_related('local', 'status_alterado_por', 'registrado_por')
+        .prefetch_related('fotos')
         .order_by('-criado_em')
     )
 
@@ -174,8 +180,17 @@ def _observacoes_mes_queryset(request: HttpRequest, empresa_ativa):
     return (
         ApontamentoObservacaoLocal.objects.filter(**filtro)
         .select_related('local', 'registrado_por')
+        .prefetch_related('fotos')
         .order_by('-criado_em')
     )
+
+
+def _salvar_fotos_observacao_novas(
+    observacao: ApontamentoObservacaoLocal,
+    files: list,
+) -> None:
+    for f in files:
+        ApontamentoObservacaoFoto.objects.create(observacao=observacao, imagem=f)
 
 
 def _get_observacao_editavel_hoje(
@@ -185,7 +200,9 @@ def _get_observacao_editavel_hoje(
     return get_object_or_404(
         ApontamentoObservacaoLocal.objects.filter(
             criado_em__date=hoje,
-        ).select_related('local'),
+        )
+        .select_related('local')
+        .prefetch_related('fotos'),
         pk=pk,
         empresa=empresa_ativa,
         registrado_por=request.user,
@@ -431,6 +448,7 @@ def observacao_nova(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         form = ApontamentoObservacaoLocalForm(
             request.POST,
+            request.FILES,
             empresa_ativa=empresa_ativa,
         )
         if form.is_valid():
@@ -438,6 +456,7 @@ def observacao_nova(request: HttpRequest) -> HttpResponse:
             obj.empresa = empresa_ativa
             obj.registrado_por = request.user
             obj.save()
+            _salvar_fotos_observacao_novas(obj, form.fotos_novas_para_salvar())
             audit_apontamento(
                 request,
                 acao='create',
@@ -498,11 +517,13 @@ def observacao_editar(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == 'POST':
         form = ApontamentoObservacaoLocalForm(
             request.POST,
+            request.FILES,
             empresa_ativa=empresa_ativa,
             instance=obs,
         )
         if form.is_valid():
             obs_atual = form.save()
+            _salvar_fotos_observacao_novas(obs_atual, form.fotos_novas_para_salvar())
             audit_apontamento(
                 request,
                 acao='update',
@@ -737,6 +758,7 @@ def observacoes_anteriores(request: HttpRequest) -> HttpResponse:
     observacoes = (
         ApontamentoObservacaoLocal.objects.filter(**filtro)
         .select_related('local', 'status_alterado_por', 'registrado_por')
+        .prefetch_related('fotos')
         .order_by('-data', '-criado_em')
     )
 

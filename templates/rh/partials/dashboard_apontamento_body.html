@@ -128,7 +128,7 @@
         {% if apont_observacoes %}
             <div class="destaques-lista">
                 {% for item in apont_observacoes %}
-                    <div class="destaque-item {% if item.status == 'pendente' %}apont-status-pendente{% elif item.status == 'visto' or item.status == 'finalizado' %}apont-status-visto{% elif item.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}">
+                    <div class="destaque-item {% if item.status == 'pendente' %}apont-status-pendente{% elif item.status == 'visto' or item.status == 'finalizado' %}apont-status-visto{% elif item.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}"{% if item.num_fotos %} data-apont-album-scope{% endif %}>
                         <div class="destaque-item-meta d-flex flex-wrap align-items-center gap-2">
                             <span>{{ item.data|date:"d/m/Y" }} {{ item.criado_em|date:"H:i" }}</span>
                             <span>·</span>
@@ -164,6 +164,28 @@
                             {% endif %}
                         </div>
                         <div class="destaque-item-sub">{{ item.texto|truncatechars:220 }}</div>
+                        {% if item.num_fotos %}
+                        <div class="apont-fotos-album-data d-none" hidden aria-hidden="true">
+                            {% for foto in item.fotos.all %}
+                            <span data-src="{{ foto.imagem.url }}"></span>
+                            {% endfor %}
+                        </div>
+                        <div class="apont-dash-obs-fotos d-flex flex-wrap gap-2 mt-2" role="group" aria-label="Fotos anexadas — abrir álbum">
+                            {% for foto in item.fotos.all %}
+                            <button type="button"
+                                    class="apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-2 border bg-light overflow-hidden d-block p-0"
+                                    data-apont-album-idx="{{ forloop.counter0 }}"
+                                    title="Ver álbum (foto {{ forloop.counter }} de {{ item.num_fotos }})">
+                                <img src="{{ foto.imagem.url }}"
+                                     alt=""
+                                     class="apont-dash-obs-foto-thumb d-block"
+                                     loading="lazy"
+                                     width="76"
+                                     height="76">
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -173,3 +195,5 @@
     </div>
         </div>
     </div>
+
+{% include 'apontamento/includes/fotos_album_modal.html' %}

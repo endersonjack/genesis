@@ -353,3 +353,41 @@
         font-weight: 700 !important;
     }
 }
+
+.apont-anotacao-foto-thumb {
+    max-width: 100%;
+    max-height: 220px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    background: #f1f5f9;
+}
+
+/* Álbum de fotos no apontamento mobile: alvos de toque confortáveis, sem highlight nativo feio */
+.apont-mobile-album-btn {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.apont-mobile-album-thumb {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+    body.apont-bottom-nav-on .apont-mobile-album-thumb {
+        width: 104px;
+        height: 104px;
+    }
+
+    #apontObsFotosAlbumModal .apont-album-control {
+        width: 18%;
+        min-width: 3rem;
+        opacity: 0.95;
+    }
+
+    #apontObsFotosAlbumModal .carousel-item img {
+        max-height: min(82vh, 900px);
+    }
+}

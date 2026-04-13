@@ -1,9 +1,19 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from local.models import Local
 
 from .models import ApontamentoFalta, ApontamentoObservacaoLocal
+
+_MAX_FOTO_ANOTACAO_BYTES = 8 * 1024 * 1024
+_MAX_FOTOS_POR_ENVIO = 25
+
+
+class MultipleFileInput(forms.FileInput):
+    """Django 5+ bloqueia `multiple` no FileInput padrão; este widget permite."""
+
+    allow_multiple_selected = True
 
 
 def _hoje_para_campo_data(form: forms.ModelForm) -> None:
@@ -56,6 +66,20 @@ class ApontamentoFaltaForm(forms.ModelForm):
 
 
 class ApontamentoObservacaoLocalForm(forms.ModelForm):
+    """Campo `fotos_novas`: múltiplos arquivos via widget; usa `Field` (não `FileField`),
+    pois o `FileField` do Django só valida um único upload e dispara erro de codificação com `multiple`."""
+
+    fotos_novas = forms.Field(
+        required=False,
+        widget=MultipleFileInput(
+            attrs={
+                'multiple': True,
+                'class': 'form-control',
+                'accept': 'image/*',
+            }
+        ),
+    )
+
     class Meta:
         model = ApontamentoObservacaoLocal
         fields = ('local', 'data', 'texto')
@@ -72,9 +96,36 @@ class ApontamentoObservacaoLocalForm(forms.ModelForm):
 
     def __init__(self, *args, empresa_ativa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['fotos_novas'].widget.attrs.setdefault('id', 'id_fotos_novas')
         _campo_data_html5(self.fields['data'])
         _hoje_para_campo_data(self)
         if empresa_ativa is not None:
             self.fields['local'].queryset = Local.objects.filter(empresa=empresa_ativa).order_by(
                 'nome'
             )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        files = [
+            f
+            for f in self.files.getlist('fotos_novas')
+            if f and getattr(f, 'name', '')
+        ]
+        if len(files) > _MAX_FOTOS_POR_ENVIO:
+            raise ValidationError(
+                {
+                    'fotos_novas': f'É permitido no máximo {_MAX_FOTOS_POR_ENVIO} fotos por envio.',
+                }
+            )
+        for f in files:
+            if getattr(f, 'size', 0) > _MAX_FOTO_ANOTACAO_BYTES:
+                raise ValidationError(
+                    {
+                        'fotos_novas': 'Cada imagem deve ter no máximo 8 MB.',
+                    }
+                )
+        self._fotos_novas_list = files
+        return cleaned_data
+
+    def fotos_novas_para_salvar(self) -> list:
+        return getattr(self, '_fotos_novas_list', [])

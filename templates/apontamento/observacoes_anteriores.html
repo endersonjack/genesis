@@ -44,7 +44,7 @@
 {% if observacoes %}
     <div class="d-flex flex-column gap-2">
         {% for o in observacoes %}
-            <div class="apont-resumo-card py-3 px-3 mb-0">
+            <div class="apont-resumo-card py-3 px-3 mb-0{% if o.fotos.all %} apont-mobile-card--has-fotos{% endif %}"{% if o.fotos.all %} data-apont-album-scope{% endif %}>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                     {% if o.status == 'pendente' %}
                         <span class="badge text-bg-warning">Pendente</span>
@@ -59,6 +59,28 @@
                 <div class="fw-semibold">{{ o.local }}</div>
                 <div class="small text-muted">Data: {{ o.data|date:"d/m/Y" }}</div>
                 <div class="small mt-1 mb-0">{{ o.texto|truncatechars:160 }}</div>
+                {% if o.fotos.all %}
+                <div class="apont-fotos-album-data d-none" hidden aria-hidden="true">
+                    {% for foto in o.fotos.all %}
+                    <span data-src="{{ foto.imagem.url }}"></span>
+                    {% endfor %}
+                </div>
+                <div class="apont-mobile-album-row d-flex flex-wrap gap-2 mt-2" role="group" aria-label="Fotos — abrir álbum">
+                    {% for foto in o.fotos.all %}
+                    <button type="button"
+                            class="apont-mobile-album-btn apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-3 border bg-light overflow-hidden d-block p-0"
+                            data-apont-album-idx="{{ forloop.counter0 }}"
+                            title="Ver álbum (foto {{ forloop.counter }})">
+                        <img src="{{ foto.imagem.url }}"
+                             alt=""
+                             class="apont-mobile-album-thumb apont-anotacao-foto-thumb d-block"
+                             loading="lazy"
+                             width="96"
+                             height="96">
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 {% if apont_ve_todos_registros %}
                     <p class="apont-registrado-por small text-muted mb-0 mt-2">
                         {{ o.registrado_por.get_full_name|default:o.registrado_por.username }}
@@ -70,4 +92,6 @@
 {% else %}
     <p class="text-muted small">Nenhuma anotação no período.</p>
 {% endif %}
+
+{% include 'apontamento/includes/fotos_album_modal.html' %}
 {% endblock %}

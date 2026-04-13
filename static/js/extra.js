@@ -447,6 +447,139 @@ document.body.addEventListener('htmx:popped', function () {
 });
 
 /**
+ * Dashboard RH — card Apontamento: miniaturas abrem modal com carrossel (álbum).
+ */
+(function () {
+    var carouselInstance = null;
+
+    document.body.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-apont-album-idx]');
+        if (!btn || !window.bootstrap) {
+            return;
+        }
+
+        var dest = btn.closest('[data-apont-album-scope]');
+        if (!dest) {
+            return;
+        }
+        var dataRoot = dest.querySelector('.apont-fotos-album-data');
+        if (!dataRoot) {
+            return;
+        }
+
+        var urls = [];
+        dataRoot.querySelectorAll('[data-src]').forEach(function (s) {
+            var u = s.getAttribute('data-src');
+            if (u) {
+                urls.push(u);
+            }
+        });
+        if (!urls.length) {
+            return;
+        }
+
+        e.preventDefault();
+
+        var startIdx = parseInt(btn.getAttribute('data-apont-album-idx'), 10);
+        if (isNaN(startIdx) || startIdx < 0) {
+            startIdx = 0;
+        }
+        if (startIdx >= urls.length) {
+            startIdx = 0;
+        }
+
+        var modalEl = document.getElementById('apontObsFotosAlbumModal');
+        var carouselEl = document.getElementById('apontObsFotosAlbumCarousel');
+        var inner = document.getElementById('apontObsFotosAlbumInner');
+        var indicators = document.getElementById('apontObsFotosAlbumIndicators');
+        var counter = document.getElementById('apontObsFotosAlbumCounter');
+        if (!modalEl || !carouselEl || !inner || !indicators || !counter) {
+            return;
+        }
+
+        if (carouselInstance) {
+            carouselInstance.dispose();
+            carouselInstance = null;
+        }
+        if (carouselEl._apontSlidHandler) {
+            carouselEl.removeEventListener('slid.bs.carousel', carouselEl._apontSlidHandler);
+            delete carouselEl._apontSlidHandler;
+        }
+
+        inner.innerHTML = '';
+        indicators.innerHTML = '';
+
+        var prevBtn = carouselEl.querySelector('.carousel-control-prev');
+        var nextBtn = carouselEl.querySelector('.carousel-control-next');
+
+        urls.forEach(function (url, i) {
+            var wrap = document.createElement('div');
+            wrap.className = 'carousel-item' + (i === startIdx ? ' active' : '');
+            var img = document.createElement('img');
+            img.src = url;
+            img.className = 'd-block';
+            img.alt = 'Foto ' + (i + 1) + ' de ' + urls.length;
+            wrap.appendChild(img);
+            inner.appendChild(wrap);
+
+            if (urls.length > 1) {
+                var ind = document.createElement('button');
+                ind.type = 'button';
+                ind.setAttribute('data-bs-target', '#apontObsFotosAlbumCarousel');
+                ind.setAttribute('data-bs-slide-to', String(i));
+                ind.setAttribute('aria-label', 'Ir para foto ' + (i + 1));
+                if (i === startIdx) {
+                    ind.classList.add('active');
+                    ind.setAttribute('aria-current', 'true');
+                }
+                indicators.appendChild(ind);
+            }
+        });
+
+        if (urls.length <= 1) {
+            indicators.classList.add('d-none');
+            if (prevBtn) {
+                prevBtn.classList.add('d-none');
+            }
+            if (nextBtn) {
+                nextBtn.classList.add('d-none');
+            }
+        } else {
+            indicators.classList.remove('d-none');
+            if (prevBtn) {
+                prevBtn.classList.remove('d-none');
+            }
+            if (nextBtn) {
+                nextBtn.classList.remove('d-none');
+            }
+        }
+
+        function updateCounter(activeIndex) {
+            counter.textContent = activeIndex + 1 + ' / ' + urls.length;
+        }
+        updateCounter(startIdx);
+
+        carouselEl._apontSlidHandler = function (ev) {
+            updateCounter(ev.to);
+        };
+        carouselEl.addEventListener('slid.bs.carousel', carouselEl._apontSlidHandler);
+
+        carouselInstance = new bootstrap.Carousel(carouselEl, {
+            interval: false,
+            wrap: true,
+            ride: false,
+        });
+
+        if (startIdx > 0) {
+            carouselInstance.to(startIdx);
+        }
+
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    });
+})();
+
+/**
  * Apontamento: evita duplo clique no envio — botão com `.apont-submit-spinner` + `.apont-submit-label`.
  */
 window.genesisApontFormSubmitBusy = function (form, busy) {

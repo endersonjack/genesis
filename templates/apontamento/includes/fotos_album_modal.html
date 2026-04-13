@@ -1,0 +1,42 @@
+{# Modal álbum (carrossel) — reutilizado no dashboard RH, anotações mobile e histórico. #}
+<div class="modal fade"
+     id="apontObsFotosAlbumModal"
+     tabindex="-1"
+     aria-labelledby="apontObsFotosAlbumModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
+        <div class="modal-content overflow-hidden">
+            <div class="modal-header py-2 border-0">
+                <h2 class="modal-title fs-6 mb-0" id="apontObsFotosAlbumModalLabel">Fotos da observação</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-0 bg-dark position-relative">
+                <div id="apontObsFotosAlbumCarousel"
+                     class="carousel slide"
+                     data-bs-interval="false"
+                     data-bs-ride="false"
+                     data-bs-touch="true">
+                    <div class="carousel-indicators apont-album-indicators mb-0" id="apontObsFotosAlbumIndicators"></div>
+                    <div class="carousel-inner" id="apontObsFotosAlbumInner"></div>
+                    <button class="carousel-control-prev apont-album-control"
+                            type="button"
+                            data-bs-target="#apontObsFotosAlbumCarousel"
+                            data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="carousel-control-next apont-album-control"
+                            type="button"
+                            data-bs-target="#apontObsFotosAlbumCarousel"
+                            data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Próxima</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer py-2 border-0 justify-content-center bg-light">
+                <span class="small text-muted" id="apontObsFotosAlbumCounter" aria-live="polite"></span>
+            </div>
+        </div>
+    </div>
+</div>

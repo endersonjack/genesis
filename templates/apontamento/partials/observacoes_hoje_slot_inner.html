@@ -3,7 +3,7 @@
     <h3 class="apont-secao-titulo mb-2">{% if apont_ve_todos_registros %}Anotações de hoje{% else %}Suas anotações hoje{% endif %}</h3>
     <div class="d-flex flex-column gap-2">
         {% for o in observacoes_hoje %}
-        <div class="rounded-3 p-3 bg-white shadow-sm apont-mobile-card {% if o.status == 'pendente' %}apont-status-pendente{% elif o.status == 'visto' or o.status == 'finalizado' %}apont-status-visto{% elif o.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}{% if edit_pk and o.pk == edit_pk %} apont-mobile-card--editing{% endif %}">
+        <div class="rounded-3 p-3 bg-white shadow-sm apont-mobile-card {% if o.status == 'pendente' %}apont-status-pendente{% elif o.status == 'visto' or o.status == 'finalizado' %}apont-status-visto{% elif o.status == 'arquivado' %}apont-status-arquivado{% else %}apont-status-outro{% endif %}{% if edit_pk and o.pk == edit_pk %} apont-mobile-card--editing{% endif %}{% if o.fotos.all %} apont-mobile-card--has-fotos{% endif %}"{% if o.fotos.all %} data-apont-album-scope{% endif %}>
             <div class="d-flex justify-content-between align-items-start gap-2">
             <div class="min-w-0 flex-grow-1">
                 <div class="fw-semibold">{{ o.local.nome }}</div>
@@ -20,6 +20,28 @@
                     {% endif %}
                 </div>
                 <div class="small mb-0">{{ o.texto|truncatechars:200 }}</div>
+                {% if o.fotos.all %}
+                <div class="apont-fotos-album-data d-none" hidden aria-hidden="true">
+                    {% for foto in o.fotos.all %}
+                    <span data-src="{{ foto.imagem.url }}"></span>
+                    {% endfor %}
+                </div>
+                <div class="apont-mobile-album-row d-flex flex-wrap gap-2 mt-2" role="group" aria-label="Fotos — abrir álbum">
+                    {% for foto in o.fotos.all %}
+                    <button type="button"
+                            class="apont-mobile-album-btn apont-dash-obs-foto-btn apont-dash-obs-foto-link rounded-3 border bg-light overflow-hidden d-block p-0"
+                            data-apont-album-idx="{{ forloop.counter0 }}"
+                            title="Ver álbum (foto {{ forloop.counter }})">
+                        <img src="{{ foto.imagem.url }}"
+                             alt=""
+                             class="apont-mobile-album-thumb apont-anotacao-foto-thumb d-block"
+                             loading="lazy"
+                             width="96"
+                             height="96">
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 {% if apont_ve_todos_registros %}
                 <p class="apont-registrado-por small text-muted mb-0 mt-2">
                     {{ o.registrado_por.get_full_name|default:o.registrado_por.username }}
