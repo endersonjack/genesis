@@ -20,6 +20,7 @@ MODULO_FILTRO_CHOICES = [
     ('controles_rh', 'Controles RH'),
     ('local', 'Locais'),
     ('apontamento', 'Apontamento'),
+    ('usuarios', 'Perfil / Conta'),
     ('outros', 'Outros'),
 ]
 
@@ -38,6 +39,7 @@ def _q_modulo(modulo_val: str) -> Q:
             'empresas',
             'local',
             'apontamento',
+            'usuarios',
         }
         return Q(modulo='') | ~Q(modulo__in=conhecidos)
     return Q(modulo=modulo_val)

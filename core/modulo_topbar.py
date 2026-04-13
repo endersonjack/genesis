@@ -19,6 +19,8 @@ def titulo_modulo_topbar(request: HttpRequest) -> str:
             return 'Trocar empresa'
         if path.startswith('/accounts/'):
             return 'Conta'
+        if '/usuarios/perfil' in path:
+            return 'Meu perfil'
         if path.startswith('/usuarios/'):
             return 'Conta'
         return 'Genesis ERP'

@@ -1,3 +1,5 @@
+from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -6,6 +8,9 @@ from django.urls import reverse
 from core.empresa_access import usuario_e_so_apontador
 from core.urlutils import build_url_after_empresa_swap, is_safe_internal_path
 
+from auditoria.registry import registrar_auditoria
+
+from .forms import MeuPerfilForm
 from .models import UsuarioEmpresa
 
 
@@ -19,6 +24,79 @@ def _vinculos_usuario(request):
         ativo=True,
         empresa__ativa=True,
     ).select_related('empresa')
+
+
+def _empresa_sessao_para_auditoria(request):
+    """Empresa da sessão com vínculo ativo (rota global sem `empresa_ativa` no request)."""
+    eid = request.session.get('empresa_id')
+    if not eid:
+        return None
+    v = (
+        UsuarioEmpresa.objects.filter(
+            usuario=request.user,
+            empresa_id=eid,
+            ativo=True,
+            empresa__ativa=True,
+        )
+        .select_related('empresa')
+        .first()
+    )
+    return v.empresa if v else None
+
+
+@login_required
+def meu_perfil(request):
+    """Dados da conta: nome, login, senha e foto (rota global /usuarios/perfil/)."""
+    if request.method == 'POST':
+        antes = type(request.user).objects.get(pk=request.user.pk)
+        nome_antes = antes.nome_completo or ''
+        username_antes = antes.username or ''
+        foto_antes = antes.foto.name if antes.foto else ''
+
+        form = MeuPerfilForm(
+            request.POST,
+            request.FILES,
+            instance=request.user,
+        )
+        if form.is_valid():
+            user = form.save()
+            if form.cleaned_data.get('nova_senha'):
+                update_session_auth_hash(request, user)
+
+            empresa_audit = getattr(request, 'empresa_ativa', None) or _empresa_sessao_para_auditoria(
+                request
+            )
+            if empresa_audit:
+                detalhes: dict = {}
+                if (user.nome_completo or '') != nome_antes:
+                    detalhes['nome_completo'] = {'de': nome_antes, 'para': user.nome_completo or ''}
+                if user.username != username_antes:
+                    detalhes['username'] = {'de': username_antes, 'para': user.username}
+                foto_depois = user.foto.name if user.foto else ''
+                if foto_depois != foto_antes:
+                    detalhes['foto'] = {'de': foto_antes or None, 'para': foto_depois or None}
+                if form.cleaned_data.get('nova_senha'):
+                    detalhes['senha'] = 'alterada'
+                if detalhes:
+                    registrar_auditoria(
+                        request,
+                        acao='update',
+                        resumo=f'Perfil da conta atualizado ({user.username}).',
+                        modulo='usuarios',
+                        detalhes=detalhes,
+                        empresa=empresa_audit,
+                    )
+
+            messages.success(request, 'Perfil atualizado com sucesso.')
+            return redirect('meu_perfil')
+    else:
+        form = MeuPerfilForm(instance=request.user)
+
+    return render(
+        request,
+        'usuarios/meu_perfil.html',
+        {'form': form},
+    )
 
 
 @login_required

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    meu_perfil,
     modal_trocar_empresa,
     pagina_trocar_empresa_legacy,
     selecionar_empresa,
@@ -8,6 +9,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('perfil/', meu_perfil, name='meu_perfil'),
     path('selecionar-empresa/', selecionar_empresa, name='selecionar_empresa'),
     path(
         'trocar-empresa/pagina/',

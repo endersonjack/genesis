@@ -7,7 +7,7 @@ from .models import Usuario, UsuarioEmpresa
 class UsuarioAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ('Informações adicionais', {
-            'fields': ('nome_completo', 'telefone'),
+            'fields': ('nome_completo', 'telefone', 'foto'),
         }),
     )
 

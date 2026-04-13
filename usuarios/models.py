@@ -5,6 +5,12 @@ from django.db import models
 class Usuario(AbstractUser):
     nome_completo = models.CharField(max_length=255, blank=True)
     telefone = models.CharField(max_length=20, blank=True)
+    foto = models.ImageField(
+        'Foto do perfil',
+        upload_to='usuarios/fotos/',
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
         return self.nome_completo or self.username

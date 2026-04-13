@@ -12,12 +12,16 @@ def registrar_auditoria(
     resumo: str,
     modulo: str = '',
     detalhes: dict[str, Any] | None = None,
+    empresa=None,
 ) -> None:
     """
     Grava um evento de auditoria para a empresa ativa e o usuário autenticado.
     Ignora silenciosamente se não houver empresa ativa ou usuário (ex.: comando de gestão).
+
+    `empresa` opcional: quando a view não passa por /empresa/<id>/ (ex.: Meu perfil),
+    pode-se enviar a empresa da sessão desde que o usuário tenha vínculo ativo.
     """
-    empresa = getattr(request, 'empresa_ativa', None)
+    empresa = empresa if empresa is not None else getattr(request, 'empresa_ativa', None)
     user = getattr(request, 'user', None)
     if not empresa or not user or not user.is_authenticated:
         return

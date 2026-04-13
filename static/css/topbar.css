@@ -14,18 +14,38 @@
 
 .topbar-left,
 .topbar-right {
-    display: flex;
     align-items: center;
     gap: 0.85rem;
     min-width: 0;
 }
 
 .topbar-left {
+    display: flex;
     flex: 1;
 }
 
+/* Desktop: mostrar; mobile: oculto. !important + media garante que nada (ex.: display:flex partilhado) anula d-none/d-lg-flex. */
 .topbar-right {
     flex-shrink: 0;
+    display: none !important;
+}
+
+@media (min-width: 992px) {
+    .topbar-right {
+        display: flex !important;
+    }
+}
+
+/* Menu do usuário (desktop): dropdown abaixo do botão */
+.topbar-user-dropdown .dropdown-menu {
+    z-index: 1055;
+}
+.topbar-user-dropdown .dropdown-toggle::after {
+    margin-left: 0.35rem;
+    align-self: center;
+    border-top-color: rgba(255, 255, 255, 0.9);
+    border-right-color: transparent;
+    border-left-color: transparent;
 }
 
 /* Título e empresa */
@@ -83,6 +103,20 @@
     color: #6b7280;
     font-size: 0.85rem;
     margin: 0;
+}
+
+/* Topbar: fundo escuro — cores do .user-info padrão ficariam ilegíveis (especificidade > utilitários Bootstrap). */
+.topbar-user-dropdown .user-info strong {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.topbar-user-dropdown .user-info small {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.8rem;
+}
+.topbar-user-dropdown .dropdown-toggle {
+    color: #fff;
 }
 
 /* Botões do topo */

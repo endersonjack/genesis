@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Meu perfil | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8 col-xl-7">
+        <h2 class="fw-bold mb-1">Meu perfil</h2>
+        <p class="text-muted small mb-4">Atualize seu nome, login, senha e foto. A senha só é alterada se você preencher os dois campos de senha.</p>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4 text-center text-md-start">
+                            {% if request.user.foto %}
+                                <img src="{{ request.user.foto.url }}"
+                                     alt=""
+                                     class="rounded-circle border shadow-sm mb-3"
+                                     width="120"
+                                     height="120"
+                                     style="object-fit: cover;">
+                            {% else %}
+                                <div class="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center mb-3"
+                                     style="width: 120px; height: 120px;">
+                                    <i class="bi bi-person text-secondary display-5"></i>
+                                </div>
+                            {% endif %}
+                            <div class="text-start">
+                                <label class="form-label fw-semibold" for="{{ form.foto.id_for_label }}">Foto</label>
+                                {{ form.foto }}
+                                {% if form.foto.help_text %}<div class="form-text">{{ form.foto.help_text }}</div>{% endif %}
+                                {% if form.foto.errors %}<div class="text-danger small">{{ form.foto.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="{{ form.nome_completo.id_for_label }}">Nome completo</label>
+                                {{ form.nome_completo }}
+                                {% if form.nome_completo.errors %}<div class="text-danger small">{{ form.nome_completo.errors }}</div>{% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="{{ form.username.id_for_label }}">Login (nome de usuário)</label>
+                                {{ form.username }}
+                                {% if form.username.help_text %}<div class="form-text">{{ form.username.help_text }}</div>{% endif %}
+                                {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors }}</div>{% endif %}
+                            </div>
+                            <hr class="my-4">
+                            <p class="small text-muted mb-3">Para manter a senha atual, deixe os campos abaixo em branco.</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="{{ form.nova_senha.id_for_label }}">Nova senha</label>
+                                {{ form.nova_senha }}
+                                {% if form.nova_senha.errors %}<div class="text-danger small">{{ form.nova_senha.errors }}</div>{% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="{{ form.nova_senha_confirmar.id_for_label }}">Confirmar nova senha</label>
+                                {{ form.nova_senha_confirmar }}
+                                {% if form.nova_senha_confirmar.errors %}<div class="text-danger small">{{ form.nova_senha_confirmar.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary rounded-3 px-4">Salvar alterações</button>
+                        {% if request.empresa_ativa %}
+                            <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+                        {% else %}
+                            <a href="{% url 'selecionar_empresa' %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

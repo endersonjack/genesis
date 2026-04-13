@@ -598,6 +598,18 @@ button.menu-link {
     font-size: 1.1rem;
     flex-shrink: 0;
     color: var(--sidebar-text);
+    overflow: hidden;
+}
+
+.sidebar-user-mobile-avatar:has(.sidebar-user-mobile-avatar-img) {
+    background: transparent;
+}
+
+.sidebar-user-mobile-avatar-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    display: block;
 }
 
 .sidebar-user-mobile-name {

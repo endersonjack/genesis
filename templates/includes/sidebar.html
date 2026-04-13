@@ -144,7 +144,11 @@
                 <div class="sidebar-user-mobile d-lg-none" role="status">
                     <div class="sidebar-user-mobile-inner">
                         <div class="sidebar-user-mobile-avatar" aria-hidden="true">
-                            <i class="bi bi-person"></i>
+                            {% if request.user.foto %}
+                                <img src="{{ request.user.foto.url }}" alt="" class="sidebar-user-mobile-avatar-img rounded-circle" width="40" height="40" decoding="async">
+                            {% else %}
+                                <i class="bi bi-person"></i>
+                            {% endif %}
                         </div>
                         <div class="sidebar-user-mobile-text">
                             <strong class="sidebar-user-mobile-name">{{ request.user.nome_completo|default:request.user.username }}</strong>
@@ -152,6 +156,11 @@
                         </div>
                     </div>
                 </div>
+
+                <a href="{% url 'meu_perfil' %}" class="menu-link d-lg-none {% if request.resolver_match.url_name == 'meu_perfil' %}active{% endif %}">
+                    <i class="bi bi-person-gear"></i>
+                    <span>Perfil</span>
+                </a>
 
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
