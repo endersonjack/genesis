@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -48,7 +48,8 @@ def _empresa_sessao_para_auditoria(request):
 def meu_perfil(request):
     """Dados da conta: nome, login, senha e foto (rota global /usuarios/perfil/)."""
     if request.method == 'POST':
-        antes = type(request.user).objects.get(pk=request.user.pk)
+        User = get_user_model()
+        antes = User.objects.get(pk=request.user.pk)
         nome_antes = antes.nome_completo or ''
         username_antes = antes.username or ''
         foto_antes = antes.foto.name if antes.foto else ''
