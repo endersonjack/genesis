@@ -68,11 +68,7 @@
 
                     <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
                         <button type="submit" class="btn btn-primary rounded-3 px-4">Salvar alterações</button>
-                        {% if request.empresa_ativa %}
-                            <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
-                        {% else %}
-                            <a href="{% url 'selecionar_empresa' %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
-                        {% endif %}
+                        <a href="{{ perfil_voltar_url }}" class="btn btn-outline-secondary rounded-3">Voltar</a>
                     </div>
                 </form>
             </div>

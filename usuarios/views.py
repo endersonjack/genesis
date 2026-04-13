@@ -44,6 +44,25 @@ def _empresa_sessao_para_auditoria(request):
     return v.empresa if v else None
 
 
+def _url_inicio_empresa_scoped(request) -> str:
+    """Início do contexto da empresa (dashboard ou Apontamento se só apontador)."""
+    emp = getattr(request, 'empresa_ativa', None)
+    eid = emp.pk if emp else request.session.get('empresa_id')
+    if not eid:
+        return reverse('selecionar_empresa')
+    v = UsuarioEmpresa.objects.filter(
+        usuario=request.user,
+        empresa_id=eid,
+        ativo=True,
+        empresa__ativa=True,
+    ).first()
+    if not v:
+        return reverse('selecionar_empresa')
+    if usuario_e_so_apontador(request.user, v):
+        return reverse('apontamento:home', kwargs={'empresa_id': eid})
+    return reverse('dashboard_home', kwargs={'empresa_id': eid})
+
+
 @login_required
 def meu_perfil(request):
     """Dados da conta: nome, login, senha e foto (rota global /usuarios/perfil/)."""
@@ -96,7 +115,10 @@ def meu_perfil(request):
     return render(
         request,
         'usuarios/meu_perfil.html',
-        {'form': form},
+        {
+            'form': form,
+            'perfil_voltar_url': _url_inicio_empresa_scoped(request),
+        },
     )
 
 
