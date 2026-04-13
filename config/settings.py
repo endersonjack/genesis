@@ -36,6 +36,9 @@ INSTALLED_APPS = [
 
     'core',
     'local',
+    'fornecedores',
+    'clientes',
+    'obras',
     'empresas',
     'usuarios',
     'dashboard',

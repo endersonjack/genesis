@@ -12,6 +12,12 @@
     {% csrf_token %}
 
     <div class="modal-body py-3">
+        <p class="small text-muted mb-3">
+            Valor total VT:
+            <strong class="text-dark">R$ {{ item.valor_pagar|floatformat:2 }}</strong>
+            · Saldo:
+            <strong class="text-dark">R$ {{ item.saldo|floatformat:2 }}</strong>
+        </p>
         <div class="mb-3">
             <label class="form-label fw-semibold mb-1" for="{{ form.valor_pago.id_for_label }}">
                 {{ form.valor_pago.label }}
@@ -35,8 +41,18 @@
         </div>
     </div>
 
-    <div class="modal-footer py-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+    <div class="modal-footer py-2 d-flex flex-wrap align-items-center gap-2">
+        <button type="button"
+                class="btn btn-success btn-sm fw-semibold"
+                hx-post="{% url 'controles_rh:pagar_total_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                hx-target="#modal-pagamento-vt-content"
+                hx-swap="innerHTML"
+                hx-confirm="Deseja registrar o pagamento na totalidade?">
+            Pagar total
+        </button>
+        <div class="ms-auto d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+        </div>
     </div>
 </form>

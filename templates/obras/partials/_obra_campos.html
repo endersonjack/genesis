@@ -1,0 +1,68 @@
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-12 col-md-8">
+        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+        {{ form.nome }}
+        {% if form.nome.errors %}<div class="text-danger small">{{ form.nome.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.contratante.id_for_label }}">{{ form.contratante.label }}</label>
+        {{ form.contratante }}
+        {% if form.contratante.errors %}<div class="text-danger small">{{ form.contratante.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label fw-semibold" for="{{ form.objeto.id_for_label }}">{{ form.objeto.label }}</label>
+        {{ form.objeto }}
+        {% if form.objeto.errors %}<div class="text-danger small">{{ form.objeto.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+        {{ form.endereco }}
+        {% if form.endereco.errors %}<div class="text-danger small">{{ form.endereco.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.cno.id_for_label }}">{{ form.cno.label }}</label>
+        {{ form.cno }}
+        {% if form.cno.help_text %}<div class="form-text small">{{ form.cno.help_text }}</div>{% endif %}
+        {% if form.cno.errors %}<div class="text-danger small">{{ form.cno.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+        {{ form.valor }}
+        {% if form.valor.errors %}<div class="text-danger small">{{ form.valor.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.secretaria.id_for_label }}">{{ form.secretaria.label }}</label>
+        {{ form.secretaria }}
+        {% if form.secretaria.errors %}<div class="text-danger small">{{ form.secretaria.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.gestor.id_for_label }}">{{ form.gestor.label }}</label>
+        {{ form.gestor }}
+        {% if form.gestor.errors %}<div class="text-danger small">{{ form.gestor.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.fiscal.id_for_label }}">{{ form.fiscal.label }}</label>
+        {{ form.fiscal }}
+        {% if form.fiscal.errors %}<div class="text-danger small">{{ form.fiscal.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.data_inicio.id_for_label }}">{{ form.data_inicio.label }}</label>
+        {{ form.data_inicio }}
+        {% if form.data_inicio.errors %}<div class="text-danger small">{{ form.data_inicio.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.prazo.id_for_label }}">{{ form.prazo.label }}</label>
+        {{ form.prazo }}
+        {% if form.prazo.help_text %}<div class="form-text small">{{ form.prazo.help_text }}</div>{% endif %}
+        {% if form.prazo.errors %}<div class="text-danger small">{{ form.prazo.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.data_fim.id_for_label }}">{{ form.data_fim.label }}</label>
+        {{ form.data_fim }}
+        {% if form.data_fim.errors %}<div class="text-danger small">{{ form.data_fim.errors }}</div>{% endif %}
+    </div>
+</div>

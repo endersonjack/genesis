@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Obras | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="page-header-card mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+            <h2 class="page-header-title mb-1">Obras</h2>
+            <p class="page-header-desc mb-0">Cadastro de obras vinculadas a clientes (contratantes).</p>
+        </div>
+        <button type="button"
+                class="btn btn-primary rounded-3 fw-semibold"
+                hx-get="{% url 'obras:modal_novo' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#obraModalSwapTarget"
+                hx-swap="innerHTML">
+            <i class="bi bi-plus-lg me-1"></i> Nova obra
+        </button>
+    </div>
+</div>
+
+<div class="list-card">
+    <div class="card-header-soft d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Lista</h5>
+        <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+            <form method="get"
+                  action="{% url 'obras:lista' empresa_id=request.empresa_ativa.pk %}"
+                  class="obras-busca-form">
+                <label class="visually-hidden" for="obras-busca-q">Buscar obra</label>
+                <div class="input-group input-group-sm obras-busca-inputgroup">
+                    <span class="input-group-text bg-white border-end-0 ps-3"><i class="bi bi-search text-muted" aria-hidden="true"></i></span>
+                    <input type="search"
+                           name="q"
+                           id="obras-busca-q"
+                           class="form-control border-start-0 rounded-end-3"
+                           value="{{ busca_q }}"
+                           placeholder="Nome, objeto, endereço, CNO, contratante…"
+                           autocomplete="off">
+                </div>
+            </form>
+            <span class="text-muted small text-nowrap">{{ obras|length }} registro(s)</span>
+        </div>
+    </div>
+    <div class="card-body-soft">
+        {% if obras %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Obra</th>
+                        <th>Contratante</th>
+                        <th class="text-end">Valor</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in obras %}
+                    <tr class="obra-table-row"
+                        role="button"
+                        tabindex="0"
+                        hx-get="{% url 'obras:modal_editar' empresa_id=request.empresa_ativa.pk pk=o.pk %}"
+                        hx-target="#obraModalSwapTarget"
+                        hx-swap="innerHTML">
+                        <td class="fw-semibold">{{ o.nome }}</td>
+                        <td>{{ o.contratante.nome }}</td>
+                        <td class="text-end text-nowrap">
+                            {% if o.valor is not None %}R$ {{ o.valor|floatformat:2 }}{% else %}—{% endif %}
+                        </td>
+                        <td class="text-nowrap">{{ o.data_inicio|date:"d/m/Y"|default:"—" }}</td>
+                        <td class="text-nowrap">{{ o.data_fim|date:"d/m/Y"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state m-3">
+            {% if busca_q %}
+                <p class="mb-3">Nenhuma obra encontrada para <strong>{{ busca_q }}</strong>.</p>
+                <a href="{% url 'obras:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Limpar busca</a>
+            {% else %}
+                <p class="mb-3">Nenhuma obra cadastrada.</p>
+                <p class="small text-muted mb-3">É necessário ter ao menos um <a href="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}">cliente</a> para definir o contratante.</p>
+                <button type="button"
+                        class="btn btn-primary rounded-3"
+                        hx-get="{% url 'obras:modal_novo' empresa_id=request.empresa_ativa.pk %}"
+                        hx-target="#obraModalSwapTarget"
+                        hx-swap="innerHTML">
+                    Cadastrar primeira obra
+                </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'obras/includes/modal_shell.html' %}
+
+<style>
+    .page-header-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+    }
+    .page-header-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+    .page-header-desc { color: #64748b; }
+    .list-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .card-header-soft {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+    }
+    .card-body-soft { padding: 0; background: #f8fafc; }
+    .empty-state {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+    .obra-table-row { cursor: pointer; }
+    .obra-table-row:hover { background-color: rgba(13, 110, 253, 0.06); }
+    .obra-table-row:focus-visible {
+        outline: 2px solid rgba(13, 110, 253, 0.45);
+        outline-offset: -2px;
+    }
+    .obras-busca-inputgroup { width: min(100vw - 3rem, 320px); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    document.querySelectorAll('.obra-table-row').forEach(function (row) {
+        row.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                row.click();
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

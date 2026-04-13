@@ -1,0 +1,129 @@
+{# Campos do formulário (sem <form>); usado no modal e na página legada. #}
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+        {{ form.tipo }}
+        {% if form.tipo.errors %}<div class="text-danger small">{{ form.tipo.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.categoria.id_for_label }}">{{ form.categoria.label }}</label>
+        {{ form.categoria }}
+        {% if form.categoria.help_text %}<div class="form-text small">{{ form.categoria.help_text }}</div>{% endif %}
+        {% if form.categoria.errors %}<div class="text-danger small">{{ form.categoria.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.cpf_cnpj.id_for_label }}" id="label-fornecedor-doc">{{ form.cpf_cnpj.label }}</label>
+        {{ form.cpf_cnpj }}
+        {% if form.cpf_cnpj.errors %}<div class="text-danger small">{{ form.cpf_cnpj.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+        {{ form.nome }}
+        {% if form.nome.errors %}<div class="text-danger small">{{ form.nome.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold" for="{{ form.razao_social.id_for_label }}">{{ form.razao_social.label }}</label>
+        {{ form.razao_social }}
+        {% if form.razao_social.errors %}<div class="text-danger small">{{ form.razao_social.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+        {{ form.endereco }}
+        {% if form.endereco.errors %}<div class="text-danger small">{{ form.endereco.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.telefone_loja.id_for_label }}">{{ form.telefone_loja.label }}</label>
+        {{ form.telefone_loja }}
+        {% if form.telefone_loja.errors %}<div class="text-danger small">{{ form.telefone_loja.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.telefone_financeiro.id_for_label }}">{{ form.telefone_financeiro.label }}</label>
+        {{ form.telefone_financeiro }}
+        {% if form.telefone_financeiro.errors %}<div class="text-danger small">{{ form.telefone_financeiro.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.contato_financeiro.id_for_label }}">{{ form.contato_financeiro.label }}</label>
+        {{ form.contato_financeiro }}
+        {% if form.contato_financeiro.errors %}<div class="text-danger small">{{ form.contato_financeiro.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+    </div>
+</div>
+
+<hr class="my-4">
+<h6 class="fw-bold text-secondary mb-3">Dados bancários</h6>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label fw-semibold" for="{{ form.banco.id_for_label }}">{{ form.banco.label }}</label>
+        {{ form.banco }}
+        {% if form.banco.errors %}<div class="text-danger small">{{ form.banco.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-semibold" for="{{ form.agencia.id_for_label }}">{{ form.agencia.label }}</label>
+        {{ form.agencia }}
+        {% if form.agencia.errors %}<div class="text-danger small">{{ form.agencia.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-semibold" for="{{ form.operacao.id_for_label }}">{{ form.operacao.label }}</label>
+        {{ form.operacao }}
+        {% if form.operacao.errors %}<div class="text-danger small">{{ form.operacao.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.tipo_conta.id_for_label }}">{{ form.tipo_conta.label }}</label>
+        {{ form.tipo_conta }}
+        {% if form.tipo_conta.errors %}<div class="text-danger small">{{ form.tipo_conta.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.numero_conta.id_for_label }}">{{ form.numero_conta.label }}</label>
+        {{ form.numero_conta }}
+        {% if form.numero_conta.errors %}<div class="text-danger small">{{ form.numero_conta.errors }}</div>{% endif %}
+    </div>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold" for="{{ form.tipo_pix.id_for_label }}">{{ form.tipo_pix.label }}</label>
+        {{ form.tipo_pix }}
+        {% if form.tipo_pix.errors %}<div class="text-danger small">{{ form.tipo_pix.errors }}</div>{% endif %}
+    </div>
+    <div class="col-12">
+        <label class="form-label fw-semibold" for="{{ form.pix.id_for_label }}">{{ form.pix.label }}</label>
+        {{ form.pix }}
+        {% if form.pix.errors %}<div class="text-danger small">{{ form.pix.errors }}</div>{% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    var tipoEl = document.getElementById('id_fornecedor_tipo');
+    var docEl = document.getElementById('id_fornecedor_cpf_cnpj');
+    var labelEl = document.getElementById('label-fornecedor-doc');
+    if (!tipoEl || !docEl) {
+        return;
+    }
+    function applyTipo(resetValue) {
+        var pf = tipoEl.value === 'PF';
+        docEl.setAttribute('data-mask', pf ? 'cpf' : 'cnpj');
+        delete docEl.dataset.cpfMaskBound;
+        delete docEl.dataset.cnpjMaskBound;
+        docEl.setAttribute('maxlength', pf ? '14' : '18');
+        if (labelEl) {
+            labelEl.textContent = pf ? 'CPF' : 'CNPJ';
+        }
+        if (resetValue) {
+            docEl.value = '';
+        }
+        if (window.genesisInputMaskScan) {
+            window.genesisInputMaskScan(document);
+        }
+    }
+    tipoEl.addEventListener('change', function () {
+        applyTipo(true);
+    });
+    applyTipo(false);
+})();
+</script>

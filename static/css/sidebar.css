@@ -264,6 +264,35 @@ button.menu-link {
     cursor: pointer;
 }
 
+/* Submenu «Cadastros» (Locais, Fornecedores, …) */
+.sidebar-menu-group {
+    width: 100%;
+}
+.menu-link-toggle .sidebar-menu-chevron {
+    transition: transform 0.2s ease;
+}
+.menu-link-toggle[aria-expanded='true'] .sidebar-menu-chevron {
+    transform: rotate(-180deg);
+}
+.sidebar-submenu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.35rem;
+    padding-left: 0.2rem;
+}
+.menu-sublink.menu-link {
+    min-height: 48px;
+    padding-left: 1.1rem;
+    font-size: 0.98rem;
+    border-radius: 14px;
+}
+.menu-sublink.menu-sublink-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 /* =========================
    BACKDROP MOBILE
 ========================= */
@@ -359,6 +388,20 @@ button.menu-link {
 .app-wrapper.sidebar-collapsed .menu-link:hover,
 .app-wrapper.sidebar-collapsed .menu-link.active {
     transform: none;
+}
+
+.app-wrapper.sidebar-collapsed .menu-link-toggle .sidebar-menu-chevron {
+    display: none;
+}
+.app-wrapper.sidebar-collapsed .sidebar-submenu {
+    padding-left: 0;
+    align-items: center;
+}
+.app-wrapper.sidebar-collapsed .menu-sublink.menu-link {
+    padding-left: 0;
+    justify-content: center;
+    width: 56px;
+    min-width: 56px;
 }
 
 .app-wrapper.sidebar-collapsed .sidebar-body::-webkit-scrollbar {

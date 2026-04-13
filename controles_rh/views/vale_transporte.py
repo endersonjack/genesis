@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from auditoria.registry import audit_controles_rh
@@ -645,6 +646,39 @@ def modal_pagamento_item_vt(request, pk):
         'form': form,
     }
     return render(request, 'controles_rh/vale_transporte/_modal_pagamento_item.html', context)
+
+
+@login_required
+@require_POST
+def pagar_total_item_vt(request, pk):
+    """
+    Define valor pago = valor total VT (saldo zero) e preenche data de pagamento se vazia.
+    """
+    item = _get_item_vt_empresa(request, pk)
+    tabela = item.tabela
+
+    item.save()
+    total = item.valor_pagar or Decimal('0')
+    item.valor_pago = total
+    if item.data_pagamento is None:
+        item.data_pagamento = timezone.localdate()
+    item.save()
+
+    audit_controles_rh(
+        request,
+        'update',
+        f'VT pagamento integral — {item.nome_exibicao} (R$ {total}).',
+        {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
+    )
+    messages.success(
+        request,
+        f'Pagamento total registrado para «{item.nome_exibicao}» (R$ {total:.2f}).',
+    )
+    if _is_htmx(request):
+        response = HttpResponse(status=204)
+        response['HX-Refresh'] = 'true'
+        return response
+    return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
 
 @login_required

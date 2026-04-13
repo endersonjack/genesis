@@ -27,6 +27,9 @@ _EMPRESA_SWAP_DASHBOARD_REST_PATTERNS = tuple(
         r'^/rh/gestao/cesta-basica/\d+',
         r'^/rh/gestao/cesta-basica/itens/\d+',
         r'^/local/\d+/',
+        r'^/fornecedores/\d+',
+        r'^/clientes/\d+',
+        r'^/obras/\d+',
     )
 )
 

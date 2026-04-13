@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ obra.nome }} | Obras | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ obra.nome }}</h2>
+        <p class="text-muted mb-0">Contratante: {{ obra.contratante.nome }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button"
+                class="btn btn-primary rounded-3"
+                hx-get="{% url 'obras:modal_editar' empresa_id=request.empresa_ativa.pk pk=obra.pk %}"
+                hx-target="#obraModalSwapTarget"
+                hx-swap="innerHTML">
+            Editar
+        </button>
+        <a href="{% url 'obras:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body">
+        <h6 class="text-uppercase text-muted fw-bold small mb-3">Dados</h6>
+        <dl class="row mb-0 small">
+            <dt class="col-sm-3 text-muted">Objeto</dt>
+            <dd class="col-sm-9">{{ obra.objeto|default:"—"|linebreaksbr }}</dd>
+            <dt class="col-sm-3 text-muted">Endereço</dt>
+            <dd class="col-sm-9">{{ obra.endereco|default:"—"|linebreaksbr }}</dd>
+            <dt class="col-sm-3 text-muted">CNO</dt>
+            <dd class="col-sm-9">{{ obra.cno|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Valor</dt>
+            <dd class="col-sm-9">
+                {% if obra.valor is not None %}R$ {{ obra.valor|floatformat:2 }}{% else %}—{% endif %}
+            </dd>
+            <dt class="col-sm-3 text-muted">Secretaria</dt>
+            <dd class="col-sm-9">{{ obra.secretaria|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Gestor</dt>
+            <dd class="col-sm-9">{{ obra.gestor|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Fiscal</dt>
+            <dd class="col-sm-9">{{ obra.fiscal|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Início</dt>
+            <dd class="col-sm-9">{{ obra.data_inicio|date:"d/m/Y"|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Prazo</dt>
+            <dd class="col-sm-9">{{ obra.prazo|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Fim</dt>
+            <dd class="col-sm-9">{{ obra.data_fim|date:"d/m/Y"|default:"—" }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% include 'obras/includes/modal_shell.html' %}
+{% endblock %}

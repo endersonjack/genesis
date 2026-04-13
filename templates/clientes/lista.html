@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="page-header-card mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+            <h2 class="page-header-title mb-1">Clientes</h2>
+            <p class="page-header-desc mb-0">Cadastro de clientes da empresa.</p>
+        </div>
+        <button type="button"
+                class="btn btn-primary rounded-3 fw-semibold"
+                hx-get="{% url 'clientes:modal_novo' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#clienteModalSwapTarget"
+                hx-swap="innerHTML">
+            <i class="bi bi-plus-lg me-1"></i> Novo cliente
+        </button>
+    </div>
+</div>
+
+<div class="list-card">
+    <div class="card-header-soft d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Lista</h5>
+        <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+            <form method="get"
+                  action="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}"
+                  class="clientes-busca-form">
+                <label class="visually-hidden" for="clientes-busca-q">Buscar cliente</label>
+                <div class="input-group input-group-sm clientes-busca-inputgroup">
+                    <span class="input-group-text bg-white border-end-0 ps-3"><i class="bi bi-search text-muted" aria-hidden="true"></i></span>
+                    <input type="search"
+                           name="q"
+                           id="clientes-busca-q"
+                           class="form-control border-start-0 rounded-end-3"
+                           value="{{ busca_q }}"
+                           placeholder="Nome, CPF/CNPJ, razão social, telefone, e-mail…"
+                           autocomplete="off">
+                </div>
+            </form>
+            <span class="text-muted small text-nowrap">{{ clientes|length }} registro(s)</span>
+        </div>
+    </div>
+    <div class="card-body-soft">
+        {% if clientes %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>CPF/CNPJ</th>
+                        <th>Telefone</th>
+                        <th>E-mail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr class="cliente-table-row"
+                        role="button"
+                        tabindex="0"
+                        hx-get="{% url 'clientes:modal_editar' empresa_id=request.empresa_ativa.pk pk=c.pk %}"
+                        hx-target="#clienteModalSwapTarget"
+                        hx-swap="innerHTML">
+                        <td class="fw-semibold">{{ c.nome }}</td>
+                        <td>{{ c.get_tipo_display }}</td>
+                        <td class="text-nowrap">{{ c.cpf_cnpj_formatado }}</td>
+                        <td class="text-nowrap">{{ c.telefone|default:"—" }}</td>
+                        <td>{{ c.email|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state m-3">
+            {% if busca_q %}
+                <p class="mb-3">Nenhum cliente encontrado para <strong>{{ busca_q }}</strong>.</p>
+                <a href="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Limpar busca</a>
+            {% else %}
+                <p class="mb-3">Nenhum cliente cadastrado.</p>
+                <button type="button"
+                        class="btn btn-primary rounded-3"
+                        hx-get="{% url 'clientes:modal_novo' empresa_id=request.empresa_ativa.pk %}"
+                        hx-target="#clienteModalSwapTarget"
+                        hx-swap="innerHTML">
+                    Cadastrar primeiro cliente
+                </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'clientes/includes/modal_shell.html' %}
+
+<style>
+    .page-header-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+    }
+    .page-header-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+    .page-header-desc { color: #64748b; }
+    .list-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .card-header-soft {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+    }
+    .card-body-soft { padding: 0; background: #f8fafc; }
+    .empty-state {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #64748b;
+    }
+    .cliente-table-row { cursor: pointer; }
+    .cliente-table-row:hover { background-color: rgba(13, 110, 253, 0.06); }
+    .cliente-table-row:focus-visible {
+        outline: 2px solid rgba(13, 110, 253, 0.45);
+        outline-offset: -2px;
+    }
+    .clientes-busca-inputgroup { width: min(100vw - 3rem, 320px); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    document.querySelectorAll('.cliente-table-row').forEach(function (row) {
+        row.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                row.click();
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

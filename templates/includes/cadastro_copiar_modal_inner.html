@@ -1,0 +1,47 @@
+{# Fragmento carregado em #copiarCadastroModalInner (HTMX). #}
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold" id="copiarCadastroModalLabel">Copiar {{ cadastro_label }} para outra empresa</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+{% if sem_destino %}
+    <div class="modal-body pt-2">
+        <p class="text-muted mb-0">Não há outras empresas vinculadas ao seu usuário para receber esta cópia.</p>
+    </div>
+    <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Fechar</button>
+    </div>
+{% else %}
+    <form method="post"
+          action="{{ copiar_post_url }}"
+          hx-post="{{ copiar_post_url }}"
+          hx-target="#copiarCadastroModalInner"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        <div class="modal-body pt-2">
+            <p class="text-muted small mb-2">Empresa de origem: <strong>{{ empresa_origem }}</strong></p>
+            <div class="mb-3">
+                <div class="fw-semibold small text-uppercase text-secondary mb-2">{{ cadastro_label }}</div>
+                <ul class="list-unstyled small mb-0 border rounded-3 bg-light p-3">
+                    {% for it in resumo_linhas %}
+                        <li class="mb-1"><span class="text-muted">{{ it.label }}:</span> {{ it.valor }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% if erro_copia %}
+                <div class="alert alert-danger py-2 small mb-3 mb-md-0">{{ erro_copia }}</div>
+            {% endif %}
+            <label class="form-label fw-semibold" for="{{ form.empresa_destino.id_for_label }}">{{ form.empresa_destino.label }}</label>
+            {{ form.empresa_destino }}
+            {% if form.empresa_destino.errors %}
+                <div class="text-danger small mt-1">{{ form.empresa_destino.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="modal-footer border-0 pt-0 d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success rounded-3 fw-semibold d-inline-flex align-items-center gap-2">
+                <span class="spinner-border spinner-border-sm htmx-indicator" role="status" aria-hidden="true"></span>
+                <span class="htmx-hide-on-request"><i class="bi bi-copy me-1"></i>Copiar</span>
+            </button>
+        </div>
+    </form>
+{% endif %}

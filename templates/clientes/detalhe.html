@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cliente.nome }} | Clientes | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ cliente.nome }}</h2>
+        <p class="text-muted mb-0">{{ cliente.get_tipo_display }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button"
+                class="btn btn-primary rounded-3"
+                hx-get="{% url 'clientes:modal_editar' empresa_id=request.empresa_ativa.pk pk=cliente.pk %}"
+                hx-target="#clienteModalSwapTarget"
+                hx-swap="innerHTML">
+            Editar
+        </button>
+        <a href="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body">
+        <h6 class="text-uppercase text-muted fw-bold small mb-3">Dados</h6>
+        <dl class="row mb-0 small">
+            <dt class="col-sm-3 text-muted">{% if cliente.tipo == 'PF' %}CPF{% else %}CNPJ{% endif %}</dt>
+            <dd class="col-sm-9">{{ cliente.cpf_cnpj_formatado }}</dd>
+            <dt class="col-sm-3 text-muted">Razão social</dt>
+            <dd class="col-sm-9">{{ cliente.razao_social|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">Endereço</dt>
+            <dd class="col-sm-9">{{ cliente.endereco|default:"—"|linebreaksbr }}</dd>
+            <dt class="col-sm-3 text-muted">Telefone</dt>
+            <dd class="col-sm-9">{{ cliente.telefone|default:"—" }}</dd>
+            <dt class="col-sm-3 text-muted">E-mail</dt>
+            <dd class="col-sm-9">{{ cliente.email|default:"—" }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% include 'clientes/includes/modal_shell.html' %}
+{% endblock %}

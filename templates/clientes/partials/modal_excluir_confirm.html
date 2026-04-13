@@ -1,0 +1,26 @@
+<div class="modal-content rounded-3 border-0 shadow">
+    <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-danger" id="clienteModalLabel">Excluir cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+    <div class="modal-body pt-2">
+        <p class="mb-0">Confirma a exclusão de <strong>{{ cliente.nome }}</strong>? Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-footer border-0 pt-0 d-flex flex-wrap justify-content-between gap-2">
+        <button type="button"
+                class="btn btn-outline-secondary rounded-3"
+                hx-get="{{ voltar_editar_url }}"
+                hx-target="#clienteModalSwapTarget"
+                hx-swap="innerHTML">
+            Voltar
+        </button>
+        <form method="post"
+              action="{{ excluir_url }}"
+              hx-post="{{ excluir_url }}"
+              hx-swap="none"
+              class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger rounded-3">Excluir definitivamente</button>
+        </form>
+    </div>
+</div>

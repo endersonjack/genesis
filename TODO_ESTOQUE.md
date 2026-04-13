@@ -6,7 +6,7 @@ Arquivo de **ideias e decisões a discutir** antes de implementar. Nada aqui é 
 
 ## 1. O que discutir primeiro (checklist)
 
-- [ ] **Cadastros-base primeiro** (ver **§2**): **Fornecedor** (tipos PJ, PF, Terceirizado, Terceiros, Outro), **Categoria de itens** e **Categoria de ferramentas** — fechar modelo e telas antes de movimentação complexa.
+- [x] **Cadastros-base primeiro** (ver **§2**): **FORNECEDOR** (tipos PJ, PF, Terceirizado, Terceiros, Outro), **Categoria de itens** e **Categoria de ferramentas** — fechar modelo e telas antes de movimentação complexa.
 - [ ] **Escopo da fase 1**: só cadastros e movimentação básica, ou já requisições + guarda na mesma entrega?
 - [x] **Multi-empresa**: **cada empresa tem o seu próprio estoque** (cadastro de itens, depósitos e saldos isolados por empresa — não compartilhar posição entre empresas).
 - [ ] **Transferência entre depósitos (usuário multi-empresa)**: usuários vinculados a **mais de uma empresa** podem registrar **transferência entre depósitos**, inclusive **origem e destino em empresas diferentes**, desde que tenham permissão nas duas. Ainda definir: perfil mínimo, obrigatoriedade de observação/anexo, aprovação em duas etapas e trilha de auditoria específica.

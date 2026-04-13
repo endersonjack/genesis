@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="fw-bold mb-0">{{ page_title }}</h2>
+            <a href="{% url 'fornecedores:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" novalidate id="form-fornecedor">
+                    {% csrf_token %}
+                    {% include 'fornecedores/partials/_fornecedor_campos.html' %}
+
+                    <div class="mt-4 pt-3 border-top d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary rounded-3 px-4">Salvar</button>
+                        <a href="{% if fornecedor %}{% url 'fornecedores:detalhe' empresa_id=request.empresa_ativa.pk pk=fornecedor.pk %}{% else %}{% url 'fornecedores:lista' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="btn btn-outline-secondary rounded-3">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

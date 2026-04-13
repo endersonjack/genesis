@@ -105,7 +105,16 @@
         {% endif %}
     </div>
 
-    <div class="modal-footer">
+    <div class="modal-footer d-flex flex-wrap align-items-center gap-2">
+        {% if modo == 'editar' and local and local.pk %}
+            <button type="button"
+                    class="btn btn-outline-success me-auto"
+                    hx-get="{% url 'local:modal_copiar' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
+                    hx-target="#copiarCadastroModalInner"
+                    hx-swap="innerHTML">
+                <i class="bi bi-copy me-1"></i> Copiar para outra empresa
+            </button>
+        {% endif %}
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-check2-circle me-1"></i> Salvar

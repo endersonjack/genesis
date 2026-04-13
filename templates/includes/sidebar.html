@@ -104,10 +104,41 @@
 
                 {% if not request.usuario_so_apontador %}
                 {% if request.empresa_ativa %}
-                    <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/local/' in request.path %}active{% endif %}">
-                        <i class="bi bi-geo-alt"></i>
-                        <span>Locais</span>
-                    </a>
+                    <div class="sidebar-menu-group">
+                        <button type="button"
+                                class="menu-link menu-link-toggle w-100 text-start border-0 bg-transparent"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#sidebarCadastros"
+                                aria-expanded="{% if '/local/' in request.path or '/fornecedores/' in request.path or '/clientes/' in request.path or '/obras/' in request.path %}true{% else %}false{% endif %}"
+                                aria-controls="sidebarCadastros">
+                            <i class="bi bi-journal-plus"></i>
+                            <span>Cadastros</span>
+                            <i class="bi bi-chevron-down ms-auto small sidebar-menu-chevron flex-shrink-0"></i>
+                        </button>
+                        <div id="sidebarCadastros"
+                             class="collapse sidebar-submenu {% if '/local/' in request.path or '/fornecedores/' in request.path or '/clientes/' in request.path or '/obras/' in request.path %}show{% endif %}">
+                            <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
+                               class="menu-link menu-sublink {% if '/local/' in request.path and '/fornecedores/' not in request.path %}active{% endif %}">
+                                <i class="bi bi-geo-alt"></i>
+                                <span>Locais</span>
+                            </a>
+                            <a href="{% url 'fornecedores:lista' empresa_id=request.empresa_ativa.pk %}"
+                               class="menu-link menu-sublink {% if '/fornecedores/' in request.path %}active{% endif %}">
+                                <i class="bi bi-truck"></i>
+                                <span>Fornecedores</span>
+                            </a>
+                            <a href="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}"
+                               class="menu-link menu-sublink {% if '/clientes/' in request.path and '/obras/' not in request.path %}active{% endif %}">
+                                <i class="bi bi-people"></i>
+                                <span>Clientes</span>
+                            </a>
+                            <a href="{% url 'obras:lista' empresa_id=request.empresa_ativa.pk %}"
+                               class="menu-link menu-sublink {% if '/obras/' in request.path %}active{% endif %}">
+                                <i class="bi bi-building"></i>
+                                <span>Obras</span>
+                            </a>
+                        </div>
+                    </div>
                 {% endif %}
 
                 {% if request.empresa_ativa %}

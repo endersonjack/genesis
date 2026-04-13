@@ -62,7 +62,15 @@ document.body.addEventListener('htmx:configRequest', function (event) {
      * (por baixo ou piscando) até o HX-Refresh — fecha e limpa backdrop na hora.
      */
     function hideBootstrapModalsBeforeHtmxLoading() {
-        var skipModalIds = { sectionModal: true, modalPadrao: true, modalAfLinha: true };
+        var skipModalIds = {
+            sectionModal: true,
+            modalPadrao: true,
+            modalAfLinha: true,
+            fornecedorModal: true,
+            clienteModal: true,
+            obraModal: true,
+            copiarCadastroModal: true,
+        };
         if (window.bootstrap && bootstrap.Modal) {
             document.querySelectorAll('.modal.show').forEach(function (modalEl) {
                 // Não fechar o modal de seções do funcionário aqui: o hide dispara
@@ -164,6 +172,76 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         }
     };
 })();
+
+/**
+ * Fornecedores: o swap HTMX vai para #fornecedorModalSwapTarget; o evento htmx:afterSwap
+ * dispara nesse alvo (não no botão/tr), por isso abrimos o modal aqui.
+ */
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var t = evt.detail.target;
+    if (!t || t.id !== 'fornecedorModalSwapTarget') {
+        return;
+    }
+    var modal = document.getElementById('fornecedorModal');
+    if (!(modal && window.bootstrap && bootstrap.Modal)) {
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var t = evt.detail.target;
+    if (!t || t.id !== 'clienteModalSwapTarget') {
+        return;
+    }
+    var modal = document.getElementById('clienteModal');
+    if (!(modal && window.bootstrap && bootstrap.Modal)) {
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var t = evt.detail.target;
+    if (!t || t.id !== 'obraModalSwapTarget') {
+        return;
+    }
+    var modal = document.getElementById('obraModal');
+    if (!(modal && window.bootstrap && bootstrap.Modal)) {
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (window.genesisInputMaskScan) {
+        window.genesisInputMaskScan(modal);
+    }
+});
+
+/** Cadastros: copiar para outra empresa — conteúdo em #copiarCadastroModalInner */
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var t = evt.detail.target;
+    if (!t || t.id !== 'copiarCadastroModalInner') {
+        return;
+    }
+    var modal = document.getElementById('copiarCadastroModal');
+    if (!(modal && window.bootstrap && bootstrap.Modal)) {
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (window.genesisInputMaskScan) {
+        window.genesisInputMaskScan(modal);
+    }
+});
+
+document.body.addEventListener('closeCopiarCadastroModal', function () {
+    var el = document.getElementById('copiarCadastroModal');
+    if (!el || !window.bootstrap || !bootstrap.Modal) {
+        return;
+    }
+    var inst = bootstrap.Modal.getInstance(el);
+    if (inst) {
+        inst.hide();
+    }
+});
 
 // Toasts globais (Django messages) renderizados no `templates/base.html`
 function showGenesisToasts(scope) {

@@ -28,6 +28,7 @@ from controles_rh.views.vale_transporte import (
     excluir_tabela_vt,
     excluir_tabela_vt_legacy_redirect,
     modal_pagamento_item_vt,
+    pagar_total_item_vt,
     reordenar_itens_vt,
 )
 from controles_rh.views.cesta_basica import (
@@ -113,6 +114,11 @@ urlpatterns = [
     path('vt/<int:tabela_pk>/itens/novo/', empresa_scoped(adicionar_item_vt), name='adicionar_item_vt'),
     path('vt/<int:tabela_pk>/itens/reordenar/', empresa_scoped(reordenar_itens_vt), name='reordenar_itens_vt'),
     path('vt/itens/<int:pk>/editar/', empresa_scoped(editar_item_vt), name='editar_item_vt'),
+    path(
+        'vt/itens/<int:pk>/pagamento/pagar-total/',
+        empresa_scoped(pagar_total_item_vt),
+        name='pagar_total_item_vt',
+    ),
     path('vt/itens/<int:pk>/pagamento/', empresa_scoped(modal_pagamento_item_vt), name='modal_pagamento_item_vt'),
     path('vt/itens/<int:pk>/excluir/', empresa_scoped(excluir_item_vt), name='excluir_item_vt'),
 

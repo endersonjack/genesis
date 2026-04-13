@@ -5,6 +5,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from auditoria.registry import registrar_auditoria
 
+from core.cadastro_copia import (
+    EscolherEmpresaDestinoForm,
+    copiar_local_para_empresa,
+    empresas_destino_para_copia,
+    resposta_htmx_copia_sucesso,
+)
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import LocalForm
@@ -311,3 +317,106 @@ def local_excluir_page(request, pk):
         'local/excluir_page.html',
         {'page_title': f'Excluir local — {local.nome}', 'local': local},
     )
+
+
+def _ctx_modal_copiar_local(request, local, pk, form=None, erro_copia=None):
+    empresa = getattr(request, 'empresa_ativa', None)
+    qs_dest = empresas_destino_para_copia(request.user, empresa)
+    sem_destino = not qs_dest.exists()
+    resumo = [
+        {'label': 'Nome', 'valor': local.nome},
+        {'label': 'Endereço', 'valor': local.endereco or '—'},
+    ]
+    return {
+        'cadastro_label': 'Local',
+        'empresa_origem': empresa,
+        'resumo_linhas': resumo,
+        'copiar_post_url': reverse_empresa(request, 'local:copiar', kwargs={'pk': pk}),
+        'form': form,
+        'sem_destino': sem_destino,
+        'erro_copia': erro_copia,
+    }
+
+
+@login_required
+def local_modal_copiar(request, pk):
+    empresa = getattr(request, 'empresa_ativa', None)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
+
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'local:editar_page', pk=pk)
+
+    local = get_object_or_404(Local, pk=pk, empresa=empresa)
+    form = None
+    qs_dest = empresas_destino_para_copia(request.user, empresa)
+    if qs_dest.exists():
+        form = EscolherEmpresaDestinoForm(user=request.user, empresa_origem=empresa)
+    return render(
+        request,
+        'includes/cadastro_copiar_modal_inner.html',
+        _ctx_modal_copiar_local(request, local, pk, form=form),
+    )
+
+
+@login_required
+def local_copiar_executar(request, pk):
+    empresa = getattr(request, 'empresa_ativa', None)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+
+    denied = _negar_mutacao_local_para_apontador(request)
+    if denied:
+        return denied
+
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'local:editar_page', pk=pk)
+
+    local = get_object_or_404(Local, pk=pk, empresa=empresa)
+    form = EscolherEmpresaDestinoForm(
+        request.POST,
+        user=request.user,
+        empresa_origem=empresa,
+    )
+    if not form.is_valid():
+        return render(
+            request,
+            'includes/cadastro_copiar_modal_inner.html',
+            _ctx_modal_copiar_local(request, local, pk, form=form),
+            status=422,
+        )
+    dest = form.cleaned_data['empresa_destino']
+    try:
+        novo = copiar_local_para_empresa(local, dest)
+    except ValueError as exc:
+        return render(
+            request,
+            'includes/cadastro_copiar_modal_inner.html',
+            _ctx_modal_copiar_local(
+                request, local, pk, form=form, erro_copia=str(exc)
+            ),
+            status=422,
+        )
+    registrar_auditoria(
+        request,
+        acao='create',
+        resumo=f'Local «{novo.nome}» copiado para «{dest}».',
+        modulo='local',
+        detalhes={
+            'acao': 'copiar_cadastro',
+            'origem_local_id': local.pk,
+            'destino_empresa_id': dest.pk,
+            'novo_local_id': novo.pk,
+        },
+    )
+    messages.success(
+        request,
+        f'Local «{novo.nome}» copiado com sucesso para «{dest}».',
+    )
+    return resposta_htmx_copia_sucesso()

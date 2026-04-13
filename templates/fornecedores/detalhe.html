@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ fornecedor.nome }} | Fornecedores | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ fornecedor.nome }}</h2>
+        <p class="text-muted mb-0">{{ fornecedor.get_tipo_display }} · {{ fornecedor.cpf_cnpj_formatado }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button"
+                class="btn btn-primary rounded-3"
+                hx-get="{% url 'fornecedores:modal_editar' empresa_id=request.empresa_ativa.pk pk=fornecedor.pk %}"
+                hx-target="#fornecedorModalSwapTarget"
+                hx-swap="innerHTML">
+            Editar
+        </button>
+        <a href="{% url 'fornecedores:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3">Voltar</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3">Dados gerais</h6>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 text-muted">Categoria</dt>
+                    <dd class="col-sm-8">{{ fornecedor.categoria|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Razão social</dt>
+                    <dd class="col-sm-8">{{ fornecedor.razao_social|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Endereço</dt>
+                    <dd class="col-sm-8">{{ fornecedor.endereco|default:"—"|linebreaksbr }}</dd>
+                    <dt class="col-sm-4 text-muted">Tel. loja</dt>
+                    <dd class="col-sm-8">{{ fornecedor.telefone_loja|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Tel. financeiro</dt>
+                    <dd class="col-sm-8">{{ fornecedor.telefone_financeiro|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Contato fin.</dt>
+                    <dd class="col-sm-8">{{ fornecedor.contato_financeiro|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">E-mail</dt>
+                    <dd class="col-sm-8">{{ fornecedor.email|default:"—" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3">Dados bancários</h6>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 text-muted">Banco</dt>
+                    <dd class="col-sm-8">{{ fornecedor.banco|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Agência</dt>
+                    <dd class="col-sm-8">{{ fornecedor.agencia|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Tipo conta</dt>
+                    <dd class="col-sm-8">{% if fornecedor.tipo_conta %}{{ fornecedor.get_tipo_conta_display }}{% else %}—{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted">Operação</dt>
+                    <dd class="col-sm-8">{{ fornecedor.operacao|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Nº conta</dt>
+                    <dd class="col-sm-8">{{ fornecedor.numero_conta|default:"—" }}</dd>
+                    <dt class="col-sm-4 text-muted">Tipo Pix</dt>
+                    <dd class="col-sm-8">{% if fornecedor.tipo_pix %}{{ fornecedor.get_tipo_pix_display }}{% else %}—{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted">Pix</dt>
+                    <dd class="col-sm-8">{{ fornecedor.pix|default:"—" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'fornecedores/includes/modal_shell.html' %}
+{% endblock %}

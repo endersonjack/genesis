@@ -185,8 +185,15 @@
                 <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
             {% endif %}
 
-            <div class="d-flex justify-content-end gap-2 mt-4">
+            <div class="d-flex justify-content-end flex-wrap gap-2 mt-4">
                 {% if modo == 'editar' and local and local.pk %}
+                    <button type="button"
+                            class="btn btn-outline-success rounded-3 fw-semibold me-auto"
+                            hx-get="{% url 'local:modal_copiar' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
+                            hx-target="#copiarCadastroModalInner"
+                            hx-swap="innerHTML">
+                        <i class="bi bi-copy me-1"></i> Copiar para outra empresa
+                    </button>
                     <a href="{% url 'local:detalhe' empresa_id=request.empresa_ativa.pk pk=local.pk %}"
                        class="btn btn-outline-secondary rounded-3 fw-semibold">
                         Cancelar

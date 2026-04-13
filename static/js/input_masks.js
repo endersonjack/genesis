@@ -1,6 +1,7 @@
 /**
  * Máscaras leves em inputs (sem dependências).
  * Campos: data-mask="cpf" → 000.000.000-00
+ *         data-mask="cnpj" → 00.000.000/0000-00
  *         data-mask="br-moeda" → digitação em centavos + formatação ao vivo (1.234,56) — envio 1234.56
  *         data-mask="br-hours" → ponto decimal, filtro ao vivo (12.50) — envio 12.50
  */
@@ -26,6 +27,47 @@
 
         function applyFromValue() {
             el.value = formatCpfFromDigits(el.value);
+        }
+
+        el.addEventListener('input', applyFromValue);
+        el.addEventListener('blur', applyFromValue);
+        if (el.value) {
+            applyFromValue();
+        }
+    }
+
+    function formatCnpjFromDigits(digits) {
+        var d = (digits || '').replace(/\D/g, '').slice(0, 14);
+        if (!d.length) {
+            return '';
+        }
+        var out = d.slice(0, 2);
+        if (d.length > 2) {
+            out += '.' + d.slice(2, 5);
+        }
+        if (d.length > 5) {
+            out += '.' + d.slice(5, 8);
+        }
+        if (d.length > 8) {
+            out += '/' + d.slice(8, 12);
+        }
+        if (d.length > 12) {
+            out += '-' + d.slice(12, 14);
+        }
+        return out;
+    }
+
+    function bindCnpj(el) {
+        if (!el || el.getAttribute('data-mask') !== 'cnpj' || el.dataset.cnpjMaskBound) {
+            return;
+        }
+        el.dataset.cnpjMaskBound = '1';
+        el.setAttribute('inputmode', 'numeric');
+        el.setAttribute('autocomplete', 'off');
+        el.setAttribute('maxlength', '18');
+
+        function applyFromValue() {
+            el.value = formatCnpjFromDigits(el.value);
         }
 
         el.addEventListener('input', applyFromValue);
@@ -251,9 +293,12 @@
     function scan(root) {
         var scope = root && root.querySelectorAll ? root : document;
         scope.querySelectorAll('[data-mask="cpf"]').forEach(bindCpf);
+        scope.querySelectorAll('[data-mask="cnpj"]').forEach(bindCnpj);
         scope.querySelectorAll('[data-mask="br-moeda"]').forEach(bindBrMoeda);
         scope.querySelectorAll('[data-mask="br-hours"]').forEach(bindBrHours);
     }
+
+    window.genesisInputMaskScan = scan;
 
     document.addEventListener('DOMContentLoaded', function () {
         scan(document);
