@@ -1,0 +1,55 @@
+{% load humanize %}
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-0">Itens solicitados</h5>
+        <div class="text-muted small">
+            Requisição #{{ requisicao.pk }} · {{ requisicao.criado_em|date:"d/m/Y H:i" }}
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<div class="modal-body pt-2">
+    {% if itens_requisicao %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th class="ps-3">Descrição</th>
+                        <th>Marca</th>
+                        <th class="text-end">Quantidade</th>
+                        <th class="pe-3">Unid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ri in itens_requisicao %}
+                    <tr>
+                        <td class="ps-3">
+                            {% with im=ri.item.imagens.first %}
+                                {% if im %}
+                                    <span class="estoque-item-thumb-wrap" role="img" title="Passe o mouse para ampliar a foto">
+                                        <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                    </span>
+                                {% else %}
+                                    <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="ps-3 fw-semibold">{{ ri.item.descricao|truncatechars:120 }}</td>
+                        <td class="text-muted">{{ ri.item.marca|default:"—" }}</td>
+                        <td class="text-end text-nowrap">{{ ri.quantidade|floatformat:4|intcomma }}</td>
+                        <td class="pe-3 text-nowrap">{{ ri.item.unidade_medida.abreviada }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted mb-0">Nenhum item nesta requisição.</p>
+    {% endif %}
+</div>
+
+<div class="modal-footer border-0 pt-0 d-flex justify-content-end">
+    <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Fechar</button>
+</div>

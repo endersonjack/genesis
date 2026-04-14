@@ -3,9 +3,18 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
 <div class="modal-body pt-2">
-    <p class="text-muted small mb-3">
-        <span class="fw-semibold text-body">{{ item.descricao|truncatechars:120 }}</span>
-    </p>
+    <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+        <div>
+            <div class="text-muted small">Item</div>
+            <div class="fw-bold fs-5 lh-sm text-body">{{ item.descricao|truncatechars:120 }}</div>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary rounded-3 flex-shrink-0"
+           href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}?edit_item={{ item.pk }}"
+           target="_blank"
+           rel="noopener">
+            Ver
+        </a>
+    </div>
 
     {% if errors %}
     <div class="alert alert-danger small mb-3">

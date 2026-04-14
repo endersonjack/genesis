@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}Requisição #{{ requisicao.pk }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Requisição #{{ requisicao.pk }}</h2>
+        <p class="text-muted mb-0">{{ requisicao.criado_em|date:"d/m/Y H:i" }}</p>
+        <div class="mt-2">
+            {% if requisicao.is_ativa %}
+                <span class="badge text-bg-success rounded-pill">Ativa</span>
+            {% else %}
+                <span class="badge text-bg-secondary rounded-pill">Cancelada</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+        {% if requisicao.is_ativa %}
+        <a href="{% url 'estoque:editar_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+           class="estoque-btn estoque-btn-primary text-decoration-none">
+            <i class="bi bi-pencil-square"></i>
+            <span>Editar</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'estoque:imprimir_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none"
+           target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-printer"></i>
+            <span>Imprimir (2 vias)</span>
+        </a>
+        <a href="{% url 'estoque:imprimir_requisicao_pdf' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none"
+           target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-file-earmark-pdf"></i>
+            <span>Gerar PDF</span>
+        </a>
+        {% if requisicao.is_ativa %}
+        <a href="{% url 'estoque:cancelar_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+           class="estoque-btn estoque-btn-danger-outline text-decoration-none">
+            <i class="bi bi-x-circle"></i>
+            <span>Cancelar requisição</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if not requisicao.is_ativa %}
+<div class="alert alert-secondary rounded-3 mb-4" role="status">
+    Esta requisição está <strong>cancelada</strong>. Os itens abaixo refletem o pedido registrado; o estoque foi devolvido no cancelamento.
+    A situação só pode ser alterada pelo Admin.
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">Dados da requisição</h5>
+        <div class="row g-3 small">
+            <div class="col-md-6">
+                <div class="text-muted text-uppercase" style="font-size:.65rem;">Solicitante</div>
+                <div class="fw-semibold fs-6">{{ requisicao.solicitante }}</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted text-uppercase" style="font-size:.65rem;">Almoxarife</div>
+                <div class="fs-6">
+                    {% if requisicao.almoxarife %}
+                        {{ requisicao.almoxarife.nome_completo|default:requisicao.almoxarife.username }}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted text-uppercase" style="font-size:.65rem;">Local</div>
+                <div>{{ requisicao.local|default:"—" }}</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted text-uppercase" style="font-size:.65rem;">Obra</div>
+                <div>{{ requisicao.obra|default:"—" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">Itens solicitados</h5>
+        {% if itens_requisicao %}
+        <div id="req-requisicao-detail-itens" class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th class="ps-3">Descrição</th>
+                        <th>Marca</th>
+                        <th>Categoria</th>
+                        <th class="text-end">Quantidade</th>
+                        <th class="pe-3">Unid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ri in itens_requisicao %}
+                    <tr>
+                        <td class="ps-3">
+                            {% with im=ri.item.imagens.first %}
+                                {% if im %}
+                                    <span class="estoque-item-thumb-wrap" role="img" title="Passe o mouse para ampliar a foto">
+                                        <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                    </span>
+                                {% else %}
+                                    <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="ps-3 fw-semibold">{{ ri.item.descricao|truncatechars:120 }}</td>
+                        <td class="text-muted">{{ ri.item.marca|default:"—" }}</td>
+                        <td>{{ ri.item.categoria.nome }}</td>
+                        <td class="text-end text-nowrap">{{ ri.quantidade|floatformat:4|intcomma }}</td>
+                        <td class="pe-3 text-nowrap">{{ ri.item.unidade_medida.abreviada }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum item nesta requisição.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">Histórico da requisição</h5>
+        <p class="text-muted small mb-3">Eventos registrados automaticamente (retiradas, devoluções, ajustes e alterações nos dados), conforme a <span class="text-nowrap">auditoria do sistema</span>.</p>
+        {% if historico_requisicao %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 text-nowrap">Data e hora</th>
+                        <th>Tipo</th>
+                        <th>Usuário</th>
+                        <th class="pe-3">Descrição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in historico_requisicao %}
+                    {% with reg=h.reg %}
+                    <tr>
+                        <td class="ps-3 text-nowrap small">{{ reg.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td class="small"><span class="badge text-bg-light border">{{ h.tipo }}</span></td>
+                        <td class="small text-muted">
+                            {% if reg.usuario %}
+                                {{ reg.usuario.nome_completo|default:reg.usuario.username }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 small">{{ reg.resumo }}</td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum evento registrado ainda para esta requisição.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+{% endblock %}

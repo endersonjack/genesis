@@ -16,6 +16,13 @@ def preferencias(request):
     empresa_ativa, redirect_response = _empresa_ativa_or_redirect(request)
     if redirect_response:
         return redirect_response
+    if not (
+        request.user.is_superuser
+        or getattr(request, 'usuario_admin_empresa', False)
+        or getattr(request, 'usuario_mod_editar_empresas', False)
+    ):
+        messages.error(request, 'Você não tem permissão para editar as preferências desta empresa.')
+        return redirect('dashboard_home', empresa_id=empresa_ativa.pk)
 
     if request.method == 'POST':
         form = EmpresaPreferenciasForm(

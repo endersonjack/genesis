@@ -72,10 +72,12 @@
                     <span>Início</span>
                 </a>
 
+                {% if request.usuario_mod_rh or request.usuario_admin_empresa or request.user.is_superuser %}
                 <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/rh/' in request.path and '/rh/gestao/' not in request.path and '/apontamento/' not in request.path %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>Recursos Humanos</span>
                 </a>
+                {% endif %}
 
                 {% if request.usuario_apontador or request.usuario_admin_empresa or request.user.is_superuser %}
                 <a href="{% url 'apontamento:home' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/apontamento/' in request.path %}active{% endif %}">
@@ -84,15 +86,19 @@
                 </a>
                 {% endif %}
 
+                {% if request.usuario_mod_financeiro or request.usuario_admin_empresa or request.user.is_superuser %}
                 <a href="#" class="menu-link">
                     <i class="bi bi-cash-stack"></i>
                     <span>Financeiro</span>
                 </a>
+                {% endif %}
 
+                {% if request.usuario_mod_estoque or request.usuario_admin_empresa or request.user.is_superuser %}
                 <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/estoque/' in request.path %}active{% endif %}">
                     <i class="bi bi-box-seam"></i>
                     <span>Estoque</span>
                 </a>
+                {% endif %}
                 {% endif %}
             </nav>
             {% endif %}
@@ -103,7 +109,7 @@
                 <p class="menu-title">Sistema</p>
 
                 {% if not request.usuario_so_apontador %}
-                {% if request.empresa_ativa %}
+                {% if request.empresa_ativa and request.usuario_mod_locais or request.empresa_ativa and request.usuario_mod_fornecedores or request.empresa_ativa and request.usuario_mod_clientes or request.empresa_ativa and request.usuario_mod_obras or request.empresa_ativa and request.usuario_admin_empresa or request.empresa_ativa and request.user.is_superuser %}
                     <div class="sidebar-menu-group">
                         <button type="button"
                                 class="menu-link menu-link-toggle w-100 text-start border-0 bg-transparent"
@@ -117,32 +123,40 @@
                         </button>
                         <div id="sidebarCadastros"
                              class="collapse sidebar-submenu {% if '/local/' in request.path or '/fornecedores/' in request.path or '/clientes/' in request.path or '/obras/' in request.path %}show{% endif %}">
+                            {% if request.usuario_mod_locais or request.usuario_admin_empresa or request.user.is_superuser %}
                             <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}"
                                class="menu-link menu-sublink {% if '/local/' in request.path and '/fornecedores/' not in request.path %}active{% endif %}">
                                 <i class="bi bi-geo-alt"></i>
                                 <span>Locais</span>
                             </a>
+                            {% endif %}
+                            {% if request.usuario_mod_fornecedores or request.usuario_admin_empresa or request.user.is_superuser %}
                             <a href="{% url 'fornecedores:lista' empresa_id=request.empresa_ativa.pk %}"
                                class="menu-link menu-sublink {% if '/fornecedores/' in request.path %}active{% endif %}">
                                 <i class="bi bi-truck"></i>
                                 <span>Fornecedores</span>
                             </a>
+                            {% endif %}
+                            {% if request.usuario_mod_clientes or request.usuario_admin_empresa or request.user.is_superuser %}
                             <a href="{% url 'clientes:lista' empresa_id=request.empresa_ativa.pk %}"
                                class="menu-link menu-sublink {% if '/clientes/' in request.path and '/obras/' not in request.path %}active{% endif %}">
                                 <i class="bi bi-people"></i>
                                 <span>Clientes</span>
                             </a>
+                            {% endif %}
+                            {% if request.usuario_mod_obras or request.usuario_admin_empresa or request.user.is_superuser %}
                             <a href="{% url 'obras:lista' empresa_id=request.empresa_ativa.pk %}"
                                class="menu-link menu-sublink {% if '/obras/' in request.path %}active{% endif %}">
                                 <i class="bi bi-building"></i>
                                 <span>Obras</span>
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                 {% endif %}
 
                 {% if request.empresa_ativa %}
-                    {% if request.usuario_admin_empresa or request.user.is_superuser %}
+                    {% if request.usuario_mod_auditoria_total or request.usuario_mod_auditoria_sua or request.usuario_admin_empresa or request.user.is_superuser %}
                     <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/auditoria/' in request.path %}active{% endif %}">
                         <i class="bi bi-journal-text"></i>
                         <span>Auditoria</span>
@@ -157,7 +171,7 @@
                     </a>
                 {% endif %}
 
-                {% if request.empresa_ativa %}
+                {% if request.empresa_ativa and request.usuario_mod_editar_empresas or request.empresa_ativa and request.usuario_admin_empresa or request.empresa_ativa and request.user.is_superuser %}
                     <a href="{% url 'empresa_preferencias' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/preferencias/' in request.path %}active{% endif %}">
                         <i class="bi bi-sliders"></i>
                         <span>Preferências</span>

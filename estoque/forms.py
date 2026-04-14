@@ -175,7 +175,12 @@ class ItemForm(forms.ModelForm):
                 attrs={'class': 'form-control rounded-3', 'step': 'any', 'min': 0}
             ),
             'ativo': forms.CheckboxInput(
-                attrs={'class': 'form-check-input rounded-3'}
+                attrs={
+                    'class': 'form-check-input rounded-3',
+                    # Permite renderizar o switch fora do <form> (header do modal)
+                    # sem perder o submit do campo.
+                    'form': 'estoque-item-modal-form',
+                }
             ),
             'qrcode_imagem': forms.ClearableFileInput(
                 attrs={
@@ -201,12 +206,21 @@ class ItemForm(forms.ModelForm):
             'quantidade_minima': 'Quantidade mínima no estoque (alertas futuros).',
             'quantidade_estoque': 'Saldo atual. Movimentações futuras atualizarão este campo.',
             'ativo': 'Desmarque para inativar: some das buscas operacionais e da movimentação.',
-            'qrcode_imagem': 'Imagem do QR Code (preenchimento automático futuro).',
+            'qrcode_imagem': 'Imagem do QR Code gerada automaticamente ao salvar o item.',
             'peso': 'Opcional. Ex.: peso por unidade.',
         }
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        empresa=None,
+        lock_quantidade_estoque: bool = False,
+        lock_qrcode_imagem: bool = False,
+        **kwargs,
+    ):
         self.empresa = empresa
+        self.lock_quantidade_estoque = bool(lock_quantidade_estoque)
+        self.lock_qrcode_imagem = bool(lock_qrcode_imagem)
         super().__init__(*args, **kwargs)
         if empresa:
             self.fields['categoria'].queryset = CategoriaItem.objects.filter(
@@ -225,6 +239,10 @@ class ItemForm(forms.ModelForm):
         self.fields['qrcode_imagem'].required = False
         self.fields['quantidade_minima'].required = False
         self.fields['quantidade_estoque'].required = False
+        if self.lock_quantidade_estoque:
+            self.fields['quantidade_estoque'].disabled = True
+        if self.lock_qrcode_imagem:
+            self.fields['qrcode_imagem'].disabled = True
 
     def clean_quantidade_minima(self):
         val = self.cleaned_data.get('quantidade_minima')
@@ -233,6 +251,11 @@ class ItemForm(forms.ModelForm):
         return val
 
     def clean_quantidade_estoque(self):
+        if getattr(self, 'lock_quantidade_estoque', False):
+            # Campo travado: mantém valor atual (somente Movimentar altera).
+            if self.instance and getattr(self.instance, 'pk', None):
+                return self.instance.quantidade_estoque
+            return 0
         val = self.cleaned_data.get('quantidade_estoque')
         if val is None:
             return 0

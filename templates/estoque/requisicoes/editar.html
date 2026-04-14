@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Editar requisição #{{ requisicao.pk }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Editar requisição #{{ requisicao.pk }}</h2>
+        <p class="text-muted mb-0">Tabela informativa e busca como na nova requisição. Itens já salvos só saem por <strong>Devolver</strong> (estoque é creditado na hora).</p>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar ao detalhe</span>
+        </a>
+    </div>
+</div>
+
+<form method="post"
+      action="{% url 'estoque:editar_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+      class="d-flex flex-column gap-4 js-estoque-form-busy">
+    {% csrf_token %}
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">Dados da Requisição</h5>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="req-solicitante-q">Funcionário <span class="text-danger">*</span></label>
+                    <div data-ac-scope
+                         data-hidden-id="{{ form.solicitante.id_for_label }}"
+                         data-input-id="req-solicitante-q"
+                         data-results-id="req-solicitante-resultados">
+                    <div class="input-group">
+                        <input type="text"
+                               id="req-solicitante-q"
+                               name="q_solicitante"
+                               class="form-control rounded-3"
+                               autocomplete="off"
+                               spellcheck="false"
+                               placeholder="Digite..."
+                               value="{{ requisicao.solicitante.nome }}"
+                               hx-get="{% url 'estoque:autocomplete_solicitantes' empresa_id=request.empresa_ativa.pk %}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#req-solicitante-resultados"
+                               data-no-global-loading>
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-end-3 js-ac-clear"
+                                title="Limpar seleção">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {{ form.solicitante }}
+                    <div id="req-solicitante-resultados" class="border-0 bg-transparent p-0"></div>
+                    </div>
+                    {% if form.solicitante.errors %}<div class="text-danger small mt-1">{{ form.solicitante.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Almoxarife (registro)</label>
+                    <div class="form-control rounded-3 bg-light">
+                        {% if requisicao.almoxarife %}
+                            {{ requisicao.almoxarife.nome_completo|default:requisicao.almoxarife.username }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="req-local-q">Local</label>
+                    <div data-ac-scope
+                         data-hidden-id="{{ form.local.id_for_label }}"
+                         data-input-id="req-local-q"
+                         data-results-id="req-local-resultados">
+                    <div class="input-group">
+                        <input type="text"
+                               id="req-local-q"
+                               name="q_local"
+                               class="form-control rounded-3"
+                               autocomplete="off"
+                               spellcheck="false"
+                               placeholder="Digite..."
+                               value="{{ requisicao.local.nome|default:'' }}"
+                               hx-get="{% url 'estoque:autocomplete_locais' empresa_id=request.empresa_ativa.pk %}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#req-local-resultados"
+                               data-no-global-loading>
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-end-3 js-ac-clear"
+                                title="Limpar seleção">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {{ form.local }}
+                    <div id="req-local-resultados" class="border-0 bg-transparent p-0"></div>
+                    </div>
+                    {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.obra.id_for_label }}">Obra</label>
+                    <div class="input-group">
+                        {{ form.obra }}
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-end-3 js-select-clear"
+                                data-select-id="{{ form.obra.id_for_label }}"
+                                title="Limpar seleção">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% if form.obra.errors %}<div class="text-danger small mt-1">{{ form.obra.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <h5 class="fw-bold mb-0">Itens da Requisição</h5>
+                <button type="button"
+                        class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_buscar_itens_requisicao' empresa_id=request.empresa_ativa.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                    <i class="bi bi-search me-1"></i> Buscar itens
+                </button>
+            </div>
+
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+                <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+            {% endif %}
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" style="width:56px;"></th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th class="text-end">Saldo Hoje</th>
+                            <th class="text-end">Saldo Após</th>
+                            <th>Unid</th>
+                            <th class="text-end">Qtd solicitada</th>
+                            <th class="pe-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itens-display-body"></tbody>
+                </table>
+            </div>
+            <div id="itens-vazio-msg" class="text-muted small mt-2">Nenhum item adicionado.</div>
+
+            <div class="d-none">
+                {{ formset.empty_form.item }}
+            </div>
+
+            <div class="d-none" aria-hidden="true">
+                <table class="table">
+                    <tbody id="itens-formset-body">
+                        {% for f in formset.forms %}
+                        <tr class="formset-row"
+                            {% if f.instance.item_id %}data-item-id="{{ f.instance.item_id }}"{% endif %}
+                            {% if f.instance.pk and f.instance.quantidade %}
+                            data-req-committed-qty="{{ f.instance.quantidade }}"
+                            {% endif %}
+                            {% if f.instance.item %}
+                            data-req-desc="{{ f.instance.item.descricao|escape }}"
+                            data-req-cat="{{ f.instance.item.categoria.nome|escape }}"
+                            data-req-min="{{ f.instance.item.quantidade_minima }}"
+                            data-req-min-raw="{{ f.instance.item.quantidade_minima }}"
+                            data-req-saldo-raw="{{ f.instance.item.quantidade_estoque }}"
+                            data-req-unid="{{ f.instance.item.unidade_medida.abreviada|escape }}"
+                            data-req-thumb="{% for im in f.instance.item.imagens.all %}{% if forloop.first %}{{ im.imagem.url|escape }}{% endif %}{% endfor %}"
+                            {% endif %}>
+                            <td>
+                                {{ f.id }}
+                                {{ f.item }}
+                            </td>
+                            <td>{{ f.quantidade }}</td>
+                            <td class="d-none">{% if formset.can_delete %}{{ f.DELETE }}{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white border-0 p-4 pt-0 d-flex justify-content-end gap-2">
+            <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}" class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
+            <button type="submit" class="estoque-btn estoque-btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> Salvar alterações
+            </button>
+        </div>
+    </div>
+</form>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+<script>
+window.__reqDevolverItemUrl = function (pk) {
+    var base = '{{ devolver_item_url_base|escapejs }}';
+    return base.replace(/\/item\/0\/devolver\/?/, '/item/' + pk + '/devolver/');
+};
+{% include 'estoque/requisicoes/_requisicao_itens_form_js.html' with draft_key=requisicao_draft_key clear_flag_key=requisicao_clear_flag_key clear_on_load=0 server_hydrate=1 %}
+</script>
+{% endblock %}

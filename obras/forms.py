@@ -109,17 +109,21 @@ class ObraForm(forms.ModelForm):
             'secretaria': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
             'gestor': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
             'fiscal': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            # HTML5 date precisa de value em ISO (YYYY-MM-DD) para exibir corretamente.
             'data_inicio': forms.DateInput(
-                attrs={'class': 'form-control rounded-3', 'type': 'date'}
+                format='%Y-%m-%d',
+                attrs={'class': 'form-control rounded-3', 'type': 'date'},
             ),
             'prazo': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
             'data_fim': forms.DateInput(
-                attrs={'class': 'form-control rounded-3', 'type': 'date'}
+                format='%Y-%m-%d',
+                attrs={'class': 'form-control rounded-3', 'type': 'date'},
             ),
         }
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(self, *args, empresa=None, can_edit_valor=False, **kwargs):
         self.empresa = empresa
+        self.can_edit_valor = bool(can_edit_valor)
         super().__init__(*args, **kwargs)
         if empresa:
             self.fields['contratante'].queryset = (
@@ -135,7 +139,11 @@ class ObraForm(forms.ModelForm):
         self.fields['prazo'].required = False
         self.fields['data_fim'].required = False
 
-        if self.instance.pk and self.instance.valor is not None:
+        if not self.can_edit_valor:
+            # Segurança: não renderiza nem aceita edição do valor para não-admins.
+            self.fields.pop('valor', None)
+            self.initial.pop('valor', None)
+        elif self.instance.pk and self.instance.valor is not None:
             self.initial['valor'] = _format_decimal_br_moeda(self.instance.valor)
 
     def clean_valor(self):

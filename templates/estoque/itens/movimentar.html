@@ -12,7 +12,7 @@
     <div>
         <h2 class="fw-bold mb-1">Movimentar</h2>
         <p class="text-muted mb-0">
-            Movimente o Estoque retirando ou adicionando aos itens.
+            Use os filtros abaixo para localizar itens e movimentar o estoque (retirar ou adicionar).
         </p>
     </div>
 
@@ -43,10 +43,13 @@
     </div>
 </div>
 
+{% include 'estoque/itens/_movimentar_log.html' %}
+
 {% include 'estoque/includes/modal_cadastro_estoque.html' %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
 <script src="{% static 'js/estoque-movimentar-saldo-modal.js' %}"></script>
+{% include 'estoque/includes/estoque_edit_item_from_url_script.html' %}
 {% endblock %}

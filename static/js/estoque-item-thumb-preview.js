@@ -112,13 +112,25 @@
         if (inner) scan(inner);
         var mov = document.getElementById('movimentar-list-inner');
         if (mov) scan(mov);
+        var req = document.getElementById('req-itens-list');
+        if (req) scan(req);
+        var reqDet = document.getElementById('req-requisicao-detail-itens');
+        if (reqDet) scan(reqDet);
+        var mc = document.getElementById('modal-content');
+        if (mc) scan(mc);
     }
 
     document.addEventListener('DOMContentLoaded', init);
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         var t = evt.detail.target;
         if (!t) return;
-        if (t.id === 'estoque-list-inner' || t.id === 'movimentar-list-inner') {
+        if (
+            t.id === 'estoque-list-inner' ||
+            t.id === 'movimentar-list-inner' ||
+            t.id === 'req-itens-list' ||
+            t.id === 'req-requisicao-detail-itens' ||
+            t.id === 'modal-content'
+        ) {
             scan(t);
         }
     });

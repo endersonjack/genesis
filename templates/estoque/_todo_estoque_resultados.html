@@ -1,0 +1,278 @@
+{% load humanize %}
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if page_obj.paginator.count %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th>
+                            <a href="{{ todo_sort.descricao }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                               hx-get="{{ todo_sort.descricao }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Descrição
+                                {% if todo_ordem == 'descricao' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ todo_sort.categoria }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                               hx-get="{{ todo_sort.categoria }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Categoria
+                                {% if todo_ordem == 'categoria' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ todo_sort.unidade }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                               hx-get="{{ todo_sort.unidade }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Und.
+                                {% if todo_ordem == 'unidade' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ todo_sort.peso }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 justify-content-end w-100"
+                               hx-get="{{ todo_sort.peso }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Peso
+                                {% if todo_ordem == 'peso' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ todo_sort.preco }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 justify-content-end w-100"
+                               hx-get="{{ todo_sort.preco }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Preço
+                                {% if todo_ordem == 'preco' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ todo_sort.saldo }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 justify-content-end w-100"
+                               hx-get="{{ todo_sort.saldo }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Saldo
+                                {% if todo_ordem == 'saldo' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ todo_sort.minimo }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 justify-content-end w-100"
+                               hx-get="{{ todo_sort.minimo }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Mín.
+                                {% if todo_ordem == 'minimo' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="pe-3">
+                            <a href="{{ todo_sort.situacao }}"
+                               class="link-dark text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                               hx-get="{{ todo_sort.situacao }}"
+                               hx-target="#todo-estoque-list-inner"
+                               hx-swap="innerHTML"
+                               hx-push-url="true"
+                               hx-indicator="#todo-estoque-list-hx-skeleton"
+                               data-no-global-loading>
+                                Situação
+                                {% if todo_ordem == 'situacao' %}
+                                <i class="bi {% if todo_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %}" aria-hidden="true"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-down-up text-muted small opacity-75" aria-hidden="true"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for it in page_obj %}
+                    <tr class="estoque-row-modal js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_editar_item' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <td class="ps-3">
+                            {% with im=it.imagens.first %}
+                                {% if im %}
+                                    <span class="estoque-item-thumb-wrap">
+                                        <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                    </span>
+                                {% else %}
+                                    <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="fw-semibold">{{ it.descricao|truncatechars:80 }}</td>
+                        <td>{{ it.categoria.nome }}</td>
+                        <td class="text-nowrap">{{ it.unidade_medida.abreviada }}</td>
+                        <td class="text-end text-nowrap">
+                            {% if it.peso is not None %}
+                                {{ it.peso|floatformat:3|intcomma }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if it.preco is not None %}
+                                R$ {{ it.preco|floatformat:2|intcomma }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <span class="btn btn-sm rounded-3 movimentar-saldo-btn{% if it.quantidade_estoque <= 0 %} movimentar-saldo-btn--zerado{% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %} movimentar-saldo-btn--abaixo{% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %} movimentar-saldo-btn--igual{% else %} movimentar-saldo-btn--acima{% endif %}"
+                                  style="pointer-events:none;"
+                                  aria-hidden="true">
+                                {{ it.quantidade_estoque|floatformat:4|intcomma }}
+                            </span>
+                        </td>
+                        <td class="text-end text-nowrap">{{ it.quantidade_minima|floatformat:4|intcomma }}</td>
+                        <td class="pe-3">
+                            {% if it.quantidade_estoque <= 0 %}
+                                <span class="badge text-bg-danger rounded-pill">Zerado</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
+                                <span class="badge text-bg-warning rounded-pill">Insuficiente</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %}
+                                <span class="badge text-bg-secondary rounded-pill">Atenção</span>
+                            {% else %}
+                                <span class="badge text-bg-success rounded-pill">Suficiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj.paginator.count and page_obj.start_index %}
+        <div class="px-3 py-2 border-top small text-muted">
+            Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} itens
+        </div>
+        {% endif %}
+        {% if todo_pagination_items %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Páginas">
+            <div class="small text-muted d-none d-sm-block">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                <span class="text-muted">·</span>
+                <span class="d-none d-md-inline">{{ todo_itens_por_pagina }} itens por página</span>
+            </div>
+            <ul class="pagination pagination-sm mb-0 ms-sm-auto">
+                {% if todo_url_prev %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-3"
+                       href="{{ todo_url_prev }}"
+                       hx-get="{{ todo_url_prev }}"
+                       hx-target="#todo-estoque-list-inner"
+                       hx-swap="innerHTML"
+                       hx-indicator="#todo-estoque-list-hx-skeleton"
+                       hx-push-url="true"
+                       data-no-global-loading>Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                {% endif %}
+                {% for p in todo_pagination_items %}
+                    {% if p.ellipsis %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% elif p.current %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ p.num }}</span></li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ p.url }}"
+                           hx-get="{{ p.url }}"
+                           hx-target="#todo-estoque-list-inner"
+                           hx-swap="innerHTML"
+                           hx-indicator="#todo-estoque-list-hx-skeleton"
+                           hx-push-url="true"
+                           data-no-global-loading>{{ p.num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                {% if todo_url_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-3"
+                       href="{{ todo_url_next }}"
+                       hx-get="{{ todo_url_next }}"
+                       hx-target="#todo-estoque-list-inner"
+                       hx-swap="innerHTML"
+                       hx-indicator="#todo-estoque-list-hx-skeleton"
+                       hx-push-url="true"
+                       data-no-global-loading>Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <p class="mb-0">Nenhum item encontrado com os filtros atuais.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+

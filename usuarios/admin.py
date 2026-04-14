@@ -24,7 +24,21 @@ class UsuarioEmpresaAdmin(admin.ModelAdmin):
         (
             'Acesso nesta empresa',
             {
-                'fields': ('ativo', 'admin_empresa', 'apontador'),
+                'fields': (
+                    'ativo',
+                    'admin_empresa',
+                    'editar_empresas',
+                    'rh',
+                    'estoque',
+                    'financeiro',
+                    'apontador',
+                    'clientes',
+                    'fornecedores',
+                    'locais',
+                    'obras',
+                    'auditoria_total',
+                    'auditoria_sua',
+                ),
                 'description': 'Apontador: acesso ao módulo Apontamento (celular/campo) para esta empresa.',
             },
         ),
@@ -36,6 +50,36 @@ class UsuarioEmpresaAdmin(admin.ModelAdmin):
         ),
     )
     readonly_fields = ('criado_em',)
-    list_display = ('usuario', 'empresa', 'ativo', 'admin_empresa', 'apontador', 'criado_em')
-    list_filter = ('ativo', 'admin_empresa', 'apontador', 'empresa')
+    list_display = (
+        'usuario',
+        'empresa',
+        'ativo',
+        'admin_empresa',
+        'apontador',
+        'rh',
+        'estoque',
+        'financeiro',
+        'clientes',
+        'fornecedores',
+        'locais',
+        'obras',
+        'auditoria_total',
+        'auditoria_sua',
+        'criado_em',
+    )
+    list_filter = (
+        'ativo',
+        'admin_empresa',
+        'apontador',
+        'rh',
+        'estoque',
+        'financeiro',
+        'clientes',
+        'fornecedores',
+        'locais',
+        'obras',
+        'auditoria_total',
+        'auditoria_sua',
+        'empresa',
+    )
     search_fields = ('usuario__username', 'usuario__nome_completo', 'empresa__razao_social')

@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -34,20 +34,24 @@ def dashboard(request):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
-    qtd_itens = CategoriaItem.objects.filter(empresa=empresa).count()
-    qtd_ferr = CategoriaFerramenta.objects.filter(empresa=empresa).count()
-    qtd_unidades = UnidadeMedida.objects.filter(empresa=empresa).count()
-    qtd_itens_cadastro = Item.objects.filter(empresa=empresa).count()
+    qs_atencao = (
+        Item.objects.filter(empresa=empresa, ativo=True)
+        .filter(
+            Q(quantidade_estoque=0)
+            | Q(quantidade_estoque__lt=F('quantidade_minima'))
+        )
+        .select_related('categoria', 'unidade_medida')
+        .prefetch_related('imagens')
+        .order_by('descricao')
+    )
+    itens_atencao_estoque = list(qs_atencao[:10])
 
     return render(
         request,
         'estoque/dashboard.html',
         {
             'page_title': 'Estoque',
-            'qtd_categorias_itens': qtd_itens,
-            'qtd_categorias_ferramentas': qtd_ferr,
-            'qtd_unidades_medida': qtd_unidades,
-            'qtd_itens_cadastro': qtd_itens_cadastro,
+            'itens_atencao_estoque': itens_atencao_estoque,
         },
     )
 
@@ -106,6 +110,8 @@ def _modal_categoria_item_form(request, item):
         )
         titulo_modal = f'Editar — {item.nome}'
 
+    return_to = (request.GET.get('return_to') or request.POST.get('return_to') or '').strip()
+
     if request.method == 'POST':
         if item is not None:
             form = CategoriaItemForm(request.POST, instance=item, empresa=empresa)
@@ -133,6 +139,17 @@ def _modal_categoria_item_form(request, item):
                         modulo='estoque',
                     )
                     messages.success(request, 'Categoria atualizada.')
+                # Se veio do modal do Item (atalho "+"), volta para o modal anterior
+                # já com a categoria selecionada.
+                if return_to:
+                    return render(
+                        request,
+                        'estoque/partials/return_to_item_modal.html',
+                        {
+                            'return_to': return_to,
+                            'preselect_categoria': obj.pk,
+                        },
+                    )
                 return _hx_redirect_lista(request, 'estoque:lista_categorias_itens')
         else:
             messages.error(request, 'Revise o nome informado.')
@@ -146,6 +163,7 @@ def _modal_categoria_item_form(request, item):
         'form': form,
         'post_url': post_url,
         'titulo_modal': titulo_modal,
+        'return_to': return_to,
         'excluir_url': (
             reverse_empresa(
                 request, 'estoque:modal_excluir_categoria_item', kwargs={'pk': item.pk}

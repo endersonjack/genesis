@@ -1,10 +1,14 @@
 <form
     method="post"
+    class="js-estoque-form-busy"
     hx-post="{{ post_url }}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
     data-no-global-loading>
     {% csrf_token %}
+    {% if return_to %}
+        <input type="hidden" name="return_to" value="{{ return_to }}">
+    {% endif %}
 
     <div class="modal-header">
         <h5 class="modal-title fw-bold mb-0">{{ titulo_modal }}</h5>

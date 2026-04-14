@@ -130,7 +130,7 @@ class Item(TimeStampedModel):
         blank=True,
         null=True,
         verbose_name='QR Code',
-        help_text='Imagem do QR Code do item (geração/leitura futura).',
+        help_text='Imagem do QR Code gerada ao salvar o item (leitor 2D nas telas de estoque).',
     )
 
     class Meta:
@@ -158,3 +158,96 @@ class ItemImagem(TimeStampedModel):
 
     def __str__(self):
         return f'Imagem #{self.pk} — {self.item_id}'
+
+
+class RequisicaoEstoque(TimeStampedModel):
+    class Status(models.TextChoices):
+        ATIVA = 'ativa', 'Ativa'
+        CANCELADA = 'cancelada', 'Cancelada'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='requisicoes_estoque',
+    )
+    status = models.CharField(
+        'Situação',
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ATIVA,
+        db_index=True,
+        help_text=(
+            'No app, só é possível cancelar (com devolução ao estoque). '
+            'Reativar ou alterar situação manualmente no Admin não ajusta o estoque.'
+        ),
+    )
+    solicitante = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.PROTECT,
+        related_name='requisicoes_estoque_solicitadas',
+    )
+    local = models.ForeignKey(
+        'local.Local',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requisicoes_estoque',
+    )
+    obra = models.ForeignKey(
+        'obras.Obra',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requisicoes_estoque',
+    )
+    almoxarife = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requisicoes_estoque_almoxarife',
+    )
+
+    class Meta:
+        verbose_name = 'Requisição de estoque'
+        verbose_name_plural = 'Requisições de estoque'
+        ordering = ['-criado_em']
+        indexes = [
+            models.Index(fields=['empresa', 'criado_em']),
+            models.Index(fields=['empresa', 'status', 'criado_em']),
+        ]
+
+    def __str__(self):
+        return f'Requisição #{self.pk} — {self.criado_em:%d/%m/%Y %H:%M}'
+
+    @property
+    def is_ativa(self) -> bool:
+        return self.status == self.Status.ATIVA
+
+
+class RequisicaoEstoqueItem(models.Model):
+    requisicao = models.ForeignKey(
+        RequisicaoEstoque,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    item = models.ForeignKey(
+        Item,
+        on_delete=models.PROTECT,
+        related_name='requisicoes_itens',
+    )
+    quantidade = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+
+    class Meta:
+        verbose_name = 'Item requisitado'
+        verbose_name_plural = 'Itens requisitados'
+        ordering = ['pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['requisicao', 'item'],
+                name='unique_item_por_requisicao',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.item} × {self.quantidade}'

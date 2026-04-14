@@ -2,17 +2,99 @@ from django.urls import path
 
 from core.view_helpers import empresa_scoped
 
-from . import item_views, views
+from . import item_views, requisicoes_views, views
 
 
 app_name = 'estoque'
 
 urlpatterns = [
     path('', empresa_scoped(views.dashboard), name='dashboard'),
+    path('requisicoes/', empresa_scoped(requisicoes_views.lista_requisicoes), name='requisicoes'),
+    path(
+        'requisicoes/<int:pk>/',
+        empresa_scoped(requisicoes_views.detalhe_requisicao),
+        name='detalhe_requisicao',
+    ),
+    path(
+        'requisicoes/<int:pk>/editar/',
+        empresa_scoped(requisicoes_views.editar_requisicao),
+        name='editar_requisicao',
+    ),
+    path(
+        'requisicoes/<int:pk>/imprimir/',
+        empresa_scoped(requisicoes_views.imprimir_requisicao),
+        name='imprimir_requisicao',
+    ),
+    path(
+        'requisicoes/<int:pk>/imprimir/pdf/',
+        empresa_scoped(requisicoes_views.imprimir_requisicao_pdf),
+        name='imprimir_requisicao_pdf',
+    ),
+    path(
+        'requisicoes/<int:pk>/cancelar/',
+        empresa_scoped(requisicoes_views.cancelar_requisicao),
+        name='cancelar_requisicao',
+    ),
+    path(
+        'requisicoes/<int:pk>/excluir/',
+        empresa_scoped(requisicoes_views.cancelar_requisicao),
+        name='excluir_requisicao',
+    ),
+    path(
+        'requisicoes/modal/<int:pk>/itens/',
+        empresa_scoped(requisicoes_views.modal_requisicao_itens),
+        name='modal_requisicao_itens',
+    ),
+    path('requisicoes/nova/', empresa_scoped(requisicoes_views.nova_requisicao), name='nova_requisicao'),
+    path(
+        'requisicoes/modal/buscar-itens/',
+        empresa_scoped(requisicoes_views.modal_buscar_itens_requisicao),
+        name='modal_buscar_itens_requisicao',
+    ),
+    path(
+        'requisicoes/partial/buscar-itens/',
+        empresa_scoped(requisicoes_views.partial_buscar_itens_requisicao),
+        name='partial_buscar_itens_requisicao',
+    ),
+    path(
+        'requisicoes/modal/item/<int:pk>/',
+        empresa_scoped(requisicoes_views.modal_editar_item_requisicao),
+        name='modal_editar_item_requisicao',
+    ),
+    path(
+        'requisicoes/modal/item/<int:pk>/devolver/',
+        empresa_scoped(requisicoes_views.devolver_item_requisicao),
+        name='devolver_item_requisicao',
+    ),
+    path(
+        'requisicoes/autocomplete/solicitantes/',
+        empresa_scoped(requisicoes_views.autocomplete_solicitantes),
+        name='autocomplete_solicitantes',
+    ),
+    path(
+        'requisicoes/autocomplete/locais/',
+        empresa_scoped(requisicoes_views.autocomplete_locais),
+        name='autocomplete_locais',
+    ),
+    path(
+        'requisicoes/autocomplete/obras/',
+        empresa_scoped(requisicoes_views.autocomplete_obras),
+        name='autocomplete_obras',
+    ),
     path(
         'movimentar/',
         empresa_scoped(item_views.movimentar_estoque),
         name='movimentar_estoque',
+    ),
+    path(
+        'todo/',
+        empresa_scoped(item_views.todo_estoque),
+        name='todo_estoque',
+    ),
+    path(
+        'leitor/resolve/',
+        empresa_scoped(item_views.leitor_estoque_resolve),
+        name='leitor_estoque_resolve',
     ),
     path(
         'categorias-itens/',
@@ -129,6 +211,16 @@ urlpatterns = [
         'itens/modal/<int:pk>/excluir/',
         empresa_scoped(item_views.modal_excluir_item),
         name='modal_excluir_item',
+    ),
+    path(
+        'itens/modal/<int:pk>/gerar-qrcode/',
+        empresa_scoped(item_views.modal_gerar_qrcode_item),
+        name='modal_gerar_qrcode_item',
+    ),
+    path(
+        'itens/modal/<int:pk>/excluir-qrcode/',
+        empresa_scoped(item_views.modal_excluir_qrcode_item),
+        name='modal_excluir_qrcode_item',
     ),
     path(
         'itens/modal/<int:pk>/',

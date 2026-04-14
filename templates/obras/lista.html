@@ -49,7 +49,6 @@
                     <tr>
                         <th>Obra</th>
                         <th>Contratante</th>
-                        <th class="text-end">Valor</th>
                         <th>Início</th>
                         <th>Fim</th>
                     </tr>
@@ -64,9 +63,6 @@
                         hx-swap="innerHTML">
                         <td class="fw-semibold">{{ o.nome }}</td>
                         <td>{{ o.contratante.nome }}</td>
-                        <td class="text-end text-nowrap">
-                            {% if o.valor is not None %}R$ {{ o.valor|floatformat:2 }}{% else %}—{% endif %}
-                        </td>
                         <td class="text-nowrap">{{ o.data_inicio|date:"d/m/Y"|default:"—" }}</td>
                         <td class="text-nowrap">{{ o.data_fim|date:"d/m/Y"|default:"—" }}</td>
                     </tr>

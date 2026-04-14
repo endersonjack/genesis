@@ -1,0 +1,38 @@
+{# Botão liga/desliga leitor 2D (cunha). Requer estoque_ui_assets + estoque-leitor-2d.js e modal para ?edit_item= #}
+<div class="js-estoque-leitor-wrap d-inline-flex align-items-center flex-shrink-0"
+     data-resolve-url="{% url 'estoque:leitor_estoque_resolve' empresa_id=request.empresa_ativa.pk %}"
+     data-empresa-pk="{{ request.empresa_ativa.pk }}"
+     {% if leitor_mode %}data-leitor-mode="{{ leitor_mode }}"{% endif %}>
+    <button type="button"
+            class="btn btn-light border shadow-sm rounded-3 px-2 py-2 js-estoque-leitor-btn"
+            aria-pressed="false"
+            aria-label="Leitor QR desligado — ativar"
+            title="Leitor QR (modo teclado): clique para ativar ou desativar">
+        {# Ícone estilo QR (três marcadores) — cor via CSS .estoque-leitor-qr-svg #}
+        <svg class="estoque-leitor-qr-svg" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="2" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="4" y="4" width="3" height="3" fill="currentColor"/>
+            <rect x="15" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="17" y="4" width="3" height="3" fill="currentColor"/>
+            <rect x="2" y="15" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="4" y="17" width="3" height="3" fill="currentColor"/>
+            <rect x="11" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="15" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="15" width="2" height="2" fill="currentColor"/>
+            <rect x="19" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="19" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="19" width="2" height="2" fill="currentColor"/>
+            <rect x="19" y="15" width="2" height="2" fill="currentColor"/>
+            <rect x="19" y="19" width="2" height="2" fill="currentColor"/>
+        </svg>
+    </button>
+    <label class="visually-hidden" for="{{ leitor_capture_id|default:'estoque-leitor-capture-global' }}">Captura do leitor QR</label>
+    <input type="text"
+           id="{{ leitor_capture_id|default:'estoque-leitor-capture-global' }}"
+           class="js-estoque-leitor-capture visually-hidden"
+           autocomplete="off"
+           tabindex="-1"
+           aria-hidden="true">
+    <span class="js-estoque-leitor-fb small ms-2 text-muted" style="max-width: 14rem;" aria-live="polite"></span>
+</div>

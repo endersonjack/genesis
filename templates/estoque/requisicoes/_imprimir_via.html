@@ -1,0 +1,82 @@
+{% load tz %}
+{% load requisicao_impressao %}
+<section class="via req-via">
+    <div class="req-pdf-top-row">
+        <div class="req-pdf-top-left">
+            {% include 'estoque/requisicoes/_imprimir_cabecalho_empresa.html' %}
+        </div>
+        <div class="req-pdf-top-right">
+            <div class="req-via-label">{{ via_label|upper }}</div>
+            <div class="req-doc-title">Requisição nº {{ requisicao.pk }}</div>
+            <div class="req-doc-meta">Emitida em {{ requisicao.criado_em|localtime|date:"d/m/Y H:i" }}</div>
+            {% if not requisicao.is_ativa %}
+            <div class="req-cancelada">CANCELADA — documento informativo.</div>
+            {% endif %}
+        </div>
+    </div>
+    <table class="req-meta-table" role="presentation">
+        <tbody>
+            <tr>
+                <td class="lab">SOLICITANTE</td>
+                <td class="val">{{ requisicao.solicitante }}</td>
+                <td class="lab">FUNÇÃO</td>
+                <td class="val">{% if requisicao.solicitante.cargo %}{{ requisicao.solicitante.cargo.nome }}{% else %}—{% endif %}</td>
+            </tr>
+            <tr>
+                <td class="lab">LOCAL</td>
+                <td class="val val-span" colspan="3">{{ requisicao.local|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="lab">OBRA</td>
+                <td class="val val-span" colspan="3">{{ requisicao.obra|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="lab">ALMOXARIFE</td>
+                <td class="val val-span" colspan="3">
+                    {% if requisicao.almoxarife %}
+                        {{ requisicao.almoxarife.nome_completo|default:requisicao.almoxarife.username }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="req-items-table">
+        <colgroup>
+            <col class="req-col-item">
+            <col class="req-col-qtd">
+            <col class="req-col-un">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qtd</th>
+                <th>Un.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ri in itens_requisicao %}
+                <tr>
+                    <td>{{ ri.item.descricao }}</td>
+                    <td class="num">{{ ri.quantidade|qtd_requisicao_pdf }}</td>
+                    <td class="un">{{ ri.item.unidade_medida.abreviada }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3" class="req-empty">Sem itens.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="req-assin-row">
+        <div class="req-assin">
+            <div class="req-assin-line req-assin-line--esq" aria-hidden="true"></div>
+            <div class="req-assin-cap">Assinatura do solicitante</div>
+        </div>
+        <div class="req-assin req-assin-dir">
+            <div class="req-assin-line req-assin-line--dir" aria-hidden="true"></div>
+            <div class="req-assin-cap">Assinatura do almoxarife</div>
+        </div>
+    </div>
+</section>

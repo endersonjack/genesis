@@ -1,0 +1,32 @@
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h5 class="fw-bold mb-0">Resumo do estoque</h5>
+            <div class="small text-muted">Itens ativos por categoria</div>
+        </div>
+
+        {% if resumo_por_categoria %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Categoria</th>
+                        <th class="text-end">Qtd. de itens</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in resumo_por_categoria %}
+                    <tr>
+                        <td class="fw-semibold">{{ cat.nome }}</td>
+                        <td class="text-end">{{ cat.qtd_itens }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhuma categoria encontrada.</p>
+        {% endif %}
+    </div>
+</div>
+

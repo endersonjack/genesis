@@ -212,6 +212,7 @@
     </div>
     <div class="card-body pt-3 px-3 px-md-4 pb-4">
 
+        {% if request.usuario_mod_rh or request.usuario_admin_empresa or request.user.is_superuser %}
         <p class="quick-access-section-title">RH</p>
         <div class="row g-3 mb-4">
             <div class="col-12 col-sm-6 col-xl-4">
@@ -241,9 +242,31 @@
                 </a>
             </div>
         </div>
+        {% endif %}
 
+        {% if request.usuario_mod_estoque or request.usuario_admin_empresa or request.user.is_superuser %}
+        <p class="quick-access-section-title">Estoque</p>
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'estoque:nova_requisicao' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
+                            <i class="bi bi-clipboard-plus"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Nova requisição</div>
+                            <p class="quick-access-tile-desc">Abrir uma nova requisição de estoque</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if request.usuario_mod_locais or request.usuario_mod_auditoria_total or request.usuario_mod_auditoria_sua or request.usuario_mod_editar_empresas or request.usuario_admin_empresa or request.user.is_superuser %}
         <p class="quick-access-section-title">Empresa</p>
         <div class="row g-3">
+            {% if request.usuario_mod_locais or request.usuario_admin_empresa or request.user.is_superuser %}
             <div class="col-12 col-sm-6 col-xl-4">
                 <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
                     <div class="quick-access-tile">
@@ -257,7 +280,8 @@
                     </div>
                 </a>
             </div>
-            {% if request.usuario_admin_empresa or request.user.is_superuser %}
+            {% endif %}
+            {% if request.usuario_mod_auditoria_total or request.usuario_mod_auditoria_sua or request.usuario_admin_empresa or request.user.is_superuser %}
             <div class="col-12 col-sm-6 col-xl-4">
                 <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
                     <div class="quick-access-tile">
@@ -272,6 +296,7 @@
                 </a>
             </div>
             {% endif %}
+            {% if request.usuario_mod_editar_empresas or request.usuario_admin_empresa or request.user.is_superuser %}
             <div class="col-12 col-sm-6 col-xl-4">
                 <a href="{% url 'empresa_preferencias' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
                     <div class="quick-access-tile">
@@ -285,7 +310,13 @@
                     </div>
                 </a>
             </div>
+            {% endif %}
         </div>
+        {% endif %}
+
+        {% if not request.usuario_mod_rh and not request.usuario_mod_estoque and not request.usuario_mod_locais and not request.usuario_mod_auditoria_total and not request.usuario_mod_auditoria_sua and not request.usuario_mod_editar_empresas and not request.usuario_admin_empresa and not request.user.is_superuser %}
+        <p class="text-muted small mb-0">Nenhum atalho disponível para o seu perfil nesta empresa.</p>
+        {% endif %}
 
     </div>
 </div>

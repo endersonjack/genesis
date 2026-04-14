@@ -1,0 +1,916 @@
+(function () {
+    'use strict';
+    var DRAFT_KEY = '{{ draft_key|escapejs }}';
+    var DRAFT_TTL_MS = 45 * 60 * 1000;
+    var CLEAR_FLAG_KEY = '{{ clear_flag_key|escapejs }}';
+    var CLEAR_ON_LOAD = {% if clear_on_load %}true{% else %}false{% endif %};
+    var SERVER_HYDRATE = {% if server_hydrate %}true{% else %}false{% endif %};
+
+    function nowMs() {
+        return Date.now ? Date.now() : new Date().getTime();
+    }
+
+    function safeJsonParse(s) {
+        try {
+            return JSON.parse(s);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function readDraft() {
+        var raw = null;
+        try {
+            raw = sessionStorage.getItem(DRAFT_KEY);
+        } catch (e) {
+            return null;
+        }
+        if (!raw) return null;
+        var obj = safeJsonParse(raw);
+        if (!obj || !obj.ts || !obj.data) return null;
+        if (nowMs() - obj.ts > DRAFT_TTL_MS) {
+            clearDraft();
+            return null;
+        }
+        return obj.data;
+    }
+
+    function writeDraft(data) {
+        try {
+            sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ts: nowMs(), data: data }));
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function clearDraft() {
+        try {
+            sessionStorage.removeItem(DRAFT_KEY);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function setClearNext() {
+        try {
+            sessionStorage.setItem(CLEAR_FLAG_KEY, '1');
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function consumeClearNext() {
+        try {
+            var v = sessionStorage.getItem(CLEAR_FLAG_KEY);
+            if (v) {
+                sessionStorage.removeItem(CLEAR_FLAG_KEY);
+                return true;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return false;
+    }
+
+    var saveDraftTimer = null;
+    function scheduleSaveDraft(fn) {
+        if (saveDraftTimer) clearTimeout(saveDraftTimer);
+        saveDraftTimer = setTimeout(function () {
+            saveDraftTimer = null;
+            if (typeof fn === 'function') fn();
+        }, 120);
+    }
+
+    function setupAutocomplete(scope) {
+        var root = scope || document;
+        root.querySelectorAll('.js-ac-item').forEach(function (btn) {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', function () {
+                var wrap = btn.closest('[data-ac-scope]');
+                if (!wrap) return;
+                var hiddenId = wrap.getAttribute('data-hidden-id');
+                var inputId = wrap.getAttribute('data-input-id');
+                var resultsId = wrap.getAttribute('data-results-id');
+                var hidden = hiddenId ? document.getElementById(hiddenId) : null;
+                var input = inputId ? document.getElementById(inputId) : null;
+                var results = resultsId ? document.getElementById(resultsId) : null;
+                if (hidden) hidden.value = btn.getAttribute('data-id') || '';
+                if (input) input.value = btn.getAttribute('data-label') || '';
+                if (results) results.innerHTML = '';
+                scheduleSaveDraft(saveDraftFromDom);
+            });
+        });
+    }
+
+    document.body.addEventListener('click', function (e) {
+        var clearBtn = e.target.closest('.js-ac-clear');
+        if (clearBtn) {
+            var wrap = clearBtn.closest('[data-ac-scope]');
+            if (!wrap) return;
+            var hiddenId = wrap.getAttribute('data-hidden-id');
+            var inputId = wrap.getAttribute('data-input-id');
+            var resultsId = wrap.getAttribute('data-results-id');
+            var hidden = hiddenId ? document.getElementById(hiddenId) : null;
+            var input = inputId ? document.getElementById(inputId) : null;
+            var results = resultsId ? document.getElementById(resultsId) : null;
+            if (hidden) hidden.value = '';
+            if (input) input.value = '';
+            if (results) results.innerHTML = '';
+            scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
+
+        var clearSel = e.target.closest('.js-select-clear');
+        if (clearSel) {
+            var sid = clearSel.getAttribute('data-select-id');
+            var sel = sid ? document.getElementById(sid) : null;
+            if (sel) sel.value = '';
+            scheduleSaveDraft(saveDraftFromDom);
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        setupAutocomplete(evt.detail && evt.detail.target ? evt.detail.target : document);
+    });
+    setupAutocomplete(document);
+
+    var totalEl = document.getElementById('id_itens-TOTAL_FORMS');
+    var body = document.getElementById('itens-formset-body');
+    var displayBody = document.getElementById('itens-display-body');
+    var emptyMsg = document.getElementById('itens-vazio-msg');
+    if (!totalEl || !body || !displayBody) return;
+
+    function newRowHtml(idx) {
+        var base = `
+<tr class="formset-row" data-item-id="">
+  <td>
+    <input type="hidden" name="itens-${idx}-id" id="id_itens-${idx}-id">
+    <label class="form-label small text-muted mb-1">Item</label>
+    <select name="itens-${idx}-item" id="id_itens-${idx}-item" class="form-select rounded-3">
+      ${document.getElementById('{{ formset.empty_form.item.id_for_label }}') ? document.getElementById('{{ formset.empty_form.item.id_for_label }}').innerHTML : ''}
+    </select>
+  </td>
+  <td>
+    <label class="form-label small text-muted mb-1">Quantidade</label>
+    <input type="number" name="itens-${idx}-quantidade" id="id_itens-${idx}-quantidade" class="form-control rounded-3" step="0.0001" min="0">
+  </td>
+  <td class="text-end">
+    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 js-req-remove-row">Remover</button>
+    <input type="hidden" name="itens-${idx}-DELETE" id="id_itens-${idx}-DELETE">
+  </td>
+</tr>`;
+        return base;
+    }
+
+    function ensureOptionsProto() {
+        // options vêm do select oculto (empty_form).
+    }
+    ensureOptionsProto();
+
+    function clearMarkDelete(inp) {
+        if (!inp) return;
+        if (inp.type === 'checkbox') {
+            inp.checked = false;
+            return;
+        }
+        inp.value = '';
+    }
+
+    function markDelete(inp) {
+        if (!inp) return;
+        if (inp.type === 'checkbox') {
+            inp.checked = true;
+            return;
+        }
+        inp.value = 'on';
+    }
+
+    function fmtQty(v) {
+        var n = parseFloat(String(v || '').replace(',', '.'));
+        if (!Number.isFinite(n) || n <= 0) return '';
+        return n.toFixed(4);
+    }
+
+    function parseBrDec(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (!s) return NaN;
+        s = s.replace(/\s/g, '');
+        if (s.indexOf(',') !== -1) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+            if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+        }
+        var n = parseFloat(s);
+        return Number.isFinite(n) ? n : NaN;
+    }
+
+    function fmtBr4(n) {
+        if (!Number.isFinite(n)) return '—';
+        var s = n.toFixed(4);
+        var parts = s.split('.');
+        var intp = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return intp + ',' + parts[1];
+    }
+
+    function saldoClassForPreview(rem, min) {
+        if (!Number.isFinite(rem)) return 'text-bg-secondary';
+        if (rem <= 0) return 'text-bg-danger';
+        if (Number.isFinite(min) && min > 0) {
+            if (rem < min) return 'text-bg-warning';
+            if (rem === min) return 'text-bg-secondary';
+        }
+        return 'text-bg-success';
+    }
+
+    function calcSaldoPreview(meta) {
+        var saldoBase = Number.isFinite(meta.saldoRaw) ? meta.saldoRaw : parseBrDec(meta.saldo);
+        var committed = Number.isFinite(meta.committedRaw) && meta.committedRaw > 0 ? meta.committedRaw : 0;
+        // Na edição de requisição: o saldo no BD já descontou a qtd antiga; para o preview
+        // simula devolver essa qtd e aplicar a nova (evita "retirar duas vezes" no cálculo).
+        if (committed > 0) {
+            saldoBase = saldoBase + committed;
+        }
+        var minRaw = Number.isFinite(meta.minRaw) ? meta.minRaw : parseBrDec(meta.min);
+        var qty = parseFloat(String(meta.qty || '').replace(',', '.'));
+        if (!Number.isFinite(saldoBase) || !Number.isFinite(qty)) {
+            return { txt: meta.saldo || '—', cls: meta.saldoClass || 'text-bg-secondary', saldoRaw: saldoBase, minRaw: minRaw };
+        }
+        var rem = saldoBase - qty;
+        return { txt: fmtBr4(rem), cls: saldoClassForPreview(rem, minRaw), saldoRaw: saldoBase, minRaw: minRaw };
+    }
+
+    function displayRowHtml(meta) {
+        var thumb = meta.thumb
+            ? `<span class="estoque-item-thumb-wrap"><img src="${meta.thumb}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy"></span>`
+            : `<div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>`;
+        var prev = calcSaldoPreview(meta);
+        var actionBtn = SERVER_HYDRATE
+            ? `<button type="button" class="btn btn-sm btn-outline-secondary rounded-3 js-req-open-devolver" data-item-id="${meta.itemId}" title="Devolver ao estoque">Devolver</button>`
+            : `<button type="button" class="btn btn-sm btn-outline-danger rounded-3 js-req-remove-item" data-item-id="${meta.itemId}" title="Remover item"><i class="bi bi-trash"></i></button>`;
+        return `
+<tr class="req-item-row" role="button" tabindex="0" data-item-id="${meta.itemId}">
+  <td class="ps-3">${thumb}</td>
+  <td class="fw-semibold">${meta.desc || '—'}</td>
+  <td>${meta.cat || '—'}</td>
+  <td class="text-end text-nowrap"><span class="fw-semibold">${meta.saldo || '—'}</span></td>
+  <td class="text-end text-nowrap">
+    <span class="badge ${prev.cls} rounded-pill fs-6 fw-semibold px-3 req-item-saldo">${prev.txt}</span>
+  </td>
+  <td class="text-nowrap">${meta.unid || '—'}</td>
+  <td class="text-end text-nowrap"><span class="req-item-qty">${meta.qty}</span></td>
+  <td class="pe-3 text-end">
+    ${actionBtn}
+  </td>
+</tr>`;
+    }
+
+    function upsertDisplayRow(meta) {
+        var existing = displayBody.querySelector('tr.req-item-row[data-item-id="' + meta.itemId + '"]');
+        if (!existing) {
+            var tmp = document.createElement('tbody');
+            tmp.innerHTML = displayRowHtml(meta);
+            var row = tmp.querySelector('tr');
+            if (!row) return;
+            displayBody.appendChild(row);
+            return;
+        }
+        var qtyEl = existing.querySelector('.req-item-qty');
+        if (qtyEl) qtyEl.textContent = meta.qty;
+
+        var saldoEl = existing.querySelector('.req-item-saldo');
+        if (saldoEl) {
+            var prev = calcSaldoPreview(meta);
+            saldoEl.textContent = prev.txt;
+            saldoEl.className = 'badge ' + prev.cls + ' rounded-pill fs-6 fw-semibold px-3 req-item-saldo';
+        }
+    }
+
+    function getCsrfToken() {
+        var inp = document.querySelector('input[name=csrfmiddlewaretoken]');
+        return inp && inp.value ? inp.value : '';
+    }
+
+    function devolverItemUrl(riPk) {
+        if (typeof window.__reqDevolverItemUrl !== 'function') return '';
+        return window.__reqDevolverItemUrl(riPk);
+    }
+
+    function openDevolverModal(itemId) {
+        if (!SERVER_HYDRATE) return;
+        var fr = body.querySelector('tr.formset-row[data-item-id="' + itemId + '"]');
+        if (!fr) return;
+        var idInp = fr.querySelector('input[name$="-id"]');
+        var riPk = idInp && idInp.value ? parseInt(idInp.value.trim(), 10) : NaN;
+        var qEl = fr.querySelector('input[name$="-quantidade"]');
+        var curQ = qEl ? parseFloat(String(qEl.value || '').replace(',', '.')) : NaN;
+
+        if (!Number.isFinite(riPk) || riPk <= 0) {
+            if (
+                window.confirm(
+                    'Remover este item da lista? Ele ainda não foi salvo na requisição (sem movimento de estoque).'
+                )
+            ) {
+                var delU = fr.querySelector('input[name$="-DELETE"]');
+                markDelete(delU);
+                fr.style.display = 'none';
+                var drU = displayBody.querySelector('tr.req-item-row[data-item-id="' + itemId + '"]');
+                if (drU) drU.remove();
+                if (!displayBody.querySelector('tr')) {
+                    if (emptyMsg) emptyMsg.classList.remove('d-none');
+                }
+                scheduleSaveDraft(saveDraftFromDom);
+            }
+            return;
+        }
+
+        if (!Number.isFinite(curQ) || curQ <= 0) {
+            window.alert('Quantidade inválida nesta linha.');
+            return;
+        }
+
+        var dr = displayBody.querySelector('tr.req-item-row[data-item-id="' + itemId + '"]');
+        var desc =
+            dr && dr.querySelector('td.fw-semibold')
+                ? dr.querySelector('td.fw-semibold').textContent
+                : 'Item';
+        var modalEl = document.getElementById('modalPadrao');
+        var modalContent = document.getElementById('modal-content');
+        if (!modalEl || !modalContent) return;
+
+        var defVal = curQ.toFixed(4);
+        modalContent.innerHTML = `
+<div class="modal-header border-0 pb-0">
+  <h5 class="modal-title fw-bold mb-0">Devolver ao estoque</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+  <div class="mb-3">
+    <div class="fw-semibold">${desc}</div>
+    <div class="text-muted small">Informe o quantitativo a devolver. Se for a quantidade total da linha, o item é removido da requisição.</div>
+  </div>
+  <div class="mb-2">
+    <label class="form-label fw-semibold" for="req-devolver-qty">Quantidade a devolver</label>
+    <input type="number" id="req-devolver-qty" class="form-control rounded-3" step="0.0001" min="0.0001" max="${curQ}" value="${defVal}">
+  </div>
+</div>
+<div class="modal-footer border-0 pt-0 d-flex justify-content-end gap-2">
+  <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+  <button type="button" class="estoque-btn estoque-btn-primary js-req-confirm-devolver" data-req-item-pk="${riPk}">Devolver</button>
+</div>`;
+
+        if (window.bootstrap) {
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
+    function openEditModal(itemId) {
+        var fr = body.querySelector('tr.formset-row[data-item-id="' + itemId + '"]');
+        var dr = displayBody.querySelector('tr.req-item-row[data-item-id="' + itemId + '"]');
+        if (!fr || !dr) return;
+        var qtyInput = fr.querySelector('input[name$="-quantidade"]');
+        var desc = dr.querySelector('td.fw-semibold') ? dr.querySelector('td.fw-semibold').textContent : 'Item';
+        var currentQty = qtyInput ? (qtyInput.value || '') : '';
+
+        var modalEl = document.getElementById('modalPadrao');
+        var modalContent = document.getElementById('modal-content');
+        if (!modalEl || !modalContent) return;
+        var leftFooter = SERVER_HYDRATE
+            ? `<button type="button" class="estoque-btn estoque-btn-light js-req-devolver-from-edit" data-item-id="${itemId}">Devolver ao estoque</button>`
+            : `<button type="button" class="estoque-btn estoque-btn-danger-outline js-req-delete-in-edit" data-item-id="${itemId}">Excluir item</button>`;
+        modalContent.innerHTML = `
+<div class="modal-header border-0 pb-0">
+  <h5 class="modal-title fw-bold mb-0">Editar item</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+  <div class="mb-3">
+    <div class="fw-semibold">${desc}</div>
+    <div class="text-muted small">Ajuste apenas a quantidade solicitada (alteração local até salvar).</div>
+  </div>
+  <div class="mb-2">
+    <label class="form-label fw-semibold" for="req-edit-qty">Quantidade</label>
+    <input type="number" id="req-edit-qty" class="form-control rounded-3" step="0.0001" min="0" value="${currentQty}">
+  </div>
+</div>
+<div class="modal-footer border-0 pt-0 d-flex justify-content-between gap-2 flex-wrap">
+  ${leftFooter}
+  <div class="d-flex gap-2 ms-auto">
+    <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button type="button" class="estoque-btn estoque-btn-primary js-req-save-edit" data-item-id="${itemId}">Salvar</button>
+  </div>
+</div>`;
+
+        if (window.bootstrap) {
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
+    function saveMetaOnFormRow(formRow, meta) {
+        if (!formRow || !meta) return;
+        formRow.dataset.reqDesc = meta.desc || '';
+        formRow.dataset.reqCat = meta.cat || '';
+        formRow.dataset.reqMin = meta.min || '';
+        formRow.dataset.reqMinRaw = meta.minRaw != null ? String(meta.minRaw) : '';
+        formRow.dataset.reqSaldo = meta.saldo || '';
+        formRow.dataset.reqSaldoClass = meta.saldoClass || '';
+        formRow.dataset.reqSaldoRaw = meta.saldoRaw != null ? String(meta.saldoRaw) : '';
+        formRow.dataset.reqUnid = meta.unid || '';
+        formRow.dataset.reqThumb = meta.thumb || '';
+        if (Object.prototype.hasOwnProperty.call(meta, 'committedRaw')) {
+            if (Number.isFinite(meta.committedRaw) && meta.committedRaw > 0) {
+                formRow.dataset.reqCommittedQty = String(meta.committedRaw);
+            } else {
+                delete formRow.dataset.reqCommittedQty;
+            }
+        }
+    }
+
+    function metaFromFormRow(formRow) {
+        if (!formRow) return {};
+        var sr = parseBrDec(formRow.dataset.reqSaldoRaw || '');
+        var saldoTxt = formRow.dataset.reqSaldo || '';
+        if (!saldoTxt && Number.isFinite(sr)) {
+            saldoTxt = fmtBr4(sr);
+        }
+        var cr = parseBrDec(formRow.dataset.reqCommittedQty || '');
+        var committedRaw = Number.isFinite(cr) && cr > 0 ? cr : NaN;
+        return {
+            desc: formRow.dataset.reqDesc || '',
+            cat: formRow.dataset.reqCat || '',
+            min: formRow.dataset.reqMin || '',
+            minRaw: parseBrDec(formRow.dataset.reqMinRaw || ''),
+            saldo: saldoTxt,
+            saldoClass: formRow.dataset.reqSaldoClass || '',
+            saldoRaw: sr,
+            committedRaw: committedRaw,
+            unid: formRow.dataset.reqUnid || '',
+            thumb: formRow.dataset.reqThumb || '',
+        };
+    }
+
+    function currentRowsForDraft() {
+        var out = [];
+        displayBody.querySelectorAll('tr.req-item-row').forEach(function (tr) {
+            var iid = tr.getAttribute('data-item-id');
+            if (!iid) return;
+            var fr = body.querySelector('tr.formset-row[data-item-id="' + iid + '"]');
+            if (!fr || fr.style.display === 'none') return;
+            var qEl = fr.querySelector('input[name$="-quantidade"]');
+            var qty = qEl ? parseFloat(String(qEl.value || '').replace(',', '.')) : NaN;
+            if (!Number.isFinite(qty) || qty <= 0) return;
+            var m = metaFromFormRow(fr);
+            out.push({
+                itemId: parseInt(iid, 10),
+                qty: qty,
+                meta: {
+                    desc: m.desc || '',
+                    cat: m.cat || '',
+                    min: m.min || '',
+                    minRaw: Number.isFinite(m.minRaw) ? m.minRaw : null,
+                    saldo: m.saldo || '',
+                    saldoRaw: Number.isFinite(m.saldoRaw) ? m.saldoRaw : null,
+                    saldoClass: m.saldoClass || '',
+                    committedRaw: Number.isFinite(m.committedRaw) ? m.committedRaw : null,
+                    unid: m.unid || '',
+                    thumb: m.thumb || '',
+                },
+            });
+        });
+        return out;
+    }
+
+    function saveDraftFromDom() {
+        var solicitante = document.getElementById('{{ form.solicitante.id_for_label }}');
+        var local = document.getElementById('{{ form.local.id_for_label }}');
+        var obra = document.getElementById('{{ form.obra.id_for_label }}');
+        var solicitanteTxt = document.getElementById('req-solicitante-q');
+        var localTxt = document.getElementById('req-local-q');
+        writeDraft({
+            fields: {
+                solicitante: solicitante ? (solicitante.value || '') : '',
+                local: local ? (local.value || '') : '',
+                obra: obra ? (obra.value || '') : '',
+            },
+            labels: {
+                solicitante: solicitanteTxt ? (solicitanteTxt.value || '') : '',
+                local: localTxt ? (localTxt.value || '') : '',
+            },
+            items: currentRowsForDraft(),
+        });
+    }
+
+    function addOrSumItem(itemId, qty, meta) {
+        if (!itemId || !Number.isFinite(qty) || qty <= 0) return;
+        var existing = body.querySelector('tr.formset-row[data-item-id="' + itemId + '"]');
+        if (existing) {
+            var del = existing.querySelector('input[name$="-DELETE"]');
+            clearMarkDelete(del);
+            existing.style.display = '';
+            if (meta) {
+                saveMetaOnFormRow(existing, meta);
+            }
+            var selExisting = existing.querySelector('select[name$="-item"]');
+            if (selExisting) {
+                selExisting.value = String(itemId);
+            }
+            var qEl = existing.querySelector('input[name$="-quantidade"]');
+            var cur = parseFloat((qEl.value || '').replace(',', '.'));
+            if (!Number.isFinite(cur)) cur = 0;
+            qEl.value = String((cur + qty).toFixed(4));
+            var displayExists = displayBody.querySelector(
+                'tr.req-item-row[data-item-id="' + itemId + '"]'
+            );
+            var mRow = metaFromFormRow(existing);
+            if (displayExists) {
+                upsertDisplayRow(
+                    Object.assign({}, mRow, {
+                        itemId: String(itemId),
+                        qty: fmtQty(qEl.value),
+                    })
+                );
+            } else {
+                var m = meta || mRow;
+                upsertDisplayRow({
+                    itemId: String(itemId),
+                    desc: m.desc || '',
+                    cat: m.cat || '',
+                    min: m.min || '',
+                    saldo: m.saldo || '',
+                    saldoClass: m.saldoClass || '',
+                    saldoRaw: m.saldoRaw,
+                    minRaw: m.minRaw,
+                    committedRaw: m.committedRaw,
+                    unid: m.unid || '',
+                    thumb: m.thumb || '',
+                    qty: fmtQty(qEl.value),
+                });
+            }
+            scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
+        var idx = parseInt(totalEl.value || '0', 10);
+        if (!Number.isFinite(idx)) idx = 0;
+        var tmp = document.createElement('tbody');
+        tmp.innerHTML = newRowHtml(idx);
+        var row = tmp.querySelector('tr');
+        if (!row) return;
+        var sel = row.querySelector('select');
+        var qEl = row.querySelector('input[name$="-quantidade"]');
+        if (sel) sel.value = String(itemId);
+        if (qEl) qEl.value = String(qty.toFixed(4));
+        row.dataset.itemId = String(itemId);
+        saveMetaOnFormRow(row, meta || {});
+        body.appendChild(row);
+        totalEl.value = String(idx + 1);
+        if (emptyMsg) emptyMsg.classList.add('d-none');
+
+        upsertDisplayRow({
+            itemId: String(itemId),
+            desc: (meta && meta.desc) || '',
+            cat: (meta && meta.cat) || '',
+            min: (meta && meta.min) || '',
+            saldo: (meta && meta.saldo) || '',
+            saldoClass: (meta && meta.saldoClass) || '',
+            saldoRaw: (meta && meta.saldoRaw),
+            minRaw: (meta && meta.minRaw),
+            committedRaw: (meta && meta.committedRaw),
+            unid: (meta && meta.unid) || '',
+            thumb: (meta && meta.thumb) || '',
+            qty: fmtQty(qEl ? qEl.value : qty),
+        });
+        scheduleSaveDraft(saveDraftFromDom);
+    }
+
+    window.__reqAddOrSumItem = addOrSumItem;
+
+    document.body.addEventListener('click', function (e) {
+        var cdev = e.target.closest('.js-req-confirm-devolver');
+        if (cdev) {
+            if (cdev.disabled || cdev.getAttribute('aria-busy') === 'true') return;
+            var pk = parseInt(cdev.getAttribute('data-req-item-pk') || '', 10);
+            var dq = document.getElementById('req-devolver-qty');
+            var q = dq ? parseFloat(String(dq.value || '').replace(',', '.')) : NaN;
+            if (!Number.isFinite(pk) || pk <= 0) return;
+            if (!Number.isFinite(q) || q <= 0) {
+                window.alert('Informe uma quantidade válida.');
+                return;
+            }
+            var url = devolverItemUrl(pk);
+            if (!url) {
+                window.alert('Não foi possível montar a URL de devolução.');
+                return;
+            }
+            var footer = cdev.closest('.modal-footer');
+            var cancelDev = footer ? footer.querySelector('[data-bs-dismiss="modal"]') : null;
+            var origDevHtml = cdev.innerHTML;
+            cdev.disabled = true;
+            cdev.setAttribute('aria-busy', 'true');
+            cdev.innerHTML =
+                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Devolvendo…';
+            if (cancelDev) cancelDev.disabled = true;
+            if (dq) dq.disabled = true;
+            function restoreDevolverModalUi() {
+                cdev.innerHTML = origDevHtml;
+                cdev.disabled = false;
+                cdev.removeAttribute('aria-busy');
+                if (cancelDev) cancelDev.disabled = false;
+                if (dq) dq.disabled = false;
+            }
+            var fd = new FormData();
+            fd.append('quantidade_devolver', String(q));
+            fd.append('csrfmiddlewaretoken', getCsrfToken());
+            fetch(url, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: fd,
+                credentials: 'same-origin',
+            })
+                .then(function (r) {
+                    if (r.ok) {
+                        return r.json().then(function () {
+                            window.location.reload();
+                        }).catch(function () {
+                            restoreDevolverModalUi();
+                            window.alert('Resposta inválida do servidor.');
+                        });
+                    }
+                    return r
+                        .json()
+                        .catch(function () {
+                            return null;
+                        })
+                        .then(function (j) {
+                            if (j && j.erro) {
+                                throw new Error(j.erro);
+                            }
+                            return r.text().then(function (t) {
+                                var plain = t
+                                    ? t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+                                    : '';
+                                throw new Error(plain ? plain.slice(0, 240) : 'Não foi possível devolver.');
+                            });
+                        });
+                })
+                .catch(function (err) {
+                    restoreDevolverModalUi();
+                    window.alert(err.message || String(err));
+                });
+            return;
+        }
+
+        var od = e.target.closest('.js-req-open-devolver');
+        if (od) {
+            openDevolverModal(od.getAttribute('data-item-id'));
+            return;
+        }
+
+        var devFromEdit = e.target.closest('.js-req-devolver-from-edit');
+        if (devFromEdit) {
+            var ixd = devFromEdit.getAttribute('data-item-id');
+            var modalElGo = document.getElementById('modalPadrao');
+            if (modalElGo && window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalElGo).hide();
+            }
+            window.setTimeout(function () {
+                openDevolverModal(ixd);
+            }, 350);
+            return;
+        }
+
+        var btn = e.target.closest('.js-req-add-item');
+        if (btn) {
+            var tr = btn.closest('tr');
+            var qtyEl = tr ? tr.querySelector('.js-req-item-qtd') : null;
+            var raw = qtyEl ? qtyEl.value : '';
+            var qty = parseFloat(String(raw || '').replace(',', '.'));
+            var itemId = parseInt(btn.getAttribute('data-item-id') || '', 10);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                alert('Informe a quantidade.');
+                return;
+            }
+            addOrSumItem(itemId, qty, {
+                desc: btn.getAttribute('data-item-desc') || '',
+                cat: btn.getAttribute('data-item-cat') || '',
+                min: btn.getAttribute('data-item-min') || '',
+                minRaw: parseBrDec(btn.getAttribute('data-item-min-raw') || ''),
+                saldo: btn.getAttribute('data-item-saldo') || '',
+                saldoClass: btn.getAttribute('data-item-saldo-class') || '',
+                saldoRaw: parseBrDec(btn.getAttribute('data-item-saldo-raw') || ''),
+                unid: btn.getAttribute('data-item-unid') || '',
+                thumb: btn.getAttribute('data-item-thumb') || '',
+            });
+            return;
+        }
+        var rm = e.target.closest('.js-req-remove-row');
+        if (rm) {
+            var row = rm.closest('tr');
+            if (row) row.remove();
+            if (!body.querySelector('tr')) {
+                if (emptyMsg) emptyMsg.classList.remove('d-none');
+            }
+        }
+
+        var rmItem = e.target.closest('.js-req-remove-item');
+        if (rmItem) {
+            var iid = rmItem.getAttribute('data-item-id');
+            if (!iid) return;
+            var fr = body.querySelector('tr.formset-row[data-item-id="' + iid + '"]');
+            if (fr) {
+                var del = fr.querySelector('input[name$="-DELETE"]');
+                markDelete(del);
+                fr.style.display = 'none';
+            }
+            var dr = displayBody.querySelector('tr.req-item-row[data-item-id="' + iid + '"]');
+            if (dr) dr.remove();
+            if (!displayBody.querySelector('tr')) {
+                if (emptyMsg) emptyMsg.classList.remove('d-none');
+            }
+            scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
+
+        var saveEdit = e.target.closest('.js-req-save-edit');
+        if (saveEdit) {
+            if (saveEdit.disabled || saveEdit.getAttribute('aria-busy') === 'true') return;
+            var iid2 = saveEdit.getAttribute('data-item-id');
+            var qtyField = document.getElementById('req-edit-qty');
+            var newQty = qtyField ? parseFloat(String(qtyField.value || '').replace(',', '.')) : NaN;
+            if (!Number.isFinite(newQty) || newQty <= 0) {
+                alert('Informe uma quantidade válida.');
+                return;
+            }
+            var origSaveLbl = saveEdit.innerHTML;
+            saveEdit.disabled = true;
+            saveEdit.setAttribute('aria-busy', 'true');
+            saveEdit.innerHTML =
+                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando…';
+            try {
+                var fr2 = body.querySelector('tr.formset-row[data-item-id="' + iid2 + '"]');
+                var qEl2 = fr2 ? fr2.querySelector('input[name$="-quantidade"]') : null;
+                if (qEl2) qEl2.value = String(newQty.toFixed(4));
+                var frMeta = metaFromFormRow(body.querySelector('tr.formset-row[data-item-id="' + iid2 + '"]'));
+                upsertDisplayRow(
+                    Object.assign({}, frMeta, {
+                        itemId: String(iid2),
+                        qty: fmtQty(newQty),
+                    })
+                );
+                var modalEl2 = document.getElementById('modalPadrao');
+                if (modalEl2 && window.bootstrap) {
+                    window.bootstrap.Modal.getOrCreateInstance(modalEl2).hide();
+                }
+                scheduleSaveDraft(saveDraftFromDom);
+            } finally {
+                saveEdit.innerHTML = origSaveLbl;
+                saveEdit.disabled = false;
+                saveEdit.removeAttribute('aria-busy');
+            }
+            return;
+        }
+
+        var delEdit = e.target.closest('.js-req-delete-in-edit');
+        if (delEdit) {
+            var iid3 = delEdit.getAttribute('data-item-id');
+            var fr3 = body.querySelector('tr.formset-row[data-item-id="' + iid3 + '"]');
+            if (fr3) {
+                var del3 = fr3.querySelector('input[name$="-DELETE"]');
+                markDelete(del3);
+                fr3.style.display = 'none';
+            }
+            var dr3 = displayBody.querySelector('tr.req-item-row[data-item-id="' + iid3 + '"]');
+            if (dr3) dr3.remove();
+            var modalEl3 = document.getElementById('modalPadrao');
+            if (modalEl3 && window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalEl3).hide();
+            }
+            if (!displayBody.querySelector('tr')) {
+                if (emptyMsg) emptyMsg.classList.remove('d-none');
+            }
+            scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
+    });
+
+    displayBody.addEventListener('click', function (e) {
+        var tr = e.target.closest('tr.req-item-row');
+        if (!tr) return;
+        if (e.target.closest('button')) return;
+        openEditModal(tr.getAttribute('data-item-id'));
+    });
+    displayBody.addEventListener('keydown', function (e) {
+        var tr = e.target.closest('tr.req-item-row');
+        if (!tr) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEditModal(tr.getAttribute('data-item-id'));
+        }
+    });
+
+    if (SERVER_HYDRATE) {
+        (function hydrateServerFormset() {
+            var hasRows = false;
+            body.querySelectorAll('tr.formset-row').forEach(function (fr) {
+                var sel = fr.querySelector('select[name$="-item"]');
+                var qEl = fr.querySelector('input[name$="-quantidade"]');
+                if (!sel || !sel.value) return;
+                var itemId = sel.value;
+                fr.dataset.itemId = itemId;
+                var m = metaFromFormRow(fr);
+                var qty = qEl ? fmtQty(qEl.value) : '';
+                if (!qty) return;
+                upsertDisplayRow({
+                    itemId: String(itemId),
+                    desc: m.desc,
+                    cat: m.cat,
+                    min: m.min,
+                    minRaw: m.minRaw,
+                    saldo: m.saldo,
+                    saldoClass: m.saldoClass,
+                    saldoRaw: m.saldoRaw,
+                    committedRaw: m.committedRaw,
+                    unid: m.unid,
+                    thumb: m.thumb,
+                    qty: qty,
+                });
+                hasRows = true;
+            });
+            if (hasRows && emptyMsg) emptyMsg.classList.add('d-none');
+        })();
+    }
+
+    var mainForm = document.querySelector('form[method="post"]');
+    if (mainForm) {
+        mainForm.addEventListener('submit', function () {
+            saveDraftFromDom();
+        });
+    }
+
+    window.addEventListener('beforeunload', function () {
+        if (mainForm && mainForm.classList.contains('was-submitted')) {
+            setClearNext();
+        }
+    });
+    if (mainForm) {
+        mainForm.addEventListener('submit', function () {
+            mainForm.classList.add('was-submitted');
+        });
+    }
+
+    (function restoreDraftIfNeeded() {
+        if (CLEAR_ON_LOAD) {
+            clearDraft();
+            return;
+        }
+        if (consumeClearNext()) {
+            clearDraft();
+        }
+        var draft = readDraft();
+        if (!draft || !draft.items || !draft.items.length) return;
+
+        try {
+            var solicitante = document.getElementById('{{ form.solicitante.id_for_label }}');
+            var local = document.getElementById('{{ form.local.id_for_label }}');
+            var obra = document.getElementById('{{ form.obra.id_for_label }}');
+            if (solicitante && draft.fields) solicitante.value = draft.fields.solicitante || '';
+            if (local && draft.fields) local.value = draft.fields.local || '';
+            if (obra && draft.fields) obra.value = draft.fields.obra || '';
+
+            var solicitanteTxt = document.getElementById('req-solicitante-q');
+            var localTxt = document.getElementById('req-local-q');
+            if (solicitanteTxt && (!solicitanteTxt.value || !solicitanteTxt.value.trim()) && draft.labels) {
+                solicitanteTxt.value = draft.labels.solicitante || '';
+            }
+            if (localTxt && (!localTxt.value || !localTxt.value.trim()) && draft.labels) {
+                localTxt.value = draft.labels.local || '';
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        if (displayBody.querySelector('tr.req-item-row')) return;
+
+        draft.items.forEach(function (it) {
+            var iid = parseInt(it.itemId, 10);
+            var qty = parseFloat(String(it.qty || '').replace(',', '.'));
+            if (!Number.isFinite(iid) || !Number.isFinite(qty) || qty <= 0) return;
+            var meta = (it.meta || {});
+            var pack = {
+                desc: meta.desc || '',
+                cat: meta.cat || '',
+                min: meta.min || '',
+                minRaw: meta.minRaw != null ? meta.minRaw : parseBrDec(meta.min || ''),
+                saldo: meta.saldo || '',
+                saldoRaw: meta.saldoRaw != null ? meta.saldoRaw : parseBrDec(meta.saldo || ''),
+                saldoClass: meta.saldoClass || '',
+                unid: meta.unid || '',
+                thumb: meta.thumb || '',
+            };
+            if (meta.committedRaw != null && Number.isFinite(meta.committedRaw) && meta.committedRaw > 0) {
+                pack.committedRaw = meta.committedRaw;
+            }
+            addOrSumItem(iid, qty, pack);
+        });
+        scheduleSaveDraft(saveDraftFromDom);
+    })();
+})();

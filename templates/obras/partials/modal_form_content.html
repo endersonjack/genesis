@@ -1,39 +1,40 @@
-<div class="modal-content rounded-3 border-0 shadow">
-    <form method="post"
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold" id="obraModalLabel">{{ titulo_modal }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<div class="modal-body pt-2">
+    <form id="obra-modal-form"
+          method="post"
           action="{{ post_url }}"
           hx-post="{{ post_url }}"
           hx-target="#obraModalSwapTarget"
           hx-swap="innerHTML"
           novalidate>
         {% csrf_token %}
-        <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title fw-bold" id="obraModalLabel">{{ titulo_modal }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body pt-2">
-            {% include 'obras/partials/_obra_campos.html' %}
-        </div>
-        <div class="modal-footer border-0 pt-0 d-flex flex-wrap align-items-center gap-2">
-            {% if obra_edicao %}
-                <button type="button"
-                        class="btn btn-outline-danger rounded-3 me-auto"
-                        hx-get="{% url 'obras:modal_excluir_confirm' empresa_id=request.empresa_ativa.pk pk=obra_edicao.pk %}"
-                        hx-target="#obraModalSwapTarget"
-                        hx-swap="innerHTML">
-                    Excluir
-                </button>
-                <button type="button"
-                        class="btn btn-outline-success rounded-3"
-                        hx-get="{% url 'obras:modal_copiar' empresa_id=request.empresa_ativa.pk pk=obra_edicao.pk %}"
-                        hx-target="#copiarCadastroModalInner"
-                        hx-swap="innerHTML">
-                    <i class="bi bi-copy me-1"></i> Copiar para outra empresa
-                </button>
-            {% endif %}
-            <div class="d-flex flex-wrap gap-2 ms-auto">
-                <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-primary rounded-3 px-4">Salvar</button>
-            </div>
-        </div>
+        {% include 'obras/partials/_obra_campos.html' %}
     </form>
+</div>
+
+<div class="modal-footer border-0 pt-0 d-flex flex-wrap align-items-center gap-2">
+    {% if obra_edicao %}
+        <button type="button"
+                class="btn btn-outline-danger rounded-3 me-auto"
+                hx-get="{% url 'obras:modal_excluir_confirm' empresa_id=request.empresa_ativa.pk pk=obra_edicao.pk %}"
+                hx-target="#obraModalSwapTarget"
+                hx-swap="innerHTML">
+            Excluir
+        </button>
+        <button type="button"
+                class="btn btn-outline-success rounded-3"
+                hx-get="{% url 'obras:modal_copiar' empresa_id=request.empresa_ativa.pk pk=obra_edicao.pk %}"
+                hx-target="#copiarCadastroModalInner"
+                hx-swap="innerHTML">
+            <i class="bi bi-copy me-1"></i> Copiar para outra empresa
+        </button>
+    {% endif %}
+    <div class="d-flex flex-wrap gap-2 ms-auto">
+        <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary rounded-3 px-4" form="obra-modal-form">Salvar</button>
+    </div>
 </div>

@@ -1,0 +1,28 @@
+---
+description: Estoque — loading em botões Salvar/Enviar (evitar duplo clique)
+globs: templates/estoque/**/*.html,static/js/estoque-submit-busy.js
+alwaysApply: false
+---
+
+# Estoque: estado de envio nos formulários (`js-estoque-form-busy`)
+
+Páginas com `body.estoque-pages` carregam `estoque-submit-busy.js` via `estoque/includes/estoque_ui_assets.html`.
+
+## Regra
+
+- Todo **formulário** de envio relevante (Salvar, Excluir confirmado, Devolver, remover imagem, etc.) deve ter a classe **`js-estoque-form-busy`**.
+- Texto do botão durante o envio: padrão **«Salvando…»**; personalize com **`data-estoque-busy-label="…"`** no `<form>` (ex.: `Excluindo…`, `Devolvendo…`, `Removendo…`).
+- O script desabilita todos os **`button[type="submit"]`** do form (incluindo botões com atributo **`form="id-do-form"`**) e mostra spinner Bootstrap até:
+  - **POST página inteira**: até a navegação sair da página; ou
+  - **HTMX**: até `htmx:afterRequest` — se o form ainda estiver no DOM (erro de validação), os botões são reativados; se o conteúdo foi trocado, o estado some com o DOM; ou
+  - **Modal**: ao **`hidden.bs.modal`**, qualquer `form.js-estoque-form-busy` dentro do modal é reativado.
+
+## Exceções / casos especiais
+
+- **Movimentar saldo** (`js-movimentar-saldo-modal`): já usa `hx-disabled-elt` e spinner dedicado em `estoque-ui.css` — **não** adicionar `js-estoque-form-busy` para não duplicar comportamento.
+- **Busca / filtros** (ex.: `movimentar-busca-form` GET): não marcar.
+- Ações que **não** passam por `<form>` (ex.: `fetch` no JS) devem tratar duplo clique no próprio handler (desabilitar botão + feedback até conclusão ou erro).
+
+## Novos templates
+
+Ao criar modal ou página de estoque com submit importante, incluir `js-estoque-form-busy` e o label adequado em `data-estoque-busy-label` quando não for “Salvar” genérico.

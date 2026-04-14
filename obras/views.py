@@ -150,9 +150,20 @@ def _modal_obra_form(request, item):
 
     if request.method == 'POST':
         if item is not None:
-            form = ObraForm(request.POST, instance=item, empresa=empresa)
+            form = ObraForm(
+                request.POST,
+                instance=item,
+                empresa=empresa,
+                can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
+                or request.user.is_superuser,
+            )
         else:
-            form = ObraForm(request.POST, empresa=empresa)
+            form = ObraForm(
+                request.POST,
+                empresa=empresa,
+                can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
+                or request.user.is_superuser,
+            )
         if form.is_valid():
             if item is None:
                 obj = form.save(commit=False)
@@ -179,9 +190,18 @@ def _modal_obra_form(request, item):
             return resp
     else:
         if item is not None:
-            form = ObraForm(instance=item, empresa=empresa)
+            form = ObraForm(
+                instance=item,
+                empresa=empresa,
+                can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
+                or request.user.is_superuser,
+            )
         else:
-            form = ObraForm(empresa=empresa)
+            form = ObraForm(
+                empresa=empresa,
+                can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
+                or request.user.is_superuser,
+            )
 
     return render(
         request,
@@ -243,16 +263,18 @@ def _ctx_modal_copiar_obra(request, item, pk, form=None, erro_copia=None):
     empresa = _empresa(request)
     qs_dest = empresas_destino_para_copia(request.user, empresa)
     sem_destino = not qs_dest.exists()
+    pode_ver_valor = getattr(request, 'usuario_admin_empresa', False) or request.user.is_superuser
     valor_txt = '—'
-    if item.valor is not None:
+    if pode_ver_valor and item.valor is not None:
         valor_txt = (
             f'R$ {item.valor:,.2f}'.replace(',', 'v').replace('.', ',').replace('v', '.')
         )
     resumo = [
         {'label': 'Obra', 'valor': item.nome},
         {'label': 'Contratante', 'valor': item.contratante.nome},
-        {'label': 'Valor', 'valor': valor_txt},
     ]
+    if pode_ver_valor:
+        resumo.append({'label': 'Valor', 'valor': valor_txt})
     return {
         'cadastro_label': 'Obra',
         'empresa_origem': empresa,

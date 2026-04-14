@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}Requisições | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+<style>
+#req-lista-tbody .req-list-row { cursor: pointer; }
+.req-filtro-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.5rem 0.65rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+}
+.req-filtro-grupo label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.15rem;
+    white-space: nowrap;
+}
+.req-filtro-data {
+    width: 9.25rem;
+    min-width: 9.25rem;
+    max-width: 9.25rem;
+}
+.req-filtro-select {
+    min-width: 7.5rem;
+    max-width: 11rem;
+}
+.req-filtro-select--obra {
+    max-width: 13rem;
+}
+</style>
+<script>
+(function () {
+    try {
+        sessionStorage.removeItem('genesis:estoque:nova_requisicao:draft:v1');
+        sessionStorage.removeItem('genesis:estoque:nova_requisicao:clear_next');
+    } catch (e) {
+        // ignore
+    }
+})();
+</script>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Requisições</h2>
+        <p class="text-muted mb-0">
+            Período: {{ data_inicio|date:"d/m/Y" }} — {{ data_fim|date:"d/m/Y" }}
+        </p>
+        {% if requisicoes_lista_inclui_canceladas %}
+        <p class="small text-muted mb-0 mt-1">A lista inclui requisições canceladas (visível apenas para administradores da empresa).</p>
+        {% endif %}
+    </div>
+
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+        <a href="{% url 'estoque:nova_requisicao' empresa_id=request.empresa_ativa.pk %}?fresh=1"
+           class="estoque-btn estoque-btn-primary text-decoration-none">
+            <i class="bi bi-plus-lg"></i>
+            <span>Nova Requisição</span>
+        </a>
+        <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}?{{ buscar_anteriores_query }}"
+           class="estoque-btn estoque-btn-light text-decoration-none"
+           data-no-page-loading>
+            <i class="bi bi-search"></i>
+            <span>Últimos 30 dias</span>
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+    <div class="card-body py-3">
+        <form id="req-lista-filtro" method="get" class="req-filtro-bar">
+            <div class="req-filtro-grupo flex-shrink-0">
+                <label class="form-label fw-semibold text-muted mb-0 d-block" for="req-filtro-inicio">Início</label>
+                <input type="date"
+                       id="req-filtro-inicio"
+                       name="data_inicio"
+                       value="{{ data_inicio|date:'Y-m-d' }}"
+                       class="form-control form-control-sm rounded-3 req-filtro-data js-req-filtro-auto">
+            </div>
+            <div class="req-filtro-grupo flex-shrink-0">
+                <label class="form-label fw-semibold text-muted mb-0 d-block" for="req-filtro-fim">Fim</label>
+                <input type="date"
+                       id="req-filtro-fim"
+                       name="data_fim"
+                       value="{{ data_fim|date:'Y-m-d' }}"
+                       class="form-control form-control-sm rounded-3 req-filtro-data js-req-filtro-auto">
+            </div>
+            <div class="req-filtro-grupo flex-shrink-0">
+                <label class="form-label fw-semibold text-muted mb-0 d-block" for="req-filtro-solicitante">Solicitante</label>
+                <select name="solicitante" id="req-filtro-solicitante" class="form-select form-select-sm rounded-3 req-filtro-select js-req-filtro-auto">
+                    <option value="">Todos</option>
+                    {% for f in solicitantes_opts %}
+                        <option value="{{ f.pk }}"{% if solicitante_sel == f.pk %} selected{% endif %}>{{ f.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="req-filtro-grupo flex-shrink-0">
+                <label class="form-label fw-semibold text-muted mb-0 d-block" for="req-filtro-local">Local</label>
+                <select name="local" id="req-filtro-local" class="form-select form-select-sm rounded-3 req-filtro-select js-req-filtro-auto">
+                    <option value="">Todos</option>
+                    {% for loc in locais_opts %}
+                        <option value="{{ loc.pk }}"{% if local_sel == loc.pk %} selected{% endif %}>{{ loc.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="req-filtro-grupo flex-grow-1 flex-shrink-1" style="min-width: 7rem;">
+                <label class="form-label fw-semibold text-muted mb-0 d-block" for="req-filtro-obra">Obra</label>
+                <select name="obra" id="req-filtro-obra" class="form-select form-select-sm rounded-3 req-filtro-select req-filtro-select--obra js-req-filtro-auto w-100">
+                    <option value="">Todas</option>
+                    {% for ob in obras_opts %}
+                        <option value="{{ ob.pk }}"{% if obra_sel == ob.pk %} selected{% endif %}>{{ ob.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="req-filtro-grupo flex-shrink-0 ms-auto align-self-end">
+                <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}"
+                   class="btn btn-sm btn-outline-secondary rounded-3 text-nowrap">
+                    Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function () {
+    var form = document.getElementById('req-lista-filtro');
+    if (!form) return;
+    function submitFiltro() {
+        form.submit();
+    }
+    form.querySelectorAll('.js-req-filtro-auto').forEach(function (el) {
+        el.addEventListener('change', submitFiltro);
+    });
+})();
+</script>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if page_obj.object_list %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 text-nowrap">Data / hora</th>
+                        {% if requisicoes_lista_inclui_canceladas %}
+                        <th class="text-nowrap">Situação</th>
+                        {% endif %}
+                        <th>Solicitante</th>
+                        <th>Local</th>
+                        <th>Obra</th>
+                        <th>Almoxarife</th>
+                        <th class="pe-3 text-center" style="width: 1%;">Itens solicitados</th>
+                    </tr>
+                </thead>
+                <tbody id="req-lista-tbody">
+                    {% for r in page_obj %}
+                    <tr class="req-list-row"
+                        role="link"
+                        tabindex="0"
+                        data-req-detail-url="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=r.pk %}">
+                        <td class="ps-3 text-nowrap small text-muted">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                        {% if requisicoes_lista_inclui_canceladas %}
+                        <td class="text-nowrap">
+                            {% if r.is_ativa %}
+                                <span class="badge text-bg-success rounded-pill">Ativa</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary rounded-pill">Cancelada</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="fw-semibold">{{ r.solicitante }}</td>
+                        <td>{{ r.local|default:"—" }}</td>
+                        <td>{{ r.obra|default:"—" }}</td>
+                        <td>
+                            {% if r.almoxarife %}
+                                {{ r.almoxarife.nome_completo|default:r.almoxarife.username }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 text-center">
+                            {% if r.itens.all %}
+                                <button type="button"
+                                        class="estoque-btn estoque-btn-light js-estoque-modal-hx px-3"
+                                        title="Ver itens solicitados"
+                                        aria-label="Ver itens solicitados"
+                                        hx-get="{% url 'estoque:modal_requisicao_itens' empresa_id=request.empresa_ativa.pk pk=r.pk %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        data-no-global-loading
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPadrao">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <p class="mb-0">Nenhuma requisição nesta data.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="card-footer bg-white border-0">
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2" aria-label="Paginação">
+            <div class="small text-muted d-none d-sm-block">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </div>
+            <ul class="pagination pagination-sm mb-0 ms-sm-auto">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-3"
+                       href="?{% if query_sem_page %}{{ query_sem_page }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-3"
+                       href="?{% if query_sem_page %}{{ query_sem_page }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+<script>
+(function () {
+    var tbody = document.getElementById('req-lista-tbody');
+    if (!tbody) return;
+
+    function goDetail(tr) {
+        var u = tr.getAttribute('data-req-detail-url');
+        if (u) window.location.href = u;
+    }
+
+    tbody.addEventListener('click', function (e) {
+        if (e.target.closest('button, a')) return;
+        var tr = e.target.closest('tr.req-list-row');
+        if (tr) goDetail(tr);
+    });
+
+    tbody.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var tr = e.target.closest('tr.req-list-row');
+        if (!tr || e.target.closest('button, a')) return;
+        e.preventDefault();
+        goDetail(tr);
+    });
+})();
+</script>
+
+{% endblock %}
+

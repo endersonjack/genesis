@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Cancelar requisição #{{ requisicao.pk }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="mx-auto" style="max-width: 640px;">
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <h2 class="fw-bold h4 mb-2">Cancelar requisição #{{ requisicao.pk }}?</h2>
+            <p class="text-muted mb-4">
+                Os itens com quantidade serão <strong>devolvidos ao estoque</strong>.
+                A requisição permanecerá no sistema com situação <strong>cancelada</strong> e deixará de aparecer na lista e nas buscas do app.
+                Para alterar a situação depois, use o Admin.
+            </p>
+
+            {% if requisicao.itens.all %}
+                <h6 class="fw-semibold mb-2">Itens</h6>
+                <ul class="list-group list-group-flush rounded-3 border mb-4 small">
+                    {% for ri in requisicao.itens.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="me-2">{{ ri.item.descricao }}</span>
+                            <span class="text-nowrap text-muted">{{ ri.quantidade|floatformat:4|intcomma }} {{ ri.item.unidade_medida.abreviada }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <form method="post"
+                  action="{% url 'estoque:cancelar_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+                  class="d-flex flex-wrap gap-2 justify-content-end js-estoque-form-busy"
+                  data-estoque-busy-label="Cancelando…">
+                {% csrf_token %}
+                <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=requisicao.pk %}"
+                   class="estoque-btn estoque-btn-light text-decoration-none">Voltar</a>
+                <button type="submit" class="estoque-btn estoque-btn-danger">Cancelar requisição e devolver</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

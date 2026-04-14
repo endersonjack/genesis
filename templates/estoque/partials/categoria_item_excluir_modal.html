@@ -5,6 +5,8 @@
 
 <form
     method="post"
+    class="js-estoque-form-busy"
+    data-estoque-busy-label="Excluindo…"
     hx-post="{{ excluir_url }}"
     hx-target="#modal-content"
     hx-swap="innerHTML"

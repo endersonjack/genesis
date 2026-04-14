@@ -84,9 +84,12 @@ def _querystrings_por_pagina(request) -> dict[int, str]:
 @login_required
 def lista_auditoria(request):
     pode_ver_todos = bool(
-        getattr(request, 'usuario_admin_empresa', False) or request.user.is_superuser
+        request.user.is_superuser
+        or getattr(request, 'usuario_admin_empresa', False)
+        or getattr(request, 'usuario_mod_auditoria_total', False)
     )
-    if not pode_ver_todos:
+    pode_ver_somente_sua = bool(getattr(request, 'usuario_mod_auditoria_sua', False)) and not pode_ver_todos
+    if not (pode_ver_todos or pode_ver_somente_sua):
         raise PermissionDenied()
 
     qs = RegistroAuditoria.objects.filter(empresa=request.empresa_ativa).select_related(
@@ -105,7 +108,10 @@ def lista_auditoria(request):
     if acao_filtro not in valid_acoes:
         acao_filtro = ''
 
-    if pode_ver_todos and usuario_id.isdigit():
+    if pode_ver_somente_sua:
+        qs = qs.filter(usuario=request.user)
+        usuario_id = str(request.user.pk)
+    elif pode_ver_todos and usuario_id.isdigit():
         qs = qs.filter(usuario_id=int(usuario_id))
 
     qs = qs.filter(_q_modulo(modulo_filtro))
@@ -154,6 +160,7 @@ def lista_auditoria(request):
         {
             'page_obj': page,
             'pode_ver_todos': pode_ver_todos,
+            'pode_ver_somente_sua': pode_ver_somente_sua,
             'modulo_filtro_choices': MODULO_FILTRO_CHOICES,
             'acao_filtro_choices': RegistroAuditoria.ACAO_CHOICES,
             'usuarios_empresa': usuarios_empresa,

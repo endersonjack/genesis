@@ -79,32 +79,54 @@
 
     /* —— BR moeda / horas —— */
 
+    function _toPythonMoneyString(raw) {
+        var s = String(raw == null ? '' : raw).trim().replace(/\s/g, '');
+        if (!s) return '';
+        if (s.indexOf('-') !== -1) return '';
+
+        // pt-BR: 1.234,56  | python: 1234.56
+        if (s.indexOf(',') !== -1) {
+            s = s.replace(/[^\d.,]/g, '');
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+            s = s.replace(/[^\d.]/g, '');
+            // múltiplos pontos = milhares -> remove todos
+            if ((s.match(/\./g) || []).length > 1) {
+                s = s.replace(/\./g, '');
+            }
+        }
+
+        var parts = s.split('.');
+        if (parts.length > 2) return '';
+        var intp = (parts[0] || '').replace(/\D/g, '');
+        var frac = (parts[1] || '').replace(/\D/g, '');
+        if (!intp && !frac) return '';
+
+        // normaliza inteiro (mantém "0" se vazio)
+        intp = intp.replace(/^0+(?=\d)/, '');
+        if (!intp) intp = '0';
+
+        if (frac.length === 0) frac = '00';
+        else if (frac.length === 1) frac = frac + '0';
+        else if (frac.length > 2) frac = frac.slice(0, 2);
+
+        // se for 0.00, tratamos como vazio (padrão do sistema)
+        if (intp === '0' && frac === '00') return '';
+        return intp + '.' + frac;
+    }
+
     function brMoedaToPython(s) {
-        s = String(s || '')
-            .trim()
-            .replace(/\s/g, '');
-        if (!s) {
-            return '';
-        }
-        s = s.replace(/\./g, '').replace(',', '.');
-        var n = parseFloat(s);
-        if (isNaN(n) || n < 0) {
-            return '';
-        }
-        return n.toFixed(2);
+        return _toPythonMoneyString(s);
     }
 
     function pythonToBrMoeda(s) {
-        if (s === '' || s == null) {
-            return '';
-        }
-        var n = parseFloat(String(s).replace(',', '.'));
-        if (isNaN(n) || n < 0) {
-            return '';
-        }
-        var parts = n.toFixed(2).split('.');
-        var intp = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return intp + ',' + parts[1];
+        var py = _toPythonMoneyString(s);
+        if (!py) return '';
+        var parts = py.split('.');
+        var intp = parts[0];
+        var frac = parts[1] || '00';
+        intp = intp.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return intp + ',' + frac;
     }
 
     function brHoursToPython(s) {
@@ -155,17 +177,23 @@
         if (!d.length) {
             return '';
         }
-        if (d.length > 15) {
-            d = d.slice(0, 15);
+        // max_digits=16 (inclui centavos) no backend
+        if (d.length > 16) {
+            d = d.slice(0, 16);
         }
-        var n = parseInt(d, 10) / 100;
-        if (!isFinite(n) || n < 0) {
+        if (!/^\d+$/.test(d)) {
             return '';
         }
-        if (n === 0) {
+        if (parseInt(d, 10) === 0) {
             return '';
         }
-        return pythonToBrMoeda(n.toFixed(2));
+        // interpreta como centavos sem usar float
+        if (d.length === 1) return '0,0' + d;
+        if (d.length === 2) return '0,' + d;
+        var intp = d.slice(0, -2).replace(/^0+(?=\d)/, '');
+        var frac = d.slice(-2);
+        intp = intp.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return intp + ',' + frac;
     }
 
     /**
@@ -199,12 +227,14 @@
                 el.value = '';
                 return;
             }
-            var py = brMoedaToPython(pythonToBrMoeda(raw));
+            /* raw pode vir já em pt-BR (1.234,56) via initial do Django.
+               Normalizar primeiro para "python" (1234.56) e depois formatar para pt-BR. */
+            var py = brMoedaToPython(raw);
             if (!py || parseFloat(py) === 0) {
                 el.value = '';
                 return;
             }
-            el.value = pythonToBrMoeda(raw);
+            el.value = pythonToBrMoeda(py);
         }
 
         function onInput() {
@@ -213,7 +243,7 @@
 
         function onBlur() {
             var py = brMoedaToPython(el.value);
-            if (py === '' || parseFloat(py) === 0) {
+            if (py === '') {
                 el.value = '';
                 return;
             }

@@ -1,0 +1,127 @@
+{% load humanize %}
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-header bg-white border-0 pb-0">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+            <div>
+                <h5 class="fw-bold mb-1">Últimas movimentações</h5>
+                <p class="text-muted small mb-0">Registro das alterações em movimentar. Cada saldo é o valor no momento daquele evento. A busca considera descrição na auditoria e o item no cadastro (ID); ajustes diretos no Admin não aparecem aqui.</p>
+            </div>
+            <form method="get" class="d-flex gap-2 align-items-center">
+                {# preserva filtros atuais da página (q/categoria/situacao/page/log_page) #}
+                {% for k, v in request.GET.items %}
+                    {% if k != 'log_q' and k != 'log_page' %}
+                        <input type="hidden" name="{{ k }}" value="{{ v }}">
+                    {% endif %}
+                {% endfor %}
+                <input type="text"
+                       name="log_q"
+                       value="{{ log_busca|default:'' }}"
+                       class="form-control form-control-sm rounded-3"
+                       placeholder="Buscar item…"
+                       style="max-width: 240px;">
+                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3">Buscar</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body pt-3 p-0">
+        {% if logs_page_obj and logs_page_obj.object_list %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 text-nowrap">Data / hora</th>
+                        <th>Usuário</th>
+                        <th>Item</th>
+                        <th class="text-nowrap">Ação</th>
+                        <th class="text-end text-nowrap">Quantidade</th>
+                        <th class="text-end text-nowrap pe-3">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in logs_page_obj %}
+                    <tr>
+                        <td class="ps-3 text-nowrap small text-muted">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td class="text-nowrap">
+                            {% if r.usuario %}
+                                {{ r.usuario.nome_completo|default:r.usuario.username }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-semibold">
+                            {{ r.mov_item_label }}
+                        </td>
+                        <td class="text-nowrap">
+                            {% if r.mov_acao_kind == 'manual_add' %}
+                                <span class="badge text-bg-primary rounded-pill">Adicionado</span>
+                            {% elif r.mov_acao_kind == 'manual_ret' %}
+                                <span class="badge text-bg-danger rounded-pill">Retirada</span>
+                            {% elif r.mov_acao_kind == 'req_retirada' %}
+                                {% if r.mov_req_url %}
+                                <a href="{{ r.mov_req_url }}" class="badge text-bg-danger rounded-pill text-decoration-none">Retirada em Requisição</a>
+                                {% else %}
+                                <span class="badge text-bg-danger rounded-pill" title="Requisição não encontrada ou excluída">Retirada em Requisição</span>
+                                {% endif %}
+                            {% elif r.mov_acao_kind == 'req_devolucao' %}
+                                {% if r.mov_req_url %}
+                                <a href="{{ r.mov_req_url }}" class="badge text-bg-success rounded-pill text-decoration-none">Devolução em Requisição</a>
+                                {% else %}
+                                <span class="badge text-bg-success rounded-pill" title="Requisição não encontrada ou excluída">Devolução em Requisição</span>
+                                {% endif %}
+                            {% elif r.mov_acao_kind == 'req_meta' and r.mov_req_url %}
+                                <a href="{{ r.mov_req_url }}" class="badge text-bg-secondary rounded-pill text-decoration-none">Requisição</a>
+                            {% elif r.mov_req_url %}
+                                <a href="{{ r.mov_req_url }}" class="badge text-bg-secondary rounded-pill text-decoration-none">Requisição</a>
+                            {% else %}
+                                <span class="badge text-bg-secondary rounded-pill">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">{{ r.mov_qtd_label }}</td>
+                        <td class="text-end text-nowrap pe-3">{{ r.mov_saldo_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if logs_page_obj.paginator.num_pages > 1 %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Páginas do log">
+            <div class="small text-muted d-none d-sm-block">
+                Página {{ logs_page_obj.number }} de {{ logs_page_obj.paginator.num_pages }}
+            </div>
+            <ul class="pagination pagination-sm mb-0 ms-sm-auto">
+                {% if logs_page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-3"
+                       href="?{% if log_query %}{{ log_query }}&{% endif %}log_page={{ logs_page_obj.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                {% endif %}
+
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ logs_page_obj.number }}</span>
+                </li>
+
+                {% if logs_page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-3"
+                       href="?{% if log_query %}{{ log_query }}&{% endif %}log_page={{ logs_page_obj.next_page_number }}">Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            {% if log_busca %}
+                <p class="mb-0">Nenhuma movimentação encontrada para a busca.</p>
+            {% else %}
+                <p class="mb-0">Nenhuma movimentação registrada ainda.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+

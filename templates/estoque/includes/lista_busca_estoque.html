@@ -1,20 +1,23 @@
 {# Parâmetros: list_url_name, busca_placeholder #}
 <div class="mb-3">
- <label class="visually-hidden" for="estoque-list-q">Buscar</label>
-    <div class="input-group shadow-sm rounded-3 overflow-hidden" style="max-width: 28rem;">
-        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-        <input type="search"
-               name="q"
-               id="estoque-list-q"
-               class="form-control border-start-0"
-               value="{{ q|default:'' }}"
-               placeholder="{{ busca_placeholder|default:'Buscar…' }}"
-               autocomplete="off"
-               data-no-global-loading
-               hx-get="{% url list_url_name empresa_id=request.empresa_ativa.pk %}"
-               hx-target="#estoque-list-inner"
-               hx-trigger="keyup changed delay:400ms, search"
-               hx-indicator="#estoque-list-hx-skeleton"
-               hx-push-url="true">
+    <label class="visually-hidden" for="estoque-list-q">Buscar</label>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden flex-grow-1" style="max-width: 28rem; min-width: 12rem;">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="search"
+                   name="q"
+                   id="estoque-list-q"
+                   class="form-control border-start-0"
+                   value="{{ q|default:'' }}"
+                   placeholder="{{ busca_placeholder|default:'Buscar…' }}"
+                   autocomplete="off"
+                   data-no-global-loading
+                   hx-get="{% url list_url_name empresa_id=request.empresa_ativa.pk %}"
+                   hx-target="#estoque-list-inner"
+                   hx-trigger="keyup changed delay:400ms, search"
+                   hx-indicator="#estoque-list-hx-skeleton"
+                   hx-push-url="true">
+        </div>
+        {% include 'estoque/includes/leitor_estoque_toggle.html' with leitor_capture_id='estoque-lista-leitor-cap' %}
     </div>
 </div>

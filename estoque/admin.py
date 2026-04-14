@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import CategoriaFerramenta, CategoriaItem, Item, ItemImagem, UnidadeMedida
+from .models import (
+    CategoriaFerramenta,
+    CategoriaItem,
+    Item,
+    ItemImagem,
+    RequisicaoEstoque,
+    RequisicaoEstoqueItem,
+    UnidadeMedida,
+)
 
 
 @admin.register(CategoriaItem)
@@ -43,6 +51,23 @@ class ItemAdmin(admin.ModelAdmin):
     search_fields = ('descricao', 'marca')
     ordering = ('empresa', 'descricao')
     autocomplete_fields = ('categoria', 'unidade_medida', 'fornecedor')
+
+
+class RequisicaoEstoqueItemInline(admin.TabularInline):
+    model = RequisicaoEstoqueItem
+    extra = 0
+    autocomplete_fields = ('item',)
+    readonly_fields = ('pk',)
+
+
+@admin.register(RequisicaoEstoque)
+class RequisicaoEstoqueAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'empresa', 'status', 'solicitante', 'criado_em')
+    list_filter = ('empresa', 'status')
+    search_fields = ('pk', 'solicitante__nome')
+    autocomplete_fields = ('empresa', 'solicitante', 'local', 'obra', 'almoxarife')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    inlines = (RequisicaoEstoqueItemInline,)
 
 
 @admin.register(ItemImagem)

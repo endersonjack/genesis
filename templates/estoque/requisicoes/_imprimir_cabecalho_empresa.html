@@ -1,0 +1,25 @@
+{# Cabeçalho espelhando o PDF (logo + nome / razão + linhas CNPJ, tel, e-mail). Borda inferior fica no .req-pdf-top-row. #}
+<div class="req-pdf-empresa-header">
+    {% if empresa.logo %}
+    <div class="req-pdf-empresa-logo">
+        <img src="{{ empresa.logo.url }}" alt="">
+    </div>
+    {% endif %}
+    <div class="req-pdf-empresa-text">
+        <div class="req-pdf-nome">{{ empresa.nome_fantasia|default:empresa.razao_social }}</div>
+        {% if empresa.nome_fantasia and empresa.razao_social %}
+            {% if empresa.nome_fantasia != empresa.razao_social %}
+            <div class="req-pdf-razao">{{ empresa.razao_social }}</div>
+            {% endif %}
+        {% endif %}
+        {% if empresa.cnpj %}
+        <div class="req-pdf-meta-line">CNPJ: {{ empresa.cnpj }}</div>
+        {% endif %}
+        {% if empresa.telefone %}
+        <div class="req-pdf-meta-line">Tel: {{ empresa.telefone }}</div>
+        {% endif %}
+        {% if empresa.email %}
+        <div class="req-pdf-meta-line">E-mail: {{ empresa.email }}</div>
+        {% endif %}
+    </div>
+</div>

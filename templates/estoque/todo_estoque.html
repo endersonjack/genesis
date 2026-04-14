@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}Todo o estoque | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Todo o Estoque</h2>
+        <p class="text-muted mb-0">Busca avançada de itens e visão geral do estoque.</p>
+    </div>
+
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Estoque</span>
+        </a>
+        <a href="{% url 'estoque:movimentar_estoque' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-primary text-decoration-none">
+            <i class="bi bi-arrow-left-right"></i>
+            <span>Movimentar</span>
+        </a>
+        <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-box-seam"></i>
+            <span>Itens</span>
+        </a>
+    </div>
+</div>
+
+<form id="todo-estoque-busca-form"
+      class="row g-2 g-md-3 mb-3 align-items-end"
+      method="get"
+      action="{% url 'estoque:todo_estoque' empresa_id=request.empresa_ativa.pk %}"
+      hx-get="{% url 'estoque:todo_estoque' empresa_id=request.empresa_ativa.pk %}"
+      hx-target="#todo-estoque-list-inner"
+      hx-swap="innerHTML"
+      hx-indicator="#todo-estoque-list-hx-skeleton"
+      hx-push-url="true"
+      hx-trigger="change from:select, keyup changed delay:400ms from:#todo-estoque-busca-q, submit"
+      data-no-global-loading>
+    <input type="hidden" name="partial" value="todo">
+    <input type="hidden" name="ordem" value="{{ todo_ordem }}">
+    <input type="hidden" name="dir" value="{{ todo_dir }}">
+    <div class="col-12 col-md-5 col-lg-4">
+        <label class="form-label small text-muted mb-1" for="todo-estoque-busca-q">Nome, marca ou categoria</label>
+        <div class="d-flex align-items-stretch gap-2">
+            <div class="input-group shadow-sm rounded-3 overflow-hidden flex-grow-1" style="min-width: 0;">
+                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="search"
+                       name="q"
+                       id="todo-estoque-busca-q"
+                       class="form-control border-start-0"
+                       value="{{ q|default:'' }}"
+                       placeholder="Buscar… (use #todos para ignorar o texto)"
+                       autocomplete="off">
+            </div>
+            <div class="d-flex align-items-center">
+                {% include 'estoque/includes/leitor_estoque_toggle.html' with leitor_capture_id='todo-estoque-leitor-cap' %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <label class="form-label small text-muted mb-1" for="todo-estoque-busca-categoria">Categoria</label>
+        <select name="categoria"
+                id="todo-estoque-busca-categoria"
+                class="form-select shadow-sm rounded-3">
+            <option value="">Todas</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.pk }}"{% if cat.pk|stringformat:"s" == categoria_filtro %} selected{% endif %}>{{ cat.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3 col-lg-3">
+        <label class="form-label small text-muted mb-1" for="todo-estoque-busca-situacao">Situação</label>
+        <select name="situacao"
+                id="todo-estoque-busca-situacao"
+                class="form-select shadow-sm rounded-3">
+            <option value="" {% if not situacao_filtro %}selected{% endif %}>Todas</option>
+            <option value="atencao" {% if situacao_filtro == 'atencao' %}selected{% endif %}>Zerados ou insuficientes</option>
+            <option value="zerado" {% if situacao_filtro == 'zerado' %}selected{% endif %}>Zerado</option>
+            <option value="abaixo_min" {% if situacao_filtro == 'abaixo_min' %}selected{% endif %}>Abaixo do mínimo</option>
+        </select>
+    </div>
+    <div class="col-12 col-lg-2 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-secondary rounded-3 d-none d-md-inline-flex align-items-center">
+            <i class="bi bi-funnel me-1"></i> Aplicar
+        </button>
+        <a href="{% url 'estoque:todo_estoque' empresa_id=request.empresa_ativa.pk %}"
+           class="btn btn-outline-secondary rounded-3 align-self-end">
+            Limpar
+        </a>
+    </div>
+</form>
+
+<div id="todo-estoque-list-panel" class="estoque-list-panel">
+    <div id="todo-estoque-list-hx-skeleton" class="htmx-indicator estoque-list-hx-skeleton">
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row short"></div>
+    </div>
+    <div id="todo-estoque-list-inner">
+        {% include 'estoque/_todo_estoque_resultados.html' %}
+    </div>
+</div>
+
+<div class="mt-4">
+    {% include 'estoque/_todo_estoque_resumo.html' %}
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+{% include 'estoque/includes/estoque_edit_item_from_url_script.html' %}
+<script>
+(function () {
+    'use strict';
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        var t = e.detail && e.detail.target;
+        if (!t || t.id !== 'todo-estoque-list-inner') return;
+        var form = document.getElementById('todo-estoque-busca-form');
+        if (!form) return;
+        var params = new URLSearchParams(window.location.search || '');
+        var o = form.querySelector('input[name="ordem"]');
+        var d = form.querySelector('input[name="dir"]');
+        if (o && params.has('ordem')) o.value = params.get('ordem');
+        if (d && params.has('dir')) d.value = params.get('dir');
+    });
+})();
+</script>
+{% endblock %}
+

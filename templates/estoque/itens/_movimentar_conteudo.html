@@ -18,7 +18,7 @@
                 <tbody>
                     {% for it in page_obj %}
                     <tr class="estoque-row-modal js-estoque-modal-hx"
-                        hx-get="{% url 'estoque:modal_editar_item' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
+                        hx-get="{% url 'estoque:modal_movimentar_saldo' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
                         hx-target="#modal-content"
                         hx-swap="innerHTML"
                         data-no-global-loading
@@ -39,27 +39,22 @@
                         <td>{{ it.categoria.nome }}</td>
                         <td class="text-nowrap">{{ it.unidade_medida.abreviada }}</td>
                         <td class="text-end text-nowrap">
-                            <button type="button"
-                                    class="btn btn-sm rounded-3 movimentar-saldo-btn js-estoque-modal-hx{% if it.quantidade_estoque <= 0 %} movimentar-saldo-btn--zerado{% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %} movimentar-saldo-btn--abaixo{% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %} movimentar-saldo-btn--igual{% else %} movimentar-saldo-btn--acima{% endif %}"
-                                    onclick="event.stopPropagation();"
-                                    hx-get="{% url 'estoque:modal_movimentar_saldo' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
-                                    hx-target="#modal-content"
-                                    hx-swap="innerHTML"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#modalPadrao"
-                                    data-no-global-loading
-                                    title="Movimentar estoque">
+                            <span class="btn btn-sm rounded-3 movimentar-saldo-btn{% if it.quantidade_estoque <= 0 %} movimentar-saldo-btn--zerado{% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %} movimentar-saldo-btn--abaixo{% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %} movimentar-saldo-btn--igual{% else %} movimentar-saldo-btn--acima{% endif %}"
+                                  style="pointer-events:none;"
+                                  aria-hidden="true">
                                 {{ it.quantidade_estoque|floatformat:4|intcomma }}
-                            </button>
+                            </span>
                         </td>
                         <td class="text-end text-nowrap">{{ it.quantidade_minima|floatformat:4|intcomma }}</td>
                         <td class="pe-3">
                             {% if it.quantidade_estoque <= 0 %}
-                                <span class="badge text-bg-warning rounded-pill">Zerado</span>
+                                <span class="badge text-bg-danger rounded-pill">Zerado</span>
                             {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
-                                <span class="badge text-bg-danger rounded-pill">Abaixo do mín.</span>
-                            {% else %}
+                                <span class="badge text-bg-warning rounded-pill">Insuficiente</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %}
                                 <span class="badge text-bg-secondary rounded-pill">Atenção</span>
+                            {% else %}
+                                <span class="badge text-bg-success rounded-pill">Suficiente</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -132,7 +127,8 @@
             {% if movimentar_busca_expandida %}
                 <p class="mb-0">Nenhum item encontrado com os filtros atuais.</p>
             {% else %}
-                <p class="mb-0">Nenhum item ativo com estoque zerado ou abaixo do mínimo no momento.</p>
+                <p class="mb-1 fw-semibold text-body-secondary">Busque itens para movimentar</p>
+                <p class="mb-0 small">Informe nome, marca, categoria ou situação nos filtros acima. Para aparecer todos os itens use <strong>#todos</strong>.</p>
             {% endif %}
         </div>
         {% endif %}

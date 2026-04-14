@@ -1,0 +1,104 @@
+{% load humanize %}
+<div class="estoque-board-card mb-4">
+    <div class="estoque-board-body">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+            <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+                <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;background:var(--estoque-cor-requisicoes);flex-shrink:0;">
+                    <i class="bi bi-box-seam" style="font-size:1.65rem;"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Estoque</p>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <h3 class="fw-bold mb-0" style="color:#0f172a;">Atenção</h3>
+                        {% if itens_atencao_estoque %}
+                        <span class="badge rounded-pill bg-warning text-dark d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold fs-6">
+                            <i class="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true"></i>
+                            Há itens zerados ou insuficientes
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted mb-0 small" style="max-width:42rem;">
+                        Itens com saldo zerado ou abaixo do mínimo cadastrado. Clique em uma linha para movimentar.
+                    </p>
+                </div>
+            </div>
+            <a href="{% url 'estoque:todo_estoque' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-lg btn-outline-secondary rounded-3 fw-semibold px-4 flex-shrink-0 align-self-start"
+               style="min-width:min(100%,260px);">
+                Ver Todo o Estoque
+                <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        {% if itens_atencao_estoque %}
+        <div class="table-responsive estoque-dash-estoque-scroll">
+            <table class="table table-hover align-middle mb-0 bg-white rounded-3 overflow-hidden">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Und.</th>
+                        <th class="text-end">Saldo</th>
+                        <th class="text-end">Mín.</th>
+                        <th class="pe-3">Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for it in itens_atencao_estoque %}
+                    <tr class="estoque-row-modal js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_movimentar_saldo' empresa_id=request.empresa_ativa.pk pk=it.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <td class="ps-3">
+                            {% with im=it.imagens.first %}
+                                {% if im %}
+                                    <span class="estoque-item-thumb-wrap">
+                                        <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                    </span>
+                                {% else %}
+                                    <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="fw-semibold">{{ it.descricao|truncatechars:80 }}</td>
+                        <td>{{ it.categoria.nome }}</td>
+                        <td class="text-nowrap">{{ it.unidade_medida.abreviada }}</td>
+                        <td class="text-end text-nowrap">
+                            <span class="btn btn-sm rounded-3 movimentar-saldo-btn{% if it.quantidade_estoque <= 0 %} movimentar-saldo-btn--zerado{% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %} movimentar-saldo-btn--abaixo{% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %} movimentar-saldo-btn--igual{% else %} movimentar-saldo-btn--acima{% endif %}"
+                                  style="pointer-events:none;"
+                                  aria-hidden="true">
+                                {{ it.quantidade_estoque|floatformat:4|intcomma }}
+                            </span>
+                        </td>
+                        <td class="text-end text-nowrap">{{ it.quantidade_minima|floatformat:4|intcomma }}</td>
+                        <td class="pe-3">
+                            {% if it.quantidade_estoque <= 0 %}
+                                <span class="badge text-bg-danger rounded-pill">Zerado</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
+                                <span class="badge text-bg-warning rounded-pill">Insuficiente</span>
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %}
+                                <span class="badge text-bg-secondary rounded-pill">Atenção</span>
+                            {% else %}
+                                <span class="badge text-bg-success rounded-pill">Suficiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-2 text-end">
+            <a href="{% url 'estoque:todo_estoque' empresa_id=request.empresa_ativa.pk %}?situacao=atencao"
+               class="estoque-dash-atencao-ver-todos text-decoration-none">
+                Ver todos os itens zerados ou insuficientes →
+            </a>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Nenhum item ativo com estoque zerado ou abaixo do mínimo no momento.</p>
+        {% endif %}
+    </div>
+</div>

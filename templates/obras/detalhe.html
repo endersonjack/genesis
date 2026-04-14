@@ -30,10 +30,12 @@
             <dd class="col-sm-9">{{ obra.endereco|default:"—"|linebreaksbr }}</dd>
             <dt class="col-sm-3 text-muted">CNO</dt>
             <dd class="col-sm-9">{{ obra.cno|default:"—" }}</dd>
-            <dt class="col-sm-3 text-muted">Valor</dt>
-            <dd class="col-sm-9">
-                {% if obra.valor is not None %}R$ {{ obra.valor|floatformat:2 }}{% else %}—{% endif %}
-            </dd>
+            {% if request.usuario_admin_empresa or request.user.is_superuser %}
+                <dt class="col-sm-3 text-muted">Valor</dt>
+                <dd class="col-sm-9">
+                    {% if obra.valor is not None %}R$ {{ obra.valor|floatformat:2 }}{% else %}—{% endif %}
+                </dd>
+            {% endif %}
             <dt class="col-sm-3 text-muted">Secretaria</dt>
             <dd class="col-sm-9">{{ obra.secretaria|default:"—" }}</dd>
             <dt class="col-sm-3 text-muted">Gestor</dt>

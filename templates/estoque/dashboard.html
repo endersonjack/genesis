@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Estoque | Genesis ERP{% endblock %}
 
@@ -16,25 +17,40 @@
         height: 100%;
     }
     .estoque-board-body { padding: 1.25rem; background: #f8fafc; }
-    .mini-cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 1rem;
+    .estoque-pages {
+        --estoque-cor-requisicoes: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
     }
-    .mini-card {
-        background: #fff;
+    .estoque-board-req-btn {
+        background-color: var(--estoque-cor-requisicoes) !important;
+        border-color: var(--estoque-cor-requisicoes) !important;
+        color: #fff !important;
+    }
+    .estoque-board-req-btn:hover,
+    .estoque-board-req-btn:focus {
+        filter: brightness(0.93);
+        color: #fff !important;
+    }
+    .estoque-dash-estoque-scroll {
+        max-height: 22rem;
         border: 1px solid #e2e8f0;
-        border-radius: 1rem;
-        padding: 1rem;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        border-radius: 0.75rem;
     }
-    .mini-card-value { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+    .estoque-dash-atencao-ver-todos {
+        color: var(--estoque-cor-requisicoes) !important;
+        font-weight: 700;
+    }
+    .estoque-dash-atencao-ver-todos:hover,
+    .estoque-dash-atencao-ver-todos:focus {
+        color: var(--estoque-cor-requisicoes) !important;
+        filter: brightness(0.88);
+        text-decoration: underline !important;
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">Estoque</h2>
-        <p class="text-muted mb-0">Visão geral e cadastros auxiliares.</p>
+        <p class="text-muted mb-0">Visão geral do estoque.</p>
     </div>
 
     <div class="estoque-top-actions">
@@ -55,6 +71,8 @@
             <i class="bi bi-box-seam"></i>
             <span>Itens</span>
         </a>
+
+        {% include 'estoque/includes/leitor_estoque_toggle.html' with leitor_capture_id='dash-estoque-leitor-cap' %}
 
         <div class="dropdown">
             <button type="button"
@@ -100,36 +118,36 @@
 
 <div class="estoque-board-card mb-4">
     <div class="estoque-board-body">
-        <h3 class="h6 fw-bold text-uppercase text-muted mb-3">Resumo de cadastros</h3>
-        <div class="mini-cards-grid">
-            <div class="mini-card">
-                <div class="small text-muted mb-1">Categorias de itens</div>
-                <div class="mini-card-value">{{ qtd_categorias_itens }}</div>
-                <a href="{% url 'estoque:lista_categorias_itens' empresa_id=request.empresa_ativa.pk %}"
-                   class="btn btn-sm btn-outline-primary rounded-3 mt-2">Gerenciar</a>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;background:var(--estoque-cor-requisicoes);">
+                    <i class="bi bi-clipboard-check" style="font-size:1.65rem;"></i>
+                </div>
+                <div>
+                    <p class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Área principal</p>
+                    <h3 class="fw-bold mb-1" style="color:#0f172a;">Requisições</h3>
+                    <p class="text-muted mb-0" style="max-width:42rem;">
+                        Retiradas do estoque com controle de solicitante, local, obra, almoxarife e itens.
+                    </p>
+                </div>
             </div>
-            <div class="mini-card">
-                <div class="small text-muted mb-1">Categorias de ferramentas</div>
-                <div class="mini-card-value">{{ qtd_categorias_ferramentas }}</div>
-                <a href="{% url 'estoque:lista_categorias_ferramentas' empresa_id=request.empresa_ativa.pk %}"
-                   class="btn btn-sm btn-outline-primary rounded-3 mt-2">Gerenciar</a>
-            </div>
-            <div class="mini-card">
-                <div class="small text-muted mb-1">Unidades de medida</div>
-                <div class="mini-card-value">{{ qtd_unidades_medida }}</div>
-                <a href="{% url 'estoque:lista_unidades_medida' empresa_id=request.empresa_ativa.pk %}"
-                   class="btn btn-sm btn-outline-primary rounded-3 mt-2">Gerenciar</a>
-            </div>
-            <div class="mini-card">
-                <div class="small text-muted mb-1">Itens</div>
-                <div class="mini-card-value">{{ qtd_itens_cadastro }}</div>
-                <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
-                   class="btn btn-sm btn-outline-primary rounded-3 mt-2">Gerenciar</a>
-            </div>
+            <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-lg estoque-board-req-btn rounded-3 fw-semibold px-4"
+               style="min-width:min(100%,280px);">
+                Abrir Requisições
+                <i class="bi bi-arrow-right ms-1"></i>
+            </a>
         </div>
-        <p class="text-muted small mt-3 mb-0">
-            Use <strong>Cadastros</strong> para categorias, unidades e itens. Em breve: movimentações e ferramentas.
-        </p>
     </div>
 </div>
+
+{% include 'estoque/dashboard_itens_atencao.html' %}
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+<script src="{% static 'js/estoque-movimentar-saldo-modal.js' %}"></script>
+{% include 'estoque/includes/estoque_edit_item_from_url_script.html' %}
 {% endblock %}

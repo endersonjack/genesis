@@ -30,9 +30,11 @@
         {% if form.cno.errors %}<div class="text-danger small">{{ form.cno.errors }}</div>{% endif %}
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
-        {{ form.valor }}
-        {% if form.valor.errors %}<div class="text-danger small">{{ form.valor.errors }}</div>{% endif %}
+        {% if form.valor %}
+            <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+            {{ form.valor }}
+            {% if form.valor.errors %}<div class="text-danger small">{{ form.valor.errors }}</div>{% endif %}
+        {% endif %}
     </div>
     <div class="col-md-4">
         <label class="form-label fw-semibold" for="{{ form.secretaria.id_for_label }}">{{ form.secretaria.label }}</label>

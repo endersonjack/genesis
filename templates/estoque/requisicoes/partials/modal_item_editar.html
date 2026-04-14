@@ -1,0 +1,85 @@
+{% load humanize %}
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold mb-0">Editar item</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<div class="modal-body pt-2">
+    {% if erro %}
+        <div class="alert alert-danger mb-3">{{ erro }}</div>
+    {% endif %}
+
+    {% if requisicao_bloqueada %}
+        <div class="alert alert-warning mb-0">
+            Esta requisição está <strong>cancelada</strong>. Não é possível alterar ou devolver itens pelo aplicativo.
+        </div>
+    {% else %}
+    <div class="mb-3">
+        <div class="fw-semibold">{{ ri.item.descricao }}</div>
+        <div class="text-muted small">
+            {{ ri.item.categoria.nome }} · {{ ri.item.unidade_medida.abreviada }}
+        </div>
+    </div>
+
+    <form id="req-item-edit-form"
+          method="post"
+          class="js-estoque-form-busy"
+          hx-post="{% url 'estoque:modal_editar_item_requisicao' empresa_id=request.empresa_ativa.pk pk=ri.pk %}{% if retorno_next %}?next={{ retorno_next|urlencode }}{% endif %}"
+          hx-target="#modal-content"
+          hx-swap="innerHTML"
+          data-no-global-loading>
+        {% csrf_token %}
+        {% if retorno_next %}
+            <input type="hidden" name="next" value="{{ retorno_next }}">
+        {% endif %}
+        <div class="mb-2">
+            <label class="form-label fw-semibold" for="req-item-qty">Quantidade</label>
+            <input type="number"
+                   class="form-control rounded-3"
+                   id="req-item-qty"
+                   name="quantidade"
+                   step="0.0001"
+                   min="0"
+                   value="{{ ri.quantidade|floatformat:4 }}">
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<div class="modal-footer border-0 pt-0 d-flex justify-content-between gap-2 flex-wrap">
+    {% if not requisicao_bloqueada %}
+    <form method="post"
+          hx-post="{% url 'estoque:devolver_item_requisicao' empresa_id=request.empresa_ativa.pk pk=ri.pk %}{% if retorno_next %}?next={{ retorno_next|urlencode }}{% endif %}"
+          hx-target="#modal-content"
+          hx-swap="innerHTML"
+          data-no-global-loading
+          class="m-0 d-flex flex-column align-items-stretch gap-2 js-estoque-form-busy"
+          data-estoque-busy-label="Devolvendo…">
+        {% csrf_token %}
+        {% if retorno_next %}
+            <input type="hidden" name="next" value="{{ retorno_next }}">
+        {% endif %}
+        <div>
+            <label class="form-label fw-semibold mb-1" for="req-item-devolver-qty">Quantidade a devolver</label>
+            <input type="number"
+                   class="form-control rounded-3"
+                   id="req-item-devolver-qty"
+                   name="quantidade_devolver"
+                   step="0.0001"
+                   min="0.0001"
+                   max="{{ ri.quantidade|floatformat:4 }}"
+                   value="{{ ri.quantidade|floatformat:4 }}">
+            <div class="form-text mb-0">Devolução total remove o item da requisição.</div>
+        </div>
+        <button type="submit" class="estoque-btn estoque-btn-light">
+            Devolver
+        </button>
+    </form>
+    <div class="d-flex gap-2 ms-auto">
+        <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="estoque-btn estoque-btn-primary" form="req-item-edit-form">Salvar</button>
+    </div>
+    {% else %}
+    <button type="button" class="estoque-btn estoque-btn-light ms-auto" data-bs-dismiss="modal">Fechar</button>
+    {% endif %}
+</div>
