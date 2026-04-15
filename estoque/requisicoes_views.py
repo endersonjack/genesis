@@ -465,9 +465,14 @@ def editar_requisicao(request, pk: int):
                         )
 
                     messages.success(request, 'Requisição atualizada.')
-                    return redirect_empresa(
-                        request, 'estoque:detalhe_requisicao', kwargs={'pk': req.pk}
+                    detalhe_url = (
+                        reverse_empresa(
+                            request, 'estoque:detalhe_requisicao', kwargs={'pk': req.pk}
+                        )
+                        + '?'
+                        + urlencode({'limpar_rascunho_edicao': '1'})
                     )
+                    return redirect(detalhe_url)
                 except ValueError as exc:
                     msg = str(exc)
                     if msg.startswith('saldo_insuficiente:'):
@@ -746,7 +751,12 @@ def nova_requisicao(request):
                     )
 
                 messages.success(request, 'Requisição cadastrada e estoque movimentado.')
-                return redirect_empresa(request, 'estoque:requisicoes')
+                lista_url = (
+                    reverse_empresa(request, 'estoque:requisicoes')
+                    + '?'
+                    + urlencode({'limpar_rascunho_nova': '1'})
+                )
+                return redirect(lista_url)
             except ValueError:
                 # Mensagens já foram adicionadas; rollback automático no atomic.
                 # Re-bind do formset sem instance para re-renderizar a página com os mesmos índices do POST.

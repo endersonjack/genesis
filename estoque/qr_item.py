@@ -6,12 +6,21 @@ from io import BytesIO
 # Texto codificado no QR. Formato atual usa hífen (evita ':' no modo teclado ABNT → 'Ç').
 # Formato legado com ':' continua aceite no parse (+ normalização de Ç).
 QR_PAYLOAD_PREFIX = 'GENESIS-ESTQ'
+QR_PAYLOAD_PREFIX_FERR = 'GENESIS-FERR'
 _PAYLOAD_RE_DASH = re.compile(
     rf'^{re.escape(QR_PAYLOAD_PREFIX)}-(?P<empresa>\d+)-(?P<item>\d+)\s*$',
     re.IGNORECASE | re.ASCII,
 )
 _PAYLOAD_RE_COLON = re.compile(
     rf'^{re.escape(QR_PAYLOAD_PREFIX)}:(?P<empresa>\d+):(?P<item>\d+)\s*$',
+    re.IGNORECASE | re.ASCII,
+)
+_PAYLOAD_FERR_DASH = re.compile(
+    rf'^{re.escape(QR_PAYLOAD_PREFIX_FERR)}-(?P<empresa>\d+)-(?P<ferramenta>\d+)\s*$',
+    re.IGNORECASE | re.ASCII,
+)
+_PAYLOAD_FERR_COLON = re.compile(
+    rf'^{re.escape(QR_PAYLOAD_PREFIX_FERR)}:(?P<empresa>\d+):(?P<ferramenta>\d+)\s*$',
     re.IGNORECASE | re.ASCII,
 )
 
@@ -29,6 +38,10 @@ def _normalize_wedge_qr_string(s: str) -> str:
 
 def build_item_qr_payload(empresa_pk: int, item_pk: int) -> str:
     return f'{QR_PAYLOAD_PREFIX}-{int(empresa_pk)}-{int(item_pk)}'
+
+
+def build_ferramenta_qr_payload(empresa_pk: int, ferramenta_pk: int) -> str:
+    return f'{QR_PAYLOAD_PREFIX_FERR}-{int(empresa_pk)}-{int(ferramenta_pk)}'
 
 
 def parse_item_qr_payload(raw: str):
@@ -54,6 +67,29 @@ def parse_item_qr_payload(raw: str):
     m = _PAYLOAD_RE_COLON.match(s_colon)
     if m:
         return int(m.group('empresa')), int(m.group('item'))
+
+    return None
+
+
+def parse_ferramenta_qr_payload(raw: str):
+    """
+    Retorna (empresa_pk, ferramenta_pk) ou None se inválido.
+    Mesma convenção de hífen / dois-pontos (e Ç) do payload de item.
+    """
+    if raw is None:
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+
+    m = _PAYLOAD_FERR_DASH.match(s)
+    if m:
+        return int(m.group('empresa')), int(m.group('ferramenta'))
+
+    s_colon = _normalize_wedge_qr_string(s)
+    m = _PAYLOAD_FERR_COLON.match(s_colon)
+    if m:
+        return int(m.group('empresa')), int(m.group('ferramenta'))
 
     return None
 
@@ -117,6 +153,42 @@ def attach_auto_qrcode_to_item(item) -> tuple[bool, str | None]:
         logger.exception(
             'estoque.qr_item: falha ao gravar qrcode_imagem (item_id=%s)',
             item.pk,
+        )
+        return False, str(exc)
+
+    return True, None
+
+
+def attach_auto_qrcode_to_ferramenta(ferramenta) -> tuple[bool, str | None]:
+    """Gera PNG do QR e grava em ferramenta.qrcode_imagem."""
+    from django.core.files.base import ContentFile
+
+    if not ferramenta.pk:
+        return False, 'ferramenta_sem_pk'
+
+    try:
+        payload = build_ferramenta_qr_payload(ferramenta.empresa_id, ferramenta.pk)
+        data = generate_qr_png_bytes(payload)
+    except Exception as exc:
+        logger.exception(
+            'estoque.qr_item: falha ao gerar PNG (ferramenta_id=%s)', ferramenta.pk
+        )
+        return False, str(exc)
+
+    try:
+        if ferramenta.qrcode_imagem:
+            ferramenta.qrcode_imagem.delete(save=False)
+
+        ferramenta.qrcode_imagem.save(
+            'qrcode.png',
+            ContentFile(data),
+            save=False,
+        )
+        ferramenta.save(update_fields=['qrcode_imagem'])
+    except Exception as exc:
+        logger.exception(
+            'estoque.qr_item: falha ao gravar qrcode_imagem (ferramenta_id=%s)',
+            ferramenta.pk,
         )
         return False, str(exc)
 

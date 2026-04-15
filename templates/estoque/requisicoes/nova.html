@@ -7,10 +7,28 @@
 
 {% block content %}
 {% include 'estoque/includes/estoque_ui_assets.html' %}
+<script>
+(function () {
+    try {
+        var p = new URLSearchParams(window.location.search || '');
+        if (p.get('fresh') === '1') {
+            p.delete('fresh');
+            var qs = p.toString();
+            var path = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+            window.history.replaceState(null, '', path);
+        }
+    } catch (e) {
+        // ignore
+    }
+})();
+</script>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="fw-bold mb-1">Nova Requisição</h2>
+        <h2 class="fw-bold mb-1 d-flex align-items-center flex-wrap gap-2">
+            Nova Requisição
+            <span class="badge text-bg-secondary fw-semibold rounded-pill">Rascunho</span>
+        </h2>
         <p class="text-muted mb-0">Retirada do estoque com controle.</p>
     </div>
     <div class="estoque-top-actions">

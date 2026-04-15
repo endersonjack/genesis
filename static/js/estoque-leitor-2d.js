@@ -12,16 +12,33 @@
         el.classList.toggle('text-muted', !isErr);
     }
 
+    function setConsultingUi(btn, on) {
+        if (!btn) return;
+        btn.classList.toggle('estoque-leitor-btn--busy', on);
+        btn.setAttribute('aria-busy', on ? 'true' : 'false');
+    }
+
     /**
-     * Evita roubar foco quando outro elemento dentro de um modal está ativo.
-     * Se o campo de captura estiver dentro do .modal.show (ex.: leitor no «Buscar itens»),
-     * não bloqueia — o refocus do cunha continua a funcionar.
+     * Evita roubar foco para o campo de captura quando o usuário está em outro controle.
+     * Com leitor dentro do modal «Buscar itens», não tomar foco da descrição nem da Qtd solicitada.
      */
     function modalBlocksRefocus(captureEl) {
         var m = document.querySelector('.modal.show');
         if (!m) return false;
-        if (captureEl && m.contains(captureEl)) return false;
         var a = document.activeElement;
+        if (captureEl && m.contains(captureEl)) {
+            if (a && a !== captureEl && m.contains(a)) {
+                var tag = (a.tagName || '').toUpperCase();
+                if (
+                    tag === 'INPUT' ||
+                    tag === 'TEXTAREA' ||
+                    tag === 'SELECT'
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
         if (a && a.closest && a.closest('.modal.show')) return true;
         return false;
     }
@@ -65,10 +82,16 @@
 
         var armed = false;
         var busy = false;
+        var suspendedByQty = false;
 
-        function setArmed(on) {
+        function setArmed(on, opts) {
+            opts = opts || {};
+            var persist = opts.persist !== false;
+            var clearSearch = opts.clearSearch !== false;
             armed = on;
-            writeLeitorPersisted(empresaPk, on);
+            if (persist) {
+                writeLeitorPersisted(empresaPk, on);
+            }
             btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             btn.setAttribute(
                 'aria-label',
@@ -76,6 +99,17 @@
             );
             btn.classList.toggle('estoque-leitor-btn--on', on);
             if (on) {
+                if (leitorMode === 'requisicao-buscar' && clearSearch) {
+                    var rq = document.getElementById('req-itens-q');
+                    var rqh = document.getElementById('req-itens-q-hidden');
+                    if (rq) {
+                        rq.value = '';
+                        if (rqh) rqh.value = '';
+                        rq.dispatchEvent(
+                            new Event('input', { bubbles: true })
+                        );
+                    }
+                }
                 cap.focus();
                 setFeedback(fb, 'Leitor ativo. Aponte e leia o código.', false);
             } else {
@@ -86,11 +120,32 @@
             }
         }
 
+        /** Overlay #global-htmx-loading (extra.js), igual a cliques em links nas páginas estoque. */
+        var usePageLoading = leitorMode !== 'requisicao-buscar';
+
+        function clearPageLoadingIfAny() {
+            if (
+                usePageLoading &&
+                typeof window.resetGlobalHtmxLoading === 'function'
+            ) {
+                window.resetGlobalHtmxLoading();
+            }
+        }
+
         function resolve(code) {
             if (busy) return;
             var c = (code || '').trim();
             if (!c) return;
             busy = true;
+            setConsultingUi(btn, true);
+            if (usePageLoading) {
+                if (typeof window.genesisLeitorConsultingBegin === 'function') {
+                    window.genesisLeitorConsultingBegin();
+                }
+                if (typeof window.genesisShowGlobalNavLoading === 'function') {
+                    window.genesisShowGlobalNavLoading();
+                }
+            }
             setFeedback(fb, 'Consultando…', false);
             var u =
                 resolveUrl +
@@ -107,8 +162,8 @@
                     });
                 })
                 .then(function (x) {
-                    busy = false;
                     if (!x.ok || !x.j || !x.j.ok) {
+                        clearPageLoadingIfAny();
                         var err = (x.j && x.j.error) || '';
                         if (err === 'not_found') {
                             setFeedback(
@@ -132,16 +187,49 @@
                         return;
                     }
                     cap.value = '';
+                    if (
+                        leitorMode === 'requisicao-buscar' &&
+                        x.j &&
+                        x.j.kind === 'ferramenta'
+                    ) {
+                        clearPageLoadingIfAny();
+                        setFeedback(
+                            fb,
+                            'Este QR é de uma ferramenta, não de um item de estoque.',
+                            true
+                        );
+                        if (armed) {
+                            cap.focus();
+                        }
+                        return;
+                    }
                     if (leitorMode === 'requisicao-buscar') {
                         var qEl = document.getElementById('req-itens-q');
                         var qhEl = document.getElementById('req-itens-q-hidden');
-                        if (qEl) {
-                            qEl.value = String(x.j.item_id);
-                            if (qhEl) qhEl.value = qEl.value;
-                            qEl.dispatchEvent(
-                                new Event('input', { bubbles: true })
-                            );
-                            qEl.focus();
+                        var itemId = String(x.j.item_id);
+                        if (qEl && window.htmx) {
+                            var hxGet = qEl.getAttribute('hx-get');
+                            if (hxGet) {
+                                if (qhEl) qhEl.value = '';
+                                qEl.value = '';
+                                var sep = hxGet.indexOf('?') >= 0 ? '&' : '?';
+                                var reqUrl =
+                                    hxGet +
+                                    sep +
+                                    'q=' +
+                                    encodeURIComponent(itemId);
+                                htmx.ajax('GET', reqUrl, {
+                                    target:
+                                        qEl.getAttribute('hx-target') ||
+                                        '#req-itens-list',
+                                    swap: 'innerHTML',
+                                });
+                            }
+                            // Cunha envia caracteres para o foco: manter foco no campo de captura,
+                            // senão a 2ª leitura cai no input de descrição como texto.
+                            if (armed) {
+                                cap.focus();
+                            }
                             setFeedback(
                                 fb,
                                 'Item localizado na lista abaixo.',
@@ -151,19 +239,77 @@
                         }
                     }
                     setFeedback(fb, '', false);
-                    var loc = new URL(window.location.href);
-                    loc.searchParams.set('edit_item', String(x.j.item_id));
-                    window.location.href = loc.toString();
+                    var dest =
+                        x.j.detail_url ||
+                        (function () {
+                            var loc = new URL(window.location.href);
+                            loc.searchParams.set(
+                                'edit_item',
+                                String(x.j.item_id)
+                            );
+                            return loc.toString();
+                        })();
+                    if (
+                        typeof window.genesisNavigateWithGlobalLoading ===
+                        'function'
+                    ) {
+                        window.genesisNavigateWithGlobalLoading(dest);
+                    } else {
+                        window.location.href = dest;
+                    }
+                    return;
                 })
                 .catch(function () {
-                    busy = false;
+                    clearPageLoadingIfAny();
                     setFeedback(fb, 'Falha ao consultar. Tente de novo.', true);
+                })
+                .finally(function () {
+                    busy = false;
+                    setConsultingUi(btn, false);
                 });
         }
 
         btn.addEventListener('click', function () {
-            setArmed(!armed);
+            suspendedByQty = false;
+            setArmed(!armed, { persist: true, clearSearch: true });
         });
+
+        // Requisição: manter leitor ligado, mas pausar enquanto edita "Qtd solicitada".
+        if (leitorMode === 'requisicao-buscar' && !wrap.dataset.reqQtyPauseBound) {
+            wrap.dataset.reqQtyPauseBound = '1';
+            document.addEventListener(
+                'focusin',
+                function (ev) {
+                    var t = ev && ev.target;
+                    if (!t || !armed) return;
+                    var qty = t.closest ? t.closest('.js-req-item-qtd') : null;
+                    if (!qty) return;
+                    var modal = document.getElementById('modalPadrao');
+                    if (modal && modal.classList.contains('show')) {
+                        suspendedByQty = true;
+                        setArmed(false, { persist: false, clearSearch: false });
+                    }
+                },
+                true
+            );
+            document.addEventListener(
+                'focusout',
+                function (ev) {
+                    var t = ev && ev.target;
+                    if (!t) return;
+                    var qty = t.closest ? t.closest('.js-req-item-qtd') : null;
+                    if (!qty) return;
+                    if (!suspendedByQty) return;
+                    suspendedByQty = false;
+                    setTimeout(function () {
+                        if (busy) return;
+                        // Reativa sem persistir e sem limpar a busca.
+                        setArmed(true, { persist: false, clearSearch: false });
+                    }, 80);
+                },
+                true
+            );
+        }
 
         cap.addEventListener('keydown', function (ev) {
             if (!armed) return;
@@ -184,7 +330,8 @@
         });
 
         if (readLeitorPersisted(empresaPk)) {
-            setArmed(true);
+            // Inicial: já persistido. Não regravar.
+            setArmed(true, { persist: false, clearSearch: true });
         }
     }
 

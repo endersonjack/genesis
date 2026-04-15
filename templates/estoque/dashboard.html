@@ -45,6 +45,14 @@
         filter: brightness(0.88);
         text-decoration: underline !important;
     }
+    /* Área dos cards: altura mínima próxima ao conteúdo final para reduzir salto de layout. */
+    #estoque-dash-cards-root {
+        min-height: 36rem;
+    }
+    #estoque-dash-cards-root.htmx-request .estoque-dash-card-skeleton {
+        opacity: 0.55;
+        pointer-events: none;
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -70,6 +78,12 @@
            class="estoque-btn estoque-btn-light text-decoration-none">
             <i class="bi bi-box-seam"></i>
             <span>Itens</span>
+        </a>
+
+        <a href="{% url 'estoque:lista_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-wrench-adjustable"></i>
+            <span>Ferramentas</span>
         </a>
 
         {% include 'estoque/includes/leitor_estoque_toggle.html' with leitor_capture_id='dash-estoque-leitor-cap' %}
@@ -111,37 +125,25 @@
                         Itens
                     </a>
                 </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2"
+                       href="{% url 'estoque:lista_ferramentas' empresa_id=request.empresa_ativa.pk %}">
+                        <i class="bi bi-wrench-adjustable"></i>
+                        Cadastro de ferramentas
+                    </a>
+                </li>
             </ul>
         </div>
     </div>
 </div>
 
-<div class="estoque-board-card mb-4">
-    <div class="estoque-board-body">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div class="d-flex align-items-start gap-3">
-                <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;background:var(--estoque-cor-requisicoes);">
-                    <i class="bi bi-clipboard-check" style="font-size:1.65rem;"></i>
-                </div>
-                <div>
-                    <p class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Área principal</p>
-                    <h3 class="fw-bold mb-1" style="color:#0f172a;">Requisições</h3>
-                    <p class="text-muted mb-0" style="max-width:42rem;">
-                        Retiradas do estoque com controle de solicitante, local, obra, almoxarife e itens.
-                    </p>
-                </div>
-            </div>
-            <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}"
-               class="btn btn-lg estoque-board-req-btn rounded-3 fw-semibold px-4"
-               style="min-width:min(100%,280px);">
-                Abrir Requisições
-                <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-        </div>
-    </div>
+<div id="estoque-dash-cards-root"
+     hx-get="{% url 'estoque:partial_dashboard_cards' empresa_id=request.empresa_ativa.pk %}"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     data-no-global-loading>
+    {% include 'estoque/partials/dashboard_cards_skeleton.html' %}
 </div>
-
-{% include 'estoque/dashboard_itens_atencao.html' %}
 
 {% include 'estoque/includes/modal_cadastro_estoque.html' %}
 {% endblock %}

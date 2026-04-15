@@ -8,42 +8,14 @@
         var itemId = parseInt(raw, 10);
         if (!Number.isFinite(itemId) || itemId <= 0) return;
 
-        var modalEl = document.getElementById('modalPadrao');
-        var contentEl = document.getElementById('modal-content');
-        if (!modalEl || !contentEl || typeof bootstrap === 'undefined' || typeof htmx === 'undefined') return;
-
-        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-        contentEl.innerHTML =
-            '<div class="modal-body p-4 text-center">' +
-            '<div class="spinner-border" role="status" aria-hidden="true"></div>' +
-            '<div class="small text-muted mt-2">Carregando…</div>' +
-            '</div>';
-
-        var base = "{% url 'estoque:modal_editar_item' empresa_id=request.empresa_ativa.pk pk=0 %}";
-        var url = base.replace('/0/', '/' + String(itemId) + '/');
-
-        var src = document.createElement('div');
-        src.setAttribute('data-no-global-loading', '');
-        src.style.display = 'none';
-        document.body.appendChild(src);
-
-        var cleanup = function () {
-            if (src && src.parentNode) src.parentNode.removeChild(src);
-        };
-        var onAfterSwap = function (ev) {
-            var t = ev && ev.detail && ev.detail.target;
-            if (t && t.id === 'modal-content') {
-                document.body.removeEventListener('htmx:afterSwap', onAfterSwap);
-                cleanup();
-                if (typeof window.resetGlobalHtmxLoading === 'function') {
-                    window.resetGlobalHtmxLoading();
-                }
-            }
-        };
-        document.body.addEventListener('htmx:afterSwap', onAfterSwap);
-
-        htmx.ajax('GET', url, { target: '#modal-content', swap: 'innerHTML', source: src });
+        var sample = "{% url 'estoque:detalhes_item' empresa_id=request.empresa_ativa.pk pk=1 %}";
+        var url = sample.replace(/\/itens\/\d+\/?$/, '/itens/' + itemId + '/');
+        params.delete('edit_item');
+        var qs = params.toString();
+        if (qs) {
+            url += (url.indexOf('?') >= 0 ? '&' : '?') + qs;
+        }
+        window.location.replace(url);
     } catch (e) {
         /* silencioso */
     }

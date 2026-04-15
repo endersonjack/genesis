@@ -1,7 +1,7 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/estoque/estoque-ui.css' %}">
 <script src="{% static 'js/estoque-submit-busy.js' %}"></script>
-<script src="{% static 'js/estoque-leitor-2d.js' %}"></script>
+{# estoque-leitor-2d.js: carregado em base.html após extra.js (overlay global + APIs) #}
 <style>
 :root {
     --estoque-accent: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
@@ -9,4 +9,10 @@
 /* Leitor QR: cinza desligado, verde ligado */
 .estoque-leitor-qr-svg { color: #94a3b8; }
 .estoque-leitor-btn--on .estoque-leitor-qr-svg { color: #22c55e; }
+/* Durante resolve: evita duplo envio (overlay global cobre o restante). */
+.estoque-leitor-btn--busy {
+    cursor: wait;
+    pointer-events: none;
+    opacity: 0.9;
+}
 </style>

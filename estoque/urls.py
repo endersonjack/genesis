@@ -2,13 +2,18 @@ from django.urls import path
 
 from core.view_helpers import empresa_scoped
 
-from . import item_views, requisicoes_views, views
+from . import ferramenta_views, item_views, requisicoes_views, views
 
 
 app_name = 'estoque'
 
 urlpatterns = [
     path('', empresa_scoped(views.dashboard), name='dashboard'),
+    path(
+        'partial/dashboard-cards/',
+        empresa_scoped(views.partial_dashboard_cards),
+        name='partial_dashboard_cards',
+    ),
     path('requisicoes/', empresa_scoped(requisicoes_views.lista_requisicoes), name='requisicoes'),
     path(
         'requisicoes/<int:pk>/',
@@ -201,6 +206,66 @@ urlpatterns = [
         empresa_scoped(views.excluir_unidade_medida),
         name='excluir_unidade_medida',
     ),
+    path(
+        'ferramentas/',
+        empresa_scoped(ferramenta_views.lista_ferramentas),
+        name='lista_ferramentas',
+    ),
+    path(
+        'ferramentas/cautela/',
+        empresa_scoped(ferramenta_views.cautela_ferramentas),
+        name='cautela_ferramentas',
+    ),
+    path(
+        'ferramentas/modal/novo/',
+        empresa_scoped(ferramenta_views.modal_novo_ferramenta),
+        name='modal_novo_ferramenta',
+    ),
+    path(
+        'ferramentas/modal/<int:pk>/excluir/',
+        empresa_scoped(ferramenta_views.modal_excluir_ferramenta),
+        name='modal_excluir_ferramenta',
+    ),
+    path(
+        'ferramentas/modal/<int:pk>/gerar-qrcode/',
+        empresa_scoped(ferramenta_views.modal_gerar_qrcode_ferramenta),
+        name='modal_gerar_qrcode_ferramenta',
+    ),
+    path(
+        'ferramentas/modal/<int:pk>/excluir-qrcode/',
+        empresa_scoped(ferramenta_views.modal_excluir_qrcode_ferramenta),
+        name='modal_excluir_qrcode_ferramenta',
+    ),
+    path(
+        'ferramentas/modal/<int:pk>/',
+        empresa_scoped(ferramenta_views.modal_editar_ferramenta),
+        name='modal_editar_ferramenta',
+    ),
+    path(
+        'ferramentas/novo/',
+        empresa_scoped(ferramenta_views.ferramenta_novo),
+        name='ferramenta_novo',
+    ),
+    path(
+        'ferramentas/<int:ferramenta_pk>/imagens/<int:imagem_pk>/excluir/',
+        empresa_scoped(ferramenta_views.ferramenta_imagem_excluir),
+        name='ferramenta_imagem_excluir',
+    ),
+    path(
+        'ferramentas/<int:pk>/',
+        empresa_scoped(ferramenta_views.detalhes_ferramenta),
+        name='detalhes_ferramenta',
+    ),
+    path(
+        'ferramentas/<int:pk>/editar/',
+        empresa_scoped(ferramenta_views.ferramenta_editar),
+        name='ferramenta_editar',
+    ),
+    path(
+        'ferramentas/<int:pk>/excluir/',
+        empresa_scoped(ferramenta_views.ferramenta_excluir),
+        name='ferramenta_excluir',
+    ),
     path('itens/', empresa_scoped(item_views.lista_itens), name='lista_itens'),
     path(
         'itens/modal/novo/',
@@ -237,6 +302,11 @@ urlpatterns = [
         'itens/<int:item_pk>/imagens/<int:imagem_pk>/excluir/',
         empresa_scoped(item_views.item_imagem_excluir),
         name='item_imagem_excluir',
+    ),
+    path(
+        'itens/<int:pk>/',
+        empresa_scoped(item_views.detalhes_item),
+        name='detalhes_item',
     ),
     path(
         'itens/<int:pk>/editar/',

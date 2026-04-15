@@ -1,7 +1,13 @@
 from django import forms
 from fornecedores.models import Fornecedor
 
-from .models import CategoriaFerramenta, CategoriaItem, Item, UnidadeMedida
+from .models import (
+    CategoriaFerramenta,
+    CategoriaItem,
+    Ferramenta,
+    Item,
+    UnidadeMedida,
+)
 
 
 class CategoriaItemForm(forms.ModelForm):
@@ -122,6 +128,156 @@ class UnidadeMedidaForm(forms.ModelForm):
         if not comp:
             raise forms.ValidationError('Informe a medida completa.')
         return comp
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.empresa and not obj.pk:
+            obj.empresa = self.empresa
+        if commit:
+            obj.save()
+        return obj
+
+
+class FerramentaForm(forms.ModelForm):
+    class Meta:
+        model = Ferramenta
+        fields = (
+            'descricao',
+            'marca',
+            'categoria',
+            'cor',
+            'tamanho',
+            'codigo_numeracao',
+            'preco',
+            'fornecedor',
+            'ativo',
+            'qrcode_imagem',
+            'observacoes',
+        )
+        widgets = {
+            'descricao': forms.Textarea(
+                attrs={
+                    'class': 'form-control rounded-3',
+                    'rows': 3,
+                    'maxlength': 500,
+                }
+            ),
+            'marca': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'maxlength': 120}
+            ),
+            'categoria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'cor': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'maxlength': 64}
+            ),
+            'tamanho': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'maxlength': 64}
+            ),
+            'codigo_numeracao': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'maxlength': 64}
+            ),
+            'preco': forms.NumberInput(
+                attrs={'class': 'form-control rounded-3', 'step': '0.01', 'min': 0}
+            ),
+            'fornecedor': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'ativo': forms.CheckboxInput(
+                attrs={
+                    'class': 'form-check-input rounded-3',
+                    'form': 'estoque-ferramenta-modal-form',
+                }
+            ),
+            'qrcode_imagem': forms.ClearableFileInput(
+                attrs={
+                    'class': 'form-control rounded-3',
+                    'accept': 'image/*',
+                }
+            ),
+            'observacoes': forms.Textarea(
+                attrs={
+                    'class': 'form-control rounded-3',
+                    'rows': 3,
+                }
+            ),
+        }
+        labels = {
+            'descricao': 'Descrição',
+            'marca': 'Marca',
+            'categoria': 'Categoria',
+            'cor': 'Cor',
+            'tamanho': 'Tamanho',
+            'codigo_numeracao': 'Código / numeração',
+            'preco': 'Preço',
+            'fornecedor': 'Fornecedor',
+            'ativo': 'Ativa',
+            'qrcode_imagem': 'QR Code',
+            'observacoes': 'Obs.',
+        }
+        help_texts = {
+            'ativo': 'Desmarque para inativar: some das buscas principais.',
+            'qrcode_imagem': 'Imagem do QR Code gerada automaticamente ao salvar a ferramenta.',
+        }
+
+    def __init__(
+        self,
+        *args,
+        empresa=None,
+        lock_qrcode_imagem: bool = False,
+        **kwargs,
+    ):
+        self.empresa = empresa
+        self.lock_qrcode_imagem = bool(lock_qrcode_imagem)
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['categoria'].queryset = CategoriaFerramenta.objects.filter(
+                empresa=empresa
+            ).order_by('nome')
+            self.fields['fornecedor'].queryset = Fornecedor.objects.filter(
+                empresa=empresa
+            ).order_by('nome')
+        self.fields['fornecedor'].required = False
+        self.fields['marca'].required = False
+        self.fields['cor'].required = False
+        self.fields['tamanho'].required = False
+        self.fields['codigo_numeracao'].required = False
+        self.fields['preco'].required = False
+        self.fields['qrcode_imagem'].required = False
+        self.fields['observacoes'].required = False
+        if self.lock_qrcode_imagem:
+            self.fields['qrcode_imagem'].disabled = True
+
+    def clean_codigo_numeracao(self):
+        cod = (self.cleaned_data.get('codigo_numeracao') or '').strip()
+        if not cod:
+            return ''
+        if self.empresa:
+            qs = Ferramenta.objects.filter(
+                empresa=self.empresa, codigo_numeracao__iexact=cod
+            )
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(
+                    'Já existe uma ferramenta com este código nesta empresa.'
+                )
+        return cod
+
+    def clean_descricao(self):
+        d = (self.cleaned_data.get('descricao') or '').strip()
+        if not d:
+            raise forms.ValidationError('Informe a descrição.')
+        return d
+
+    def clean(self):
+        cleaned = super().clean()
+        empresa = self.empresa
+        if not empresa:
+            return cleaned
+        cat = cleaned.get('categoria')
+        fr = cleaned.get('fornecedor')
+        if cat and cat.empresa_id != empresa.pk:
+            self.add_error('categoria', 'Categoria inválida para esta empresa.')
+        if fr and fr.empresa_id != empresa.pk:
+            self.add_error('fornecedor', 'Fornecedor inválido para esta empresa.')
+        return cleaned
 
     def save(self, commit=True):
         obj = super().save(commit=False)

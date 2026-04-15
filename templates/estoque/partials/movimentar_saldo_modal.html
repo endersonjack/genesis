@@ -9,7 +9,7 @@
             <div class="fw-bold fs-5 lh-sm text-body">{{ item.descricao|truncatechars:120 }}</div>
         </div>
         <a class="btn btn-sm btn-outline-secondary rounded-3 flex-shrink-0"
-           href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}?edit_item={{ item.pk }}"
+           href="{% url 'estoque:detalhes_item' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
            target="_blank"
            rel="noopener">
             Ver

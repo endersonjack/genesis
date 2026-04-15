@@ -3,6 +3,8 @@ from django.contrib import admin
 from .models import (
     CategoriaFerramenta,
     CategoriaItem,
+    Ferramenta,
+    FerramentaImagem,
     Item,
     ItemImagem,
     RequisicaoEstoque,
@@ -33,6 +35,30 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
     list_filter = ('empresa',)
     search_fields = ('abreviada', 'completa')
     ordering = ('empresa', 'abreviada')
+
+
+@admin.register(Ferramenta)
+class FerramentaAdmin(admin.ModelAdmin):
+    list_display = (
+        'descricao',
+        'categoria',
+        'codigo_numeracao',
+        'ativo',
+        'preco',
+        'empresa',
+        'atualizado_em',
+    )
+    list_filter = ('empresa', 'categoria', 'ativo')
+    search_fields = ('descricao', 'marca', 'codigo_numeracao', 'cor')
+    ordering = ('empresa', 'descricao')
+    autocomplete_fields = ('categoria', 'fornecedor')
+
+
+@admin.register(FerramentaImagem)
+class FerramentaImagemAdmin(admin.ModelAdmin):
+    list_display = ('ferramenta', 'ordem', 'atualizado_em')
+    list_filter = ('ferramenta__empresa',)
+    ordering = ('ferramenta', 'ordem')
 
 
 @admin.register(Item)

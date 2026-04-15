@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ page_title|truncatechars:80 }} | Itens | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div class="min-w-0">
+        <h2 class="fw-bold mb-1 text-break">{{ item.descricao }}</h2>
+        <p class="text-muted mb-0 small">Detalhes do item no estoque.</p>
+    </div>
+    <div class="estoque-top-actions flex-shrink-0">
+        <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Itens</span>
+        </a>
+        <button
+            type="button"
+            class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+            hx-get="{% url 'estoque:modal_editar_item' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-pencil"></i>
+            <span>Editar</span>
+        </button>
+        <button
+            type="button"
+            class="estoque-btn estoque-btn-light js-estoque-modal-hx"
+            hx-get="{% url 'estoque:modal_movimentar_saldo' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-arrow-left-right"></i>
+            <span>Movimentar</span>
+        </button>
+        <a href="{% url 'estoque:item_excluir' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+           class="estoque-btn estoque-btn-danger-outline text-decoration-none">
+            <i class="bi bi-trash"></i>
+            <span>Excluir</span>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Dados</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted small fw-semibold">Categoria</dt>
+                    <dd class="col-sm-8 mb-3">{{ item.categoria.nome }}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Marca</dt>
+                    <dd class="col-sm-8 mb-3">{% if item.marca %}{{ item.marca }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Unidade</dt>
+                    <dd class="col-sm-8 mb-3">{{ item.unidade_medida.abreviada }}{% if item.unidade_medida.completa %} <span class="text-muted">({{ item.unidade_medida.completa }})</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Peso</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if item.peso is not None %}
+                            {{ item.peso|floatformat:3|intcomma }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Preço</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if item.preco is not None %}
+                            R$ {{ item.preco|floatformat:2|intcomma }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Fornecedor</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if item.fornecedor %}
+                            {{ item.fornecedor }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Estoque</dt>
+                    <dd class="col-sm-8 mb-3">{{ item.quantidade_estoque|floatformat:4|intcomma }}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Qtd. mínima</dt>
+                    <dd class="col-sm-8 mb-3">{{ item.quantidade_minima|floatformat:4|intcomma }}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Ativo</dt>
+                    <dd class="col-sm-8 mb-0">
+                        {% if item.ativo %}
+                            <span class="badge text-bg-success rounded-pill">Sim</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary rounded-pill">Não</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Imagens</h3>
+                {% if item.imagens.all %}
+                <div class="row g-2">
+                    {% for im in item.imagens.all %}
+                    <div class="col-6">
+                        <a href="{{ im.imagem.url }}" target="_blank" rel="noopener" class="d-block rounded-3 overflow-hidden border">
+                            <img src="{{ im.imagem.url }}" alt="" class="w-100 object-fit-cover" style="aspect-ratio:1;max-height:200px;" decoding="async" loading="lazy">
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">Nenhuma imagem anexada.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% if item.qrcode_imagem %}
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">QR Code</h3>
+                <div class="text-center">
+                    <img src="{{ item.qrcode_imagem.url }}" alt="QR Code do item" class="img-fluid rounded-3 border" style="max-width:220px;" decoding="async" loading="lazy">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+{% endblock %}

@@ -34,6 +34,26 @@ def dashboard(request):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
+    return render(
+        request,
+        'estoque/dashboard.html',
+        {
+            'page_title': 'Estoque',
+        },
+    )
+
+
+@login_required
+def partial_dashboard_cards(request):
+    """Fragmento HTMX: cards Requisições, Cautela e Atenção (com itens em atenção)."""
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'estoque:dashboard')
+
     qs_atencao = (
         Item.objects.filter(empresa=empresa, ativo=True)
         .filter(
@@ -48,9 +68,8 @@ def dashboard(request):
 
     return render(
         request,
-        'estoque/dashboard.html',
+        'estoque/partials/dashboard_cards_loaded.html',
         {
-            'page_title': 'Estoque',
             'itens_atencao_estoque': itens_atencao_estoque,
         },
     )
@@ -301,6 +320,8 @@ def _modal_categoria_ferramenta_form(request, item):
         )
         titulo_modal = f'Editar — {item.nome}'
 
+    return_to = (request.GET.get('return_to') or request.POST.get('return_to') or '').strip()
+
     if request.method == 'POST':
         if item is not None:
             form = CategoriaFerramentaForm(request.POST, instance=item, empresa=empresa)
@@ -328,6 +349,15 @@ def _modal_categoria_ferramenta_form(request, item):
                         modulo='estoque',
                     )
                     messages.success(request, 'Categoria atualizada.')
+                if return_to:
+                    return render(
+                        request,
+                        'estoque/partials/return_to_ferramenta_modal.html',
+                        {
+                            'return_to': return_to,
+                            'preselect_categoria': obj.pk,
+                        },
+                    )
                 return _hx_redirect_lista(request, 'estoque:lista_categorias_ferramentas')
         else:
             messages.error(request, 'Revise o nome informado.')
@@ -341,6 +371,7 @@ def _modal_categoria_ferramenta_form(request, item):
         'form': form,
         'post_url': post_url,
         'titulo_modal': titulo_modal,
+        'return_to': return_to,
         'excluir_url': (
             reverse_empresa(
                 request,

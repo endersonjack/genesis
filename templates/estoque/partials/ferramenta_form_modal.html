@@ -1,0 +1,229 @@
+<div class="modal-header align-items-start">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 w-100">
+        <h5 class="modal-title fw-bold mb-0">{{ titulo_modal }}</h5>
+        <div class="d-flex align-items-start gap-3">
+            <div class="form-check form-switch m-0 text-end">
+                <div class="d-flex justify-content-end">
+                    {{ form.ativo }}
+                    <label class="form-check-label fw-semibold ms-2" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                </div>
+                <div class="form-text mt-0">Ativa nas buscas.</div>
+                {% if form.ativo.errors %}<div class="text-danger small mt-1">{{ form.ativo.errors|join:", " }}</div>{% endif %}
+            </div>
+            <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-body">
+    <form
+        id="estoque-ferramenta-modal-form"
+        method="post"
+        class="js-estoque-form-busy"
+        enctype="multipart/form-data"
+        hx-post="{{ post_url }}"
+        hx-encoding="multipart/form-data"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        data-no-global-loading>
+        {% csrf_token %}
+    {% if ferramenta and ferramenta.imagens.exists %}
+    <div class="mb-4">
+        <span class="form-label fw-semibold d-block">Imagens atuais</span>
+        <div class="d-flex flex-wrap gap-3 mt-2">
+            {% for img in ferramenta.imagens.all %}
+            <div class="border rounded-3 p-2 bg-light" style="max-width:140px;">
+                <img src="{{ img.imagem.url }}" alt="" class="img-fluid rounded-2 mb-2 w-100" style="max-height:100px;object-fit:cover;">
+                <form method="post"
+                      hx-post="{% url 'estoque:ferramenta_imagem_excluir' empresa_id=request.empresa_ativa.pk ferramenta_pk=ferramenta.pk imagem_pk=img.pk %}"
+                      hx-target="#modal-content"
+                      hx-swap="innerHTML"
+                      class="m-0 js-estoque-form-busy"
+                      data-estoque-busy-label="Removendo…"
+                      data-no-global-loading>
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-3">Remover</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">
+                {{ form.descricao.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.descricao }}
+            {% if form.descricao.errors %}<div class="text-danger small mt-1">{{ form.descricao.errors|join:", " }}</div>{% endif %}
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.marca.id_for_label }}">{{ form.marca.label }}</label>
+                {{ form.marca }}
+                {% if form.marca.errors %}<div class="text-danger small mt-1">{{ form.marca.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.categoria.id_for_label }}">
+                    {{ form.categoria.label }} <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    {{ form.categoria }}
+                    <button type="button"
+                            class="btn btn-outline-secondary rounded-end-3 js-estoque-modal-hx"
+                            hx-get="{% url 'estoque:modal_novo_categoria_ferramenta' empresa_id=request.empresa_ativa.pk %}?return_to={{ post_url|urlencode }}"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML"
+                            data-no-global-loading
+                            title="Criar categoria">
+                        +
+                    </button>
+                </div>
+                {% if form.categoria.errors %}<div class="text-danger small mt-1">{{ form.categoria.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.cor.id_for_label }}">{{ form.cor.label }}</label>
+                {{ form.cor }}
+                {% if form.cor.errors %}<div class="text-danger small mt-1">{{ form.cor.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.tamanho.id_for_label }}">{{ form.tamanho.label }}</label>
+                {{ form.tamanho }}
+                {% if form.tamanho.errors %}<div class="text-danger small mt-1">{{ form.tamanho.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.codigo_numeracao.id_for_label }}">{{ form.codigo_numeracao.label }}</label>
+                {{ form.codigo_numeracao }}
+                {% if form.codigo_numeracao.help_text %}<div class="form-text">{{ form.codigo_numeracao.help_text }}</div>{% endif %}
+                {% if form.codigo_numeracao.errors %}<div class="text-danger small mt-1">{{ form.codigo_numeracao.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.preco.id_for_label }}">{{ form.preco.label }}</label>
+                {{ form.preco }}
+                {% if form.preco.errors %}<div class="text-danger small mt-1">{{ form.preco.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.fornecedor.id_for_label }}">{{ form.fornecedor.label }}</label>
+                {{ form.fornecedor }}
+                {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors|join:", " }}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="mb-3 mt-1">
+            <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+            {{ form.observacoes }}
+            {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+        </div>
+
+        <div class="mb-0">
+            <label class="form-label fw-semibold" for="id_ferramenta_imagens_galeria">Imagens</label>
+            <input type="file"
+                   name="imagens"
+                   id="id_ferramenta_imagens_galeria"
+                   class="form-control rounded-3"
+                   accept="image/*"
+                   multiple>
+            <div class="form-text">Envie uma ou mais imagens (opcional). Novas imagens são acrescentadas ao salvar.</div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="mb-0 text-center">
+            <span class="form-label fw-semibold d-block">{{ form.qrcode_imagem.label }}</span>
+            {% if form.qrcode_imagem.field.disabled %}
+                <p class="form-text mb-2">Gerado automaticamente ao salvar. Nas telas de estoque, use o leitor 2D para abrir esta ferramenta pelo código. Para trocar o QR, exclua o atual e gere outro.</p>
+                {% if ferramenta and ferramenta.qrcode_imagem %}
+                    <div class="mt-2">
+                        <img src="{{ ferramenta.qrcode_imagem.url }}" alt="QR Code" class="border bg-white d-block mx-auto" style="max-width: 280px; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges;">
+                    </div>
+                    <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button"
+                                class="estoque-btn estoque-btn-danger-outline js-estoque-form-busy"
+                                data-estoque-busy-label="Removendo…"
+                                data-no-global-loading
+                                hx-post="{% url 'estoque:modal_excluir_qrcode_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                hx-confirm="Remover o QR Code desta ferramenta? Depois você pode gerar outro.">
+                            <i class="bi bi-trash me-1"></i> Excluir QR Code
+                        </button>
+                    </div>
+                {% elif ferramenta %}
+                    <p class="small text-muted mb-2">Sem QR ainda. Gere agora ou salve a ferramenta para gerar automaticamente.</p>
+                    <button type="button"
+                            class="estoque-btn estoque-btn-primary js-estoque-form-busy"
+                            data-estoque-busy-label="Gerando…"
+                            data-no-global-loading
+                            hx-post="{% url 'estoque:modal_gerar_qrcode_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML">
+                        <i class="bi bi-qr-code-scan me-1"></i> Gerar QR Code
+                    </button>
+                {% else %}
+                    <p class="small text-muted mb-0">Salve a ferramenta para gerar o QR.</p>
+                {% endif %}
+            {% else %}
+                <div class="d-flex justify-content-center">
+                    <div style="max-width: 420px; width: 100%;">
+                        {{ form.qrcode_imagem }}
+                    </div>
+                </div>
+                {% if form.qrcode_imagem.help_text %}<div class="form-text">{{ form.qrcode_imagem.help_text }}</div>{% endif %}
+                {% if ferramenta and ferramenta.qrcode_imagem %}
+                    <div class="mt-2">
+                        <span class="small text-muted d-block mb-1">Atual:</span>
+                        <img src="{{ ferramenta.qrcode_imagem.url }}" alt="QR Code" class="border bg-white d-block mx-auto" style="max-width: 280px; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges;">
+                    </div>
+                {% endif %}
+            {% endif %}
+            {% if form.qrcode_imagem.errors %}<div class="text-danger small mt-1">{{ form.qrcode_imagem.errors|join:", " }}</div>{% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="modal-footer d-flex flex-wrap align-items-center gap-2 justify-content-between">
+    <div class="d-flex flex-wrap gap-2">
+        {% if excluir_url %}
+        <button type="button"
+                class="estoque-btn estoque-btn-danger-outline js-estoque-modal-hx"
+                hx-get="{{ excluir_url }}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading>
+            <i class="bi bi-trash me-1"></i> Excluir
+        </button>
+        {% endif %}
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="estoque-btn estoque-btn-primary" form="estoque-ferramenta-modal-form">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var el = document.getElementById('{{ form.ativo.id_for_label }}');
+    if (!el || el.dataset && el.dataset.confirmInit === '1') return;
+    el.dataset.confirmInit = '1';
+
+    el.addEventListener('change', function () {
+        var willBeActive = !!el.checked;
+        var ok = window.confirm(
+            willBeActive
+                ? 'Confirmar: marcar esta ferramenta como ativa nas buscas?'
+                : 'Confirmar: inativar esta ferramenta (some das buscas principais)?'
+        );
+        if (!ok) {
+            el.checked = !willBeActive;
+        }
+    });
+})();
+</script>

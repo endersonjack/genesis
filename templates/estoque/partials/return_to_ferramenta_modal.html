@@ -1,0 +1,42 @@
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold mb-0">Voltando…</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+    <div class="p-4 text-center">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <div class="small text-muted mt-2">Carregando a ferramenta…</div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    if (typeof htmx === 'undefined') return;
+    var target = document.getElementById('modal-content');
+    if (!target) return;
+
+    var base = "{{ return_to|escapejs }}";
+    var sep = base.indexOf('?') >= 0 ? '&' : '?';
+    var url = base + sep + "preselect_categoria={{ preselect_categoria }}";
+
+    var src = document.createElement('div');
+    src.setAttribute('data-no-global-loading', '');
+    src.style.display = 'none';
+    document.body.appendChild(src);
+
+    var cleanup = function () {
+        if (src && src.parentNode) src.parentNode.removeChild(src);
+    };
+    var onAfterSwap = function (ev) {
+        var t = ev && ev.detail && ev.detail.target;
+        if (t && t.id === 'modal-content') {
+            document.body.removeEventListener('htmx:afterSwap', onAfterSwap);
+            cleanup();
+        }
+    };
+    document.body.addEventListener('htmx:afterSwap', onAfterSwap);
+
+    htmx.ajax('GET', url, { target: '#modal-content', swap: 'innerHTML', source: src });
+})();
+</script>

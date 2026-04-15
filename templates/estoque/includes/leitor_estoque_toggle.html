@@ -1,10 +1,10 @@
-{# Botão liga/desliga leitor 2D (cunha). Requer estoque_ui_assets + estoque-leitor-2d.js e modal para ?edit_item= #}
+{# Botão liga/desliga leitor 2D (cunha). Requer estoque_ui_assets (CSS); JS em base.html após extra.js. #}
 <div class="js-estoque-leitor-wrap d-inline-flex align-items-center flex-shrink-0"
      data-resolve-url="{% url 'estoque:leitor_estoque_resolve' empresa_id=request.empresa_ativa.pk %}"
      data-empresa-pk="{{ request.empresa_ativa.pk }}"
      {% if leitor_mode %}data-leitor-mode="{{ leitor_mode }}"{% endif %}>
     <button type="button"
-            class="btn btn-light border shadow-sm rounded-3 px-2 py-2 js-estoque-leitor-btn"
+            class="btn btn-light border shadow-sm rounded-3 px-2 py-2 d-inline-flex align-items-center justify-content-center js-estoque-leitor-btn"
             aria-pressed="false"
             aria-label="Leitor QR desligado — ativar"
             title="Leitor QR (modo teclado): clique para ativar ou desativar">

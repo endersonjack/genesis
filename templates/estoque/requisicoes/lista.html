@@ -41,8 +41,15 @@
 <script>
 (function () {
     try {
-        sessionStorage.removeItem('genesis:estoque:nova_requisicao:draft:v1');
-        sessionStorage.removeItem('genesis:estoque:nova_requisicao:clear_next');
+        var p = new URLSearchParams(window.location.search || '');
+        if (p.get('limpar_rascunho_nova') === '1') {
+            sessionStorage.removeItem('genesis:estoque:nova_requisicao:draft:v1');
+            sessionStorage.removeItem('genesis:estoque:nova_requisicao:clear_next');
+            p.delete('limpar_rascunho_nova');
+            var qs = p.toString();
+            var path = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+            window.history.replaceState(null, '', path);
+        }
     } catch (e) {
         // ignore
     }

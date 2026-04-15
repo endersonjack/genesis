@@ -1,0 +1,24 @@
+<div class="estoque-board-card mb-4">
+    <div class="estoque-board-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;background:var(--estoque-cor-requisicoes);">
+                    <i class="bi bi-clipboard-check" style="font-size:1.65rem;"></i>
+                </div>
+                <div>
+                    <p class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Área principal</p>
+                    <h3 class="fw-bold mb-1" style="color:#0f172a;">Requisições</h3>
+                    <p class="text-muted mb-0" style="max-width:42rem;">
+                        Retiradas do estoque com controle de solicitante, local, obra, almoxarife e itens.
+                    </p>
+                </div>
+            </div>
+            <a href="{% url 'estoque:requisicoes' empresa_id=request.empresa_ativa.pk %}"
+               class="btn btn-lg estoque-board-req-btn rounded-3 fw-semibold px-4"
+               style="min-width:min(100%,280px);">
+                Ver Requisições
+                <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>

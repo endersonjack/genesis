@@ -7,6 +7,27 @@
 
 {% block content %}
 {% include 'estoque/includes/estoque_ui_assets.html' %}
+<script>
+(function () {
+    try {
+        var p = new URLSearchParams(window.location.search || '');
+        if (p.get('limpar_rascunho_edicao') === '1') {
+            sessionStorage.removeItem(
+                'genesis:estoque:editar_requisicao:{{ requisicao.pk }}:v1'
+            );
+            sessionStorage.removeItem(
+                'genesis:estoque:editar_requisicao:{{ requisicao.pk }}:clear_next'
+            );
+            p.delete('limpar_rascunho_edicao');
+            var qs = p.toString();
+            var path = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+            window.history.replaceState(null, '', path);
+        }
+    } catch (e) {
+        // ignore
+    }
+})();
+</script>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>

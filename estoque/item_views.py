@@ -15,8 +15,19 @@ from auditoria.models import RegistroAuditoria
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import ItemForm
-from .models import CategoriaItem, Item, ItemImagem, RequisicaoEstoque, RequisicaoEstoqueItem
-from .qr_item import attach_auto_qrcode_to_item, parse_item_qr_payload
+from .models import (
+    CategoriaItem,
+    Ferramenta,
+    Item,
+    ItemImagem,
+    RequisicaoEstoque,
+    RequisicaoEstoqueItem,
+)
+from .qr_item import (
+    attach_auto_qrcode_to_item,
+    parse_ferramenta_qr_payload,
+    parse_item_qr_payload,
+)
 
 # Auditoria de requisição sem linha de item / sem alteração de saldo (evita linhas “em branco” no log).
 _MOVIMENTAR_LOG_OPERACOES_EXCLUIDAS = frozenset(
@@ -1076,19 +1087,43 @@ def modal_excluir_item(request, pk):
 
 @login_required
 def leitor_estoque_resolve(request):
-    """Resolve texto lido pelo leitor 2D (QR) para um item da empresa ativa."""
+    """Resolve texto lido pelo leitor 2D (QR) para item ou ferramenta da empresa ativa."""
     empresa = _empresa(request)
     if not empresa:
         return JsonResponse({'ok': False, 'error': 'empresa'}, status=400)
-    parsed = parse_item_qr_payload(request.GET.get('c') or '')
-    if not parsed:
-        return JsonResponse({'ok': False, 'error': 'invalid'}, status=400)
-    eid, iid = parsed
-    if eid != empresa.pk:
-        return JsonResponse({'ok': False, 'error': 'empresa'}, status=403)
-    if not Item.objects.filter(pk=iid, empresa_id=empresa.pk).exists():
-        return JsonResponse({'ok': False, 'error': 'not_found'}, status=404)
-    return JsonResponse({'ok': True, 'item_id': iid})
+    raw = request.GET.get('c') or ''
+    parsed = parse_item_qr_payload(raw)
+    if parsed:
+        eid, iid = parsed
+        if eid != empresa.pk:
+            return JsonResponse({'ok': False, 'error': 'empresa'}, status=403)
+        if not Item.objects.filter(pk=iid, empresa_id=empresa.pk).exists():
+            return JsonResponse({'ok': False, 'error': 'not_found'}, status=404)
+        detail_url = reverse_empresa(
+            request, 'estoque:detalhes_item', kwargs={'pk': iid}
+        )
+        return JsonResponse({'ok': True, 'kind': 'item', 'item_id': iid, 'detail_url': detail_url})
+
+    parsed_f = parse_ferramenta_qr_payload(raw)
+    if parsed_f:
+        eid, fid = parsed_f
+        if eid != empresa.pk:
+            return JsonResponse({'ok': False, 'error': 'empresa'}, status=403)
+        if not Ferramenta.objects.filter(pk=fid, empresa_id=empresa.pk).exists():
+            return JsonResponse({'ok': False, 'error': 'not_found'}, status=404)
+        detail_url = reverse_empresa(
+            request, 'estoque:detalhes_ferramenta', kwargs={'pk': fid}
+        )
+        return JsonResponse(
+            {
+                'ok': True,
+                'kind': 'ferramenta',
+                'ferramenta_id': fid,
+                'detail_url': detail_url,
+            }
+        )
+
+    return JsonResponse({'ok': False, 'error': 'invalid'}, status=400)
 
 
 @login_required
@@ -1097,8 +1132,36 @@ def item_novo(request):
 
 
 @login_required
+def detalhes_item(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    item = get_object_or_404(
+        Item.objects.select_related('categoria', 'unidade_medida', 'fornecedor').prefetch_related(
+            'imagens'
+        ),
+        pk=pk,
+        empresa=empresa,
+    )
+    return render(
+        request,
+        'estoque/itens/detalhes.html',
+        {
+            'page_title': item.descricao[:120],
+            'item': item,
+        },
+    )
+
+
+@login_required
 def item_editar(request, pk):
-    return redirect_empresa(request, 'estoque:lista_itens')
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    get_object_or_404(Item, pk=pk, empresa=empresa)
+    return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
 
 
 @login_required
@@ -1122,9 +1185,9 @@ def item_imagem_excluir(request, item_pk, imagem_pk):
         form = ItemForm(instance=item, empresa=empresa)
         if _is_htmx(request):
             return _render_item_form_modal(request, item, form)
-        return redirect_empresa(request, 'estoque:item_editar', pk=item.pk)
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
 
-    return redirect_empresa(request, 'estoque:item_editar', pk=item.pk)
+    return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
 
 
 @login_required

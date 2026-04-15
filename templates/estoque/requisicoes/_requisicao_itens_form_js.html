@@ -223,21 +223,41 @@
         return 'text-bg-success';
     }
 
-    function calcSaldoPreview(meta) {
-        var saldoBase = Number.isFinite(meta.saldoRaw) ? meta.saldoRaw : parseBrDec(meta.saldo);
-        var committed = Number.isFinite(meta.committedRaw) && meta.committedRaw > 0 ? meta.committedRaw : 0;
-        // Na edição de requisição: o saldo no BD já descontou a qtd antiga; para o preview
-        // simula devolver essa qtd e aplicar a nova (evita "retirar duas vezes" no cálculo).
+    /** Teto de quantidade solicitável na linha (mesma base do preview «Saldo após»). */
+    function effectiveSaldoCeiling(meta) {
+        var saldoBase = Number.isFinite(meta.saldoRaw)
+            ? meta.saldoRaw
+            : parseBrDec(meta.saldo);
+        if (!Number.isFinite(saldoBase)) return NaN;
+        var committed =
+            Number.isFinite(meta.committedRaw) && meta.committedRaw > 0
+                ? meta.committedRaw
+                : 0;
         if (committed > 0) {
             saldoBase = saldoBase + committed;
         }
+        return saldoBase;
+    }
+
+    function calcSaldoPreview(meta) {
+        var saldoBase = effectiveSaldoCeiling(meta);
         var minRaw = Number.isFinite(meta.minRaw) ? meta.minRaw : parseBrDec(meta.min);
         var qty = parseFloat(String(meta.qty || '').replace(',', '.'));
         if (!Number.isFinite(saldoBase) || !Number.isFinite(qty)) {
-            return { txt: meta.saldo || '—', cls: meta.saldoClass || 'text-bg-secondary', saldoRaw: saldoBase, minRaw: minRaw };
+            return {
+                txt: meta.saldo || '—',
+                cls: meta.saldoClass || 'text-bg-secondary',
+                saldoRaw: saldoBase,
+                minRaw: minRaw,
+            };
         }
         var rem = saldoBase - qty;
-        return { txt: fmtBr4(rem), cls: saldoClassForPreview(rem, minRaw), saldoRaw: saldoBase, minRaw: minRaw };
+        return {
+            txt: fmtBr4(rem),
+            cls: saldoClassForPreview(rem, minRaw),
+            saldoRaw: saldoBase,
+            minRaw: minRaw,
+        };
     }
 
     function displayRowHtml(meta) {
@@ -371,6 +391,11 @@
         var qtyInput = fr.querySelector('input[name$="-quantidade"]');
         var desc = dr.querySelector('td.fw-semibold') ? dr.querySelector('td.fw-semibold').textContent : 'Item';
         var currentQty = qtyInput ? (qtyInput.value || '') : '';
+        var capEdit = effectiveSaldoCeiling(metaFromFormRow(fr));
+        var maxAttr =
+            Number.isFinite(capEdit) && capEdit > 0
+                ? ' max="' + capEdit.toFixed(4) + '"'
+                : '';
 
         var modalEl = document.getElementById('modalPadrao');
         var modalContent = document.getElementById('modal-content');
@@ -390,7 +415,7 @@
   </div>
   <div class="mb-2">
     <label class="form-label fw-semibold" for="req-edit-qty">Quantidade</label>
-    <input type="number" id="req-edit-qty" class="form-control rounded-3" step="0.0001" min="0" value="${currentQty}">
+    <input type="number" id="req-edit-qty" class="form-control rounded-3" step="0.0001" min="0"${maxAttr} value="${currentQty}">
   </div>
 </div>
 <div class="modal-footer border-0 pt-0 d-flex justify-content-between gap-2 flex-wrap">
@@ -486,6 +511,22 @@
         var obra = document.getElementById('{{ form.obra.id_for_label }}');
         var solicitanteTxt = document.getElementById('req-solicitante-q');
         var localTxt = document.getElementById('req-local-q');
+        var removedSeen = {};
+        var removedItemIds = [];
+        body.querySelectorAll('tr.formset-row[data-item-id]').forEach(function (fr) {
+            if (fr.style.display !== 'none') return;
+            var del = fr.querySelector('input[name$="-DELETE"]');
+            var marked = false;
+            if (del) {
+                if (del.type === 'checkbox') marked = !!del.checked;
+                else marked = String(del.value || '').toLowerCase() === 'on';
+            }
+            if (!marked) return;
+            var rid = parseInt(fr.getAttribute('data-item-id') || '', 10);
+            if (!Number.isFinite(rid) || removedSeen[rid]) return;
+            removedSeen[rid] = true;
+            removedItemIds.push(rid);
+        });
         writeDraft({
             fields: {
                 solicitante: solicitante ? (solicitante.value || '') : '',
@@ -497,6 +538,7 @@
                 local: localTxt ? (localTxt.value || '') : '',
             },
             items: currentRowsForDraft(),
+            removedItemIds: removedItemIds,
         });
     }
 
@@ -517,6 +559,21 @@
             var qEl = existing.querySelector('input[name$="-quantidade"]');
             var cur = parseFloat((qEl.value || '').replace(',', '.'));
             if (!Number.isFinite(cur)) cur = 0;
+            var mRowPre = metaFromFormRow(existing);
+            var ceilingSum = effectiveSaldoCeiling(mRowPre);
+            if (
+                Number.isFinite(ceilingSum) &&
+                cur + qty > ceilingSum + 1e-9
+            ) {
+                window.alert(
+                    'A quantidade total não pode ultrapassar o saldo disponível (' +
+                        fmtBr4(ceilingSum) +
+                        '). Já solicitado nesta linha: ' +
+                        fmtBr4(cur) +
+                        '.'
+                );
+                return;
+            }
             qEl.value = String((cur + qty).toFixed(4));
             var displayExists = displayBody.querySelector(
                 'tr.req-item-row[data-item-id="' + itemId + '"]'
@@ -547,6 +604,15 @@
                 });
             }
             scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
+        var ceilingNew = effectiveSaldoCeiling(meta || {});
+        if (Number.isFinite(ceilingNew) && qty > ceilingNew + 1e-9) {
+            window.alert(
+                'Quantidade não pode ser maior que o saldo disponível (' +
+                    fmtBr4(ceilingNew) +
+                    ').'
+            );
             return;
         }
         var idx = parseInt(totalEl.value || '0', 10);
@@ -740,6 +806,18 @@
                 alert('Informe uma quantidade válida.');
                 return;
             }
+            var fr2meta = metaFromFormRow(
+                body.querySelector('tr.formset-row[data-item-id="' + iid2 + '"]')
+            );
+            var capSave = effectiveSaldoCeiling(fr2meta);
+            if (Number.isFinite(capSave) && newQty > capSave + 1e-9) {
+                window.alert(
+                    'Quantidade não pode ser maior que o saldo disponível (' +
+                        fmtBr4(capSave) +
+                        ').'
+                );
+                return;
+            }
             var origSaveLbl = saveEdit.innerHTML;
             saveEdit.disabled = true;
             saveEdit.setAttribute('aria-busy', 'true');
@@ -791,6 +869,29 @@
             return;
         }
     });
+
+    document.body.addEventListener(
+        'focusout',
+        function (ev) {
+            var el = ev.target;
+            if (
+                !el ||
+                !el.classList ||
+                !el.classList.contains('js-req-item-qtd')
+            ) {
+                return;
+            }
+            var tr = el.closest('tr');
+            var btnR = tr ? tr.querySelector('.js-req-add-item') : null;
+            if (!btnR || btnR.disabled) return;
+            var maxV = parseBrDec(btnR.getAttribute('data-item-saldo-raw') || '');
+            var v = parseBrDec(el.value);
+            if (Number.isFinite(maxV) && Number.isFinite(v) && v > maxV + 1e-9) {
+                el.value = maxV.toFixed(4);
+            }
+        },
+        true
+    );
 
     displayBody.addEventListener('click', function (e) {
         var tr = e.target.closest('tr.req-item-row');
@@ -846,15 +947,39 @@
         });
     }
 
-    window.addEventListener('beforeunload', function () {
-        if (mainForm && mainForm.classList.contains('was-submitted')) {
-            setClearNext();
+    window.addEventListener('pagehide', function () {
+        try {
+            saveDraftFromDom();
+        } catch (e) {
+            // ignore
         }
     });
-    if (mainForm) {
-        mainForm.addEventListener('submit', function () {
-            mainForm.classList.add('was-submitted');
-        });
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'hidden') return;
+        try {
+            saveDraftFromDom();
+        } catch (e) {
+            // ignore
+        }
+    });
+
+    function packMetaFromDraftIt(meta) {
+        meta = meta || {};
+        var pack = {
+            desc: meta.desc || '',
+            cat: meta.cat || '',
+            min: meta.min || '',
+            minRaw: meta.minRaw != null ? meta.minRaw : parseBrDec(meta.min || ''),
+            saldo: meta.saldo || '',
+            saldoRaw: meta.saldoRaw != null ? meta.saldoRaw : parseBrDec(meta.saldo || ''),
+            saldoClass: meta.saldoClass || '',
+            unid: meta.unid || '',
+            thumb: meta.thumb || '',
+        };
+        if (meta.committedRaw != null && Number.isFinite(meta.committedRaw) && meta.committedRaw > 0) {
+            pack.committedRaw = meta.committedRaw;
+        }
+        return pack;
     }
 
     (function restoreDraftIfNeeded() {
@@ -864,9 +989,10 @@
         }
         if (consumeClearNext()) {
             clearDraft();
+            return;
         }
         var draft = readDraft();
-        if (!draft || !draft.items || !draft.items.length) return;
+        if (!draft) return;
 
         try {
             var solicitante = document.getElementById('{{ form.solicitante.id_for_label }}');
@@ -888,29 +1014,69 @@
             // ignore
         }
 
-        if (displayBody.querySelector('tr.req-item-row')) return;
+        var draftItems = draft.items || [];
+        var removedIds = draft.removedItemIds || [];
+        if (!draftItems.length && !removedIds.length) {
+            scheduleSaveDraft(saveDraftFromDom);
+            return;
+        }
 
-        draft.items.forEach(function (it) {
-            var iid = parseInt(it.itemId, 10);
-            var qty = parseFloat(String(it.qty || '').replace(',', '.'));
-            if (!Number.isFinite(iid) || !Number.isFinite(qty) || qty <= 0) return;
-            var meta = (it.meta || {});
-            var pack = {
-                desc: meta.desc || '',
-                cat: meta.cat || '',
-                min: meta.min || '',
-                minRaw: meta.minRaw != null ? meta.minRaw : parseBrDec(meta.min || ''),
-                saldo: meta.saldo || '',
-                saldoRaw: meta.saldoRaw != null ? meta.saldoRaw : parseBrDec(meta.saldo || ''),
-                saldoClass: meta.saldoClass || '',
-                unid: meta.unid || '',
-                thumb: meta.thumb || '',
-            };
-            if (meta.committedRaw != null && Number.isFinite(meta.committedRaw) && meta.committedRaw > 0) {
-                pack.committedRaw = meta.committedRaw;
+        if (SERVER_HYDRATE) {
+            removedIds.forEach(function (rid) {
+                var iid = parseInt(rid, 10);
+                if (!Number.isFinite(iid)) return;
+                var fr = body.querySelector('tr.formset-row[data-item-id="' + iid + '"]');
+                if (!fr) return;
+                var del = fr.querySelector('input[name$="-DELETE"]');
+                markDelete(del);
+                fr.style.display = 'none';
+                var dr = displayBody.querySelector('tr.req-item-row[data-item-id="' + iid + '"]');
+                if (dr) dr.remove();
+            });
+            if (!displayBody.querySelector('tr') && emptyMsg) {
+                emptyMsg.classList.remove('d-none');
             }
-            addOrSumItem(iid, qty, pack);
-        });
+
+            draftItems.forEach(function (it) {
+                var iid = parseInt(it.itemId, 10);
+                var qtyDraft = parseFloat(String(it.qty || '').replace(',', '.'));
+                if (!Number.isFinite(iid) || !Number.isFinite(qtyDraft) || qtyDraft <= 0) return;
+                var pack = packMetaFromDraftIt(it.meta || {});
+                var fr = body.querySelector('tr.formset-row[data-item-id="' + iid + '"]');
+                if (fr) {
+                    var del0 = fr.querySelector('input[name$="-DELETE"]');
+                    clearMarkDelete(del0);
+                    fr.style.display = '';
+                    var qEl0 = fr.querySelector('input[name$="-quantidade"]');
+                    if (qEl0) qEl0.value = String(qtyDraft.toFixed(4));
+                    saveMetaOnFormRow(fr, pack);
+                    var mRow = metaFromFormRow(fr);
+                    upsertDisplayRow(
+                        Object.assign({}, mRow, {
+                            itemId: String(iid),
+                            qty: fmtQty(qEl0 ? qEl0.value : qtyDraft),
+                        })
+                    );
+                } else {
+                    addOrSumItem(iid, qtyDraft, pack);
+                }
+            });
+        } else {
+            if (displayBody.querySelector('tr.req-item-row')) {
+                scheduleSaveDraft(saveDraftFromDom);
+                return;
+            }
+            draftItems.forEach(function (it) {
+                var iid = parseInt(it.itemId, 10);
+                var qty = parseFloat(String(it.qty || '').replace(',', '.'));
+                if (!Number.isFinite(iid) || !Number.isFinite(qty) || qty <= 0) return;
+                addOrSumItem(iid, qty, packMetaFromDraftIt(it.meta || {}));
+            });
+        }
+
+        if (displayBody.querySelector('tr') && emptyMsg) {
+            emptyMsg.classList.add('d-none');
+        }
         scheduleSaveDraft(saveDraftFromDom);
     })();
 })();

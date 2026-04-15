@@ -1,6 +1,7 @@
 // Abrir, fechar e persistir estado da sidebar (localStorage + reapós navegação HTMX).
 
 const DESKTOP_BREAKPOINT = 992;
+/** Mesmo valor que o script inline em templates/base.html (#genesisAppWrapper). */
 const STORAGE_KEY = 'genesis_sidebar_collapsed';
 
 function isDesktop() {

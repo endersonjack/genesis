@@ -55,6 +55,7 @@
                            style="max-width: 140px; margin-left: auto;"
                            step="0.0001"
                            min="0"
+                           {% if it.quantidade_estoque > 0 %}max="{{ it.quantidade_estoque }}"{% endif %}
                            value=""
                            {% if it.quantidade_estoque <= 0 %}disabled{% endif %}>
                 </td>

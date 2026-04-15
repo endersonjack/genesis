@@ -3,7 +3,12 @@ from django.db import models
 from empresas.models import Empresa
 from rh.models import TimeStampedModel
 
-from .upload_paths import item_imagem_upload, item_qrcode_upload
+from .upload_paths import (
+    ferramenta_imagem_upload,
+    ferramenta_qrcode_upload,
+    item_imagem_upload,
+    item_qrcode_upload,
+)
 
 
 class CategoriaItem(TimeStampedModel):
@@ -158,6 +163,80 @@ class ItemImagem(TimeStampedModel):
 
     def __str__(self):
         return f'Imagem #{self.pk} — {self.item_id}'
+
+
+class Ferramenta(TimeStampedModel):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='ferramentas',
+    )
+    descricao = models.CharField(max_length=500)
+    marca = models.CharField(max_length=120, blank=True)
+    categoria = models.ForeignKey(
+        CategoriaFerramenta,
+        on_delete=models.PROTECT,
+        related_name='ferramentas',
+    )
+    cor = models.CharField(max_length=64, blank=True)
+    tamanho = models.CharField(max_length=64, blank=True)
+    codigo_numeracao = models.CharField(
+        'Código / numeração',
+        max_length=64,
+        blank=True,
+        help_text='Identificador interno ou de patrimônio (opcional).',
+    )
+    preco = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    fornecedor = models.ForeignKey(
+        'fornecedores.Fornecedor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ferramentas_estoque',
+    )
+    ativo = models.BooleanField(
+        default=True,
+        help_text='Ferramentas inativas não aparecem nas buscas principais.',
+    )
+    qrcode_imagem = models.ImageField(
+        upload_to=ferramenta_qrcode_upload,
+        blank=True,
+        null=True,
+        verbose_name='QR Code',
+        help_text='Imagem do QR Code gerada ao salvar (leitor 2D nas telas de estoque).',
+    )
+    observacoes = models.TextField('Obs.', blank=True)
+
+    class Meta:
+        verbose_name = 'Ferramenta'
+        verbose_name_plural = 'Ferramentas'
+        ordering = ['descricao']
+
+    def __str__(self):
+        return self.descricao[:80]
+
+
+class FerramentaImagem(TimeStampedModel):
+    ferramenta = models.ForeignKey(
+        Ferramenta,
+        on_delete=models.CASCADE,
+        related_name='imagens',
+    )
+    imagem = models.ImageField(upload_to=ferramenta_imagem_upload)
+    ordem = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Imagem da ferramenta'
+        verbose_name_plural = 'Imagens da ferramenta'
+        ordering = ['ordem', 'pk']
+
+    def __str__(self):
+        return f'Imagem #{self.pk} — {self.ferramenta_id}'
 
 
 class RequisicaoEstoque(TimeStampedModel):

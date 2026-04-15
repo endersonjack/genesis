@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ page_title|truncatechars:80 }} | Ferramentas | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div class="min-w-0">
+        <h2 class="fw-bold mb-1 text-break">{{ ferramenta.descricao }}</h2>
+        <p class="text-muted mb-0 small">Detalhes da ferramenta.</p>
+    </div>
+    <div class="estoque-top-actions flex-shrink-0">
+        <a href="{% url 'estoque:lista_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Ferramentas</span>
+        </a>
+        <button
+            type="button"
+            class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+            hx-get="{% url 'estoque:modal_editar_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-pencil"></i>
+            <span>Editar</span>
+        </button>
+        <a href="{% url 'estoque:ferramenta_excluir' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+           class="estoque-btn estoque-btn-danger-outline text-decoration-none">
+            <i class="bi bi-trash"></i>
+            <span>Excluir</span>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Dados</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted small fw-semibold">Categoria</dt>
+                    <dd class="col-sm-8 mb-3">{{ ferramenta.categoria.nome }}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Marca</dt>
+                    <dd class="col-sm-8 mb-3">{% if ferramenta.marca %}{{ ferramenta.marca }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Cor</dt>
+                    <dd class="col-sm-8 mb-3">{% if ferramenta.cor %}{{ ferramenta.cor }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Tamanho</dt>
+                    <dd class="col-sm-8 mb-3">{% if ferramenta.tamanho %}{{ ferramenta.tamanho }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Código / numeração</dt>
+                    <dd class="col-sm-8 mb-3">{% if ferramenta.codigo_numeracao %}{{ ferramenta.codigo_numeracao }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Preço</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if ferramenta.preco is not None %}
+                            R$ {{ ferramenta.preco|floatformat:2|intcomma }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Fornecedor</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if ferramenta.fornecedor %}
+                            {{ ferramenta.fornecedor }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Ativa</dt>
+                    <dd class="col-sm-8 mb-3">
+                        {% if ferramenta.ativo %}
+                            <span class="badge text-bg-success rounded-pill">Sim</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary rounded-pill">Não</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Obs.</dt>
+                    <dd class="col-sm-8 mb-0">
+                        {% if ferramenta.observacoes %}
+                            {{ ferramenta.observacoes|linebreaksbr }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Imagens</h3>
+                {% if ferramenta.imagens.all %}
+                <div class="row g-2">
+                    {% for im in ferramenta.imagens.all %}
+                    <div class="col-6">
+                        <a href="{{ im.imagem.url }}" target="_blank" rel="noopener" class="d-block rounded-3 overflow-hidden border">
+                            <img src="{{ im.imagem.url }}" alt="" class="w-100 object-fit-cover" style="aspect-ratio:1;max-height:200px;" decoding="async" loading="lazy">
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">Nenhuma imagem anexada.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% if ferramenta.qrcode_imagem %}
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">QR Code</h3>
+                <div class="text-center">
+                    <img src="{{ ferramenta.qrcode_imagem.url }}" alt="QR Code da ferramenta" class="img-fluid border" style="max-width:220px; image-rendering: pixelated; image-rendering: crisp-edges;" decoding="async" loading="lazy">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+{% endblock %}

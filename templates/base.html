@@ -41,7 +41,20 @@
 </head>
 <body class="{% block body_class %}{% endblock %}{% if request.usuario_nav_mobile_apontamento and request.empresa_ativa %} apont-bottom-nav-on{% endif %}">
 
-<div class="app-wrapper">
+<div class="app-wrapper" id="genesisAppWrapper">
+    {# Estado da sidebar (desktop) antes de pintar o menu — evita transição ao dar F5. Mantém chave alinhada a static/js/app.js (STORAGE_KEY). #}
+    <script>
+    (function () {
+        var w = document.getElementById('genesisAppWrapper');
+        if (!w) return;
+        try {
+            if (window.matchMedia('(min-width: 992px)').matches
+                    && localStorage.getItem('genesis_sidebar_collapsed') === 'true') {
+                w.classList.add('sidebar-collapsed');
+            }
+        } catch (e) { /* localStorage indisponível */ }
+    })();
+    </script>
     {% if request.user.is_authenticated %}
         {% include 'includes/sidebar.html' %}
     {% endif %}
@@ -100,6 +113,7 @@
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <script src="{% static 'js/app.js' %}"></script>
 <script src="{% static 'js/extra.js' %}"></script>
+<script src="{% static 'js/estoque-leitor-2d.js' %}"></script>
 <script src="{% static 'js/input_masks.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>

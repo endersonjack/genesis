@@ -40,6 +40,8 @@ document.body.addEventListener('htmx:configRequest', function (event) {
     var showStartedAt = 0;
     var hideTimer = null;
     var MIN_VISIBLE_MS = 240;
+    /** Enquanto o leitor QR consulta / navega, não esconder o overlay por afterRequest de outro HTMX. */
+    var LEITOR_CONSULTING_CLASS = 'genesis-leitor-consulting';
 
     function getLoadingEl() {
         return document.getElementById('global-htmx-loading');
@@ -107,13 +109,13 @@ document.body.addEventListener('htmx:configRequest', function (event) {
     }
 
     function showGlobalHtmxLoading() {
+        var el = getLoadingEl();
+        if (!el) return;
         if (hideTimer) {
             clearTimeout(hideTimer);
             hideTimer = null;
         }
         loadingCount += 1;
-        var el = getLoadingEl();
-        if (!el) return;
         if (loadingCount === 1) {
             showStartedAt = Date.now();
             hideBootstrapModalsBeforeHtmxLoading();
@@ -124,6 +126,10 @@ document.body.addEventListener('htmx:configRequest', function (event) {
     function hideGlobalHtmxLoading() {
         loadingCount = Math.max(0, loadingCount - 1);
         if (loadingCount > 0) return;
+
+        if (document.documentElement.classList.contains(LEITOR_CONSULTING_CLASS)) {
+            return;
+        }
 
         var el = getLoadingEl();
         if (!el) return;
@@ -162,6 +168,7 @@ document.body.addEventListener('htmx:configRequest', function (event) {
     /** Zera contador e esconde overlay (ex.: ao fechar modal após hx-get leve) */
     window.resetGlobalHtmxLoading = function () {
         loadingCount = 0;
+        document.documentElement.classList.remove(LEITOR_CONSULTING_CLASS);
         if (hideTimer) {
             clearTimeout(hideTimer);
             hideTimer = null;
@@ -170,6 +177,38 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         if (el) {
             applyHide(el);
         }
+    };
+
+    /**
+     * Mesmo overlay que HTMX (contador + cancela timer de hide pendente).
+     * Evita lista parcial HTMX “apagar” o loading do leitor QR.
+     */
+    window.genesisShowGlobalNavLoading = function () {
+        showGlobalHtmxLoading();
+        var el = getLoadingEl();
+        if (el) void el.offsetHeight;
+    };
+
+    window.genesisLeitorConsultingBegin = function () {
+        document.documentElement.classList.add(LEITOR_CONSULTING_CLASS);
+    };
+
+    window.genesisLeitorConsultingEnd = function () {
+        document.documentElement.classList.remove(LEITOR_CONSULTING_CLASS);
+    };
+
+    /**
+     * Navegação full-page: overlay já foi exibido na consulta; só garante pintura antes do href.
+     */
+    window.genesisNavigateWithGlobalLoading = function (url) {
+        if (!url) return;
+        var el = getLoadingEl();
+        if (el) void el.offsetHeight;
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                window.location.href = url;
+            });
+        });
     };
 })();
 
@@ -533,14 +572,6 @@ document.body.addEventListener('htmx:popped', function () {
         return document.body && document.body.classList.contains('estoque-pages');
     }
 
-    function showNavLoading() {
-        var el = document.getElementById('global-htmx-loading');
-        if (!el) return;
-        el.classList.add('global-htmx-loading--show');
-        el.setAttribute('aria-hidden', 'false');
-        el.setAttribute('aria-busy', 'true');
-    }
-
     document.addEventListener(
         'click',
         function (e) {
@@ -562,7 +593,9 @@ document.body.addEventListener('htmx:popped', function () {
             } catch (err) {
                 return;
             }
-            showNavLoading();
+            if (typeof window.genesisShowGlobalNavLoading === 'function') {
+                window.genesisShowGlobalNavLoading();
+            }
         },
         true
     );
