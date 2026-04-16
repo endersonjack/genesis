@@ -1,0 +1,119 @@
+{% load humanize %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th class="ps-3" style="width:56px;"></th>
+                <th>Descrição</th>
+                <th>Marca</th>
+                <th>Categoria</th>
+                <th>Código</th>
+                <th>Cor</th>
+                <th>Tamanho</th>
+                <th class="pe-3 text-end" style="width:140px;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if hint %}
+                <tr>
+                    <td colspan="8" class="ps-3 py-4 text-muted small">
+                        {{ hint }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% for f in page_obj %}
+                <tr class="estoque-row-modal js-cautela-modal-row"
+                    role="group"
+                    data-ferramenta-pk="{{ f.pk }}"
+                    {% if f.situacao_cautela == 'ocupada' %}data-db-ocupada="1"{% endif %}>
+                    <td class="ps-3">
+                        {% with im=f.imagens.first %}
+                            {% if im %}
+                                <span class="estoque-item-thumb-wrap">
+                                    <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                </span>
+                            {% else %}
+                                <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td class="fw-semibold">
+                        <span>{{ f.descricao|truncatechars:80 }}</span>
+                        {% if f.situacao_cautela == 'ocupada' %}
+                            <span class="badge text-bg-warning rounded-pill ms-2">OCUPADA</span>
+                        {% else %}
+                            <span class="badge text-bg-success rounded-pill ms-2 js-cautela-badge-livre">LIVRE</span>
+                            <span class="badge text-bg-warning rounded-pill ms-2 js-cautela-badge-rascunho d-none">OCUPADA</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if f.marca %}
+                            {{ f.marca }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ f.categoria.nome }}</td>
+                    <td class="text-nowrap">
+                        {% if f.codigo_numeracao %}
+                            {{ f.codigo_numeracao }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if f.cor %}
+                            {{ f.cor }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if f.tamanho %}
+                            {{ f.tamanho }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="pe-3 text-end">
+                        <div class="d-inline-flex align-items-center gap-2">
+                            {% if f.situacao_cautela == 'ocupada' %}
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary rounded-3"
+                                        disabled
+                                        title="Ferramenta ocupada em cautela">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                            {% else %}
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary rounded-3 js-cautela-add-ferramenta"
+                                        title="Adicionar à cautela"
+                                        data-ferramenta-id="{{ f.pk }}"
+                                        data-ferramenta-desc="{{ f.descricao|escapejs }}"
+                                        data-ferramenta-marca="{{ f.marca|default:''|escapejs }}"
+                                        data-ferramenta-cat="{{ f.categoria.nome|escapejs }}"
+                                        data-ferramenta-code="{{ f.codigo_numeracao|default:''|escapejs }}"
+                                        data-ferramenta-cor="{{ f.cor|default:''|escapejs }}"
+                                        data-ferramenta-tamanho="{{ f.tamanho|default:''|escapejs }}"
+                                        data-ferramenta-detail-url="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=f.pk %}">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            {% endif %}
+                            <a class="btn btn-sm btn-outline-secondary rounded-3"
+                               title="Ver detalhes"
+                               href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=f.pk %}">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            {% if not hint and not page_obj %}
+                <tr>
+                    <td colspan="8" class="ps-3 py-4 text-muted small">Nenhum resultado.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+

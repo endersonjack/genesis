@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ page_title }} | Cautela | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div class="min-w-0">
+        <h2 class="fw-bold mb-1">Cautela #{{ cautela.pk }}</h2>
+        <p class="text-muted mb-0 small">Detalhes, ferramentas em cautela e histórico de devoluções.</p>
+    </div>
+    <div class="estoque-top-actions flex-shrink-0 d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'estoque:cautela_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Cautelas</span>
+        </a>
+        {% if pode_adiar_cautela %}
+            <button
+                type="button"
+                class="estoque-btn estoque-btn-light js-estoque-modal-hx"
+                hx-get="{% url 'estoque:modal_adiar_cautela' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); }">
+                <i class="bi bi-calendar-plus me-1"></i>
+                <span>Adiar cautela</span>
+            </button>
+        {% endif %}
+        {% if staff_pode_gerir_cautela %}
+            <a href="{% url 'estoque:cautela_editar_staff' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+               class="estoque-btn estoque-btn-light text-decoration-none"
+               title="Edição administrativa">
+                <i class="bi bi-pencil-square"></i>
+                <span>Editar</span>
+            </a>
+            <a href="{% url 'estoque:cautela_excluir_staff' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+               class="estoque-btn estoque-btn-danger-outline text-decoration-none"
+               title="Excluir cautela (admin)">
+                <i class="bi bi-trash"></i>
+                <span>Excluir</span>
+            </a>
+        {% endif %}
+        {% if pode_registrar_devolucao %}
+            <div class="dropdown" data-bs-popper="static">
+                <button
+                    type="button"
+                    class="estoque-btn estoque-btn-primary dropdown-toggle"
+                    id="cautela-dropdown-devolucao"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    aria-label="Registrar devolução">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>
+                    <span>Registrar devolução</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="cautela-dropdown-devolucao">
+                    <li>
+                        <button
+                            type="button"
+                            class="dropdown-item js-estoque-modal-hx"
+                            hx-get="{% url 'estoque:modal_entrega_cautela' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}?devolucao=parcial"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML"
+                            data-no-global-loading
+                            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); }">
+                            <i class="bi bi-ui-checks me-2 text-primary"></i> Devolução parcial
+                        </button>
+                    </li>
+                    <li>
+                        <button
+                            type="button"
+                            class="dropdown-item js-estoque-modal-hx"
+                            hx-get="{% url 'estoque:modal_entrega_cautela' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}?devolucao=total"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML"
+                            data-no-global-loading
+                            hx-on="htmx:afterRequest: if (event.detail.successful) { const el = document.getElementById('modalPadrao'); if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show(); }">
+                            <i class="bi bi-collection me-2 text-primary"></i> Devolução total
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        {% else %}
+            <button type="button" class="estoque-btn estoque-btn-light" disabled title="Não é possível registrar devolução nesta cautela.">
+                <i class="bi bi-box-arrow-in-down me-1"></i>
+                <span>Registrar devolução</span>
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Resumo</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted small fw-semibold">Funcionário</dt>
+                    <dd class="col-sm-7 mb-3">{{ cautela.funcionario }}</dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Situação</dt>
+                    <dd class="col-sm-7 mb-3">
+                        <span class="badge {% if cautela.situacao == 'inativa' %}text-bg-secondary{% else %}text-bg-success{% endif %}">
+                            {{ cautela.get_situacao_display }}
+                        </span>
+                    </dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Entrega</dt>
+                    <dd class="col-sm-7 mb-3">
+                        <span class="badge text-bg-light border">{{ cautela.get_entrega_display }}</span>
+                    </dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Início</dt>
+                    <dd class="col-sm-7 mb-3">{{ cautela.data_inicio_cautela|date:"d/m/Y" }}</dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Previsão / fim</dt>
+                    <dd class="col-sm-7 mb-3">
+                        {% if cautela.data_fim %}
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                {% if cautela.situacao == 'ativa' and cautela.data_fim < hoje %}
+                                    <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0"
+                                       title="Previsão de entrega vencida"
+                                       aria-hidden="true"></i>
+                                    <span class="badge rounded-pill bg-warning text-dark fw-semibold">Vencido</span>
+                                {% endif %}
+                                <span>{{ cautela.data_fim|date:"d/m/Y" }}</span>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Obra</dt>
+                    <dd class="col-sm-7 mb-3">{% if cautela.obra %}{{ cautela.obra }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Local</dt>
+                    <dd class="col-sm-7 mb-3">{% if cautela.local %}{{ cautela.local }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Almoxarife</dt>
+                    <dd class="col-sm-7 mb-3">{% if cautela.almoxarife %}{{ cautela.almoxarife }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-5 text-muted small fw-semibold">Obs.</dt>
+                    <dd class="col-sm-7 mb-0">
+                        {% if cautela.observacoes %}{{ cautela.observacoes|linebreaksbr }}{% else %}<span class="text-muted">—</span>{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">
+                    Ferramentas na cautela
+                    <span class="badge text-bg-light border ms-1">{{ total_ferramentas_listagem }}</span>
+                </h3>
+                {% if total_ferramentas_listagem %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th class="text-nowrap">Código</th>
+                                    <th>Categoria</th>
+                                    <th class="text-nowrap text-end" style="width:7rem;">Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in ferramentas_ativas_na_cautela %}
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            <a href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+                                               class="text-dark text-decoration-none">{{ f.descricao }}</a>
+                                        </td>
+                                        <td class="small">{% if f.codigo_numeracao %}{{ f.codigo_numeracao }}{% else %}—{% endif %}</td>
+                                        <td class="small">{{ f.categoria.nome }}</td>
+                                        <td class="text-end">
+                                            <span class="badge rounded-pill text-bg-success">Ativa</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                {% for f in ferramentas_entregues_na_cautela %}
+                                    <tr class="text-muted">
+                                        <td class="fw-semibold">
+                                            <a href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=f.pk %}"
+                                               class="text-muted text-decoration-none">{{ f.descricao }}</a>
+                                        </td>
+                                        <td class="small">{% if f.codigo_numeracao %}{{ f.codigo_numeracao }}{% else %}—{% endif %}</td>
+                                        <td class="small">{{ f.categoria.nome }}</td>
+                                        <td class="text-end">
+                                            <span class="badge rounded-pill text-bg-secondary">Entregue</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0">Nenhuma ferramenta vinculada.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Histórico de devoluções</h3>
+                {% if cautela.entregas.all %}
+                    <div class="vstack gap-3">
+                        {% for e in cautela.entregas.all %}
+                            <div class="rounded-3 border p-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                                    <div>
+                                        <div class="fw-semibold">{{ e.data_entrega|date:"d/m/Y" }}</div>
+                                        <div class="small text-muted">{{ e.get_tipo_display }}</div>
+                                    </div>
+                                    <span class="badge text-bg-light border">{{ e.ferramentas_devolvidas.all|length }} ferramenta{{ e.ferramentas_devolvidas.all|length|pluralize }}</span>
+                                </div>
+                                {% if e.motivo or e.situacao_ferramentas %}
+                                    <div class="small mb-2">
+                                        {% if e.motivo %}<span class="fw-semibold">Motivo:</span> {{ e.motivo }}{% endif %}
+                                        {% if e.motivo and e.situacao_ferramentas %} · {% endif %}
+                                        {% if e.situacao_ferramentas %}<span class="fw-semibold">Situação:</span> {{ e.situacao_ferramentas }}{% endif %}
+                                    </div>
+                                {% endif %}
+                                {% if e.observacoes %}
+                                    <div class="small text-muted mb-2">{{ e.observacoes|linebreaksbr }}</div>
+                                {% endif %}
+                                {% if e.ferramentas_devolvidas.all %}
+                                    <ul class="small mb-0 ps-3">
+                                        {% for fd in e.ferramentas_devolvidas.all %}
+                                            <li>
+                                                <a href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=fd.pk %}"
+                                                   class="text-decoration-none">{{ fd.descricao }}</a>{% if fd.codigo_numeracao %} <span class="text-muted">({{ fd.codigo_numeracao }})</span>{% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0">Nenhuma devolução registrada.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}

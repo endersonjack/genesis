@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Editar cautela #{{ cautela.pk }}</h2>
+        <p class="text-muted mb-0 small">Alteração administrativa — situação, dados e andamento da entrega.</p>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar ao detalhe</span>
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="alert alert-warning small mb-4">
+            Ao definir a <strong>situação</strong> como <strong>Inativa</strong> e salvar, as ferramentas ainda vinculadas
+            passam a <strong>Livre</strong> e são desvinculadas desta cautela (como encerramento operacional).
+        </div>
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post"
+                      class="js-estoque-form-busy"
+                      data-estoque-busy-label="Salvando…">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">{{ form.funcionario.label }}</label>
+                            {{ form.funcionario }}
+                            {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.data_inicio_cautela.id_for_label }}">{{ form.data_inicio_cautela.label }}</label>
+                            {{ form.data_inicio_cautela }}
+                            {% if form.data_inicio_cautela.errors %}<div class="text-danger small mt-1">{{ form.data_inicio_cautela.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.data_fim.id_for_label }}">{{ form.data_fim.label }}</label>
+                            {{ form.data_fim }}
+                            {% if form.data_fim.errors %}<div class="text-danger small mt-1">{{ form.data_fim.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.local.id_for_label }}">{{ form.local.label }}</label>
+                            {{ form.local }}
+                            {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.obra.id_for_label }}">{{ form.obra.label }}</label>
+                            {{ form.obra }}
+                            {% if form.obra.errors %}<div class="text-danger small mt-1">{{ form.obra.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.situacao.id_for_label }}">{{ form.situacao.label }}</label>
+                            {{ form.situacao }}
+                            {% if form.situacao.errors %}<div class="text-danger small mt-1">{{ form.situacao.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.entrega.id_for_label }}">{{ form.entrega.label }}</label>
+                            {{ form.entrega }}
+                            {% if form.entrega.errors %}<div class="text-danger small mt-1">{{ form.entrega.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                            {{ form.observacoes }}
+                            {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <button type="submit" class="estoque-btn estoque-btn-primary">
+                            <i class="bi bi-check2-circle me-1"></i> Salvar
+                        </button>
+                        <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+                           class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

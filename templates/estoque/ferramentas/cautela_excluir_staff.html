@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-2">Excluir cautela</h2>
+                <p class="text-muted small mb-3">
+                    Esta operação remove a cautela e <strong>todos os registros de devolução</strong> associados.
+                    Ferramentas ainda vinculadas serão marcadas como <strong>Livre</strong>.
+                </p>
+                <p class="fw-semibold mb-1">Cautela #{{ cautela.pk }}</p>
+                <p class="text-muted small mb-0">{{ cautela.funcionario }}</p>
+                <form method="post"
+                      class="d-flex flex-wrap gap-2 mt-4 js-estoque-form-busy"
+                      data-estoque-busy-label="Excluindo…">
+                    {% csrf_token %}
+                    <button type="submit" class="estoque-btn estoque-btn-danger">Excluir definitivamente</button>
+                    <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=cautela.pk %}"
+                       class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

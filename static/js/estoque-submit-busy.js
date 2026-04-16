@@ -116,6 +116,12 @@
         var form = e.detail.elt;
         if (!form || form.tagName !== 'FORM' || !form.classList.contains('js-estoque-form-busy')) return;
         if (!isHtmxForm(form)) return;
+        if (e.detail.successful && e.detail.xhr) {
+            var loc = e.detail.xhr.getResponseHeader('HX-Redirect');
+            if (loc) {
+                return;
+            }
+        }
         if (form.isConnected) {
             resetFormBusy(form);
         }

@@ -8,8 +8,14 @@ document.body.addEventListener('htmx:configRequest', function (event) {
         return;
     }
     const elt = event.detail.elt;
-    if (elt && elt.tagName === 'FORM') {
-        const tokenInput = elt.querySelector('[name=csrfmiddlewaretoken]');
+    const formForCsrf =
+        elt && elt.tagName === 'FORM'
+            ? elt
+            : elt && elt.closest
+              ? elt.closest('form')
+              : null;
+    if (formForCsrf) {
+        const tokenInput = formForCsrf.querySelector('[name=csrfmiddlewaretoken]');
         if (tokenInput && tokenInput.value) {
             event.detail.headers['X-CSRFToken'] = tokenInput.value;
         }

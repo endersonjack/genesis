@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from empresas.models import Empresa
@@ -166,6 +167,10 @@ class ItemImagem(TimeStampedModel):
 
 
 class Ferramenta(TimeStampedModel):
+    class SituacaoCautela(models.TextChoices):
+        LIVRE = 'livre', 'Livre'
+        OCUPADA = 'ocupada', 'Ocupada'
+
     empresa = models.ForeignKey(
         Empresa,
         on_delete=models.CASCADE,
@@ -211,6 +216,14 @@ class Ferramenta(TimeStampedModel):
         help_text='Imagem do QR Code gerada ao salvar (leitor 2D nas telas de estoque).',
     )
     observacoes = models.TextField('Obs.', blank=True)
+    situacao_cautela = models.CharField(
+        'Situação na cautela',
+        max_length=10,
+        choices=SituacaoCautela.choices,
+        default=SituacaoCautela.LIVRE,
+        db_index=True,
+        help_text='Ferramenta fica OCUPADA enquanto estiver em cautela ativa e volta a LIVRE quando for entregue.',
+    )
 
     class Meta:
         verbose_name = 'Ferramenta'
@@ -330,3 +343,222 @@ class RequisicaoEstoqueItem(models.Model):
 
     def __str__(self):
         return f'{self.item} × {self.quantidade}'
+
+
+class RascunhoNovaCautela(TimeStampedModel):
+    """Rascunho do formulário Nova cautela (por usuário e empresa). Excluído ao salvar a cautela."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='rascunhos_nova_cautela',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='rascunhos_nova_cautela_estoque',
+    )
+    dados = models.JSONField(
+        default=dict,
+        help_text='JSON com chaves form (campos do formulário) e items (ferramentas).',
+    )
+
+    class Meta:
+        verbose_name = 'Rascunho de nova cautela'
+        verbose_name_plural = 'Rascunhos de nova cautela'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'usuario'],
+                name='uniq_rascunho_nova_cautela_empresa_usuario',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Rascunho cautela — {self.usuario_id} / empresa {self.empresa_id}'
+
+
+class Cautela(TimeStampedModel):
+    class Situacao(models.TextChoices):
+        ATIVA = 'ativa', 'Ativa'
+        INATIVA = 'inativa', 'Inativa'
+
+    class Entrega(models.TextChoices):
+        NAO = 'nao', 'Não'
+        PARCIAL = 'parcial', 'Parcial'
+        TOTAL = 'total', 'Total'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='cautelas_ferramentas',
+    )
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.PROTECT,
+        related_name='cautelas_ferramentas',
+    )
+    ferramentas = models.ManyToManyField(
+        Ferramenta,
+        blank=True,
+        related_name='cautelas_ferramentas',
+    )
+    almoxarife = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cautelas_ferramentas_almoxarife',
+    )
+    data_inicio_cautela = models.DateField('Data início da cautela')
+    data_fim = models.DateField('Data fim', null=True, blank=True)
+    local = models.ForeignKey(
+        'local.Local',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cautelas_ferramentas',
+    )
+    obra = models.ForeignKey(
+        'obras.Obra',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cautelas_ferramentas',
+    )
+    situacao = models.CharField(
+        'Situação',
+        max_length=10,
+        choices=Situacao.choices,
+        default=Situacao.ATIVA,
+        db_index=True,
+    )
+    entrega = models.CharField(
+        'Entrega',
+        max_length=10,
+        choices=Entrega.choices,
+        default=Entrega.NAO,
+        db_index=True,
+        help_text='Indica o andamento da devolução das ferramentas.',
+    )
+    observacoes = models.TextField('Obs.', blank=True)
+
+    class Meta:
+        verbose_name = 'Cautela de ferramentas'
+        verbose_name_plural = 'Cautelas de ferramentas'
+        ordering = ['-criado_em']
+        indexes = [
+            models.Index(fields=['empresa', 'situacao']),
+            models.Index(fields=['empresa', 'entrega']),
+        ]
+
+    def __str__(self):
+        return f'Cautela #{self.pk} — {self.funcionario}'
+
+    @property
+    def data_registro(self):
+        # Alias para o requisito “Data de registro” (usa `criado_em` do TimeStampedModel).
+        return self.criado_em
+
+
+class MotivoDevolucaoCautela(TimeStampedModel):
+    """Catálogo de motivos (cadastro via Admin)."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='motivos_devolucao_cautela',
+    )
+    nome = models.CharField(max_length=200)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Motivo da devolução (cautela)'
+        verbose_name_plural = 'Motivos da devolução (cautela)'
+        ordering = ['nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'nome'],
+                name='uniq_motivo_devolucao_cautela_empresa_nome',
+            ),
+        ]
+
+    def __str__(self):
+        return self.nome
+
+
+class SituacaoFerramentasPosDevolucao(TimeStampedModel):
+    """Catálogo de situação das ferramentas após devolução (cadastro via Admin)."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='situacoes_ferramentas_pos_devolucao',
+    )
+    nome = models.CharField(max_length=200)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Situação da(s) ferramentas (pós-devolução)'
+        verbose_name_plural = 'Situações da(s) ferramentas (pós-devolução)'
+        ordering = ['nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'nome'],
+                name='uniq_situacao_ferr_pos_dev_empresa_nome',
+            ),
+        ]
+
+    def __str__(self):
+        return self.nome
+
+
+class Entrega_Cautela(TimeStampedModel):
+    class Tipo(models.TextChoices):
+        PARCIAL = 'parcial', 'Parcial'
+        COMPLETA = 'completa', 'Completa'
+
+    cautela = models.ForeignKey(
+        Cautela,
+        on_delete=models.CASCADE,
+        related_name='entregas',
+    )
+    tipo = models.CharField(
+        'Tipo',
+        max_length=10,
+        choices=Tipo.choices,
+        db_index=True,
+    )
+    data_entrega = models.DateField('Data da entrega')
+    observacoes = models.TextField('Obs.', blank=True)
+    motivo = models.ForeignKey(
+        MotivoDevolucaoCautela,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='entregas_cautela',
+    )
+    situacao_ferramentas = models.ForeignKey(
+        SituacaoFerramentasPosDevolucao,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='entregas_cautela',
+        verbose_name='Situação da(s) ferramentas',
+    )
+    ferramentas_devolvidas = models.ManyToManyField(
+        Ferramenta,
+        blank=True,
+        related_name='entregas_cautela_devolucoes',
+        verbose_name='Ferramentas devolvidas neste registro',
+    )
+
+    class Meta:
+        verbose_name = 'Entrega / devolução de cautela'
+        verbose_name_plural = 'Entregas / devoluções de cautelas'
+        ordering = ['-data_entrega', '-criado_em']
+
+    def __str__(self):
+        return (
+            f'{self.cautela} — {self.get_tipo_display()} em '
+            f'{self.data_entrega:%d/%m/%Y}'
+        )

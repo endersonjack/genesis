@@ -1,0 +1,71 @@
+{% if adiar_bloqueada %}
+    <div class="modal-header">
+        <h5 class="modal-title fw-bold mb-0">Adiar cautela</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+    <div class="modal-body">
+        <div class="alert alert-warning mb-0">
+            Só é possível alterar a previsão em cautelas <strong>ativas</strong>.
+        </div>
+    </div>
+    <div class="modal-footer d-flex justify-content-end">
+        <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Fechar</button>
+    </div>
+{% else %}
+    <form
+        method="post"
+        class="js-estoque-form-busy d-flex flex-column flex-fill"
+        style="min-height: 0;"
+        novalidate
+        hx-post="{{ post_url }}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        data-no-global-loading
+        data-estoque-busy-label="Salvando…"
+        id="cautela-adiar-form">
+        {% csrf_token %}
+        <div class="modal-header flex-shrink-0">
+            <h5 class="modal-title fw-bold mb-0">Adiar previsão de entrega</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body flex-grow-1 overflow-y-auto" style="min-height: 0;">
+            {% if form_erro %}
+                <div class="alert alert-danger small">{{ form_erro }}</div>
+            {% endif %}
+            <p class="text-muted small mb-3">
+                Cautela #{{ cautela.pk }} · {{ cautela.funcionario }}<br>
+                Início: {{ cautela.data_inicio_cautela|date:"d/m/Y" }} ·
+                A nova data não pode ser anterior a essa data de início.
+            </p>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="cautela-adiar-data-fim">Nova previsão / data fim</label>
+                <input type="date"
+                       class="form-control rounded-3"
+                       name="data_fim"
+                       id="cautela-adiar-data-fim"
+                       min="{{ data_inicio_iso }}"
+                       value="{{ data_fim_inicial_iso }}"
+                       required>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="estoque-btn estoque-btn-light"
+                        onclick="var i=document.getElementById('cautela-adiar-data-fim'); if(i) i.value='{{ sugestao_7_iso }}';">
+                    + 7 dias
+                </button>
+                <button type="button" class="estoque-btn estoque-btn-light"
+                        onclick="var i=document.getElementById('cautela-adiar-data-fim'); if(i) i.value='{{ sugestao_30_iso }}';">
+                    + 30 dias
+                </button>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+                Os atalhos somam a partir da previsão atual (ou de hoje, se ainda não houver previsão cadastrada).
+            </p>
+        </div>
+        <div class="modal-footer flex-shrink-0 d-flex flex-wrap gap-2 justify-content-end">
+            <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="estoque-btn estoque-btn-primary">
+                <i class="bi bi-calendar-check me-1"></i> Salvar
+            </button>
+        </div>
+    </form>
+{% endif %}

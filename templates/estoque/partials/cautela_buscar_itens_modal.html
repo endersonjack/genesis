@@ -1,0 +1,70 @@
+{% load humanize %}
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold mb-0">Buscar ferramentas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+    <div class="mb-3">
+        <label class="form-label fw-semibold mb-1" for="cautela-itens-q">Descrição</label>
+        <div class="d-flex align-items-stretch gap-2">
+            <div class="input-group input-group-lg flex-grow-1" style="min-width: 0;">
+                <input type="text"
+                       id="cautela-itens-q"
+                       name="q"
+                       class="form-control rounded-3"
+                       placeholder="Digite..."
+                       autocomplete="off"
+                       hx-get="{% url 'estoque:partial_buscar_itens_cautela' empresa_id=request.empresa_ativa.pk %}"
+                       hx-trigger="input delay:280ms, load"
+                       hx-target="#cautela-itens-list"
+                       data-no-global-loading>
+                <button type="button"
+                        class="btn btn-outline-secondary rounded-end-3"
+                        id="cautela-itens-q-clear"
+                        title="Limpar descrição">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cautela-itens-list"></div>
+
+    <script>
+    (function () {
+        // Aumenta o modal horizontalmente para a tabela ter espaço.
+        var modal = document.getElementById('modalPadrao');
+        var dialog = modal ? modal.querySelector('.modal-dialog') : null;
+        if (dialog) {
+            dialog.classList.add('modal-xl');
+            dialog.classList.remove('modal-lg');
+            if (!dialog.dataset.cautelaItensWidenBound) {
+                dialog.dataset.cautelaItensWidenBound = '1';
+                modal.addEventListener(
+                    'hidden.bs.modal',
+                    function () {
+                        dialog.classList.remove('modal-xl');
+                        dialog.classList.add('modal-lg');
+                    },
+                    { once: true }
+                );
+            }
+        }
+
+        var q = document.getElementById('cautela-itens-q');
+        var clearBtn = document.getElementById('cautela-itens-q-clear');
+        if (!q) return;
+        if (clearBtn && !clearBtn.dataset.bound) {
+            clearBtn.dataset.bound = '1';
+            clearBtn.addEventListener('click', function () {
+                q.value = '';
+                q.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        }
+    })();
+    </script>
+</div>
+<div class="modal-footer border-0 pt-0 d-flex justify-content-end">
+    <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Fechar</button>
+</div>
+

@@ -21,17 +21,57 @@
         <a href="{% url 'estoque:lista_ferramentas' empresa_id=request.empresa_ativa.pk %}"
            class="estoque-btn estoque-btn-light text-decoration-none">
             <i class="bi bi-wrench-adjustable"></i>
-            <span>Cadastro de ferramentas</span>
+            <span>Ver Ferramentas</span>
+        </a>
+        <a href="{% url 'estoque:cautela_nova' empresa_id=request.empresa_ativa.pk %}?fresh=1"
+           class="estoque-btn estoque-btn-primary text-decoration-none">
+            <i class="bi bi-plus-lg me-1"></i>
+            <span>Nova cautela</span>
         </a>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm rounded-3">
-    <div class="card-body p-4 p-md-5 text-center text-muted">
-        <p class="mb-2 fw-semibold text-body">Esta área está em preparação.</p>
-        <p class="mb-0 small" style="max-width:36rem;margin-left:auto;margin-right:auto;">
-            Em breve você poderá registrar cautelas, acompanhar ferramentas em poder de colaboradores e dar baixa nas devoluções.
-        </p>
+<div id="estoque-list-panel" class="estoque-list-panel">
+    <div id="estoque-list-hx-skeleton" class="htmx-indicator estoque-list-hx-skeleton">
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row short"></div>
+    </div>
+    <div id="estoque-list-inner">
+        {% include 'estoque/ferramentas/_cautelas_conteudo.html' %}
     </div>
 </div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+    function go(tr) {
+        var u = tr.getAttribute('data-cautela-url');
+        if (!u) return;
+        if (tr.getAttribute('data-cautela-navigating') === '1') return;
+        tr.setAttribute('data-cautela-navigating', '1');
+        if (typeof window.genesisShowGlobalNavLoading === 'function') {
+            window.genesisShowGlobalNavLoading();
+        }
+        window.location.href = u;
+    }
+    document.body.addEventListener('click', function (e) {
+        var tr = e.target.closest('tr.cautela-row-link');
+        if (!tr) return;
+        if (e.target.closest('a, button')) return;
+        go(tr);
+    });
+    document.body.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var tr = e.target.closest('tr.cautela-row-link');
+        if (!tr || document.activeElement !== tr) return;
+        e.preventDefault();
+        go(tr);
+    });
+})();
+</script>
 {% endblock %}

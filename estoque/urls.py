@@ -2,7 +2,7 @@ from django.urls import path
 
 from core.view_helpers import empresa_scoped
 
-from . import ferramenta_views, item_views, requisicoes_views, views
+from . import cautela_views, ferramenta_views, item_views, requisicoes_views, views
 
 
 app_name = 'estoque'
@@ -213,8 +213,53 @@ urlpatterns = [
     ),
     path(
         'ferramentas/cautela/',
-        empresa_scoped(ferramenta_views.cautela_ferramentas),
+        empresa_scoped(cautela_views.cautela_ferramentas),
         name='cautela_ferramentas',
+    ),
+    path(
+        'ferramentas/cautela/nova/',
+        empresa_scoped(cautela_views.nova_cautela),
+        name='cautela_nova',
+    ),
+    path(
+        'ferramentas/cautela/rascunho/',
+        empresa_scoped(cautela_views.api_rascunho_nova_cautela),
+        name='api_rascunho_nova_cautela',
+    ),
+    path(
+        'ferramentas/cautela/<int:pk>/',
+        empresa_scoped(cautela_views.detalhe_cautela),
+        name='cautela_detalhe',
+    ),
+    path(
+        'ferramentas/cautela/<int:pk>/editar/',
+        empresa_scoped(cautela_views.editar_cautela_staff),
+        name='cautela_editar_staff',
+    ),
+    path(
+        'ferramentas/cautela/<int:pk>/excluir/',
+        empresa_scoped(cautela_views.excluir_cautela_staff),
+        name='cautela_excluir_staff',
+    ),
+    path(
+        'ferramentas/cautela/<int:pk>/entrega/',
+        empresa_scoped(cautela_views.modal_entrega_cautela),
+        name='modal_entrega_cautela',
+    ),
+    path(
+        'ferramentas/cautela/<int:pk>/adiar/',
+        empresa_scoped(cautela_views.modal_adiar_cautela),
+        name='modal_adiar_cautela',
+    ),
+    path(
+        'ferramentas/cautela/modal/buscar-itens/',
+        empresa_scoped(cautela_views.modal_buscar_itens_cautela),
+        name='modal_buscar_itens_cautela',
+    ),
+    path(
+        'ferramentas/cautela/partial/buscar-itens/',
+        empresa_scoped(cautela_views.partial_buscar_itens_cautela),
+        name='partial_buscar_itens_cautela',
     ),
     path(
         'ferramentas/modal/novo/',

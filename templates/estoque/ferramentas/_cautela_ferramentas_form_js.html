@@ -1,0 +1,489 @@
+<script>
+(function () {
+    'use strict';
+    if (window.__genesisNovaCautelaDraftBound) return;
+    window.__genesisNovaCautelaDraftBound = true;
+
+    var RASCUNHO_SAVE_URL = '{{ rascunho_save_url|escapejs }}';
+    if (!RASCUNHO_SAVE_URL) return;
+
+    var displayBody = document.getElementById('cautela-ferramentas-display-body');
+    var hiddenInputs = document.getElementById('cautela-ferramentas-hidden-inputs');
+    var emptyMsg = document.getElementById('cautela-ferramentas-vazio-msg');
+    if (!displayBody || !hiddenInputs) return;
+
+    var state = {
+        form: {
+            funcionario_id: '',
+            funcionario_label: '',
+            local_id: '',
+            local_label: '',
+            obra_id: '',
+            data_inicio: '',
+            data_fim: '',
+            observacoes: '',
+        },
+        items: [],
+    };
+    var hasDraft = false;
+
+    var IDS = {
+        funcionario_hidden: '{{ funcionario_hidden_id|escapejs }}',
+        funcionario_input: '{{ funcionario_input_id|escapejs }}',
+        local_hidden: '{{ local_hidden_id|escapejs }}',
+        local_input: '{{ local_input_id|escapejs }}',
+        obra_select: '{{ obra_select_id|escapejs }}',
+        data_inicio: '{{ data_inicio_id|escapejs }}',
+        data_fim: '{{ data_fim_id|escapejs }}',
+        observacoes: '{{ obs_id|escapejs }}',
+    };
+
+    function safeJsonParse(s) {
+        try {
+            return JSON.parse(s);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getCsrfToken() {
+        var inp = document.querySelector('input[name=csrfmiddlewaretoken]');
+        if (inp && inp.value) return inp.value;
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function readDraftFromEmbed() {
+        var el = document.getElementById('nova-cautela-rascunho-inicial');
+        if (!el) return null;
+        var obj = safeJsonParse(String(el.textContent || '').trim());
+        if (!obj || typeof obj !== 'object') return null;
+        if (obj.form === undefined && obj.items === undefined) return null;
+        if (obj.form != null && typeof obj.form !== 'object') return null;
+        if (!Array.isArray(obj.items)) {
+            obj.items = [];
+        }
+        var hasFormData =
+            obj.form &&
+            Object.keys(obj.form).some(function (k) {
+                var v = obj.form[k];
+                return v != null && String(v).trim() !== '';
+            });
+        if (!hasFormData && obj.items.length === 0) return null;
+        return obj;
+    }
+
+    function aplicarPayloadRascunho(d) {
+        if (!d || typeof d !== 'object') return false;
+        var items = Array.isArray(d.items) ? d.items : [];
+        var form = d.form && typeof d.form === 'object' ? d.form : {};
+        var hasFormData = Object.keys(form).some(function (k) {
+            var v = form[k];
+            return v != null && String(v).trim() !== '';
+        });
+        if (!hasFormData && items.length === 0) {
+            hasDraft = false;
+            return false;
+        }
+        hasDraft = true;
+        state.items = items;
+        state.form = Object.assign({}, state.form, form);
+        return true;
+    }
+
+    function persistRascunhoNow(keepalive) {
+        var token = getCsrfToken();
+        if (!token) return;
+        try {
+            var body = JSON.stringify({ form: state.form, items: state.items });
+            fetch(RASCUNHO_SAVE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': token,
+                },
+                credentials: 'same-origin',
+                body: body,
+                keepalive: !!keepalive,
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    var saveTimer = null;
+    function schedulePersistRascunho(immediate) {
+        if (immediate) {
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+            }
+            persistRascunhoNow(false);
+            return;
+        }
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+            saveTimer = null;
+            persistRascunhoNow(false);
+        }, 200);
+    }
+
+    function urlTemFresh() {
+        try {
+            return (
+                new URLSearchParams(window.location.search || '').get('fresh') ===
+                '1'
+            );
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function stripFreshDaUrl() {
+        try {
+            var p = new URLSearchParams(window.location.search || '');
+            if (p.get('fresh') !== '1') return;
+            p.delete('fresh');
+            var qs = p.toString();
+            window.history.replaceState(
+                null,
+                '',
+                window.location.pathname +
+                    (qs ? '?' + qs : '') +
+                    window.location.hash
+            );
+        } catch (e) {}
+    }
+
+    function syncDomFromState() {
+        var hidratar =
+            hasDraft ||
+            (state.items && state.items.length > 0) ||
+            (state.form &&
+                Object.keys(state.form).some(function (k) {
+                    var v = state.form[k];
+                    return v != null && String(v).trim() !== '';
+                }));
+        if (hidratar) {
+            try {
+                var fh = IDS.funcionario_hidden ? document.getElementById(IDS.funcionario_hidden) : null;
+                var fi = IDS.funcionario_input ? document.getElementById(IDS.funcionario_input) : null;
+                var lh = IDS.local_hidden ? document.getElementById(IDS.local_hidden) : null;
+                var li = IDS.local_input ? document.getElementById(IDS.local_input) : null;
+                var obra = IDS.obra_select ? document.getElementById(IDS.obra_select) : null;
+                var di = IDS.data_inicio ? document.getElementById(IDS.data_inicio) : null;
+                var df = IDS.data_fim ? document.getElementById(IDS.data_fim) : null;
+                var obs = IDS.observacoes ? document.getElementById(IDS.observacoes) : null;
+
+                if (fh && state.form.funcionario_id) fh.value = state.form.funcionario_id;
+                if (fi && state.form.funcionario_label) fi.value = state.form.funcionario_label;
+                if (lh && state.form.local_id) lh.value = state.form.local_id;
+                if (li && state.form.local_label) li.value = state.form.local_label;
+                if (obra && state.form.obra_id) obra.value = state.form.obra_id;
+                if (di && state.form.data_inicio) di.value = state.form.data_inicio;
+                if (df && state.form.data_fim) df.value = state.form.data_fim;
+                if (obs && state.form.observacoes) obs.value = state.form.observacoes;
+            } catch (e) {}
+        }
+
+        displayBody.innerHTML = '';
+        hiddenInputs.innerHTML = '';
+
+        var items = state.items || [];
+        if (items.length === 0) {
+            if (emptyMsg) emptyMsg.style.display = 'block';
+            return;
+        }
+        if (emptyMsg) emptyMsg.style.display = 'none';
+
+        items.forEach(function (it) {
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-ferramenta-id', String(it.id));
+
+            var desc = it.desc || '—';
+            var marca = it.marca || '—';
+            var cat = it.cat || '—';
+            var code = it.code ? String(it.code) : '—';
+            var cor = it.cor || '—';
+            var tamanho = it.tamanho || '—';
+            var detailUrl = it.detail_url || '';
+
+            tr.innerHTML = `
+                <td class="fw-semibold">${desc}</td>
+                <td>${marca}</td>
+                <td>${cat}</td>
+                <td class="text-nowrap">${code}</td>
+                <td>${cor}</td>
+                <td>${tamanho}</td>
+                <td class="text-end">
+                    <div class="d-inline-flex align-items-center gap-2">
+                        ${detailUrl ? `<a class="btn btn-sm btn-outline-secondary rounded-3" href="${detailUrl}" title="Ver detalhes"><i class="bi bi-box-arrow-up-right"></i></a>` : ''}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger rounded-3 js-cautela-remove-ferramenta"
+                                title="Remover"
+                                data-ferramenta-id="${it.id}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+
+            displayBody.appendChild(tr);
+
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'ferramentas_ids';
+            inp.value = String(it.id);
+            hiddenInputs.appendChild(inp);
+        });
+    }
+
+    function idExists(id) {
+        return (state.items || []).some(function (x) {
+            return String(x.id) === String(id);
+        });
+    }
+
+    function syncCautelaModalRascunho(scope) {
+        var root = scope || document;
+        root.querySelectorAll('tr.js-cautela-modal-row[data-ferramenta-pk]').forEach(function (tr) {
+            if (tr.getAttribute('data-db-ocupada') === '1') return;
+            var pk = tr.getAttribute('data-ferramenta-pk');
+            if (!pk) return;
+            var inDraft = idExists(pk);
+            var livreSpan = tr.querySelector('.js-cautela-badge-livre');
+            var rascunhoSpan = tr.querySelector('.js-cautela-badge-rascunho');
+            var addBtn = tr.querySelector('.js-cautela-add-ferramenta');
+            if (livreSpan && rascunhoSpan) {
+                if (inDraft) {
+                    livreSpan.classList.add('d-none');
+                    rascunhoSpan.classList.remove('d-none');
+                } else {
+                    livreSpan.classList.remove('d-none');
+                    rascunhoSpan.classList.add('d-none');
+                }
+            }
+            if (addBtn) {
+                if (inDraft) {
+                    addBtn.disabled = true;
+                    addBtn.classList.remove('btn-outline-primary');
+                    addBtn.classList.add('btn-outline-secondary');
+                    addBtn.innerHTML = '<i class="bi bi-lock"></i>';
+                    addBtn.setAttribute(
+                        'title',
+                        'Já adicionada no rascunho — remova da lista da cautela para incluir novamente'
+                    );
+                } else {
+                    addBtn.disabled = false;
+                    addBtn.classList.add('btn-outline-primary');
+                    addBtn.classList.remove('btn-outline-secondary');
+                    addBtn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+                    addBtn.setAttribute('title', 'Adicionar à cautela');
+                }
+            }
+        });
+    }
+
+    function syncStateFromDom() {
+        var fh = IDS.funcionario_hidden ? document.getElementById(IDS.funcionario_hidden) : null;
+        var fi = IDS.funcionario_input ? document.getElementById(IDS.funcionario_input) : null;
+        var lh = IDS.local_hidden ? document.getElementById(IDS.local_hidden) : null;
+        var li = IDS.local_input ? document.getElementById(IDS.local_input) : null;
+        var obra = IDS.obra_select ? document.getElementById(IDS.obra_select) : null;
+        var di = IDS.data_inicio ? document.getElementById(IDS.data_inicio) : null;
+        var df = IDS.data_fim ? document.getElementById(IDS.data_fim) : null;
+        var obs = IDS.observacoes ? document.getElementById(IDS.observacoes) : null;
+
+        state.form.funcionario_id = fh ? (fh.value || '') : '';
+        state.form.funcionario_label = fi ? (fi.value || '') : '';
+        state.form.local_id = lh ? (lh.value || '') : '';
+        state.form.local_label = li ? (li.value || '') : '';
+        state.form.obra_id = obra ? (obra.value || '') : '';
+        state.form.data_inicio = di ? (di.value || '') : '';
+        state.form.data_fim = df ? (df.value || '') : '';
+        state.form.observacoes = obs ? (obs.value || '') : '';
+    }
+
+    function upsertItem(meta) {
+        if (!meta || meta.id == null) return;
+        var id = String(meta.id);
+        if (idExists(id)) return;
+        state.items.push({
+            id: parseInt(id, 10),
+            desc: meta.desc || '',
+            marca: meta.marca || '',
+            cat: meta.cat || '',
+            code: meta.code || '',
+            cor: meta.cor || '',
+            tamanho: meta.tamanho || '',
+            detail_url: meta.detail_url || '',
+        });
+        syncStateFromDom();
+        schedulePersistRascunho(true);
+        syncDomFromState();
+        syncCautelaModalRascunho(document);
+    }
+
+    function removeItem(id) {
+        var sid = String(id);
+        state.items = (state.items || []).filter(function (x) {
+            return String(x.id) !== sid;
+        });
+        syncStateFromDom();
+        schedulePersistRascunho(true);
+        syncDomFromState();
+        syncCautelaModalRascunho(document);
+    }
+
+    function scheduleSaveFromDom(immediate) {
+        syncStateFromDom();
+        schedulePersistRascunho(immediate);
+    }
+
+    document.body.addEventListener('click', function (e) {
+        var addBtn = e.target.closest('.js-cautela-add-ferramenta');
+        if (addBtn) {
+            if (addBtn.disabled) return;
+            var id = addBtn.dataset.ferramentaId;
+            upsertItem({
+                id: id,
+                desc: addBtn.dataset.ferramentaDesc,
+                marca: addBtn.dataset.ferramentaMarca || '',
+                cat: addBtn.dataset.ferramentaCat,
+                code: addBtn.dataset.ferramentaCode || '',
+                cor: addBtn.dataset.ferramentaCor || '',
+                tamanho: addBtn.dataset.ferramentaTamanho || '',
+                detail_url: addBtn.dataset.ferramentaDetailUrl || '',
+            });
+            return;
+        }
+
+        var rmBtn = e.target.closest('.js-cautela-remove-ferramenta');
+        if (rmBtn) {
+            removeItem(rmBtn.dataset.ferramentaId);
+            return;
+        }
+    });
+
+    document.addEventListener('input', function (e) {
+        var t = e && e.target;
+        if (!t || !t.id) return;
+        if (
+            t.id === IDS.funcionario_input ||
+            t.id === IDS.local_input ||
+            t.id === IDS.obra_select ||
+            t.id === IDS.data_inicio ||
+            t.id === IDS.data_fim ||
+            t.id === IDS.observacoes
+        ) {
+            scheduleSaveFromDom(false);
+        }
+    }, true);
+
+    document.addEventListener('change', function (e) {
+        var t = e && e.target;
+        if (!t || !t.id) return;
+        if (
+            t.id === IDS.obra_select ||
+            t.id === IDS.data_inicio ||
+            t.id === IDS.data_fim
+        ) {
+            scheduleSaveFromDom(false);
+        }
+    }, true);
+
+    document.body.addEventListener('click', function (e) {
+        if (e.target.closest('.js-ac-item') || e.target.closest('.js-ac-clear') || e.target.closest('.js-select-clear')) {
+            scheduleSaveFromDom(false);
+        }
+    });
+
+    document.addEventListener('cautela:draft:save', function () {
+        scheduleSaveFromDom(true);
+    });
+
+    function init() {
+        if (urlTemFresh()) {
+            hasDraft = false;
+            state.items = [];
+            state.form = {
+                funcionario_id: '',
+                funcionario_label: '',
+                local_id: '',
+                local_label: '',
+                obra_id: '',
+                data_inicio: '',
+                data_fim: '',
+                observacoes: '',
+            };
+            stripFreshDaUrl();
+        } else {
+            var draft = readDraftFromEmbed();
+            if (draft) aplicarPayloadRascunho(draft);
+            else hasDraft = false;
+        }
+        syncDomFromState();
+        syncCautelaModalRascunho(document);
+        document.dispatchEvent(new Event('cautela:previsao:sync'));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    function flushRascunho() {
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+            saveTimer = null;
+        }
+        try {
+            syncStateFromDom();
+            persistRascunhoNow(true);
+        } catch (e) {}
+    }
+
+    window.addEventListener('pagehide', flushRascunho);
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+            flushRascunho();
+        }
+    });
+
+    window.addEventListener('beforeunload', flushRascunho);
+
+    window.addEventListener('pageshow', function (ev) {
+        if (!ev.persisted) return;
+        fetch(RASCUNHO_SAVE_URL, { credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (d) {
+                state.items = [];
+                state.form = {
+                    funcionario_id: '',
+                    funcionario_label: '',
+                    local_id: '',
+                    local_label: '',
+                    obra_id: '',
+                    data_inicio: '',
+                    data_fim: '',
+                    observacoes: '',
+                };
+                aplicarPayloadRascunho(d);
+                syncDomFromState();
+                syncCautelaModalRascunho(document);
+                document.dispatchEvent(new Event('cautela:previsao:sync'));
+            })
+            .catch(function () {});
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        var t = evt && evt.detail && evt.detail.target;
+        if (!t || !t.querySelector) return;
+        if (t.querySelector('tr.js-cautela-modal-row')) {
+            syncCautelaModalRascunho(t);
+        }
+    });
+})();
+</script>

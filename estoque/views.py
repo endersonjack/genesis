@@ -4,13 +4,14 @@ from django.db import IntegrityError
 from django.db.models import F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from auditoria.registry import registrar_auditoria
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import CategoriaFerramentaForm, CategoriaItemForm, UnidadeMedidaForm
-from .models import CategoriaFerramenta, CategoriaItem, Item, UnidadeMedida
+from .models import CategoriaFerramenta, CategoriaItem, Cautela, Item, UnidadeMedida
 
 
 def _empresa(request):
@@ -66,11 +67,20 @@ def partial_dashboard_cards(request):
     )
     itens_atencao_estoque = list(qs_atencao[:10])
 
+    hoje = timezone.localdate()
+    tem_cautelas_vencidas = Cautela.objects.filter(
+        empresa=empresa,
+        situacao=Cautela.Situacao.ATIVA,
+        data_fim__isnull=False,
+        data_fim__lt=hoje,
+    ).exists()
+
     return render(
         request,
         'estoque/partials/dashboard_cards_loaded.html',
         {
             'itens_atencao_estoque': itens_atencao_estoque,
+            'tem_cautelas_vencidas': tem_cautelas_vencidas,
         },
     )
 

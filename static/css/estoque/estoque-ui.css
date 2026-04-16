@@ -281,3 +281,18 @@ tbody tr.estoque-row-modal td {
         width: 100%;
     }
 }
+
+/* Lista de cautelas: linha clicável (cursor no <tr> não chega às <td> em alguns browsers) */
+.table tbody tr.cautela-row-link,
+.table tbody tr.cautela-row-link td {
+    cursor: pointer;
+}
+
+/* Nome do funcionário (e almox.) numa linha; trunca com reticências */
+.table .cautela-list-col-funcionario {
+    max-width: 14rem;
+    min-width: 7rem;
+}
+.table .cautela-list-col-funcionario .text-truncate {
+    min-width: 0;
+}

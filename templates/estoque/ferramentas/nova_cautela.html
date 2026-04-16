@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Nova Cautela | Estoque | Genesis ERP{% endblock %}
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 d-flex align-items-center flex-wrap gap-2">
+            Nova Cautela de Ferramentas
+            <span class="badge text-bg-secondary fw-semibold rounded-pill">Rascunho</span>
+        </h2>
+        <p class="text-muted mb-0">Registro de entrega e controle de devolução.</p>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:cautela_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+        <a href="{% url 'estoque:cautela_nova' empresa_id=request.empresa_ativa.pk %}?fresh=1"
+           class="estoque-btn estoque-btn-light text-decoration-none"
+           title="Limpar rascunho e recomeçar o formulário">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>
+            <span>Nova (limpar)</span>
+        </a>
+    </div>
+</div>
+
+<form method="post" class="d-flex flex-column gap-4 js-estoque-form-busy">
+    {% csrf_token %}
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">Dados da Cautela</h5>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="cautela-funcionario-q">
+                        Funcionário solicitante <span class="text-danger">*</span>
+                    </label>
+                    <div data-ac-scope
+                         data-hidden-id="{{ form.funcionario.id_for_label }}"
+                         data-input-id="cautela-funcionario-q"
+                         data-results-id="cautela-funcionario-resultados">
+                        <div class="input-group">
+                            <input type="text"
+                                   id="cautela-funcionario-q"
+                                   name="q_solicitante"
+                                   class="form-control rounded-3"
+                                   autocomplete="off"
+                                   spellcheck="false"
+                                   placeholder="Digite..."
+                                   hx-get="{% url 'estoque:autocomplete_solicitantes' empresa_id=request.empresa_ativa.pk %}"
+                                   hx-trigger="input delay:280ms"
+                                   hx-target="#cautela-funcionario-resultados"
+                                   data-no-global-loading>
+                            <button type="button"
+                                    class="btn btn-outline-secondary rounded-end-3 js-ac-clear"
+                                    title="Limpar seleção">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        {{ form.funcionario }}
+                        <div id="cautela-funcionario-resultados" class="border-0 bg-transparent p-0"></div>
+                    </div>
+                    {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="cautela-almoxarife-display">
+                        Almoxarife
+                    </label>
+                    <input type="text"
+                           id="cautela-almoxarife-display"
+                           class="form-control rounded-3"
+                           value="{{ almoxarife_label }}"
+                           disabled
+                           readonly
+                           aria-readonly="true">
+                    <p class="text-muted small mb-0 mt-1">Usuário logado (informativo).</p>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="cautela-local-q">
+                        Local
+                    </label>
+                    <div data-ac-scope
+                         data-hidden-id="{{ form.local.id_for_label }}"
+                         data-input-id="cautela-local-q"
+                         data-results-id="cautela-local-resultados">
+                        <div class="input-group">
+                            <input type="text"
+                                   id="cautela-local-q"
+                                   name="q_local"
+                                   class="form-control rounded-3"
+                                   autocomplete="off"
+                                   spellcheck="false"
+                                   placeholder="Digite..."
+                                   hx-get="{% url 'estoque:autocomplete_locais' empresa_id=request.empresa_ativa.pk %}"
+                                   hx-trigger="input delay:280ms"
+                                   hx-target="#cautela-local-resultados"
+                                   data-no-global-loading>
+                            <button type="button"
+                                    class="btn btn-outline-secondary rounded-end-3 js-ac-clear"
+                                    title="Limpar seleção">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        {{ form.local }}
+                        <div id="cautela-local-resultados" class="border-0 bg-transparent p-0"></div>
+                    </div>
+                    {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.obra.id_for_label }}">
+                        {{ form.obra.label }}
+                    </label>
+                    <div class="input-group">
+                        {{ form.obra }}
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-end-3 js-select-clear"
+                                data-select-id="{{ form.obra.id_for_label }}"
+                                title="Limpar seleção">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% if form.obra.errors %}<div class="text-danger small mt-1">{{ form.obra.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.data_inicio_cautela.id_for_label }}">
+                        {{ form.data_inicio_cautela.label }} <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2 js-cautela-inicio-botoes"
+                         role="group"
+                         aria-label="Atalhos para data de início">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-3 js-cautela-inicio-hoje"
+                                aria-pressed="false">
+                            Hoje
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-3 js-cautela-inicio-amanha"
+                                aria-pressed="false">
+                            Amanhã
+                        </button>
+                    </div>
+                    {{ form.data_inicio_cautela }}
+                    {% if form.data_inicio_cautela.errors %}<div class="text-danger small mt-1">{{ form.data_inicio_cautela.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.data_fim.id_for_label }}">
+                        {{ form.data_fim.label }}
+                    </label>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2 js-cautela-previsao-botoes"
+                         role="group"
+                         aria-label="Atalhos para previsão de entrega">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-3 js-cautela-previsao"
+                                data-dias="7"
+                                aria-pressed="false">
+                            7 dias
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-3 js-cautela-previsao"
+                                data-dias="30"
+                                aria-pressed="false">
+                            30 dias
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-3 js-cautela-previsao-ind"
+                                aria-pressed="false">
+                            Indeterminado
+                        </button>
+                    </div>
+                    {{ form.data_fim }}
+                    {% if form.data_fim.errors %}<div class="text-danger small mt-1">{{ form.data_fim.errors|join:", " }}</div>{% endif %}
+                    <p class="text-muted small mb-0 mt-1">Conta a partir da data de início (ou de hoje, se vazia).</p>
+                </div>
+
+                <div class="col-md-12">
+                    <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">
+                        {{ form.observacoes.label }}
+                    </label>
+                    {{ form.observacoes }}
+                    {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <h5 class="fw-bold mb-0">Ferramentas da Cautela</h5>
+                <button type="button"
+                        class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                        hx-get="{% url 'estoque:modal_buscar_itens_cautela' empresa_id=request.empresa_ativa.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                    <i class="bi bi-search me-1"></i> Buscar ferramentas
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Marca</th>
+                            <th>Categoria</th>
+                            <th>Código</th>
+                            <th>Cor</th>
+                            <th>Tamanho</th>
+                            <th class="text-end" style="width:120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cautela-ferramentas-display-body"></tbody>
+                </table>
+            </div>
+
+            <div id="cautela-ferramentas-vazio-msg" class="text-muted small mt-2">
+                Nenhuma ferramenta adicionada.
+            </div>
+
+            <div id="cautela-ferramentas-hidden-inputs" class="d-none"></div>
+        </div>
+
+        <div class="card-footer bg-white border-0 p-4 pt-0 d-flex justify-content-end gap-2">
+            <a href="{% url 'estoque:cautela_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+               class="estoque-btn estoque-btn-light text-decoration-none">
+                Cancelar
+            </a>
+            <button type="submit" class="estoque-btn estoque-btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> Salvar cautela
+            </button>
+        </div>
+    </div>
+</form>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if rascunho_inicial %}
+{{ rascunho_inicial|json_script:"nova-cautela-rascunho-inicial" }}
+{% else %}
+<script type="application/json" id="nova-cautela-rascunho-inicial">null</script>
+{% endif %}
+{% include 'estoque/ferramentas/_cautela_ferramentas_form_js.html' with rascunho_save_url=rascunho_save_url funcionario_hidden_id=form.funcionario.id_for_label funcionario_input_id='cautela-funcionario-q' local_hidden_id=form.local.id_for_label local_input_id='cautela-local-q' obra_select_id=form.obra.id_for_label data_inicio_id=form.data_inicio_cautela.id_for_label data_fim_id=form.data_fim.id_for_label obs_id=form.observacoes.id_for_label %}
+<script>
+(function () {
+    'use strict';
+
+    var HOJE_ISO = '{{ hoje_iso|escapejs }}';
+    var DATA_INICIO_ID = '{{ form.data_inicio_cautela.id_for_label|escapejs }}';
+    var DATA_FIM_ID = '{{ form.data_fim.id_for_label|escapejs }}';
+
+    function parseISODate(s) {
+        if (!s) return null;
+        var p = String(s).split('-');
+        if (p.length !== 3) return null;
+        var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatISODate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function addDays(d, n) {
+        var x = new Date(d.getTime());
+        x.setDate(x.getDate() + Number(n));
+        return x;
+    }
+
+    function baseParaPrevisao() {
+        var di = document.getElementById(DATA_INICIO_ID);
+        var v = di && di.value ? di.value : '';
+        return parseISODate(v) || parseISODate(HOJE_ISO);
+    }
+
+    function inicioBotoesEls() {
+        var wrap = document.querySelector('.js-cautela-inicio-botoes');
+        if (!wrap) return { hoje: null, amanha: null };
+        return {
+            hoje: wrap.querySelector('.js-cautela-inicio-hoje'),
+            amanha: wrap.querySelector('.js-cautela-inicio-amanha'),
+        };
+    }
+
+    function setInicioPressed(btn) {
+        var u = inicioBotoesEls();
+        [u.hoje, u.amanha].forEach(function (b) {
+            if (!b) return;
+            var on = !!(btn && b === btn);
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
+    function syncInicioBotoesVisuais() {
+        var di = document.getElementById(DATA_INICIO_ID);
+        var u = inicioBotoesEls();
+        if (!u.hoje) return;
+        var v = di ? String(di.value || '').trim() : '';
+        if (!v) {
+            setInicioPressed(null);
+            return;
+        }
+        var baseHoje = parseISODate(HOJE_ISO);
+        if (!baseHoje) {
+            setInicioPressed(null);
+            return;
+        }
+        var amIso = formatISODate(addDays(baseHoje, 1));
+        if (v === HOJE_ISO) {
+            setInicioPressed(u.hoje);
+        } else if (v === amIso) {
+            setInicioPressed(u.amanha);
+        } else {
+            setInicioPressed(null);
+        }
+    }
+
+    function syncTodasDatasEAtalhos() {
+        var el = document.getElementById(DATA_INICIO_ID);
+        if (el && !String(el.value || '').trim()) {
+            el.value = HOJE_ISO;
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            document.dispatchEvent(new Event('cautela:draft:save'));
+        }
+        syncInicioBotoesVisuais();
+        syncPrevisaoBotoesVisuais();
+    }
+
+    function previsaoBotoesEls() {
+        var wrap = document.querySelector('.js-cautela-previsao-botoes');
+        if (!wrap) return { b7: null, b30: null, bind: null };
+        return {
+            b7: wrap.querySelector('.js-cautela-previsao[data-dias="7"]'),
+            b30: wrap.querySelector('.js-cautela-previsao[data-dias="30"]'),
+            bind: wrap.querySelector('.js-cautela-previsao-ind'),
+        };
+    }
+
+    function setPrevisaoPressed(btn) {
+        var u = previsaoBotoesEls();
+        [u.b7, u.b30, u.bind].forEach(function (b) {
+            if (!b) return;
+            var on = !!(btn && b === btn);
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
+    function syncPrevisaoBotoesVisuais() {
+        var di = document.getElementById(DATA_INICIO_ID);
+        var dfEl = document.getElementById(DATA_FIM_ID);
+        var u = previsaoBotoesEls();
+        if (!u.b7 && !u.bind) return;
+        var df = dfEl ? String(dfEl.value || '').trim() : '';
+        if (!df) {
+            setPrevisaoPressed(u.bind);
+            return;
+        }
+        var base =
+            parseISODate(di && di.value ? di.value : '') || parseISODate(HOJE_ISO);
+        if (!base) {
+            setPrevisaoPressed(null);
+            return;
+        }
+        var exp7 = formatISODate(addDays(base, 7));
+        var exp30 = formatISODate(addDays(base, 30));
+        if (df === exp7) {
+            setPrevisaoPressed(u.b7);
+        } else if (df === exp30) {
+            setPrevisaoPressed(u.b30);
+        } else {
+            setPrevisaoPressed(null);
+        }
+    }
+
+    function setPrevisaoDias(dias) {
+        var el = document.getElementById(DATA_FIM_ID);
+        var base = baseParaPrevisao();
+        if (!el || !base) return;
+        el.value = formatISODate(addDays(base, dias));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        document.dispatchEvent(new Event('cautela:draft:save'));
+    }
+
+    function limparPrevisao() {
+        var el = document.getElementById(DATA_FIM_ID);
+        if (!el) return;
+        el.value = '';
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        document.dispatchEvent(new Event('cautela:draft:save'));
+    }
+
+    function setDataInicioOffset(diasDesdeHoje) {
+        var el = document.getElementById(DATA_INICIO_ID);
+        var base = parseISODate(HOJE_ISO);
+        if (!el || !base) return;
+        el.value = formatISODate(addDays(base, Number(diasDesdeHoje) || 0));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        document.dispatchEvent(new Event('cautela:draft:save'));
+        syncInicioBotoesVisuais();
+        syncPrevisaoBotoesVisuais();
+    }
+
+    document.body.addEventListener('click', function (e) {
+        if (e.target.closest('.js-cautela-inicio-hoje')) {
+            e.preventDefault();
+            setDataInicioOffset(0);
+            return;
+        }
+        if (e.target.closest('.js-cautela-inicio-amanha')) {
+            e.preventDefault();
+            setDataInicioOffset(1);
+            return;
+        }
+
+        var pre = e.target.closest('.js-cautela-previsao');
+        if (pre && pre.dataset && pre.dataset.dias != null) {
+            e.preventDefault();
+            setPrevisaoDias(pre.dataset.dias);
+            return;
+        }
+        if (e.target.closest('.js-cautela-previsao-ind')) {
+            e.preventDefault();
+            limparPrevisao();
+            return;
+        }
+
+        var acItem = e.target.closest('.js-ac-item');
+        if (acItem) {
+            var wrap = acItem.closest('[data-ac-scope]');
+            if (!wrap) return;
+
+            var hiddenId = wrap.getAttribute('data-hidden-id');
+            var inputId = wrap.getAttribute('data-input-id');
+            var resultsId = wrap.getAttribute('data-results-id');
+
+            var hidden = hiddenId ? document.getElementById(hiddenId) : null;
+            var input = inputId ? document.getElementById(inputId) : null;
+            var results = resultsId ? document.getElementById(resultsId) : null;
+
+            if (hidden) hidden.value = acItem.getAttribute('data-id') || '';
+            if (input) {
+                input.value = acItem.getAttribute('data-label') || '';
+                // Não disparar "input": o hx-trigger do campo refaria a busca e listaria o mesmo item.
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (results) results.innerHTML = '';
+            document.dispatchEvent(new Event('cautela:draft:save'));
+            return;
+        }
+
+        var clearBtn = e.target.closest('.js-ac-clear');
+        if (clearBtn) {
+            var wrap2 = clearBtn.closest('[data-ac-scope]');
+            if (!wrap2) return;
+
+            var hiddenId2 = wrap2.getAttribute('data-hidden-id');
+            var inputId2 = wrap2.getAttribute('data-input-id');
+            var resultsId2 = wrap2.getAttribute('data-results-id');
+
+            var hidden2 = hiddenId2 ? document.getElementById(hiddenId2) : null;
+            var input2 = inputId2 ? document.getElementById(inputId2) : null;
+            var results2 = resultsId2 ? document.getElementById(resultsId2) : null;
+
+            if (hidden2) hidden2.value = '';
+            if (input2) {
+                input2.value = '';
+                input2.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (results2) results2.innerHTML = '';
+            document.dispatchEvent(new Event('cautela:draft:save'));
+            return;
+        }
+
+        var clearSel = e.target.closest('.js-select-clear');
+        if (clearSel) {
+            var sid = clearSel.getAttribute('data-select-id');
+            var sel = sid ? document.getElementById(sid) : null;
+            if (sel) {
+                sel.value = '';
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            document.dispatchEvent(new Event('cautela:draft:save'));
+        }
+    });
+
+    document.addEventListener('change', function (e) {
+        var t = e.target;
+        if (!t || !t.id) return;
+        if (t.id === DATA_INICIO_ID) {
+            syncInicioBotoesVisuais();
+            syncPrevisaoBotoesVisuais();
+        } else if (t.id === DATA_FIM_ID) {
+            syncPrevisaoBotoesVisuais();
+        }
+    }, true);
+
+    document.addEventListener('cautela:previsao:sync', syncTodasDatasEAtalhos);
+    // Rascunho (include acima) já registrou cautela:draft:save; sincroniza já neste turno.
+    document.dispatchEvent(new Event('cautela:previsao:sync'));
+})();
+</script>
+{% endblock %}

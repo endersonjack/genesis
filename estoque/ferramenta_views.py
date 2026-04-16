@@ -9,7 +9,7 @@ from auditoria.registry import registrar_auditoria
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import FerramentaForm
-from .models import Ferramenta, FerramentaImagem
+from .models import Cautela, Entrega_Cautela, Ferramenta, FerramentaImagem
 from .qr_item import attach_auto_qrcode_to_ferramenta
 
 
@@ -329,12 +329,54 @@ def detalhes_ferramenta(request, pk):
         pk=pk,
         empresa=empresa,
     )
+
+    cautela_em_uso = (
+        Cautela.objects.filter(
+            empresa=empresa,
+            situacao=Cautela.Situacao.ATIVA,
+            ferramentas=ferramenta,
+        )
+        .select_related('funcionario')
+        .order_by('-data_inicio_cautela', '-pk')
+        .first()
+    )
+
+    entregas_hist = (
+        Entrega_Cautela.objects.filter(
+            ferramentas_devolvidas=ferramenta,
+            cautela__empresa=empresa,
+        )
+        .select_related(
+            'cautela',
+            'cautela__funcionario',
+            'motivo',
+            'situacao_ferramentas',
+        )
+        .order_by('-data_entrega', '-pk')[:30]
+    )
+    historico_devolucoes = []
+    for ent in entregas_hist:
+        ini = ent.cautela.data_inicio_cautela
+        fim = ent.data_entrega
+        if fim >= ini:
+            dias_periodo = (fim - ini).days + 1
+        else:
+            dias_periodo = None
+        historico_devolucoes.append(
+            {
+                'entrega': ent,
+                'dias_periodo': dias_periodo,
+            }
+        )
+
     return render(
         request,
         'estoque/ferramentas/detalhes.html',
         {
             'page_title': ferramenta.descricao[:120],
             'ferramenta': ferramenta,
+            'cautela_em_uso': cautela_em_uso,
+            'historico_devolucoes': historico_devolucoes,
         },
     )
 

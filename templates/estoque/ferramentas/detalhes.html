@@ -124,6 +124,71 @@
     </div>
 </div>
 
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <h3 class="small text-uppercase text-muted fw-bold mb-3 mb-lg-4" style="letter-spacing: .08em;">Cautela e devoluções</h3>
+
+                {% if cautela_em_uso %}
+                    <div class="rounded-3 border bg-white p-3 mb-4">
+                        <div class="small text-uppercase text-muted fw-semibold mb-2" style="letter-spacing: .06em;">Em cautela agora</div>
+                        <div class="fw-bold text-dark">
+                            <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=cautela_em_uso.pk %}"
+                               class="text-dark text-decoration-none">
+                                Cautela #{{ cautela_em_uso.pk }} · {{ cautela_em_uso.funcionario }}
+                            </a>
+                        </div>
+                        <div class="small text-muted mt-2">
+                            Início {{ cautela_em_uso.data_inicio_cautela|date:"d/m/Y" }}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if historico_devolucoes %}
+                    <div class="vstack gap-3">
+                        {% for row in historico_devolucoes %}
+                            {% with e=row.entrega %}
+                                <div class="rounded-3 border bg-white p-3">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-start column-gap-3 row-gap-2">
+                                        <div class="fw-bold text-dark min-w-0">
+                                            <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=e.cautela.pk %}"
+                                               class="text-dark text-decoration-none">
+                                                Cautela #{{ e.cautela.pk }} · {{ e.cautela.funcionario }}
+                                            </a>
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 small text-muted ms-lg-auto">
+                                            <span class="text-nowrap">
+                                                Início {{ e.cautela.data_inicio_cautela|date:"d/m/Y" }}
+                                                · Devolução {{ e.data_entrega|date:"d/m/Y" }}
+                                            </span>
+                                            {% if row.dias_periodo is not None %}
+                                                <span class="badge text-bg-primary rounded-pill px-3">{{ row.dias_periodo }} dia{{ row.dias_periodo|pluralize }}</span>
+                                            {% else %}
+                                                <span class="badge text-bg-secondary rounded-pill px-3">—</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-2 pt-1">
+                                        Motivo:
+                                        {% if e.motivo %}{{ e.motivo }}{% else %}—{% endif %}
+                                        · Situação (devolução):
+                                        {% if e.situacao_ferramentas %}{{ e.situacao_ferramentas }}{% else %}—{% endif %}
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                {% elif not cautela_em_uso %}
+                    <p class="text-muted small mb-0">Nenhum histórico de cautela / devolução registrado para esta ferramenta.</p>
+                {% else %}
+                    <p class="text-muted small mb-0">Nenhuma devolução registrada ainda (ferramenta ainda em cautela).</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% include 'estoque/includes/modal_cadastro_estoque.html' %}
 {% endblock %}
 

@@ -3,12 +3,16 @@ from django.contrib import admin
 from .models import (
     CategoriaFerramenta,
     CategoriaItem,
+    Cautela,
+    Entrega_Cautela,
     Ferramenta,
     FerramentaImagem,
     Item,
     ItemImagem,
+    MotivoDevolucaoCautela,
     RequisicaoEstoque,
     RequisicaoEstoqueItem,
+    SituacaoFerramentasPosDevolucao,
     UnidadeMedida,
 )
 
@@ -101,3 +105,70 @@ class ItemImagemAdmin(admin.ModelAdmin):
     list_display = ('item', 'ordem', 'atualizado_em')
     list_filter = ('item__empresa',)
     ordering = ('item', 'ordem')
+
+
+class Entrega_CautelaInline(admin.TabularInline):
+    model = Entrega_Cautela
+    extra = 0
+    autocomplete_fields = (
+        'cautela',
+        'motivo',
+        'situacao_ferramentas',
+    )
+
+
+@admin.register(Cautela)
+class CautelaAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'empresa',
+        'funcionario',
+        'situacao',
+        'entrega',
+        'data_inicio_cautela',
+        'data_fim',
+        'criado_em',
+    )
+    list_filter = ('empresa', 'situacao', 'entrega')
+    search_fields = ('funcionario__nome',)
+    autocomplete_fields = ('empresa', 'funcionario', 'almoxarife', 'local', 'obra')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    inlines = (Entrega_CautelaInline,)
+
+
+@admin.register(MotivoDevolucaoCautela)
+class MotivoDevolucaoCautelaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'empresa', 'ativo', 'atualizado_em')
+    list_filter = ('empresa', 'ativo')
+    search_fields = ('nome',)
+    ordering = ('empresa', 'nome')
+
+
+@admin.register(SituacaoFerramentasPosDevolucao)
+class SituacaoFerramentasPosDevolucaoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'empresa', 'ativo', 'atualizado_em')
+    list_filter = ('empresa', 'ativo')
+    search_fields = ('nome',)
+    ordering = ('empresa', 'nome')
+
+
+@admin.register(Entrega_Cautela)
+class Entrega_CautelaAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'cautela',
+        'tipo',
+        'data_entrega',
+        'motivo',
+        'situacao_ferramentas',
+        'criado_em',
+    )
+    list_filter = ('tipo',)
+    search_fields = ('cautela__funcionario__nome',)
+    autocomplete_fields = (
+        'cautela',
+        'motivo',
+        'situacao_ferramentas',
+    )
+    filter_horizontal = ('ferramentas_devolvidas',)
+    readonly_fields = ('criado_em', 'atualizado_em')

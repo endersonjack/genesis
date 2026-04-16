@@ -1,0 +1,80 @@
+<form
+    method="post"
+    class="js-estoque-form-busy"
+    hx-post="{{ post_url }}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-header">
+        <h5 class="modal-title fw-bold mb-0">{{ titulo_modal }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">
+                    {{ form.funcionario.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.funcionario }}
+                {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Almoxarife</label>
+                <div class="form-control rounded-3 bg-light">{{ request.user }}</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.data_inicio_cautela.id_for_label }}">
+                    {{ form.data_inicio_cautela.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.data_inicio_cautela }}
+                {% if form.data_inicio_cautela.errors %}<div class="text-danger small mt-1">{{ form.data_inicio_cautela.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.local.id_for_label }}">{{ form.local.label }}</label>
+                {{ form.local }}
+                {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.obra.id_for_label }}">{{ form.obra.label }}</label>
+                {{ form.obra }}
+                {% if form.obra.errors %}<div class="text-danger small mt-1">{{ form.obra.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label fw-semibold" for="{{ form.ferramentas.id_for_label }}">
+                    {{ form.ferramentas.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.ferramentas }}
+                {% if form.ferramentas.errors %}<div class="text-danger small mt-1">{{ form.ferramentas.errors|join:", " }}</div>{% endif %}
+                <div class="form-text">Use `Ctrl`/`Shift` para selecionar múltiplas ferramentas.</div>
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+                {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer d-flex flex-wrap align-items-center gap-2 justify-content-between">
+        <div></div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="estoque-btn estoque-btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> Salvar
+            </button>
+        </div>
+    </div>
+</form>
+
