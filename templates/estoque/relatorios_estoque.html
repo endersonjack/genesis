@@ -1,0 +1,745 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}{% if relatorios_impressao_mode %}Impressão — {% endif %}Relatórios de estoque | Estoque | Genesis ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+.estoque-relatorios-layout.employee-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+.estoque-relatorios-layout .employee-content {
+    flex: 1 1 auto;
+    max-width: 100%;
+    min-width: 0;
+}
+.relatorios-horiz-nav .relatorios-horiz-inner {
+    gap: 0.5rem;
+}
+.relatorios-horiz-nav .relatorios-horiz-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    white-space: nowrap;
+    align-self: center;
+    padding: 0 0.25rem;
+}
+.relatorios-horiz-nav .js-relatorio-section {
+    white-space: nowrap;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+.relatorios-horiz-nav .js-relatorio-section.active {
+    color: #fff !important;
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+}
+.estoque-relatorios-layout .rel-acao-icone {
+    color: #94a3b8 !important;
+    padding: 0.35rem 0.45rem !important;
+    line-height: 1;
+    border: none !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+}
+.estoque-relatorios-layout .rel-acao-icone:hover,
+.estoque-relatorios-layout .rel-acao-icone:focus-visible {
+    color: #64748b !important;
+    background: #f1f5f9 !important;
+}
+.estoque-relatorios-layout .rel-acao-icone i {
+    font-size: 1.05rem;
+    vertical-align: -0.08em;
+}
+/* Filtros, autocomplete e linhas expansíveis — relatórios de estoque */
+.estoque-relatorios-layout .section-card.rel-ff-tool-report {
+    overflow: visible;
+}
+.estoque-relatorios-layout .section-card.rel-ff-tool-report .section-card-body {
+    overflow: visible;
+}
+.estoque-relatorios-layout .rel-ff-filtros-form {
+    overflow: visible;
+}
+.estoque-relatorios-layout .rel-ff-filtros-form .rel-ff-field-func,
+.estoque-relatorios-layout .rel-ff-filtros-form .rel-ff-field-item,
+.estoque-relatorios-layout .rel-ff-filtros-form .rel-ff-field-ferr {
+    flex: 1 1 16rem;
+    max-width: 32rem;
+    min-width: 12rem;
+}
+.estoque-relatorios-layout .rel-ff-filtros-form .rel-ff-field-date {
+    flex: 0 0 auto;
+    width: 9.25rem;
+}
+.estoque-relatorios-layout .rel-ff-filtros-form .rel-ff-field-actions {
+    flex: 0 0 auto;
+}
+.estoque-relatorios-layout .rel-ff-filtros-form .form-control {
+    min-width: 0;
+}
+.estoque-relatorios-layout .rel-ff-ac-anchor {
+    position: relative;
+}
+.estoque-relatorios-layout .rel-ff-ac-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 2px);
+    z-index: 5000;
+    max-height: min(18rem, 70vh);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.estoque-relatorios-layout .rel-ff-ac-results .ac-suggestions-root {
+    margin-top: 0 !important;
+}
+.estoque-relatorios-layout .rel-ff-ac-results .list-group {
+    border-radius: 0.5rem;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+.estoque-relatorios-layout .rel-ff-ac-results .list-group-item {
+    white-space: nowrap;
+}
+.estoque-relatorios-layout mark.rel-ff-mark {
+    background-color: #fef08a;
+    color: inherit;
+    padding: 0 0.2em;
+    border-radius: 0.2em;
+    font-weight: inherit;
+}
+.estoque-relatorios-layout tr.rel-ff-summary-row[aria-expanded="false"] .rel-ff-chevron,
+.estoque-relatorios-layout tr.rel-req-summary-row[aria-expanded="false"] .rel-req-chevron {
+    transform: rotate(-90deg);
+}
+.estoque-relatorios-layout .rel-ff-summary-row .rel-ff-chevron,
+.estoque-relatorios-layout .rel-req-summary-row .rel-req-chevron {
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+.estoque-relatorios-layout .rel-ff-summary-row,
+.estoque-relatorios-layout .rel-req-summary-row {
+    cursor: pointer;
+}
+.estoque-relatorios-layout .rel-ff-summary-row:hover,
+.estoque-relatorios-layout .rel-req-summary-row:hover {
+    background-color: #f8fafc;
+}
+.estoque-relatorios-layout tr.rel-ff-detail-row.collapse.show,
+.estoque-relatorios-layout tr.rel-req-detail-row.collapse.show {
+    display: table-row !important;
+}
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    .relatorios-impressao-toolbar {
+        display: none !important;
+    }
+    .estoque-top-actions {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+{% if relatorios_impressao_mode %}
+<div class="relatorios-impressao-toolbar no-print mb-3">
+    <a href="{% url 'estoque:relatorios_estoque' empresa_id=request.empresa_ativa.pk %}{% if relatorios_get_query %}?{{ relatorios_get_query }}{% endif %}"
+       class="estoque-btn estoque-btn-light text-decoration-none">
+        <i class="bi bi-arrow-left"></i>
+        <span>Voltar</span>
+    </a>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3{% if relatorios_impressao_mode %} no-print{% endif %}">
+    <div>
+        <h2 class="fw-bold mb-1">Relatórios</h2>
+        <p class="text-muted mb-0">Histórico por funcionário (resumo, requisições detalhadas, cautelas de ferramentas), relatórios por ferramenta e item, e auditoria.</p>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+    </div>
+</div>
+
+<div class="employee-layout estoque-relatorios-layout">
+    <nav class="relatorios-horiz-nav no-print" aria-label="Seções dos relatórios">
+        <div class="relatorios-horiz-inner d-flex flex-wrap align-items-center p-2 bg-white border rounded-3 shadow-sm">
+            <span class="relatorios-horiz-label d-none d-md-inline">Funcionário</span>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'funcionario' %}active{% endif %}"
+                    data-section="funcionario">
+                <i class="bi bi-list-ul d-none d-sm-inline"></i> Resumo
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'funcionario_requisicao' %}active{% endif %}"
+                    data-section="funcionario_requisicao">
+                <i class="bi bi-cart-check d-none d-sm-inline"></i> Requisição detalhada
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'funcionario_ferramenta' %}active{% endif %}"
+                    data-section="funcionario_ferramenta">
+                <i class="bi bi-tools d-none d-sm-inline"></i> Ferramentas (cautela)
+            </button>
+            <span class="vr text-muted opacity-25 align-self-stretch my-1 d-none d-md-block" style="min-height:1.5rem;"></span>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'ferramenta' %}active{% endif %}"
+                    data-section="ferramenta">
+                <i class="bi bi-wrench-adjustable d-none d-sm-inline"></i> Ferramenta
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'item' %}active{% endif %}"
+                    data-section="item">
+                <i class="bi bi-box-seam d-none d-sm-inline"></i> Itens
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'auditoria_movimentar' %}active{% endif %}"
+                    data-section="auditoria_movimentar">
+                <i class="bi bi-journal-text d-none d-sm-inline"></i> Aud. movimentar
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary js-relatorio-section {% if secao_relat == 'auditoria_cautelas' %}active{% endif %}"
+                    data-section="auditoria_cautelas">
+                <i class="bi bi-clipboard-check d-none d-sm-inline"></i> Aud. cautelas
+            </button>
+        </div>
+    </nav>
+
+    <div class="employee-content">
+
+        <section class="section-panel {% if secao_relat == 'funcionario' %}active{% endif %}"
+                 data-panel="funcionario"
+                 id="sec-funcionario">
+            <div class="section-card rel-ff-tool-report">
+                <div class="section-card-header">
+                    <div>
+                        <h5>Histórico do funcionário (resumo)</h5>
+                        <small>Lista resumida de requisições e cautelas. Nas outras abas deste grupo, use requisição detalhada ou ferramentas (cautela) para mais colunas e filtros.</small>
+                    </div>
+                </div>
+                <div class="section-card-body">
+                    <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
+                        <input type="hidden" name="secao" value="funcionario">
+                        <input type="hidden" name="ferramenta_id" value="{{ ferramenta_id|default:'' }}">
+                        <input type="hidden" name="ferr_data_ini" value="{{ ferr_data_ini }}">
+                        <input type="hidden" name="ferr_data_fim" value="{{ ferr_data_fim }}">
+                        <input type="hidden" name="item_id" value="{{ item_id|default:'' }}">
+                        <input type="hidden" name="item_data_ini" value="{{ item_data_ini }}">
+                        <input type="hidden" name="item_data_fim" value="{{ item_data_fim }}">
+                        <input type="hidden" name="fferr_ferramenta_id" value="{{ fferr_ferramenta_filter_id|default:'' }}">
+                        <input type="hidden" name="freq_item_id" value="{{ freq_item_filter_id|default:'' }}">
+                        <div class="rel-ff-field-func d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="rel-func-q">Funcionário</label>
+                            <div data-ac-scope
+                                 data-hidden-id="id_funcionario_relatorio"
+                                 data-input-id="rel-func-q"
+                                 data-results-id="rel-func-resultados">
+                                <div class="rel-ff-ac-anchor">
+                                    <input type="text"
+                                           id="rel-func-q"
+                                           name="q_func_rel"
+                                           class="form-control form-control-sm rounded-3"
+                                           autocomplete="off"
+                                           placeholder="Digite para buscar…"
+                                           value="{% if funcionario %}{{ funcionario }}{% endif %}"
+                                           hx-get="{{ funcionario_ac_url }}"
+                                           hx-trigger="input delay:280ms"
+                                           hx-target="#rel-func-resultados"
+                                           data-no-global-loading>
+                                    <div id="rel-func-resultados" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                                </div>
+                                <input type="hidden" name="funcionario_id" id="id_funcionario_relatorio" value="{{ funcionario_id|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_func_data_ini">De</label>
+                            <input type="date" name="func_data_ini" id="id_func_data_ini" class="form-control form-control-sm rounded-3" value="{{ func_data_ini }}">
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_func_data_fim">Até</label>
+                            <input type="date" name="func_data_fim" id="id_func_data_fim" class="form-control form-control-sm rounded-3" value="{{ func_data_fim }}">
+                        </div>
+                        <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                            <button type="submit"
+                                    class="btn btn-sm btn-link rel-acao-icone py-1"
+                                    title="Buscar"
+                                    aria-label="Buscar">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=funcionario#sec-funcionario"
+                               class="btn btn-sm btn-link rel-acao-icone py-1"
+                               title="Limpar todos os filtros"
+                               aria-label="Limpar todos os filtros">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </form>
+
+                    {% if funcionario %}
+                    <div class="row g-4">
+                        <div class="col-12 col-xl-6">
+                            <h6 class="small fw-bold mb-2">Requisições</h6>
+                            {% if requisicoes_func_page.object_list %}
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-sm table-hover mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3 text-nowrap" scope="col">Data</th>
+                                            <th scope="col" class="text-nowrap text-end">Itens</th>
+                                            <th scope="col">Situação</th>
+                                            <th class="pe-3 text-nowrap" scope="col">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for req in requisicoes_func_page %}
+                                        <tr>
+                                            <td class="ps-3 text-nowrap small">{{ req.criado_em|date:"d/m/Y H:i" }}</td>
+                                            <td class="small text-end tabular-nums">{{ req.n_itens }}</td>
+                                            <td class="small"><span class="badge rounded-pill {% if req.status == 'ativa' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ req.get_status_display }}</span></td>
+                                            <td class="pe-3 small text-nowrap">
+                                                <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=req.pk %}"
+                                                   class="small">Ver</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if requisicoes_func_page.paginator.num_pages > 1 %}
+                            <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2" aria-label="Páginas requisições">
+                                <span class="small text-muted">Página {{ requisicoes_func_page.number }} de {{ requisicoes_func_page.paginator.num_pages }} (até {{ rel_page }} por página)</span>
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if requisicoes_func_page.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link rounded-start-3"
+                                           href="?{% if requisicoes_func_query %}{{ requisicoes_func_query }}&{% endif %}req_func_page={{ requisicoes_func_page.previous_page_number }}#sec-funcionario">Anterior</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                                    {% endif %}
+                                    {% if requisicoes_func_page.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link rounded-end-3"
+                                           href="?{% if requisicoes_func_query %}{{ requisicoes_func_query }}&{% endif %}req_func_page={{ requisicoes_func_page.next_page_number }}#sec-funcionario">Próxima</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
+                            {% else %}
+                            <p class="text-muted small mb-0">Nenhuma requisição nos filtros.</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 col-xl-6">
+                            <h6 class="small fw-bold mb-2">Cautelas</h6>
+                            {% if cautelas_func_page.object_list %}
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-sm table-hover mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3 text-nowrap" scope="col">Início</th>
+                                            <th scope="col" class="text-nowrap text-end">Ferramentas</th>
+                                            <th scope="col">Situação</th>
+                                            <th class="pe-3 text-nowrap" scope="col">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for c in cautelas_func_page %}
+                                        <tr>
+                                            <td class="ps-3 text-nowrap small">{{ c.data_inicio_cautela|date:"d/m/Y" }}</td>
+                                            <td class="small text-end tabular-nums">{{ c.n_ferramentas }}</td>
+                                            <td class="small text-nowrap">{{ c.get_situacao_display }} · {{ c.get_entrega_display }}</td>
+                                            <td class="pe-3 small text-nowrap">
+                                                <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=c.pk %}"
+                                                   class="small">Ver</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if cautelas_func_page.paginator.num_pages > 1 %}
+                            <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2" aria-label="Páginas cautelas">
+                                <span class="small text-muted">Página {{ cautelas_func_page.number }} de {{ cautelas_func_page.paginator.num_pages }} (até {{ rel_page }} por página)</span>
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if cautelas_func_page.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link rounded-start-3"
+                                           href="?{% if cautelas_func_query %}{{ cautelas_func_query }}&{% endif %}caut_func_page={{ cautelas_func_page.previous_page_number }}#sec-funcionario">Anterior</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                                    {% endif %}
+                                    {% if cautelas_func_page.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link rounded-end-3"
+                                           href="?{% if cautelas_func_query %}{{ cautelas_func_query }}&{% endif %}caut_func_page={{ cautelas_func_page.next_page_number }}#sec-funcionario">Próxima</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
+                            {% else %}
+                            <p class="text-muted small mb-0">Nenhuma cautela nos filtros.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Selecione um funcionário para ver o histórico.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'funcionario_requisicao' %}active{% endif %}"
+                 data-panel="funcionario_requisicao"
+                 id="sec-funcionario-requisicao">
+            {% include 'estoque/_relatorio_funcionario_requisicao_detalhe.html' %}
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'funcionario_ferramenta' %}active{% endif %}"
+                 data-panel="funcionario_ferramenta"
+                 id="sec-funcionario-ferramenta">
+            {% include 'estoque/_relatorio_funcionario_ferramenta_uso.html' %}
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'ferramenta' %}active{% endif %}"
+                 data-panel="ferramenta"
+                 id="sec-ferramenta">
+            <div class="section-card rel-ff-tool-report">
+                <div class="section-card-header">
+                    <div>
+                        <h5>Relatório de ferramenta</h5>
+                        <small>Quem usou, período e situação (cautela ou pós-devolução).</small>
+                    </div>
+                </div>
+                <div class="section-card-body">
+                    <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
+                        <input type="hidden" name="secao" value="ferramenta">
+                        <input type="hidden" name="funcionario_id" value="{{ funcionario_id|default:'' }}">
+                        <input type="hidden" name="func_data_ini" value="{{ func_data_ini }}">
+                        <input type="hidden" name="func_data_fim" value="{{ func_data_fim }}">
+                        <input type="hidden" name="item_id" value="{{ item_id|default:'' }}">
+                        <input type="hidden" name="item_data_ini" value="{{ item_data_ini }}">
+                        <input type="hidden" name="item_data_fim" value="{{ item_data_fim }}">
+                        <input type="hidden" name="fferr_ferramenta_id" value="{{ fferr_ferramenta_filter_id|default:'' }}">
+                        <input type="hidden" name="freq_item_id" value="{{ freq_item_filter_id|default:'' }}">
+                        <div class="rel-ff-field-ferr d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="rel-ferr-q">Ferramenta</label>
+                            <div data-ac-scope
+                                 data-hidden-id="id_ferramenta_relatorio"
+                                 data-input-id="rel-ferr-q"
+                                 data-results-id="rel-ferr-resultados">
+                                <div class="rel-ff-ac-anchor">
+                                    <input type="text"
+                                           id="rel-ferr-q"
+                                           name="q_ferr_rel"
+                                           class="form-control form-control-sm rounded-3"
+                                           autocomplete="off"
+                                           placeholder="Digite para buscar…"
+                                           value="{% if ferramenta %}{{ ferramenta }}{% endif %}"
+                                           hx-get="{{ ferramenta_ac_url }}"
+                                           hx-trigger="input delay:280ms"
+                                           hx-target="#rel-ferr-resultados"
+                                           data-no-global-loading>
+                                    <div id="rel-ferr-resultados" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                                </div>
+                                <input type="hidden" name="ferramenta_id" id="id_ferramenta_relatorio" value="{{ ferramenta_id|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_ferr_data_ini">De</label>
+                            <input type="date" name="ferr_data_ini" id="id_ferr_data_ini" class="form-control form-control-sm rounded-3" value="{{ ferr_data_ini }}">
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_ferr_data_fim">Até</label>
+                            <input type="date" name="ferr_data_fim" id="id_ferr_data_fim" class="form-control form-control-sm rounded-3" value="{{ ferr_data_fim }}">
+                        </div>
+                        <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                            <button type="submit"
+                                    class="btn btn-sm btn-link rel-acao-icone py-1"
+                                    title="Buscar"
+                                    aria-label="Buscar">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=ferramenta#sec-ferramenta"
+                               class="btn btn-sm btn-link rel-acao-icone py-1"
+                               title="Limpar todos os filtros"
+                               aria-label="Limpar todos os filtros">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </form>
+                    {% if ferramenta %}
+                    <p class="small mb-2">
+                        <strong>{{ ferramenta.descricao }}</strong>
+                        <span class="text-muted"> — situação atual:</span>
+                        {% if ferramenta.situacao_cautela == 'livre' %}
+                        <span class="badge rounded-pill text-bg-success">Livre</span>
+                        {% else %}
+                        <span class="badge rounded-pill text-bg-warning text-dark">Ocupada</span>
+                        {% endif %}
+                    </p>
+                    {% if ferramenta_linhas_page.object_list %}
+                    <div class="table-responsive border rounded-3">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3 text-nowrap" scope="col" style="width:3rem;">#</th>
+                                    <th class="text-nowrap" scope="col">Data início</th>
+                                    <th class="text-nowrap" scope="col">Data entrega</th>
+                                    <th class="text-nowrap text-end" scope="col">Período</th>
+                                    <th class="text-nowrap" scope="col">Situação</th>
+                                    <th scope="col">Funcionário</th>
+                                    <th class="text-nowrap" scope="col">Cautela</th>
+                                    <th scope="col">Motivo entrega</th>
+                                    <th class="pe-3" scope="col">Situação entregue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in ferramenta_linhas_page %}
+                                <tr>
+                                    <td class="ps-3 small text-muted tabular-nums">{{ ferramenta_linhas_page.start_index|add:forloop.counter0 }}</td>
+                                    <td class="text-nowrap small">{{ row.data_inicio|date:"d/m/Y" }}</td>
+                                    <td class="text-nowrap small">{% if row.data_entrega %}{{ row.data_entrega|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                                    <td class="text-nowrap small text-end tabular-nums">{{ row.periodo_dias }} dia{% if row.periodo_dias != 1 %}s{% endif %}</td>
+                                    <td class="small text-nowrap">
+                                        {% if row.situacao == 'Entregue' %}
+                                        <span class="badge rounded-pill text-bg-secondary">Entregue</span>
+                                        {% else %}
+                                        <span class="badge rounded-pill text-bg-primary">Ativa</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small">{{ row.funcionario_nome }}</td>
+                                    <td class="text-nowrap small"><a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=row.cautela.pk %}">#{{ row.cautela.pk }}</a></td>
+                                    <td class="small">{% if row.motivo_entrega %}{{ row.motivo_entrega }}{% else %}—{% endif %}</td>
+                                    <td class="pe-3 small">{% if row.situacao_entregue %}{{ row.situacao_entregue }}{% else %}—{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if ferramenta_linhas_page.paginator.num_pages > 1 %}
+                    <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2" aria-label="Páginas relatório ferramenta">
+                        <span class="small text-muted">Página {{ ferramenta_linhas_page.number }} de {{ ferramenta_linhas_page.paginator.num_pages }} (até {{ rel_page }} por página)</span>
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if ferramenta_linhas_page.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link rounded-start-3"
+                                   href="?{% if ferr_linhas_query %}{{ ferr_linhas_query }}&{% endif %}ferr_linhas_page={{ ferramenta_linhas_page.previous_page_number }}#sec-ferramenta">Anterior</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                            {% endif %}
+                            {% if ferramenta_linhas_page.has_next %}
+                            <li class="page-item">
+                                <a class="page-link rounded-end-3"
+                                   href="?{% if ferr_linhas_query %}{{ ferr_linhas_query }}&{% endif %}ferr_linhas_page={{ ferramenta_linhas_page.next_page_number }}#sec-ferramenta">Próxima</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted small mb-0">Nenhum registro no período.</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted small mb-0">Selecione uma ferramenta.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'item' %}active{% endif %}"
+                 data-panel="item"
+                 id="sec-item">
+            <div class="section-card rel-ff-tool-report">
+                <div class="section-card-header">
+                    <div>
+                        <h5>Relatório de item</h5>
+                        <small>Entradas e saídas registradas na auditoria (manual e via requisição).</small>
+                    </div>
+                </div>
+                <div class="section-card-body">
+                    <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
+                        <input type="hidden" name="secao" value="item">
+                        <input type="hidden" name="funcionario_id" value="{{ funcionario_id|default:'' }}">
+                        <input type="hidden" name="func_data_ini" value="{{ func_data_ini }}">
+                        <input type="hidden" name="func_data_fim" value="{{ func_data_fim }}">
+                        <input type="hidden" name="ferramenta_id" value="{{ ferramenta_id|default:'' }}">
+                        <input type="hidden" name="ferr_data_ini" value="{{ ferr_data_ini }}">
+                        <input type="hidden" name="ferr_data_fim" value="{{ ferr_data_fim }}">
+                        <input type="hidden" name="fferr_ferramenta_id" value="{{ fferr_ferramenta_filter_id|default:'' }}">
+                        <input type="hidden" name="freq_item_id" value="{{ freq_item_filter_id|default:'' }}">
+                        <div class="rel-ff-field-item d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="rel-item-q">Item</label>
+                            <div data-ac-scope
+                                 data-hidden-id="id_item_relatorio"
+                                 data-input-id="rel-item-q"
+                                 data-results-id="rel-item-resultados">
+                                <div class="rel-ff-ac-anchor">
+                                    <input type="text"
+                                           id="rel-item-q"
+                                           name="q_item_rel"
+                                           class="form-control form-control-sm rounded-3"
+                                           autocomplete="off"
+                                           placeholder="Digite para buscar…"
+                                           value="{% if item_obj %}{{ item_obj }}{% endif %}"
+                                           hx-get="{{ item_ac_url }}"
+                                           hx-trigger="input delay:280ms"
+                                           hx-target="#rel-item-resultados"
+                                           data-no-global-loading>
+                                    <div id="rel-item-resultados" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                                </div>
+                                <input type="hidden" name="item_id" id="id_item_relatorio" value="{{ item_id|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_item_data_ini">De</label>
+                            <input type="date" name="item_data_ini" id="id_item_data_ini" class="form-control form-control-sm rounded-3" value="{{ item_data_ini }}">
+                        </div>
+                        <div class="rel-ff-field-date d-flex flex-column">
+                            <label class="form-label small fw-semibold mb-1" for="id_item_data_fim">Até</label>
+                            <input type="date" name="item_data_fim" id="id_item_data_fim" class="form-control form-control-sm rounded-3" value="{{ item_data_fim }}">
+                        </div>
+                        <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                            <button type="submit"
+                                    class="btn btn-sm btn-link rel-acao-icone py-1"
+                                    title="Buscar"
+                                    aria-label="Buscar">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=item#sec-item"
+                               class="btn btn-sm btn-link rel-acao-icone py-1"
+                               title="Limpar todos os filtros"
+                               aria-label="Limpar todos os filtros">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </form>
+                    {% include 'estoque/_relatorios_item_movimentos.html' %}
+                </div>
+            </div>
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'auditoria_movimentar' %}active{% endif %}"
+                 data-panel="auditoria_movimentar"
+                 id="sec-auditoria-movimentar">
+            {% include 'estoque/itens/_movimentar_log.html' %}
+        </section>
+
+        <section class="section-panel {% if secao_relat == 'auditoria_cautelas' %}active{% endif %}"
+                 data-panel="auditoria_cautelas"
+                 id="sec-auditoria-cautelas">
+            {% include 'estoque/_relatorios_cautela_log.html' %}
+        </section>
+
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+    var allowed = new Set([
+        'funcionario',
+        'funcionario_requisicao',
+        'funcionario_ferramenta',
+        'ferramenta',
+        'item',
+        'auditoria_movimentar',
+        'auditoria_cautelas',
+    ]);
+
+    function activateSection(sectionName, opts) {
+        opts = opts || {};
+        var scrollTo = opts.scroll === true;
+        document.querySelectorAll('.estoque-relatorios-layout .js-relatorio-section').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.section === sectionName);
+        });
+        document.querySelectorAll('.estoque-relatorios-layout .section-panel').forEach(function (panel) {
+            panel.classList.toggle('active', panel.dataset.panel === sectionName);
+        });
+
+        try {
+            var u = new URL(window.location.href);
+            u.searchParams.set('secao', sectionName);
+            history.replaceState({}, '', u);
+        } catch (e) { /* ignore */ }
+        if (scrollTo) {
+            var target = document.querySelector('.estoque-relatorios-layout .section-panel[data-panel="' + sectionName + '"]');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var params = new URLSearchParams(window.location.search);
+        var sec = params.get('secao');
+        var initial = allowed.has(sec) ? sec : 'funcionario';
+        activateSection(initial, { scroll: false });
+
+        document.querySelectorAll('.estoque-relatorios-layout .js-relatorio-section').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var name = this.dataset.section;
+                if (!name) return;
+                activateSection(name, { scroll: true });
+            });
+        });
+    });
+
+    document.body.addEventListener('click', function (e) {
+        var acItem = e.target.closest('.js-ac-item');
+        if (acItem) {
+            var wrap = acItem.closest('[data-ac-scope]');
+            if (!wrap) return;
+            var hiddenId = wrap.getAttribute('data-hidden-id');
+            var inputId = wrap.getAttribute('data-input-id');
+            var resultsId = wrap.getAttribute('data-results-id');
+            var hidden = hiddenId ? document.getElementById(hiddenId) : null;
+            var input = inputId ? document.getElementById(inputId) : null;
+            var results = resultsId ? document.getElementById(resultsId) : null;
+            if (hidden) hidden.value = acItem.getAttribute('data-id') || '';
+            if (input) input.value = acItem.getAttribute('data-label') || '';
+            if (results) results.innerHTML = '';
+            return;
+        }
+        var clearBtn = e.target.closest('.js-ac-clear');
+        if (clearBtn) {
+            var wrap2 = clearBtn.closest('[data-ac-scope]');
+            if (!wrap2) return;
+            var h = document.getElementById(wrap2.getAttribute('data-hidden-id') || '');
+            var inp = document.getElementById(wrap2.getAttribute('data-input-id') || '');
+            var res = document.getElementById(wrap2.getAttribute('data-results-id') || '');
+            if (h) h.value = '';
+            if (inp) inp.value = '';
+            if (res) res.innerHTML = '';
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -182,7 +182,7 @@
                             data-req-min-raw="{{ f.instance.item.quantidade_minima }}"
                             data-req-saldo-raw="{{ f.instance.item.quantidade_estoque }}"
                             data-req-unid="{{ f.instance.item.unidade_medida.abreviada|escape }}"
-                            data-req-thumb="{% for im in f.instance.item.imagens.all %}{% if forloop.first %}{{ im.imagem.url|escape }}{% endif %}{% endfor %}"
+                            data-req-thumb="{% if f.instance.item.imagem_listagem %}{{ f.instance.item.imagem_listagem.imagem.url|escape }}{% endif %}"
                             {% endif %}>
                             <td>
                                 {{ f.id }}

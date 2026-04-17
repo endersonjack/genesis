@@ -20,35 +20,11 @@
         id="estoque-ferramenta-modal-form"
         method="post"
         class="js-estoque-form-busy"
-        enctype="multipart/form-data"
         hx-post="{{ post_url }}"
-        hx-encoding="multipart/form-data"
         hx-target="#modal-content"
         hx-swap="innerHTML"
         data-no-global-loading>
         {% csrf_token %}
-    {% if ferramenta and ferramenta.imagens.exists %}
-    <div class="mb-4">
-        <span class="form-label fw-semibold d-block">Imagens atuais</span>
-        <div class="d-flex flex-wrap gap-3 mt-2">
-            {% for img in ferramenta.imagens.all %}
-            <div class="border rounded-3 p-2 bg-light" style="max-width:140px;">
-                <img src="{{ img.imagem.url }}" alt="" class="img-fluid rounded-2 mb-2 w-100" style="max-height:100px;object-fit:cover;">
-                <form method="post"
-                      hx-post="{% url 'estoque:ferramenta_imagem_excluir' empresa_id=request.empresa_ativa.pk ferramenta_pk=ferramenta.pk imagem_pk=img.pk %}"
-                      hx-target="#modal-content"
-                      hx-swap="innerHTML"
-                      class="m-0 js-estoque-form-busy"
-                      data-estoque-busy-label="Removendo…"
-                      data-no-global-loading>
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-3">Remover</button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
         {% if form.non_field_errors %}
             <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -114,75 +90,14 @@
             </div>
         </div>
 
-        <div class="mb-3 mt-1">
+        <div class="mb-0 mt-1">
             <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
             {{ form.observacoes }}
             {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
         </div>
-
-        <div class="mb-0">
-            <label class="form-label fw-semibold" for="id_ferramenta_imagens_galeria">Imagens</label>
-            <input type="file"
-                   name="imagens"
-                   id="id_ferramenta_imagens_galeria"
-                   class="form-control rounded-3"
-                   accept="image/*"
-                   multiple>
-            <div class="form-text">Envie uma ou mais imagens (opcional). Novas imagens são acrescentadas ao salvar.</div>
-        </div>
-
-        <hr class="my-4">
-
-        <div class="mb-0 text-center">
-            <span class="form-label fw-semibold d-block">{{ form.qrcode_imagem.label }}</span>
-            {% if form.qrcode_imagem.field.disabled %}
-                <p class="form-text mb-2">Gerado automaticamente ao salvar. Nas telas de estoque, use o leitor 2D para abrir esta ferramenta pelo código. Para trocar o QR, exclua o atual e gere outro.</p>
-                {% if ferramenta and ferramenta.qrcode_imagem %}
-                    <div class="mt-2">
-                        <img src="{{ ferramenta.qrcode_imagem.url }}" alt="QR Code" class="border bg-white d-block mx-auto" style="max-width: 280px; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges;">
-                    </div>
-                    <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
-                        <button type="button"
-                                class="estoque-btn estoque-btn-danger-outline js-estoque-form-busy"
-                                data-estoque-busy-label="Removendo…"
-                                data-no-global-loading
-                                hx-post="{% url 'estoque:modal_excluir_qrcode_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
-                                hx-target="#modal-content"
-                                hx-swap="innerHTML"
-                                hx-confirm="Remover o QR Code desta ferramenta? Depois você pode gerar outro.">
-                            <i class="bi bi-trash me-1"></i> Excluir QR Code
-                        </button>
-                    </div>
-                {% elif ferramenta %}
-                    <p class="small text-muted mb-2">Sem QR ainda. Gere agora ou salve a ferramenta para gerar automaticamente.</p>
-                    <button type="button"
-                            class="estoque-btn estoque-btn-primary js-estoque-form-busy"
-                            data-estoque-busy-label="Gerando…"
-                            data-no-global-loading
-                            hx-post="{% url 'estoque:modal_gerar_qrcode_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
-                            hx-target="#modal-content"
-                            hx-swap="innerHTML">
-                        <i class="bi bi-qr-code-scan me-1"></i> Gerar QR Code
-                    </button>
-                {% else %}
-                    <p class="small text-muted mb-0">Salve a ferramenta para gerar o QR.</p>
-                {% endif %}
-            {% else %}
-                <div class="d-flex justify-content-center">
-                    <div style="max-width: 420px; width: 100%;">
-                        {{ form.qrcode_imagem }}
-                    </div>
-                </div>
-                {% if form.qrcode_imagem.help_text %}<div class="form-text">{{ form.qrcode_imagem.help_text }}</div>{% endif %}
-                {% if ferramenta and ferramenta.qrcode_imagem %}
-                    <div class="mt-2">
-                        <span class="small text-muted d-block mb-1">Atual:</span>
-                        <img src="{{ ferramenta.qrcode_imagem.url }}" alt="QR Code" class="border bg-white d-block mx-auto" style="max-width: 280px; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges;">
-                    </div>
-                {% endif %}
-            {% endif %}
-            {% if form.qrcode_imagem.errors %}<div class="text-danger small mt-1">{{ form.qrcode_imagem.errors|join:", " }}</div>{% endif %}
-        </div>
+        {% if ferramenta %}
+        <p class="text-muted small mt-3 mb-0">Imagens e QR Code são geridos na página de detalhes da ferramenta.</p>
+        {% endif %}
     </form>
 </div>
 

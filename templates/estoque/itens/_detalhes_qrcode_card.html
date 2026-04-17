@@ -1,0 +1,38 @@
+<div id="item-detalhes-qrcode-card" class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <h3 class="h6 fw-bold text-uppercase text-muted mb-0" style="letter-spacing:.06em;">QR Code</h3>
+            {% if item.qrcode_imagem %}
+            <button type="button"
+                    class="estoque-btn estoque-btn-danger-outline js-estoque-form-busy"
+                    data-estoque-busy-label="Removendo…"
+                    data-no-global-loading
+                    hx-post="{% url 'estoque:modal_excluir_qrcode_item' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                    hx-target="#item-detalhes-qrcode-card"
+                    hx-swap="outerHTML"
+                    hx-confirm="Remover o QR Code deste item? Depois você pode gerar outro.">
+                <i class="bi bi-trash me-1"></i>
+                <span>Excluir QR Code</span>
+            </button>
+            {% else %}
+            <button type="button"
+                    class="estoque-btn estoque-btn-primary js-estoque-form-busy"
+                    data-estoque-busy-label="Gerando…"
+                    data-no-global-loading
+                    hx-post="{% url 'estoque:modal_gerar_qrcode_item' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+                    hx-target="#item-detalhes-qrcode-card"
+                    hx-swap="outerHTML">
+                <i class="bi bi-qr-code-scan me-1"></i>
+                <span>Gerar QR Code</span>
+            </button>
+            {% endif %}
+        </div>
+        {% if item.qrcode_imagem %}
+        <div class="text-center">
+            <img src="{{ item.qrcode_imagem.url }}" alt="QR Code do item" class="img-fluid border bg-white d-block mx-auto" style="max-width:220px;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;" decoding="async" loading="lazy">
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Nenhum QR Code gerado. Use «Gerar QR Code» para criar — nas telas de estoque, o leitor 2D abre este item pelo código.</p>
+        {% endif %}
+    </div>
+</div>

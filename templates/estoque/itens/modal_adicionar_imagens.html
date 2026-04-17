@@ -1,0 +1,39 @@
+<div class="modal-header align-items-start">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 w-100">
+        <h5 class="modal-title fw-bold mb-0">Adicionar imagens</h5>
+        <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+    <p class="text-muted small mb-0 w-100 mt-2">{{ item.descricao|truncatechars:100 }}</p>
+</div>
+<div class="modal-body">
+    <form
+        id="estoque-item-adicionar-imagens-form"
+        method="post"
+        enctype="multipart/form-data"
+        class="js-estoque-form-busy"
+        hx-post="{% url 'estoque:modal_adicionar_imagens_item' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
+        hx-encoding="multipart/form-data"
+        hx-target="#item-detalhes-imagens-card"
+        hx-swap="outerHTML"
+        data-no-global-loading
+        hx-on:htmx:after-request="if (event.detail.successful && !event.detail.xhr.getResponseHeader('HX-Retarget')) { var el = document.getElementById('modalPadrao'); if (el && window.bootstrap) { var inst = bootstrap.Modal.getInstance(el); if (inst) inst.hide(); } }">
+        {% csrf_token %}
+        <div class="mb-0">
+            <label class="form-label fw-semibold" for="id_imagens_modal_galeria">Arquivos</label>
+            <input type="file"
+                   name="imagens"
+                   id="id_imagens_modal_galeria"
+                   class="form-control rounded-3"
+                   accept="image/*"
+                   multiple
+                   required>
+            <div class="form-text">Envie uma ou mais imagens. Marque «Padrão para visualização» no cartão quando quiser trocar a miniatura nas listagens.</div>
+        </div>
+    </form>
+</div>
+<div class="modal-footer d-flex flex-wrap gap-2 justify-content-end">
+    <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="estoque-btn estoque-btn-primary" form="estoque-item-adicionar-imagens-form">
+        <i class="bi bi-upload me-1"></i> Enviar
+    </button>
+</div>

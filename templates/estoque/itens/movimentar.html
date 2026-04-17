@@ -22,6 +22,11 @@
             <i class="bi bi-arrow-left"></i>
             <span>Estoque</span>
         </a>
+        <a href="{% url 'estoque:relatorios_estoque' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-clipboard-data"></i>
+            <span>Relatórios</span>
+        </a>
         <a href="{% url 'estoque:lista_itens' empresa_id=request.empresa_ativa.pk %}"
            class="estoque-btn estoque-btn-light text-decoration-none">
             <i class="bi bi-box-seam"></i>
@@ -42,8 +47,6 @@
         {% include 'estoque/itens/_movimentar_conteudo.html' %}
     </div>
 </div>
-
-{% include 'estoque/itens/_movimentar_log.html' %}
 
 {% include 'estoque/includes/modal_cadastro_estoque.html' %}
 {% endblock %}

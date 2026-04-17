@@ -1,0 +1,209 @@
+<div class="section-card rel-ff-tool-report">
+    <div class="section-card-header">
+        <div>
+            <h5>Funcionário × Requisição</h5>
+            <small>Todas as requisições do colaborador com cabeçalho e itens (quantidade e unidade). Filtro por item restringe às requisições que contêm o item; destaque amarelo na lista de itens. Use a seta na tabela para ver local, obra, almoxarife e a lista de itens.</small>
+        </div>
+    </div>
+    <div class="section-card-body">
+        <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
+            <input type="hidden" name="secao" value="funcionario_requisicao">
+            <input type="hidden" name="ferramenta_id" value="{{ ferramenta_id|default:'' }}">
+            <input type="hidden" name="ferr_data_ini" value="{{ ferr_data_ini }}">
+            <input type="hidden" name="ferr_data_fim" value="{{ ferr_data_fim }}">
+            <input type="hidden" name="item_id" value="{{ item_id|default:'' }}">
+            <input type="hidden" name="item_data_ini" value="{{ item_data_ini }}">
+            <input type="hidden" name="item_data_fim" value="{{ item_data_fim }}">
+            <input type="hidden" name="fferr_ferramenta_id" value="{{ fferr_ferramenta_filter_id|default:'' }}">
+            <div class="rel-ff-field-func d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="rel-func-req-det-q">Funcionário</label>
+                <div data-ac-scope
+                     data-hidden-id="id_funcionario_freq_det"
+                     data-input-id="rel-func-req-det-q"
+                     data-results-id="rel-func-req-det-res">
+                    <div class="rel-ff-ac-anchor">
+                        <input type="text"
+                               id="rel-func-req-det-q"
+                               name="q_func_rel"
+                               class="form-control form-control-sm rounded-3"
+                               autocomplete="off"
+                               placeholder="Digite para buscar…"
+                               value="{% if funcionario %}{{ funcionario }}{% endif %}"
+                               hx-get="{{ funcionario_ac_url }}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#rel-func-req-det-res"
+                               data-no-global-loading>
+                        <div id="rel-func-req-det-res" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                    </div>
+                    <input type="hidden" name="funcionario_id" id="id_funcionario_freq_det" value="{{ funcionario_id|default:'' }}">
+                </div>
+            </div>
+            <div class="rel-ff-field-item d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="rel-freq-item-filter-q">Item</label>
+                <div data-ac-scope
+                     data-hidden-id="id_freq_item_filter"
+                     data-input-id="rel-freq-item-filter-q"
+                     data-results-id="rel-freq-item-filter-res">
+                    <div class="rel-ff-ac-anchor">
+                        <input type="text"
+                               id="rel-freq-item-filter-q"
+                               name="q_item_freq_det"
+                               class="form-control form-control-sm rounded-3"
+                               autocomplete="off"
+                               placeholder="Filtrar requisições por item…"
+                               value="{% if freq_item_filter %}{{ freq_item_filter.descricao }}{% endif %}"
+                               hx-get="{{ item_ac_url }}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#rel-freq-item-filter-res"
+                               data-no-global-loading>
+                        <div id="rel-freq-item-filter-res" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                    </div>
+                    <input type="hidden" name="freq_item_id" id="id_freq_item_filter" value="{{ freq_item_filter_id|default:'' }}">
+                </div>
+            </div>
+            <div class="rel-ff-field-date d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="id_freq_det_ini">De</label>
+                <input type="date" name="func_data_ini" id="id_freq_det_ini" class="form-control form-control-sm rounded-3" value="{{ func_data_ini }}">
+            </div>
+            <div class="rel-ff-field-date d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="id_freq_det_fim">Até</label>
+                <input type="date" name="func_data_fim" id="id_freq_det_fim" class="form-control form-control-sm rounded-3" value="{{ func_data_fim }}">
+            </div>
+            <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                <button type="submit"
+                        class="btn btn-sm btn-link rel-acao-icone py-1"
+                        title="Buscar"
+                        aria-label="Buscar">
+                    <i class="bi bi-search"></i>
+                </button>
+                <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=funcionario_requisicao#sec-funcionario-requisicao"
+                   class="btn btn-sm btn-link rel-acao-icone py-1"
+                   title="Limpar todos os filtros"
+                   aria-label="Limpar todos os filtros">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+
+        {% if funcionario %}
+            {% if freq_det_page.object_list %}
+            <div class="table-responsive border rounded-3">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3 text-nowrap" scope="col" style="width:3.5rem;">#</th>
+                            <th scope="col" class="text-nowrap">Nº Requisição</th>
+                            <th scope="col" class="text-nowrap">Data</th>
+                            <th scope="col" class="text-nowrap text-end">Itens</th>
+                            <th scope="col">Situação</th>
+                            <th scope="col">Local / Obra</th>
+                            <th class="pe-3 text-nowrap" scope="col">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in freq_det_page %}
+                        <tr class="rel-req-summary-row"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#freq-req-detail-{{ req.pk }}"
+                            aria-expanded="false"
+                            aria-controls="freq-req-detail-{{ req.pk }}"
+                            role="button"
+                            tabindex="0">
+                            <td class="ps-3 small text-muted">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-chevron-down rel-req-chevron" aria-hidden="true"></i>
+                                    <span class="tabular-nums">{{ freq_det_page.start_index|add:forloop.counter0 }}</span>
+                                </span>
+                            </td>
+                            <td class="small fw-semibold">
+                                <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=req.pk %}"
+                                   class="text-decoration-none"
+                                   onclick="event.stopPropagation();">#{{ req.pk }}</a>
+                            </td>
+                            <td class="text-nowrap small">{{ req.criado_em|date:"d/m/Y H:i" }}</td>
+                            <td class="text-nowrap small text-end">{{ req.n_itens|default:0 }}</td>
+                            <td class="small">
+                                <span class="badge rounded-pill {% if req.status == 'ativa' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ req.get_status_display }}</span>
+                            </td>
+                            <td class="small text-muted" style="max-width: 14rem;">
+                                {% if req.local %}<span class="d-block text-truncate" title="{{ req.local }}">{{ req.local }}</span>{% endif %}
+                                {% if req.obra %}<span class="d-block text-truncate" title="{{ req.obra }}">{{ req.obra }}</span>{% endif %}
+                                {% if not req.local and not req.obra %}—{% endif %}
+                            </td>
+                            <td class="pe-3 small text-nowrap">
+                                <a href="{% url 'estoque:detalhe_requisicao' empresa_id=request.empresa_ativa.pk pk=req.pk %}"
+                                   class="small"
+                                   onclick="event.stopPropagation();">Ver</a>
+                            </td>
+                        </tr>
+                        <tr class="collapse bg-light rel-req-detail-row" id="freq-req-detail-{{ req.pk }}">
+                            <td colspan="7" class="p-0 border-top-0">
+                                <div class="px-3 py-3 border-top">
+                                    <div class="small text-muted border-bottom pb-2 mb-3">
+                                        {% if req.local %}<span class="me-3"><strong>Local:</strong> {{ req.local }}</span>{% endif %}
+                                        {% if req.obra %}<span class="me-3"><strong>Obra:</strong> {{ req.obra }}</span>{% endif %}
+                                        {% if req.almoxarife %}
+                                        <span class="me-3"><strong>Almoxarife:</strong> {{ req.almoxarife.nome_completo|default:req.almoxarife.username }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h6 class="small fw-bold mb-2">Itens da requisição</h6>
+                                    <div class="table-responsive border rounded-3 bg-white">
+                                        <table class="table table-sm table-hover mb-0 align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="ps-3">Item</th>
+                                                    <th>Unid.</th>
+                                                    <th class="text-end pe-3">Quantidade</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for line in req.itens.all %}
+                                                <tr>
+                                                    <td class="ps-3">{% if freq_item_filter_id == line.item.pk %}<mark class="rel-ff-mark">{% endif %}{{ line.item.descricao }}{% if freq_item_filter_id == line.item.pk %}</mark>{% endif %}</td>
+                                                    <td class="text-muted small">{{ line.item.unidade_medida.abreviada|default:"—" }}</td>
+                                                    <td class="text-end pe-3 text-nowrap">{{ line.quantidade|floatformat:4 }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr><td colspan="3" class="ps-3 text-muted small">Sem itens nesta requisição.</td></tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if freq_det_page.paginator.num_pages > 1 %}
+            <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3" aria-label="Páginas requisições detalhadas">
+                <span class="small text-muted">Página {{ freq_det_page.number }} de {{ freq_det_page.paginator.num_pages }} (até {{ rel_page }} requisições por página)</span>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if freq_det_page.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link rounded-start-3"
+                           href="?{% if freq_det_query %}{{ freq_det_query }}&{% endif %}freq_det_page={{ freq_det_page.previous_page_number }}#sec-funcionario-requisicao">Anterior</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                    {% endif %}
+                    {% if freq_det_page.has_next %}
+                    <li class="page-item">
+                        <a class="page-link rounded-end-3"
+                           href="?{% if freq_det_query %}{{ freq_det_query }}&{% endif %}freq_det_page={{ freq_det_page.next_page_number }}#sec-funcionario-requisicao">Próxima</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <p class="text-muted small mb-0">Nenhuma requisição nos filtros.</p>
+            {% endif %}
+        {% else %}
+            <p class="text-muted small mb-0">Selecione um funcionário.</p>
+        {% endif %}
+    </div>
+</div>

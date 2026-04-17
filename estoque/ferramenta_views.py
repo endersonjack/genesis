@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Max, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -9,8 +10,13 @@ from auditoria.registry import registrar_auditoria
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import FerramentaForm
+from .item_views import _etiqueta_pdf_para_png_bytes
 from .models import Cautela, Entrega_Cautela, Ferramenta, FerramentaImagem
-from .qr_item import attach_auto_qrcode_to_ferramenta
+from .qr_item import (
+    attach_auto_qrcode_to_ferramenta,
+    build_ferramenta_qr_payload,
+    generate_qr_png_bytes,
+)
 
 
 def _empresa(request):
@@ -35,8 +41,230 @@ def _anexar_imagens_novas(ferramenta, files_list):
         return
     agg = ferramenta.imagens.aggregate(m=Max('ordem'))
     nxt = (agg['m'] if agg['m'] is not None else -1) + 1
+    tinha_padrao = ferramenta.imagens.filter(padrao=True).exists()
     for i, f in enumerate(files_list):
         FerramentaImagem.objects.create(ferramenta=ferramenta, imagem=f, ordem=nxt + i)
+    if not tinha_padrao:
+        _garantir_uma_imagem_padrao_ferramenta(ferramenta)
+
+
+def _garantir_uma_imagem_padrao_ferramenta(ferramenta):
+    qs = FerramentaImagem.objects.filter(ferramenta=ferramenta).order_by('ordem', 'pk')
+    imgs = list(qs)
+    if not imgs:
+        return
+    if sum(1 for im in imgs if im.padrao) == 1:
+        return
+    if sum(1 for im in imgs if im.padrao) > 1:
+        keep = next(im for im in imgs if im.padrao)
+        FerramentaImagem.objects.filter(ferramenta=ferramenta, padrao=True).exclude(
+            pk=keep.pk
+        ).update(padrao=False)
+        return
+    imgs[0].padrao = True
+    imgs[0].save(update_fields=['padrao'])
+
+
+def _ferramenta_com_imagens_prefetch(ferramenta, empresa):
+    return get_object_or_404(
+        Ferramenta.objects.prefetch_related('imagens'),
+        pk=ferramenta.pk,
+        empresa=empresa,
+    )
+
+
+def _etiqueta_ferramenta_pdf_bytes(ferramenta) -> bytes:
+    import os
+    import tempfile
+    from io import BytesIO
+    from xml.sax.saxutils import escape as xml_escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate
+    from reportlab.platypus import Image as RLImage
+    from reportlab.platypus import Paragraph, Table, TableStyle
+
+    largura_doc = 178 * mm
+    altura_doc = 62 * mm
+
+    if ferramenta.qrcode_imagem:
+        ferramenta.qrcode_imagem.open('rb')
+        try:
+            qr_data = ferramenta.qrcode_imagem.read()
+        finally:
+            ferramenta.qrcode_imagem.close()
+    else:
+        qr_data = generate_qr_png_bytes(
+            build_ferramenta_qr_payload(ferramenta.empresa_id, ferramenta.pk)
+        )
+
+    buf = BytesIO()
+    inset_pt = 6
+    frame = Frame(
+        inset_pt,
+        inset_pt,
+        largura_doc - 2 * inset_pt,
+        altura_doc - 2 * inset_pt,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+        id='normal',
+        showBoundary=0,
+    )
+    doc = BaseDocTemplate(buf, pagesize=(largura_doc, altura_doc))
+    doc.addPageTemplates([PageTemplate(id='etq', frames=[frame])])
+
+    w = frame._width
+    h = frame._height
+    col_qr = w * 0.40
+    col_txt = max(w - col_qr, 10 * mm)
+    qr_side = min(col_qr, h)
+
+    styles = getSampleStyleSheet()
+    st_compact = ParagraphStyle(
+        'etq_ferr_cmp',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=14,
+        spaceBefore=0,
+        spaceAfter=0,
+        textColor=colors.HexColor('#0f172a'),
+    )
+
+    def bloco_linha(
+        titulo: str,
+        valor: str,
+        *,
+        bold: bool = False,
+        tam_valor: int = 12,
+        tam_titulo: int = 7,
+    ) -> Paragraph:
+        esc_t = xml_escape(titulo)
+        esc_v = xml_escape(valor)
+        fn_val = 'Helvetica-Bold' if bold else 'Helvetica'
+        inner = (
+            f'<font name="Helvetica-Bold" size="{tam_titulo}" color="#334155">{esc_t}</font>'
+            f'<br/><font name="{fn_val}" size="{tam_valor}" color="#0f172a">{esc_v}</font>'
+        )
+        return Paragraph(inner, st_compact)
+
+    def _caps_exibir(s: str) -> str:
+        t = (s or '').strip()
+        return t.upper() if t else '—'
+
+    marca_txt = _caps_exibir(ferramenta.marca or '')
+    desc_txt = _caps_exibir(ferramenta.descricao or '')
+    cod_txt = _caps_exibir(ferramenta.codigo_numeracao or '')
+    tam_s = (ferramenta.tamanho or '').strip()
+    cor_s = (ferramenta.cor or '').strip()
+    if tam_s and cor_s:
+        rotulo_dir = 'Cor / tam.'
+        valor_dir = f'{_caps_exibir(tam_s)} · {_caps_exibir(cor_s)}'
+    elif cor_s:
+        rotulo_dir = 'Cor'
+        valor_dir = _caps_exibir(cor_s)
+    elif tam_s:
+        rotulo_dir = 'Tam.'
+        valor_dir = _caps_exibir(tam_s)
+    else:
+        rotulo_dir = 'Tam.'
+        valor_dir = '—'
+
+    linha_marca = Table([[bloco_linha('Marca', marca_txt)]], colWidths=[col_txt])
+    col_esq = col_txt * 0.38
+    col_dir = col_txt - col_esq
+    linha_inf = Table(
+        [
+            [
+                bloco_linha('Cód. / num.', cod_txt),
+                bloco_linha(rotulo_dir, valor_dir),
+            ]
+        ],
+        colWidths=[col_esq, col_dir],
+    )
+
+    tbl_pad = [
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]
+    linha_marca.setStyle(TableStyle(tbl_pad))
+    linha_inf.setStyle(TableStyle(tbl_pad))
+
+    linha_gap = Paragraph(
+        '&nbsp;',
+        ParagraphStyle(
+            'etq_ferr_gap',
+            parent=st_compact,
+            fontSize=1,
+            leading=6,
+            textColor=colors.HexColor('#ffffff'),
+        ),
+    )
+
+    direita = Table(
+        [
+            [
+                bloco_linha(
+                    'Descrição',
+                    desc_txt,
+                    bold=True,
+                    tam_valor=13,
+                )
+            ],
+            [linha_marca],
+            [linha_gap],
+            [linha_inf],
+        ],
+        colWidths=[col_txt],
+    )
+    direita.setStyle(TableStyle(tbl_pad))
+
+    fd, tmp_png = tempfile.mkstemp(suffix='.png')
+    try:
+        with os.fdopen(fd, 'wb') as tmp_f:
+            tmp_f.write(qr_data)
+        qr_img = RLImage(tmp_png, width=qr_side, height=qr_side)
+        qr_celula = Table(
+            [[qr_img]],
+            colWidths=[col_qr],
+            rowHeights=[h],
+            hAlign='LEFT',
+        )
+        qr_celula.setStyle(
+            TableStyle(
+                [
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        principal = Table(
+            [[qr_celula, direita]],
+            colWidths=[col_qr, col_txt],
+            rowHeights=[h],
+            hAlign='LEFT',
+        )
+        estilo_principal = list(tbl_pad)
+        estilo_principal.append(('VALIGN', (0, 0), (-1, -1), 'MIDDLE'))
+        principal.setStyle(TableStyle(estilo_principal))
+        doc.build([principal])
+    finally:
+        try:
+            os.unlink(tmp_png)
+        except OSError:
+            pass
+
+    return buf.getvalue()
 
 
 def _render_ferramenta_form_modal(request, ferramenta, form):
@@ -88,18 +316,15 @@ def _modal_ferramenta_form(request, ferramenta):
                 request.FILES,
                 instance=ferramenta,
                 empresa=empresa,
-                lock_qrcode_imagem=True,
             )
         else:
             form = FerramentaForm(
                 request.POST,
                 request.FILES,
                 empresa=empresa,
-                lock_qrcode_imagem=True,
             )
         if form.is_valid():
             saved = form.save()
-            _anexar_imagens_novas(saved, request.FILES.getlist('imagens'))
             attach_auto_qrcode_to_ferramenta(saved)
             if ferramenta is None:
                 registrar_auditoria(
@@ -126,12 +351,10 @@ def _modal_ferramenta_form(request, ferramenta):
             form = FerramentaForm(
                 instance=ferramenta,
                 empresa=empresa,
-                lock_qrcode_imagem=True,
             )
         else:
             form = FerramentaForm(
                 empresa=empresa,
-                lock_qrcode_imagem=True,
             )
         preselect = (request.GET.get('preselect_categoria') or '').strip()
         if preselect.isdigit() and 'categoria' in form.fields:
@@ -217,10 +440,10 @@ def modal_gerar_qrcode_ferramenta(request, pk):
     )
 
     if request.method != 'POST':
-        return redirect_empresa(request, 'estoque:lista_ferramentas')
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=pk)
 
     if not _is_htmx(request):
-        return redirect_empresa(request, 'estoque:lista_ferramentas')
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=pk)
 
     if ferramenta.qrcode_imagem:
         messages.info(request, 'Esta ferramenta já possui QR Code.')
@@ -237,12 +460,12 @@ def modal_gerar_qrcode_ferramenta(request, pk):
                 msg = f'{msg} ({err})'
             messages.warning(request, msg)
 
-    form = FerramentaForm(
-        instance=ferramenta,
-        empresa=empresa,
-        lock_qrcode_imagem=True,
+    ferramenta.refresh_from_db()
+    return render(
+        request,
+        'estoque/ferramentas/_detalhes_qrcode_card.html',
+        {'ferramenta': ferramenta},
     )
-    return _render_ferramenta_form_modal(request, ferramenta, form)
 
 
 @login_required
@@ -259,10 +482,10 @@ def modal_excluir_qrcode_ferramenta(request, pk):
     )
 
     if request.method != 'POST':
-        return redirect_empresa(request, 'estoque:lista_ferramentas')
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=pk)
 
     if not _is_htmx(request):
-        return redirect_empresa(request, 'estoque:lista_ferramentas')
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=pk)
 
     if ferramenta.qrcode_imagem:
         ferramenta.qrcode_imagem.delete(save=False)
@@ -275,12 +498,11 @@ def modal_excluir_qrcode_ferramenta(request, pk):
         messages.info(request, 'Esta ferramenta não tinha QR Code.')
 
     ferramenta.refresh_from_db()
-    form = FerramentaForm(
-        instance=ferramenta,
-        empresa=empresa,
-        lock_qrcode_imagem=True,
+    return render(
+        request,
+        'estoque/ferramentas/_detalhes_qrcode_card.html',
+        {'ferramenta': ferramenta},
     )
-    return _render_ferramenta_form_modal(request, ferramenta, form)
 
 
 @login_required
@@ -404,21 +626,120 @@ def ferramenta_imagem_excluir(request, ferramenta_pk, imagem_pk):
         img.imagem.delete(save=False)
         img.delete()
         messages.success(request, 'Imagem removida.')
-        ferramenta = get_object_or_404(
-            Ferramenta.objects.prefetch_related('imagens'),
-            pk=ferramenta_pk,
-            empresa=empresa,
-        )
-        form = FerramentaForm(
-            instance=ferramenta,
-            empresa=empresa,
-            lock_qrcode_imagem=True,
-        )
+        _garantir_uma_imagem_padrao_ferramenta(ferramenta)
+        ferramenta = _ferramenta_com_imagens_prefetch(ferramenta, empresa)
         if _is_htmx(request):
-            return _render_ferramenta_form_modal(request, ferramenta, form)
+            return render(
+                request,
+                'estoque/ferramentas/_detalhes_imagens_card.html',
+                {'ferramenta': ferramenta},
+            )
         return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=ferramenta.pk)
 
     return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=ferramenta.pk)
+
+
+@login_required
+def modal_adicionar_imagens_ferramenta(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    ferramenta = get_object_or_404(Ferramenta, pk=pk, empresa=empresa)
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=pk)
+    if request.method == 'POST':
+        files = request.FILES.getlist('imagens')
+        if not files:
+            messages.error(request, 'Selecione ao menos uma imagem.')
+            response = render(
+                request,
+                'estoque/ferramentas/modal_adicionar_imagens.html',
+                {'ferramenta': ferramenta},
+            )
+            response['HX-Retarget'] = '#modal-content'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+        _anexar_imagens_novas(ferramenta, files)
+        messages.success(request, 'Imagens adicionadas.')
+        ferramenta = _ferramenta_com_imagens_prefetch(ferramenta, empresa)
+        return render(
+            request,
+            'estoque/ferramentas/_detalhes_imagens_card.html',
+            {'ferramenta': ferramenta},
+        )
+    return render(
+        request,
+        'estoque/ferramentas/modal_adicionar_imagens.html',
+        {'ferramenta': ferramenta},
+    )
+
+
+@login_required
+def ferramenta_imagem_definir_padrao(request, ferramenta_pk, imagem_pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    ferramenta = get_object_or_404(Ferramenta, pk=ferramenta_pk, empresa=empresa)
+    imagem = get_object_or_404(
+        FerramentaImagem, pk=imagem_pk, ferramenta=ferramenta
+    )
+    if request.method != 'POST':
+        return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=ferramenta.pk)
+    with transaction.atomic():
+        FerramentaImagem.objects.filter(ferramenta=ferramenta).update(padrao=False)
+        imagem.padrao = True
+        imagem.save(update_fields=['padrao'])
+    messages.success(request, 'Imagem padrão para visualização atualizada.')
+    ferramenta = _ferramenta_com_imagens_prefetch(ferramenta, empresa)
+    if _is_htmx(request):
+        return render(
+            request,
+            'estoque/ferramentas/_detalhes_imagens_card.html',
+            {'ferramenta': ferramenta},
+        )
+    return redirect_empresa(request, 'estoque:detalhes_ferramenta', pk=ferramenta.pk)
+
+
+@login_required
+def imprimir_etiqueta_ferramenta(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    ferramenta = get_object_or_404(Ferramenta, pk=pk, empresa=empresa)
+    data = _etiqueta_ferramenta_pdf_bytes(ferramenta)
+    resp = HttpResponse(data, content_type='application/pdf')
+    resp['Content-Disposition'] = (
+        f'inline; filename="etiqueta_ferramenta_{ferramenta.pk}.pdf"'
+    )
+    return resp
+
+
+@login_required
+def imprimir_etiqueta_ferramenta_png(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    ferramenta = get_object_or_404(Ferramenta, pk=pk, empresa=empresa)
+    try:
+        pdf_bytes = _etiqueta_ferramenta_pdf_bytes(ferramenta)
+        png_bytes = _etiqueta_pdf_para_png_bytes(pdf_bytes)
+    except ImportError:
+        messages.error(
+            request,
+            'Exportação em PNG não está disponível (dependência PyMuPDF ausente).',
+        )
+        return redirect_empresa(
+            request, 'estoque:detalhes_ferramenta', kwargs={'pk': pk}
+        )
+    resp = HttpResponse(png_bytes, content_type='image/png')
+    resp['Content-Disposition'] = (
+        f'inline; filename="etiqueta_ferramenta_{ferramenta.pk}.png"'
+    )
+    return resp
 
 
 @login_required

@@ -151,7 +151,6 @@ class FerramentaForm(forms.ModelForm):
             'preco',
             'fornecedor',
             'ativo',
-            'qrcode_imagem',
             'observacoes',
         )
         widgets = {
@@ -185,12 +184,6 @@ class FerramentaForm(forms.ModelForm):
                     'form': 'estoque-ferramenta-modal-form',
                 }
             ),
-            'qrcode_imagem': forms.ClearableFileInput(
-                attrs={
-                    'class': 'form-control rounded-3',
-                    'accept': 'image/*',
-                }
-            ),
             'observacoes': forms.Textarea(
                 attrs={
                     'class': 'form-control rounded-3',
@@ -208,23 +201,19 @@ class FerramentaForm(forms.ModelForm):
             'preco': 'Preço',
             'fornecedor': 'Fornecedor',
             'ativo': 'Ativa',
-            'qrcode_imagem': 'QR Code',
             'observacoes': 'Obs.',
         }
         help_texts = {
             'ativo': 'Desmarque para inativar: some das buscas principais.',
-            'qrcode_imagem': 'Imagem do QR Code gerada automaticamente ao salvar a ferramenta.',
         }
 
     def __init__(
         self,
         *args,
         empresa=None,
-        lock_qrcode_imagem: bool = False,
         **kwargs,
     ):
         self.empresa = empresa
-        self.lock_qrcode_imagem = bool(lock_qrcode_imagem)
         super().__init__(*args, **kwargs)
         if empresa:
             self.fields['categoria'].queryset = CategoriaFerramenta.objects.filter(
@@ -239,10 +228,7 @@ class FerramentaForm(forms.ModelForm):
         self.fields['tamanho'].required = False
         self.fields['codigo_numeracao'].required = False
         self.fields['preco'].required = False
-        self.fields['qrcode_imagem'].required = False
         self.fields['observacoes'].required = False
-        if self.lock_qrcode_imagem:
-            self.fields['qrcode_imagem'].disabled = True
 
     def clean_codigo_numeracao(self):
         cod = (self.cleaned_data.get('codigo_numeracao') or '').strip()

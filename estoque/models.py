@@ -147,6 +147,19 @@ class Item(TimeStampedModel):
     def __str__(self):
         return self.descricao[:80]
 
+    @property
+    def imagem_listagem(self):
+        """Imagem usada em miniaturas: a marcada como padrão, senão a primeira por ordem."""
+        chosen = None
+        first = None
+        for im in self.imagens.all():
+            if first is None:
+                first = im
+            if im.padrao:
+                chosen = im
+                break
+        return chosen if chosen is not None else first
+
 
 class ItemImagem(TimeStampedModel):
     item = models.ForeignKey(
@@ -156,6 +169,11 @@ class ItemImagem(TimeStampedModel):
     )
     imagem = models.ImageField(upload_to=item_imagem_upload)
     ordem = models.PositiveSmallIntegerField(default=0)
+    padrao = models.BooleanField(
+        'Padrão para visualização',
+        default=False,
+        help_text='Imagem exibida nas listagens e buscas quando houver mais de uma.',
+    )
 
     class Meta:
         verbose_name = 'Imagem do item'
@@ -233,6 +251,19 @@ class Ferramenta(TimeStampedModel):
     def __str__(self):
         return self.descricao[:80]
 
+    @property
+    def imagem_listagem(self):
+        """Imagem usada em miniaturas: a marcada como padrão, senão a primeira por ordem."""
+        chosen = None
+        first = None
+        for im in self.imagens.all():
+            if first is None:
+                first = im
+            if im.padrao:
+                chosen = im
+                break
+        return chosen if chosen is not None else first
+
 
 class FerramentaImagem(TimeStampedModel):
     ferramenta = models.ForeignKey(
@@ -242,6 +273,11 @@ class FerramentaImagem(TimeStampedModel):
     )
     imagem = models.ImageField(upload_to=ferramenta_imagem_upload)
     ordem = models.PositiveSmallIntegerField(default=0)
+    padrao = models.BooleanField(
+        'Padrão para visualização',
+        default=False,
+        help_text='Imagem exibida nas listagens e buscas quando houver mais de uma.',
+    )
 
     class Meta:
         verbose_name = 'Imagem da ferramenta'

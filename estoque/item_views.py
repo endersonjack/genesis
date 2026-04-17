@@ -10,7 +10,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from auditoria.registry import registrar_auditoria
-from auditoria.models import RegistroAuditoria
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
@@ -23,15 +22,246 @@ from .models import (
     RequisicaoEstoque,
     RequisicaoEstoqueItem,
 )
+try:
+    from .item_etiqueta_pdf import build_item_etiqueta_pdf_bytes
+except Exception:
+    build_item_etiqueta_pdf_bytes = None
 from .qr_item import (
     attach_auto_qrcode_to_item,
     parse_ferramenta_qr_payload,
     parse_item_qr_payload,
 )
 
+# Fallback inline: evita quebra do servidor se o módulo de etiqueta não estiver disponível.
+def _fmt_decimal_br(val, casas: int) -> str:
+    if val is None:
+        return '—'
+    try:
+        v = Decimal(str(val))
+    except Exception:
+        return '—'
+    tpl = f'{{:.{casas}f}}'
+    s = tpl.format(v).rstrip('0').rstrip('.')
+    return s.replace('.', ',')
+
+
+def _etiqueta_item_pdf_bytes(item) -> bytes:
+    import os
+    import tempfile
+    from io import BytesIO
+    from xml.sax.saxutils import escape as xml_escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate
+    from reportlab.platypus import Image as RLImage
+    from reportlab.platypus import Paragraph, Table, TableStyle
+
+    from .qr_item import build_item_qr_payload, generate_qr_png_bytes
+
+    largura_doc = 178 * mm
+    altura_doc = 62 * mm
+
+    if item.qrcode_imagem:
+        item.qrcode_imagem.open('rb')
+        try:
+            qr_data = item.qrcode_imagem.read()
+        finally:
+            item.qrcode_imagem.close()
+    else:
+        qr_data = generate_qr_png_bytes(build_item_qr_payload(item.empresa_id, item.pk))
+
+    buf = BytesIO()
+    inset_pt = 6
+    frame = Frame(
+        inset_pt,
+        inset_pt,
+        largura_doc - 2 * inset_pt,
+        altura_doc - 2 * inset_pt,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+        id='normal',
+        showBoundary=0,
+    )
+    doc = BaseDocTemplate(buf, pagesize=(largura_doc, altura_doc))
+    doc.addPageTemplates([PageTemplate(id='etq', frames=[frame])])
+
+    w = frame._width
+    h = frame._height
+    # Segunda referência: QR ocupa ~40% da largura, texto ~60%; QR quadrado, centrado na faixa.
+    col_qr = w * 0.40
+    col_txt = max(w - col_qr, 10 * mm)
+    qr_side = min(col_qr, h)
+
+    styles = getSampleStyleSheet()
+    st_compact = ParagraphStyle(
+        'etq_cmp',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=14,
+        spaceBefore=0,
+        spaceAfter=0,
+        textColor=colors.HexColor('#0f172a'),
+    )
+
+    def bloco_linha(
+        titulo: str,
+        valor: str,
+        *,
+        bold: bool = False,
+        tam_valor: int = 12,
+        tam_titulo: int = 7,
+    ) -> Paragraph:
+        esc_t = xml_escape(titulo)
+        esc_v = xml_escape(valor)
+        fn_val = 'Helvetica-Bold' if bold else 'Helvetica'
+        inner = (
+            f'<font name="Helvetica-Bold" size="{tam_titulo}" color="#334155">{esc_t}</font>'
+            f'<br/><font name="{fn_val}" size="{tam_valor}" color="#0f172a">{esc_v}</font>'
+        )
+        return Paragraph(inner, st_compact)
+
+    def _caps_exibir(s: str) -> str:
+        t = (s or '').strip()
+        return t.upper() if t else '—'
+
+    marca_txt = _caps_exibir(item.marca or '')
+    qmin_txt = _fmt_decimal_br(item.quantidade_minima, 4)
+    desc_txt = _caps_exibir(item.descricao or '')
+    unidade_txt = _caps_exibir(item.unidade_medida.abreviada)
+    comp = (getattr(item.unidade_medida, 'completa', None) or '').strip()
+    if comp:
+        unidade_txt = f'{unidade_txt} ({_caps_exibir(comp)})'
+
+    linha_marca = Table([[bloco_linha('Marca', marca_txt)]], colWidths=[col_txt])
+    # Unidade à direita, com coluna mais larga (texto tipo "UND (UNIDADE)").
+    col_qtd = col_txt * 0.38
+    col_un = col_txt - col_qtd
+    linha_qtd_un = Table(
+        [[bloco_linha('Qtd. mínima', qmin_txt), bloco_linha('Unidade', unidade_txt)]],
+        colWidths=[col_qtd, col_un],
+    )
+
+    tbl_pad = [
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]
+    linha_marca.setStyle(TableStyle(tbl_pad))
+    linha_qtd_un.setStyle(TableStyle(tbl_pad))
+
+    linha_gap = Paragraph(
+        '&nbsp;',
+        ParagraphStyle(
+            'etq_gap',
+            parent=st_compact,
+            fontSize=1,
+            leading=6,
+            textColor=colors.HexColor('#ffffff'),
+        ),
+    )
+
+    direita = Table(
+        [
+            [
+                bloco_linha(
+                    'Descrição',
+                    desc_txt,
+                    bold=True,
+                    tam_valor=13,
+                )
+            ],
+            [linha_marca],
+            [linha_gap],
+            [linha_qtd_un],
+        ],
+        colWidths=[col_txt],
+    )
+    direita.setStyle(TableStyle(tbl_pad))
+
+    fd, tmp_png = tempfile.mkstemp(suffix='.png')
+    try:
+        with os.fdopen(fd, 'wb') as tmp_f:
+            tmp_f.write(qr_data)
+        qr_img = RLImage(tmp_png, width=qr_side, height=qr_side)
+        qr_celula = Table(
+            [[qr_img]],
+            colWidths=[col_qr],
+            rowHeights=[h],
+            hAlign='LEFT',
+        )
+        qr_celula.setStyle(
+            TableStyle(
+                [
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        principal = Table(
+            [[qr_celula, direita]],
+            colWidths=[col_qr, col_txt],
+            rowHeights=[h],
+            hAlign='LEFT',
+        )
+        estilo_principal = list(tbl_pad)
+        estilo_principal.append(('VALIGN', (0, 0), (-1, -1), 'MIDDLE'))
+        principal.setStyle(TableStyle(estilo_principal))
+        doc.build([principal])
+    finally:
+        try:
+            os.unlink(tmp_png)
+        except OSError:
+            pass
+
+    return buf.getvalue()
+
+
+def _etiqueta_pdf_bytes_para_item(item) -> bytes:
+    if build_item_etiqueta_pdf_bytes:
+        return build_item_etiqueta_pdf_bytes(item)
+    return _etiqueta_item_pdf_bytes(item)
+
+
+def _etiqueta_pdf_para_png_bytes(pdf_bytes: bytes, *, dpi: int = 300) -> bytes:
+    """Rasteriza a primeira página do PDF em PNG (mesma arte da etiqueta)."""
+    from io import BytesIO
+
+    import fitz
+    from PIL import Image
+
+    doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+    try:
+        page = doc.load_page(0)
+        pix = page.get_pixmap(dpi=dpi, alpha=False)
+        img = Image.frombytes('RGB', (pix.width, pix.height), pix.samples)
+        buf = BytesIO()
+        img.save(buf, format='PNG', optimize=True)
+        return buf.getvalue()
+    finally:
+        doc.close()
+
+
 # Auditoria de requisição sem linha de item / sem alteração de saldo (evita linhas “em branco” no log).
+# Operações só de cautela ficam na página Relatórios (auditoria de cautelas).
 _MOVIMENTAR_LOG_OPERACOES_EXCLUIDAS = frozenset(
-    ('criar_requisicao', 'editar_cabecalho', 'cancelar_requisicao')
+    (
+        'criar_requisicao',
+        'editar_cabecalho',
+        'cancelar_requisicao',
+        'adiar_prazo',
+        'entrega_completa',
+        'entrega_parcial',
+    )
 )
 
 
@@ -285,8 +515,37 @@ def _anexar_imagens_novas(item, files_list):
         return
     agg = item.imagens.aggregate(m=Max('ordem'))
     nxt = (agg['m'] if agg['m'] is not None else -1) + 1
+    tinha_padrao = item.imagens.filter(padrao=True).exists()
     for i, f in enumerate(files_list):
         ItemImagem.objects.create(item=item, imagem=f, ordem=nxt + i)
+    if not tinha_padrao:
+        _garantir_uma_imagem_padrao(item)
+
+
+def _garantir_uma_imagem_padrao(item):
+    """Se não houver imagem marcada como padrão, marca a primeira da ordem."""
+    qs = ItemImagem.objects.filter(item=item).order_by('ordem', 'pk')
+    imgs = list(qs)
+    if not imgs:
+        return
+    if sum(1 for im in imgs if im.padrao) == 1:
+        return
+    if sum(1 for im in imgs if im.padrao) > 1:
+        keep = next(im for im in imgs if im.padrao)
+        ItemImagem.objects.filter(item=item, padrao=True).exclude(pk=keep.pk).update(
+            padrao=False
+        )
+        return
+    imgs[0].padrao = True
+    imgs[0].save(update_fields=['padrao'])
+
+
+def _item_com_imagens_prefetch(item, empresa):
+    return get_object_or_404(
+        Item.objects.prefetch_related('imagens'),
+        pk=item.pk,
+        empresa=empresa,
+    )
 
 
 def _render_item_form_modal(request, item, form):
@@ -351,7 +610,6 @@ def _modal_item_form(request, item):
             )
         if form.is_valid():
             saved = form.save()
-            _anexar_imagens_novas(saved, request.FILES.getlist('imagens'))
             attach_auto_qrcode_to_item(saved)
             if item is None:
                 registrar_auditoria(
@@ -750,47 +1008,6 @@ def movimentar_estoque(request):
 
     categorias = CategoriaItem.objects.filter(empresa=empresa).order_by('nome')
 
-    log_busca = (request.GET.get('log_q') or '').strip()
-
-    logs_qs = (
-        RegistroAuditoria.objects.filter(
-            empresa=empresa,
-            modulo='estoque',
-            detalhes__has_key='operacao',
-        )
-        .exclude(detalhes__operacao__in=_MOVIMENTAR_LOG_OPERACOES_EXCLUIDAS)
-        .select_related('usuario')
-        .only('criado_em', 'usuario__username', 'usuario__nome_completo', 'detalhes', 'resumo')
-        .order_by('-criado_em')
-    )
-    if log_busca:
-        # Inclui movimentos onde só há item_id no JSON (legado) ou descrição diferente do texto atual.
-        item_pks = list(
-            Item.objects.filter(empresa=empresa)
-            .filter(
-                Q(descricao__icontains=log_busca) | Q(marca__icontains=log_busca)
-            )
-            .values_list('pk', flat=True)
-        )
-        log_item_q = Q(detalhes__item_descricao__icontains=log_busca)
-        if item_pks:
-            log_item_q |= Q(detalhes__item_id__in=item_pks)
-        logs_qs = logs_qs.filter(log_item_q)
-    logs_paginator = Paginator(logs_qs, 20)
-    log_page_param = request.GET.get('log_page') or 1
-    try:
-        logs_page_obj = logs_paginator.page(log_page_param)
-    except PageNotAnInteger:
-        logs_page_obj = logs_paginator.page(1)
-    except EmptyPage:
-        logs_page_obj = logs_paginator.page(logs_paginator.num_pages)
-
-    _enriquecer_logs_movimentacao(request, empresa, logs_page_obj)
-
-    log_q = request.GET.copy()
-    log_q.pop('log_page', None)
-    log_query = log_q.urlencode()
-
     paginator = Paginator(itens, 20)
     page_param = request.GET.get('page') or 1
     try:
@@ -819,9 +1036,6 @@ def movimentar_estoque(request):
             else None
         ),
         'movimentar_pagination_items': _movimentar_pagination_items(request, page_obj),
-        'logs_page_obj': logs_page_obj,
-        'log_query': log_query,
-        'log_busca': log_busca,
     }
     if _is_htmx(request) or request.GET.get('partial') == 'movimentar':
         return render(request, 'estoque/itens/_movimentar_conteudo.html', ctx)
@@ -978,6 +1192,42 @@ def modal_editar_item(request, pk):
 
 
 @login_required
+def modal_adicionar_imagens_item(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    item = get_object_or_404(Item, pk=pk, empresa=empresa)
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
+    if request.method == 'POST':
+        files = request.FILES.getlist('imagens')
+        if not files:
+            messages.error(request, 'Selecione ao menos uma imagem.')
+            response = render(
+                request,
+                'estoque/itens/modal_adicionar_imagens.html',
+                {'item': item},
+            )
+            response['HX-Retarget'] = '#modal-content'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+        _anexar_imagens_novas(item, files)
+        messages.success(request, 'Imagens adicionadas.')
+        item = _item_com_imagens_prefetch(item, empresa)
+        return render(
+            request,
+            'estoque/itens/_detalhes_imagens_card.html',
+            {'item': item},
+        )
+    return render(
+        request,
+        'estoque/itens/modal_adicionar_imagens.html',
+        {'item': item},
+    )
+
+
+@login_required
 def modal_gerar_qrcode_item(request, pk):
     empresa = _empresa(request)
     if not empresa:
@@ -991,10 +1241,10 @@ def modal_gerar_qrcode_item(request, pk):
     )
 
     if request.method != 'POST':
-        return redirect_empresa(request, 'estoque:lista_itens')
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
 
     if not _is_htmx(request):
-        return redirect_empresa(request, 'estoque:lista_itens')
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
 
     if item.qrcode_imagem:
         messages.info(request, 'Este item já possui QR Code.')
@@ -1011,13 +1261,12 @@ def modal_gerar_qrcode_item(request, pk):
                 msg = f'{msg} ({err})'
             messages.warning(request, msg)
 
-    form = ItemForm(
-        instance=item,
-        empresa=empresa,
-        lock_quantidade_estoque=True,
-        lock_qrcode_imagem=True,
+    item.refresh_from_db()
+    return render(
+        request,
+        'estoque/itens/_detalhes_qrcode_card.html',
+        {'item': item},
     )
-    return _render_item_form_modal(request, item, form)
 
 
 @login_required
@@ -1034,10 +1283,10 @@ def modal_excluir_qrcode_item(request, pk):
     )
 
     if request.method != 'POST':
-        return redirect_empresa(request, 'estoque:lista_itens')
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
 
     if not _is_htmx(request):
-        return redirect_empresa(request, 'estoque:lista_itens')
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=pk)
 
     if item.qrcode_imagem:
         item.qrcode_imagem.delete(save=False)
@@ -1050,13 +1299,11 @@ def modal_excluir_qrcode_item(request, pk):
         messages.info(request, 'Este item não tinha QR Code.')
 
     item.refresh_from_db()
-    form = ItemForm(
-        instance=item,
-        empresa=empresa,
-        lock_quantidade_estoque=True,
-        lock_qrcode_imagem=True,
+    return render(
+        request,
+        'estoque/itens/_detalhes_qrcode_card.html',
+        {'item': item},
     )
-    return _render_item_form_modal(request, item, form)
 
 
 @login_required
@@ -1132,6 +1379,50 @@ def item_novo(request):
 
 
 @login_required
+def imprimir_etiqueta_item(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    item = get_object_or_404(
+        Item.objects.select_related('unidade_medida'),
+        pk=pk,
+        empresa=empresa,
+    )
+    data = _etiqueta_pdf_bytes_para_item(item)
+    resp = HttpResponse(data, content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="etiqueta_item_{item.pk}.pdf"'
+    return resp
+
+
+@login_required
+def imprimir_etiqueta_item_png(request, pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    item = get_object_or_404(
+        Item.objects.select_related('unidade_medida'),
+        pk=pk,
+        empresa=empresa,
+    )
+    try:
+        pdf_bytes = _etiqueta_pdf_bytes_para_item(item)
+        png_bytes = _etiqueta_pdf_para_png_bytes(pdf_bytes)
+    except ImportError:
+        messages.error(
+            request,
+            'Exportação em PNG não está disponível (dependência PyMuPDF ausente).',
+        )
+        return redirect_empresa(request, 'estoque:detalhes_item', kwargs={'pk': pk})
+    resp = HttpResponse(png_bytes, content_type='image/png')
+    resp['Content-Disposition'] = (
+        f'inline; filename="etiqueta_item_{item.pk}.png"'
+    )
+    return resp
+
+
+@login_required
 def detalhes_item(request, pk):
     empresa = _empresa(request)
     if not empresa:
@@ -1177,16 +1468,41 @@ def item_imagem_excluir(request, item_pk, imagem_pk):
         img.imagem.delete(save=False)
         img.delete()
         messages.success(request, 'Imagem removida.')
-        item = get_object_or_404(
-            Item.objects.prefetch_related('imagens'),
-            pk=item_pk,
-            empresa=empresa,
-        )
-        form = ItemForm(instance=item, empresa=empresa)
+        _garantir_uma_imagem_padrao(item)
+        item = _item_com_imagens_prefetch(item, empresa)
         if _is_htmx(request):
-            return _render_item_form_modal(request, item, form)
+            return render(
+                request,
+                'estoque/itens/_detalhes_imagens_card.html',
+                {'item': item},
+            )
         return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
 
+    return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
+
+
+@login_required
+def item_imagem_definir_padrao(request, item_pk, imagem_pk):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+    item = get_object_or_404(Item, pk=item_pk, empresa=empresa)
+    imagem = get_object_or_404(ItemImagem, pk=imagem_pk, item=item)
+    if request.method != 'POST':
+        return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
+    with transaction.atomic():
+        ItemImagem.objects.filter(item=item).update(padrao=False)
+        imagem.padrao = True
+        imagem.save(update_fields=['padrao'])
+    messages.success(request, 'Imagem padrão para visualização atualizada.')
+    item = _item_com_imagens_prefetch(item, empresa)
+    if _is_htmx(request):
+        return render(
+            request,
+            'estoque/itens/_detalhes_imagens_card.html',
+            {'item': item},
+        )
     return redirect_empresa(request, 'estoque:detalhes_item', pk=item.pk)
 
 

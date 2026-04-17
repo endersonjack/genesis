@@ -1,0 +1,263 @@
+<div class="section-card rel-ff-tool-report">
+    <div class="section-card-header">
+        <div>
+            <h5>Funcionário × Ferramenta</h5>
+            <small>Cautelas do colaborador: <strong>ativas</strong>, <strong>inativas</strong> (encerradas) e qualquer estado de <strong>devolução</strong> (não, parcial ou total). Filtro por ferramenta inclui cautela ou devolução; destaque amarelo nas listas. Use a seta na tabela para expandir detalhes.</small>
+        </div>
+    </div>
+    <div class="section-card-body">
+        <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
+            <input type="hidden" name="secao" value="funcionario_ferramenta">
+            <input type="hidden" name="ferramenta_id" value="{{ ferramenta_id|default:'' }}">
+            <input type="hidden" name="ferr_data_ini" value="{{ ferr_data_ini }}">
+            <input type="hidden" name="ferr_data_fim" value="{{ ferr_data_fim }}">
+            <input type="hidden" name="item_id" value="{{ item_id|default:'' }}">
+            <input type="hidden" name="item_data_ini" value="{{ item_data_ini }}">
+            <input type="hidden" name="item_data_fim" value="{{ item_data_fim }}">
+            <input type="hidden" name="freq_item_id" value="{{ freq_item_filter_id|default:'' }}">
+            <div class="rel-ff-field-func d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="rel-func-fferr-q">Funcionário</label>
+                <div data-ac-scope
+                     data-hidden-id="id_funcionario_fferr"
+                     data-input-id="rel-func-fferr-q"
+                     data-results-id="rel-func-fferr-res">
+                    <div class="rel-ff-ac-anchor">
+                        <input type="text"
+                               id="rel-func-fferr-q"
+                               name="q_func_rel"
+                               class="form-control form-control-sm rounded-3"
+                               autocomplete="off"
+                               placeholder="Digite para buscar…"
+                               value="{% if funcionario %}{{ funcionario }}{% endif %}"
+                               hx-get="{{ funcionario_ac_url }}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#rel-func-fferr-res"
+                               data-no-global-loading>
+                        <div id="rel-func-fferr-res" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                    </div>
+                    <input type="hidden" name="funcionario_id" id="id_funcionario_fferr" value="{{ funcionario_id|default:'' }}">
+                </div>
+            </div>
+            <div class="rel-ff-field-ferr d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="rel-ff-ferr-filter-q">Ferramenta</label>
+                <div data-ac-scope
+                     data-hidden-id="id_fferr_ferramenta_filter"
+                     data-input-id="rel-ff-ferr-filter-q"
+                     data-results-id="rel-ff-ferr-filter-res">
+                    <div class="rel-ff-ac-anchor">
+                        <input type="text"
+                               id="rel-ff-ferr-filter-q"
+                               name="q_ferr_ff_filter"
+                               class="form-control form-control-sm rounded-3"
+                               autocomplete="off"
+                               placeholder="Filtrar cautelas por ferramenta…"
+                               value="{% if fferr_ferramenta_filter %}{{ fferr_ferramenta_filter.descricao }}{% endif %}"
+                               hx-get="{{ ferramenta_ac_url }}"
+                               hx-trigger="input delay:280ms"
+                               hx-target="#rel-ff-ferr-filter-res"
+                               data-no-global-loading>
+                        <div id="rel-ff-ferr-filter-res" class="rel-ff-ac-results border-0 bg-transparent p-0"></div>
+                    </div>
+                    <input type="hidden" name="fferr_ferramenta_id" id="id_fferr_ferramenta_filter" value="{{ fferr_ferramenta_filter_id|default:'' }}">
+                </div>
+            </div>
+            <div class="rel-ff-field-date d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="id_fferr_ini">De</label>
+                <input type="date" name="func_data_ini" id="id_fferr_ini" class="form-control form-control-sm rounded-3" value="{{ func_data_ini }}">
+            </div>
+            <div class="rel-ff-field-date d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="id_fferr_fim">Até</label>
+                <input type="date" name="func_data_fim" id="id_fferr_fim" class="form-control form-control-sm rounded-3" value="{{ func_data_fim }}">
+            </div>
+            <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                <button type="submit"
+                        class="btn btn-sm btn-link rel-acao-icone py-1"
+                        title="Buscar"
+                        aria-label="Buscar">
+                    <i class="bi bi-search"></i>
+                </button>
+                <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=funcionario_ferramenta#sec-funcionario-ferramenta"
+                   class="btn btn-sm btn-link rel-acao-icone py-1"
+                   title="Limpar todos os filtros"
+                   aria-label="Limpar todos os filtros">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+
+        {% if funcionario %}
+            {% if func_ff_page.object_list %}
+            <div class="table-responsive border rounded-3">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3 text-nowrap" scope="col" style="width:3.5rem;">#</th>
+                            <th scope="col" class="text-nowrap">Nº Cautela</th>
+                            <th scope="col" class="text-nowrap">Data início</th>
+                            <th scope="col" class="text-nowrap">Data fim</th>
+                            <th scope="col">Situação cautela</th>
+                            <th scope="col">Ferramentas entregues</th>
+                            <th scope="col">Ferramentas ativas</th>
+                            <th class="pe-3 text-nowrap" scope="col">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in func_ff_page %}
+                        {% with c=row.cautela %}
+                        <tr class="rel-ff-summary-row"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#ff-cautela-detail-{{ c.pk }}"
+                            aria-expanded="false"
+                            aria-controls="ff-cautela-detail-{{ c.pk }}"
+                            role="button"
+                            tabindex="0">
+                            <td class="ps-3 small text-muted">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-chevron-down rel-ff-chevron" aria-hidden="true"></i>
+                                    <span class="tabular-nums">{{ func_ff_page.start_index|add:forloop.counter0 }}</span>
+                                </span>
+                            </td>
+                            <td class="small fw-semibold">
+                                <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=c.pk %}"
+                                   class="text-decoration-none"
+                                   onclick="event.stopPropagation();">#{{ c.pk }}</a>
+                            </td>
+                            <td class="text-nowrap small">{{ row.retirada|date:"d/m/Y"|default:"—" }}</td>
+                            <td class="text-nowrap small">{% if c.data_fim %}{{ c.data_fim|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                            <td class="small">
+                                {% if c.situacao == 'ativa' %}
+                                <span class="badge rounded-pill text-bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge rounded-pill text-bg-secondary">Inativa</span>
+                                <span class="d-block text-muted mt-1" style="font-size:.75rem;">Encerrada no sistema</span>
+                                {% endif %}
+                            </td>
+                            <td class="small" style="max-width: 14rem;">
+                                {% with fe=row.ferramentas_entregues %}
+                                {% if fe %}
+                                    {% for f in fe|slice:":2" %}
+                                    <span class="d-block text-truncate" title="{{ f.descricao }}">{% if fferr_ferramenta_filter_id == f.pk %}<mark class="rel-ff-mark">{% endif %}{{ f.descricao }}{% if fferr_ferramenta_filter_id == f.pk %}</mark>{% endif %}</span>
+                                    {% endfor %}
+                                    {% if fe|length > 2 %}
+                                    <span class="text-muted" style="font-size:.78rem;">+{{ fe|length|add:"-2" }} no total</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="small" style="max-width: 14rem;">
+                                {% with fa=row.ferramentas_ativas %}
+                                {% if fa %}
+                                    {% for f in fa|slice:":2" %}
+                                    <span class="d-block text-truncate" title="{{ f.descricao }}">{% if fferr_ferramenta_filter_id == f.pk %}<mark class="rel-ff-mark">{% endif %}{{ f.descricao }}{% if fferr_ferramenta_filter_id == f.pk %}</mark>{% endif %}</span>
+                                    {% endfor %}
+                                    {% if fa|length > 2 %}
+                                    <span class="text-muted" style="font-size:.78rem;">+{{ fa|length|add:"-2" }} no total</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="pe-3 small text-nowrap">
+                                <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=c.pk %}"
+                                   class="small"
+                                   onclick="event.stopPropagation();">Ver</a>
+                            </td>
+                        </tr>
+                        <tr class="collapse bg-light rel-ff-detail-row" id="ff-cautela-detail-{{ c.pk }}">
+                            <td colspan="8" class="p-0 border-top-0">
+                                <div class="px-3 py-3 border-top">
+                                    <div class="row g-4">
+                                        <div class="col-12 col-lg-6">
+                                            <h6 class="small fw-bold mb-2">Ferramentas na cautela</h6>
+                                            {% if row.ferramentas %}
+                                            <ul class="mb-0 small ps-3">
+                                                {% for ferr in row.ferramentas %}
+                                                <li>{% if fferr_ferramenta_filter_id == ferr.pk %}<mark class="rel-ff-mark">{% endif %}{{ ferr.descricao }}{% if fferr_ferramenta_filter_id == ferr.pk %}</mark>{% endif %}</li>
+                                                {% endfor %}
+                                            </ul>
+                                            {% else %}
+                                            <p class="text-muted small mb-0">Nenhuma ferramenta vinculada.</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-12 col-lg-6">
+                                            <h6 class="small fw-bold mb-2">Registros de devolução</h6>
+                                            {% if row.entregas %}
+                                            <ul class="mb-0 small ps-3">
+                                                {% for ent in row.entregas %}
+                                                <li class="mb-2">
+                                                    <span class="text-nowrap fw-semibold">{{ ent.data_entrega|date:"d/m/Y" }} — {{ ent.get_tipo_display }}</span>
+                                                    {% if ent.situacao_ferramentas %}
+                                                    <span class="text-muted">({{ ent.situacao_ferramentas }})</span>
+                                                    {% endif %}
+                                                    {% if ent.ferramentas_devolvidas.count %}
+                                                    <div class="text-muted mt-1" style="font-size:.78rem;">
+                                                        Devolvidas neste registro:
+                                                        {% for f in ent.ferramentas_devolvidas.all %}
+                                                        {% if fferr_ferramenta_filter_id == f.pk %}<mark class="rel-ff-mark">{% endif %}{{ f.descricao|truncatechars:64 }}{% if fferr_ferramenta_filter_id == f.pk %}</mark>{% endif %}{% if not forloop.last %}; {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                            {% else %}
+                                            <p class="text-muted small mb-0">Nenhuma devolução registrada.</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="d-flex flex-wrap gap-4 small">
+                                                <div>
+                                                    <span class="fw-semibold d-block mb-1">Entrega (resumo)</span>
+                                                    {% if c.entrega == 'total' %}
+                                                    <span class="badge rounded-pill text-bg-success">Entrega total</span>
+                                                    {% elif c.entrega == 'parcial' %}
+                                                    <span class="badge rounded-pill text-bg-info text-dark">Entrega parcial</span>
+                                                    {% else %}
+                                                    <span class="badge rounded-pill text-bg-light text-dark border">Sem devolução</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if func_ff_page.paginator.num_pages > 1 %}
+            <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3" aria-label="Páginas cautelas por funcionário">
+                <span class="small text-muted">Página {{ func_ff_page.number }} de {{ func_ff_page.paginator.num_pages }} (até {{ rel_page }} cautelas por página)</span>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if func_ff_page.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link rounded-start-3"
+                           href="?{% if func_ff_query %}{{ func_ff_query }}&{% endif %}fferr_page={{ func_ff_page.previous_page_number }}#sec-funcionario-ferramenta">Anterior</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                    {% endif %}
+                    {% if func_ff_page.has_next %}
+                    <li class="page-item">
+                        <a class="page-link rounded-end-3"
+                           href="?{% if func_ff_query %}{{ func_ff_query }}&{% endif %}fferr_page={{ func_ff_page.next_page_number }}#sec-funcionario-ferramenta">Próxima</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <p class="text-muted small mb-0">Nenhuma cautela nos filtros (por data de início).</p>
+            {% endif %}
+        {% else %}
+            <p class="text-muted small mb-0">Selecione um funcionário.</p>
+        {% endif %}
+    </div>
+</div>

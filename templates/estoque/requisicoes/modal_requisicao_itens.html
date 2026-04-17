@@ -26,7 +26,7 @@
                     {% for ri in itens_requisicao %}
                     <tr>
                         <td class="ps-3">
-                            {% with im=ri.item.imagens.first %}
+                            {% with im=ri.item.imagem_listagem %}
                                 {% if im %}
                                     <span class="estoque-item-thumb-wrap" role="img" title="Passe o mouse para ampliar a foto">
                                         <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">

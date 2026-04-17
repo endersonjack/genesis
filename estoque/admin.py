@@ -60,7 +60,7 @@ class FerramentaAdmin(admin.ModelAdmin):
 
 @admin.register(FerramentaImagem)
 class FerramentaImagemAdmin(admin.ModelAdmin):
-    list_display = ('ferramenta', 'ordem', 'atualizado_em')
+    list_display = ('ferramenta', 'ordem', 'padrao', 'atualizado_em')
     list_filter = ('ferramenta__empresa',)
     ordering = ('ferramenta', 'ordem')
 
@@ -102,7 +102,7 @@ class RequisicaoEstoqueAdmin(admin.ModelAdmin):
 
 @admin.register(ItemImagem)
 class ItemImagemAdmin(admin.ModelAdmin):
-    list_display = ('item', 'ordem', 'atualizado_em')
+    list_display = ('item', 'ordem', 'padrao', 'atualizado_em')
     list_filter = ('item__empresa',)
     ordering = ('item', 'ordem')
 

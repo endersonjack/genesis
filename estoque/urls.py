@@ -2,7 +2,14 @@ from django.urls import path
 
 from core.view_helpers import empresa_scoped
 
-from . import cautela_views, ferramenta_views, item_views, requisicoes_views, views
+from . import (
+    cautela_views,
+    ferramenta_views,
+    item_views,
+    relatorios_views,
+    requisicoes_views,
+    views,
+)
 
 
 app_name = 'estoque'
@@ -85,6 +92,36 @@ urlpatterns = [
         'requisicoes/autocomplete/obras/',
         empresa_scoped(requisicoes_views.autocomplete_obras),
         name='autocomplete_obras',
+    ),
+    path(
+        'relatorios/impressao/pdf/',
+        empresa_scoped(relatorios_views.relatorios_impressao_pdf),
+        name='relatorios_impressao_pdf',
+    ),
+    path(
+        'relatorios/impressao/',
+        empresa_scoped(relatorios_views.relatorios_impressao),
+        name='relatorios_impressao',
+    ),
+    path(
+        'relatorios/',
+        empresa_scoped(relatorios_views.relatorios_estoque),
+        name='relatorios_estoque',
+    ),
+    path(
+        'relatorios/autocomplete/funcionario/',
+        empresa_scoped(relatorios_views.autocomplete_funcionarios_relatorio),
+        name='autocomplete_funcionarios_relatorio',
+    ),
+    path(
+        'relatorios/autocomplete/ferramenta/',
+        empresa_scoped(relatorios_views.autocomplete_ferramentas_relatorio),
+        name='autocomplete_ferramentas_relatorio',
+    ),
+    path(
+        'relatorios/autocomplete/item/',
+        empresa_scoped(relatorios_views.autocomplete_itens_relatorio),
+        name='autocomplete_itens_relatorio',
     ),
     path(
         'movimentar/',
@@ -292,9 +329,29 @@ urlpatterns = [
         name='ferramenta_novo',
     ),
     path(
+        'ferramentas/<int:pk>/etiqueta/pdf/',
+        empresa_scoped(ferramenta_views.imprimir_etiqueta_ferramenta),
+        name='imprimir_etiqueta_ferramenta',
+    ),
+    path(
+        'ferramentas/<int:pk>/etiqueta/png/',
+        empresa_scoped(ferramenta_views.imprimir_etiqueta_ferramenta_png),
+        name='imprimir_etiqueta_ferramenta_png',
+    ),
+    path(
+        'ferramentas/<int:pk>/modal/adicionar-imagens/',
+        empresa_scoped(ferramenta_views.modal_adicionar_imagens_ferramenta),
+        name='modal_adicionar_imagens_ferramenta',
+    ),
+    path(
         'ferramentas/<int:ferramenta_pk>/imagens/<int:imagem_pk>/excluir/',
         empresa_scoped(ferramenta_views.ferramenta_imagem_excluir),
         name='ferramenta_imagem_excluir',
+    ),
+    path(
+        'ferramentas/<int:ferramenta_pk>/imagens/<int:imagem_pk>/padrao/',
+        empresa_scoped(ferramenta_views.ferramenta_imagem_definir_padrao),
+        name='ferramenta_imagem_definir_padrao',
     ),
     path(
         'ferramentas/<int:pk>/',
@@ -342,11 +399,31 @@ urlpatterns = [
         empresa_scoped(item_views.modal_movimentar_saldo),
         name='modal_movimentar_saldo',
     ),
+    path(
+        'itens/<int:pk>/modal/adicionar-imagens/',
+        empresa_scoped(item_views.modal_adicionar_imagens_item),
+        name='modal_adicionar_imagens_item',
+    ),
     path('itens/novo/', empresa_scoped(item_views.item_novo), name='item_novo'),
     path(
         'itens/<int:item_pk>/imagens/<int:imagem_pk>/excluir/',
         empresa_scoped(item_views.item_imagem_excluir),
         name='item_imagem_excluir',
+    ),
+    path(
+        'itens/<int:item_pk>/imagens/<int:imagem_pk>/padrao/',
+        empresa_scoped(item_views.item_imagem_definir_padrao),
+        name='item_imagem_definir_padrao',
+    ),
+    path(
+        'itens/<int:pk>/etiqueta/pdf/',
+        empresa_scoped(item_views.imprimir_etiqueta_item),
+        name='imprimir_etiqueta_item',
+    ),
+    path(
+        'itens/<int:pk>/etiqueta/png/',
+        empresa_scoped(item_views.imprimir_etiqueta_item_png),
+        name='imprimir_etiqueta_item_png',
     ),
     path(
         'itens/<int:pk>/',

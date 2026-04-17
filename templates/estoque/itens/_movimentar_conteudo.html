@@ -25,7 +25,7 @@
                         data-bs-toggle="modal"
                         data-bs-target="#modalPadrao">
                         <td class="ps-3">
-                            {% with im=it.imagens.first %}
+                            {% with im=it.imagem_listagem %}
                                 {% if im %}
                                     <span class="estoque-item-thumb-wrap">
                                         <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">

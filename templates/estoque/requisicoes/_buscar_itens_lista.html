@@ -24,7 +24,7 @@
             {% for it in page_obj %}
             <tr class="{% if it.quantidade_estoque <= 0 %}table-secondary{% endif %}">
                 <td class="ps-3">
-                    {% with im=it.imagens.first %}
+                    {% with im=it.imagem_listagem %}
                         {% if im %}
                             <span class="estoque-item-thumb-wrap">
                                 <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
@@ -68,7 +68,7 @@
                             data-item-min="{{ it.quantidade_minima|floatformat:4|intcomma }}"
                             data-item-min-raw="{{ it.quantidade_minima|floatformat:4 }}"
                             data-item-unid="{{ it.unidade_medida.abreviada|escape }}"
-                            {% with im=it.imagens.first %}
+                            {% with im=it.imagem_listagem %}
                                 {% if im %}data-item-thumb="{{ im.imagem.url }}"{% endif %}
                             {% endwith %}
                             {% if it.quantidade_estoque <= 0 %}

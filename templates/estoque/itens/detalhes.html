@@ -105,34 +105,9 @@
         </div>
     </div>
     <div class="col-12 col-lg-5">
-        <div class="card border-0 shadow-sm rounded-3 mb-4">
-            <div class="card-body p-4">
-                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Imagens</h3>
-                {% if item.imagens.all %}
-                <div class="row g-2">
-                    {% for im in item.imagens.all %}
-                    <div class="col-6">
-                        <a href="{{ im.imagem.url }}" target="_blank" rel="noopener" class="d-block rounded-3 overflow-hidden border">
-                            <img src="{{ im.imagem.url }}" alt="" class="w-100 object-fit-cover" style="aspect-ratio:1;max-height:200px;" decoding="async" loading="lazy">
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="text-muted small mb-0">Nenhuma imagem anexada.</p>
-                {% endif %}
-            </div>
-        </div>
-        {% if item.qrcode_imagem %}
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body p-4">
-                <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">QR Code</h3>
-                <div class="text-center">
-                    <img src="{{ item.qrcode_imagem.url }}" alt="QR Code do item" class="img-fluid rounded-3 border" style="max-width:220px;" decoding="async" loading="lazy">
-                </div>
-            </div>
-        </div>
-        {% endif %}
+        {% include 'estoque/itens/_detalhes_imagens_card.html' %}
+        {% include 'estoque/itens/_detalhes_qrcode_card.html' %}
+        {% include 'estoque/itens/_detalhes_etiqueta_card.html' %}
     </div>
 </div>
 

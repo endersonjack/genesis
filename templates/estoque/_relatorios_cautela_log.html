@@ -1,0 +1,122 @@
+{% load humanize %}
+<div class="section-card rel-ff-tool-report">
+    <div class="section-card-header">
+        <div>
+            <h5>Auditoria — Cautelas</h5>
+            <small>Registros de criação, alterações de prazo, devoluções e exclusões ligados a cautelas de ferramentas.</small>
+        </div>
+    </div>
+    <div class="section-card-body">
+        <form method="get"
+              class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1"
+              action="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}#sec-auditoria-cautelas">
+            {% for key, value in request.GET.items %}
+                {% if key != 'clog_q' and key != 'clog_page' and key != 'secao' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+            <input type="hidden" name="secao" value="auditoria_cautelas">
+            <div class="rel-ff-field-func d-flex flex-column">
+                <label class="form-label small fw-semibold mb-1" for="id_rel_clog_q">Busca</label>
+                <input type="text"
+                       id="id_rel_clog_q"
+                       name="clog_q"
+                       value="{{ clog_busca|default:'' }}"
+                       class="form-control form-control-sm rounded-3"
+                       placeholder="Nº cautela ou texto…"
+                       autocomplete="off">
+            </div>
+            <div class="rel-ff-field-actions d-flex align-items-center flex-shrink-0 gap-0 pb-1">
+                <button type="submit"
+                        class="btn btn-sm btn-link rel-acao-icone py-1"
+                        title="Buscar"
+                        aria-label="Buscar">
+                    <i class="bi bi-search"></i>
+                </button>
+                <a href="{% url relatorios_page_url_name empresa_id=request.empresa_ativa.pk %}?secao=auditoria_cautelas#sec-auditoria-cautelas"
+                   class="btn btn-sm btn-link rel-acao-icone py-1"
+                   title="Limpar busca e filtros"
+                   aria-label="Limpar busca e filtros">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+
+        {% if cautela_logs_page_obj and cautela_logs_page_obj.object_list %}
+        <div class="table-responsive border rounded-3">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 text-nowrap" scope="col">Data / hora</th>
+                        <th scope="col">Usuário</th>
+                        <th class="text-nowrap" scope="col">Operação</th>
+                        <th scope="col">Cautela</th>
+                        <th class="pe-3" scope="col">Resumo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in cautela_logs_page_obj %}
+                    <tr>
+                        <td class="ps-3 text-nowrap small text-muted">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td class="text-nowrap small">
+                            {% if r.usuario %}
+                                {{ r.usuario.nome_completo|default:r.usuario.username }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap small">{{ r.cautela_op_label }}</td>
+                        <td class="text-nowrap small">
+                            {% if r.cautela_url %}
+                                <a href="{{ r.cautela_url }}" class="fw-semibold text-decoration-none">#{{ r.cautela_pk }}</a>
+                            {% elif r.cautela_pk %}
+                                <span class="text-muted">#{{ r.cautela_pk }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 small">{{ r.resumo|truncatechars:120 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if cautela_logs_page_obj.paginator.num_pages > 1 %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3" aria-label="Páginas auditoria cautelas">
+            <div class="small text-muted d-none d-sm-block">
+                Página {{ cautela_logs_page_obj.number }} de {{ cautela_logs_page_obj.paginator.num_pages }} (até {{ rel_page|default:30 }} por página)
+            </div>
+            <ul class="pagination pagination-sm mb-0 ms-sm-auto">
+                {% if cautela_logs_page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-3"
+                       href="?{% if clog_query %}{{ clog_query }}&{% endif %}clog_page={{ cautela_logs_page_obj.previous_page_number }}#sec-auditoria-cautelas">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-start-3">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ cautela_logs_page_obj.number }}</span>
+                </li>
+                {% if cautela_logs_page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-3"
+                       href="?{% if clog_query %}{{ clog_query }}&{% endif %}clog_page={{ cautela_logs_page_obj.next_page_number }}#sec-auditoria-cautelas">Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-end-3">Próxima</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted border rounded-3 bg-light">
+            {% if clog_busca %}
+                <p class="mb-0 small">Nenhum registro encontrado.</p>
+            {% else %}
+                <p class="mb-0 small">Nenhum registro de cautela na auditoria.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

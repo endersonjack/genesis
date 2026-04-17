@@ -1,0 +1,70 @@
+<div id="ferramenta-detalhes-imagens-card" class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <h3 class="h6 fw-bold text-uppercase text-muted mb-0" style="letter-spacing:.06em;">Imagens</h3>
+            <button
+                type="button"
+                class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                hx-get="{% url 'estoque:modal_adicionar_imagens_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-image"></i>
+                <span>Adicionar imagens</span>
+            </button>
+        </div>
+        {% if ferramenta.imagens.exists %}
+        <div class="row g-3">
+            {% for im in ferramenta.imagens.all %}
+            <div class="col-6">
+                <div class="position-relative rounded-3 overflow-hidden border bg-light">
+                    <a href="{{ im.imagem.url }}" target="_blank" rel="noopener" class="d-block">
+                        <img src="{{ im.imagem.url }}" alt="" class="w-100 object-fit-cover" style="aspect-ratio:1;max-height:220px;" decoding="async" loading="lazy">
+                    </a>
+                    <form method="post"
+                          hx-post="{% url 'estoque:ferramenta_imagem_excluir' empresa_id=request.empresa_ativa.pk ferramenta_pk=ferramenta.pk imagem_pk=im.pk %}"
+                          hx-target="#ferramenta-detalhes-imagens-card"
+                          hx-swap="outerHTML"
+                          hx-confirm="Remover esta imagem?"
+                          class="position-absolute top-0 end-0 p-1 m-0 js-estoque-form-busy"
+                          data-estoque-busy-label="Removendo…"
+                          data-no-global-loading>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm" style="width:2rem;height:2rem;" title="Excluir imagem">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    <div class="position-absolute bottom-0 start-0 end-0 px-2 py-1 bg-dark bg-opacity-75">
+                        <form method="post"
+                              hx-post="{% url 'estoque:ferramenta_imagem_definir_padrao' empresa_id=request.empresa_ativa.pk ferramenta_pk=ferramenta.pk imagem_pk=im.pk %}"
+                              hx-target="#ferramenta-detalhes-imagens-card"
+                              hx-swap="outerHTML"
+                              hx-trigger="change from:input[type=radio]"
+                              class="m-0 js-estoque-form-busy"
+                              data-estoque-busy-label="Salvando…"
+                              data-no-global-loading>
+                            {% csrf_token %}
+                            <div class="form-check m-0">
+                                <input class="form-check-input border-white"
+                                       type="radio"
+                                       name="padrao_visual_ferr_{{ im.pk }}"
+                                       id="id_padrao_visual_ferr_{{ im.pk }}"
+                                       {% if im.padrao %}checked{% endif %}
+                                       title="Imagem padrão nas listagens e buscas">
+                                <label class="form-check-label text-white small" for="id_padrao_visual_ferr_{{ im.pk }}">
+                                    Padrão para visualização
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Nenhuma imagem anexada. Use «Adicionar imagens».</p>
+        {% endif %}
+    </div>
+</div>

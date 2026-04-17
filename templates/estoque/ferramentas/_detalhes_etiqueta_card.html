@@ -1,0 +1,22 @@
+<div class="card border-0 shadow-sm rounded-3 mt-4">
+    <div class="card-body p-4">
+        <h3 class="h6 fw-bold text-uppercase text-muted mb-3" style="letter-spacing:.06em;">Etiqueta</h3>
+        <p class="text-muted small mb-3 mb-lg-4">Arquivo em <strong>paisagem</strong> <strong>178&nbsp;×&nbsp;62&nbsp;mm</strong>. QR à esquerda; descrição, marca e linha com código / numeração e cor ou tamanho. Baixe em <strong>PDF</strong> ou <strong>PNG</strong>.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'estoque:imprimir_etiqueta_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+               class="estoque-btn estoque-btn-primary text-decoration-none d-inline-flex align-items-center"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-file-earmark-pdf me-1"></i>
+                <span>Baixar PDF</span>
+            </a>
+            <a href="{% url 'estoque:imprimir_etiqueta_ferramenta_png' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+               class="estoque-btn estoque-btn-light text-decoration-none d-inline-flex align-items-center"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-file-image me-1"></i>
+                <span>Baixar PNG</span>
+            </a>
+        </div>
+    </div>
+</div>
