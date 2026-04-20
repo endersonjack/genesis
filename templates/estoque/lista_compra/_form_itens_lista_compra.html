@@ -1,0 +1,96 @@
+{% load humanize %}
+{# Itens: tabela visível + formset oculto (JS igual à requisição). Requer formset, lista_formset_rows, lc_server_hydrate no contexto. #}
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <div>
+                <h5 class="fw-bold mb-1">Itens</h5>
+                <p class="text-muted small mb-0">Inclua itens pela busca abaixo. Lista informativa — não altera o estoque.</p>
+            </div>
+            <button type="button"
+                    class="estoque-btn estoque-btn-primary js-estoque-modal-hx"
+                    hx-get="{% url 'estoque:modal_buscar_itens_lista_compra' empresa_id=request.empresa_ativa.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-no-global-loading
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao">
+                <i class="bi bi-search me-1"></i> Buscar itens
+            </button>
+        </div>
+
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+            <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width:56px;"></th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Marca</th>
+                        <th class="text-end">Preço</th>
+                        <th>Fornecedor</th>
+                        <th class="text-end">Saldo hoje</th>
+                        <th>Unid</th>
+                        <th class="text-end">Qtd a comprar</th>
+                        <th>Obs.</th>
+                        <th class="pe-3"></th>
+                    </tr>
+                </thead>
+                <tbody id="lc-itens-display-body"></tbody>
+            </table>
+        </div>
+        <div id="lc-itens-vazio-msg" class="text-muted small mt-2">Nenhum item adicionado.</div>
+
+        <div class="d-none">
+            {{ formset.empty_form.item }}
+        </div>
+
+        <div class="d-none" aria-hidden="true">
+            <table class="table">
+                <tbody id="lc-itens-formset-body">
+                    {% for f, item in lista_formset_rows %}
+                    <tr class="formset-row lc-formset-row"
+                        data-item-id="{% if item %}{{ item.pk }}{% else %}{{ f.item.value|default:'' }}{% endif %}"
+                        {% if item %}
+                        data-lc-desc="{{ item.descricao|escape }}"
+                        data-lc-cat="{{ item.categoria.nome|escape }}"
+                        data-lc-min="{{ item.quantidade_minima|floatformat:4 }}"
+                        data-lc-saldo="{{ item.quantidade_estoque|floatformat:4|intcomma }}"
+                        data-lc-saldo-raw="{{ item.quantidade_estoque|floatformat:4 }}"
+                        data-lc-unid="{{ item.unidade_medida.abreviada|escape }}"
+                        data-lc-marca="{{ item.marca|default:''|escape }}"
+                        {% if item.preco is not None %}
+                        data-lc-preco="R$ {{ item.preco|floatformat:2|intcomma }}"
+                        {% endif %}
+                        {% if item.fornecedor_id %}
+                        data-lc-fornecedor="{{ item.fornecedor.nome|escape }}"
+                        {% endif %}
+                        {% with im=item.imagem_listagem %}
+                            {% if im %}data-lc-thumb="{{ im.imagem.url|escape }}"{% endif %}
+                        {% endwith %}
+                        {% if item.quantidade_estoque <= 0 %}
+                        data-lc-saldo-class="text-bg-danger"
+                        {% elif item.quantidade_minima > 0 and item.quantidade_estoque < item.quantidade_minima %}
+                        data-lc-saldo-class="text-bg-warning"
+                        {% elif item.quantidade_minima > 0 and item.quantidade_estoque == item.quantidade_minima %}
+                        data-lc-saldo-class="text-bg-secondary"
+                        {% else %}
+                        data-lc-saldo-class="text-bg-success"
+                        {% endif %}
+                        {% endif %}>
+                        <td>{{ f.id }}{{ f.item }}</td>
+                        <td>{{ f.quantidade_comprar }}</td>
+                        <td>{{ f.observacoes }}</td>
+                        <td>{% if formset.can_delete %}{{ f.DELETE }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

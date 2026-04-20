@@ -1,0 +1,184 @@
+{% load humanize %}
+{% load tz %}
+{% load requisicao_impressao %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <title>{% if lista.nome %}{{ lista.nome }} — {% endif %}Lista de compra #{{ lista.pk }} — Impressão</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        @page { margin: 12mm 15mm; }
+        @media print {
+            .no-print { display: none !important; }
+            .lc-via { padding: 0; max-width: none; margin: 0; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.22;
+            margin: 0;
+            color: #0f172a;
+            background: #fff;
+        }
+        .toolbar {
+            border-bottom: 1px solid #e2e8f0;
+            padding: .5rem .75rem;
+            display: flex;
+            gap: .5rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .btn {
+            font: inherit;
+            padding: .35rem .75rem;
+            border-radius: .35rem;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .btn-outline { background: #fff; border-color: #2563eb; color: #2563eb; }
+        .lc-via { padding: 3mm 15mm 0; max-width: 210mm; margin: 0 auto; }
+        .req-pdf-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 4mm;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 3mm;
+            margin-bottom: 3mm;
+        }
+        .req-pdf-top-left { flex: 1; min-width: 0; }
+        .req-pdf-top-right { flex-shrink: 0; text-align: right; max-width: 42%; }
+        .req-pdf-empresa-header { display: flex; gap: 3mm; align-items: center; }
+        .req-pdf-empresa-logo img { display: block; max-height: 24mm; max-width: 34mm; object-fit: contain; }
+        .req-pdf-nome { font-size: 9pt; font-weight: 700; }
+        .req-pdf-razao { font-size: 8pt; color: #64748b; margin-top: 1px; }
+        .req-pdf-meta-line { font-size: 9pt; margin-top: 2mm; }
+        .req-via-label { font-size: 8pt; color: #64748b; letter-spacing: 0.06em; margin: 0 0 1mm; }
+        .req-doc-title { font-size: 13pt; font-weight: 700; margin: 0 0 1mm; }
+        .req-doc-meta { font-size: 9pt; color: #475569; margin: 0; }
+        .req-meta-table { width: 100%; border-collapse: collapse; margin: 0 0 5mm; }
+        .req-meta-table td { vertical-align: top; padding: 0 0 3pt; font-size: 9pt; }
+        .req-meta-table .lab {
+            width: 14%; font-size: 7pt; color: #64748b; text-transform: uppercase;
+            padding-right: 2mm; white-space: nowrap;
+        }
+        .req-meta-table .val { width: 36%; font-weight: 700; }
+        .req-meta-table .val-span { width: auto; }
+        .lc-items-table {
+            width: 100%; border-collapse: collapse; font-size: 9pt; table-layout: fixed;
+        }
+        .lc-items-table th, .lc-items-table td {
+            border: 1px solid #e2e8f0; padding: 4pt; vertical-align: top;
+        }
+        .lc-items-table thead th { background: #f1f5f9; font-weight: 700; text-align: left; }
+        .lc-items-table thead th:nth-child(5), .lc-items-table thead th:nth-child(6) { text-align: center; }
+        .lc-items-table .num, .lc-items-table .un { text-align: center; }
+        .lc-items-table .lc-col-preco { text-align: right; white-space: nowrap; }
+        .lc-col-item { width: 26%; }
+        .lc-col-marca { width: 11%; }
+        .lc-col-preco { width: 10%; }
+        .lc-col-forn { width: 15%; }
+        .lc-col-qtd { width: 11%; }
+        .lc-col-un { width: 7%; }
+        .lc-col-obs { width: 20%; }
+    </style>
+</head>
+<body>
+<div class="no-print toolbar">
+    <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir</button>
+    <a href="{% url 'estoque:imprimir_lista_compra_estoque_pdf' empresa_id=request.empresa_ativa.pk pk=lista.pk %}"
+       class="btn btn-outline"
+       target="_blank"
+       rel="noopener noreferrer">Gerar PDF</a>
+    <button type="button" class="btn" onclick="window.close()">Fechar</button>
+</div>
+
+<section class="lc-via">
+    <div class="req-pdf-top-row">
+        <div class="req-pdf-top-left">
+            {% include 'estoque/requisicoes/_imprimir_cabecalho_empresa.html' %}
+        </div>
+        <div class="req-pdf-top-right">
+            <div class="req-via-label">Lista de compras</div>
+            <div class="req-doc-title">
+                {% if lista.nome %}{{ lista.nome }}{% else %}Lista nº {{ lista.pk }}{% endif %}
+            </div>
+            <div class="req-doc-meta">
+                Pedido em {{ lista.data_pedido|date:'d/m/Y' }} · {{ lista.get_status_display }}
+                · Registrada em {{ lista.criado_em|localtime|date:'d/m/Y H:i' }}
+            </div>
+        </div>
+    </div>
+    <table class="req-meta-table" role="presentation">
+        <tbody>
+            <tr>
+                <td class="lab">Solicitado por</td>
+                <td class="val val-span" colspan="3">
+                    {% if lista.criado_por %}
+                        {{ lista.criado_por.nome_completo|default:lista.criado_por.username }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td class="lab">Obs. gerais</td>
+                <td class="val" colspan="3">{{ lista.observacoes|default:"—"|linebreaksbr }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="lc-items-table">
+        <colgroup>
+            <col class="lc-col-item"><col class="lc-col-marca"><col class="lc-col-preco"><col class="lc-col-forn">
+            <col class="lc-col-qtd"><col class="lc-col-un"><col class="lc-col-obs">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Marca</th>
+                <th>Preço</th>
+                <th>Fornecedor</th>
+                <th>Qtd a comprar</th>
+                <th>Un.</th>
+                <th>Obs.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for li in itens_lista %}
+            <tr>
+                <td>{{ li.item.descricao }}</td>
+                <td>{{ li.item.marca|default:"—" }}</td>
+                <td class="lc-col-preco">
+                    {% if li.item.preco is not None %}
+                        R$ {{ li.item.preco|floatformat:2|intcomma }}
+                    {% else %}—{% endif %}
+                </td>
+                <td>{% if li.item.fornecedor_id %}{{ li.item.fornecedor.nome }}{% else %}—{% endif %}</td>
+                <td class="num">{{ li.quantidade_comprar|qtd_requisicao_pdf }}</td>
+                <td class="un">{{ li.item.unidade_medida.abreviada }}</td>
+                <td>{{ li.observacoes|default:"—"|linebreaksbr }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted">Sem itens.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<script>
+(function () {
+  function agendar() {
+    requestAnimationFrame(function () {
+      setTimeout(function () { window.print(); }, 150);
+    });
+  }
+  if (document.readyState === 'complete') agendar();
+  else window.addEventListener('load', agendar, { once: true });
+})();
+</script>
+</body>
+</html>

@@ -9,6 +9,8 @@ from .models import (
     FerramentaImagem,
     Item,
     ItemImagem,
+    ListaCompraEstoque,
+    ListaCompraEstoqueItem,
     MotivoDevolucaoCautela,
     RequisicaoEstoque,
     RequisicaoEstoqueItem,
@@ -98,6 +100,22 @@ class RequisicaoEstoqueAdmin(admin.ModelAdmin):
     autocomplete_fields = ('empresa', 'solicitante', 'local', 'obra', 'almoxarife')
     readonly_fields = ('criado_em', 'atualizado_em')
     inlines = (RequisicaoEstoqueItemInline,)
+
+
+class ListaCompraEstoqueItemInline(admin.TabularInline):
+    model = ListaCompraEstoqueItem
+    extra = 0
+    autocomplete_fields = ('item',)
+
+
+@admin.register(ListaCompraEstoque)
+class ListaCompraEstoqueAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'nome', 'empresa', 'data_pedido', 'status', 'criado_em')
+    list_filter = ('empresa', 'status')
+    search_fields = ('nome', 'observacoes')
+    autocomplete_fields = ('empresa', 'criado_por')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    inlines = (ListaCompraEstoqueItemInline,)
 
 
 @admin.register(ItemImagem)

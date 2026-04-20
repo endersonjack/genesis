@@ -1,0 +1,9 @@
+{% if not relatorios_impressao_mode and export_q %}
+<a href="{% url 'estoque:relatorios_impressao_pdf' empresa_id=request.empresa_ativa.pk %}?{{ export_q }}"
+   class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 flex-shrink-0"
+   target="_blank"
+   rel="noopener noreferrer">
+    <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+    Exportar PDF
+</a>
+{% endif %}

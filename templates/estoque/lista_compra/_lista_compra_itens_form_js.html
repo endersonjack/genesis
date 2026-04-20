@@ -1,0 +1,491 @@
+(function () {
+    'use strict';
+    var SERVER_HYDRATE = {% if lc_server_hydrate %}true{% else %}false{% endif %};
+
+    var totalEl = document.getElementById('id_itens-TOTAL_FORMS');
+    var body = document.getElementById('lc-itens-formset-body');
+    var displayBody = document.getElementById('lc-itens-display-body');
+    var emptyMsg = document.getElementById('lc-itens-vazio-msg');
+    if (!totalEl || !body || !displayBody) return;
+
+    var optsProto = document.getElementById('{{ formset.empty_form.item.id_for_label }}');
+
+    function parseBrDec(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (!s) return NaN;
+        s = s.replace(/\s/g, '');
+        if (s.indexOf(',') !== -1) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+            if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+        }
+        var n = parseFloat(s);
+        return Number.isFinite(n) ? n : NaN;
+    }
+
+    function fmtBr4(n) {
+        if (!Number.isFinite(n)) return '—';
+        var s = n.toFixed(4);
+        var parts = s.split('.');
+        var intp = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return intp + ',' + parts[1];
+    }
+
+    function fmtQty(v) {
+        var n = parseFloat(String(v || '').replace(',', '.'));
+        if (!Number.isFinite(n) || n <= 0) return '';
+        return n.toFixed(4);
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function cellMarca(meta) {
+        var s = String(meta.marca == null ? '' : meta.marca).trim();
+        return s ? escapeHtml(s) : '—';
+    }
+
+    function cellPreco(meta) {
+        var s = String(meta.preco == null ? '' : meta.preco).trim();
+        return s ? escapeHtml(s) : '—';
+    }
+
+    function cellFornecedor(meta) {
+        var s = String(meta.fornecedor == null ? '' : meta.fornecedor).trim();
+        return s ? escapeHtml(s) : '—';
+    }
+
+    function metaFromFormRow(fr) {
+        if (!fr) return {};
+        var sr = parseBrDec(fr.dataset.lcSaldoRaw || '');
+        var saldoTxt = fr.dataset.lcSaldo || '';
+        if (!saldoTxt && Number.isFinite(sr)) {
+            saldoTxt = fmtBr4(sr);
+        }
+        var obsInp = fr.querySelector('input[name$="-observacoes"]');
+        return {
+            desc: fr.dataset.lcDesc || '',
+            cat: fr.dataset.lcCat || '',
+            min: fr.dataset.lcMin || '',
+            saldo: saldoTxt,
+            saldoClass: fr.dataset.lcSaldoClass || 'text-bg-secondary',
+            saldoRaw: sr,
+            unid: fr.dataset.lcUnid || '',
+            thumb: fr.dataset.lcThumb || '',
+            marca: fr.dataset.lcMarca || '',
+            preco: fr.dataset.lcPreco || '',
+            fornecedor: fr.dataset.lcFornecedor || '',
+            obs: obsInp ? obsInp.value || '' : '',
+        };
+    }
+
+    function saveMetaOnFormRow(fr, meta) {
+        if (!fr || !meta) return;
+        fr.dataset.lcDesc = meta.desc || '';
+        fr.dataset.lcCat = meta.cat || '';
+        fr.dataset.lcMin = meta.min || '';
+        fr.dataset.lcSaldo = meta.saldo || '';
+        fr.dataset.lcSaldoClass = meta.saldoClass || '';
+        fr.dataset.lcSaldoRaw =
+            meta.saldoRaw != null ? String(meta.saldoRaw) : '';
+        fr.dataset.lcUnid = meta.unid || '';
+        fr.dataset.lcThumb = meta.thumb || '';
+        fr.dataset.lcMarca = meta.marca || '';
+        fr.dataset.lcPreco = meta.preco || '';
+        fr.dataset.lcFornecedor = meta.fornecedor || '';
+    }
+
+    function clearMarkDelete(inp) {
+        if (!inp) return;
+        if (inp.type === 'checkbox') {
+            inp.checked = false;
+            return;
+        }
+        inp.value = '';
+    }
+
+    function markDelete(inp) {
+        if (!inp) return;
+        if (inp.type === 'checkbox') {
+            inp.checked = true;
+            return;
+        }
+        inp.value = 'on';
+    }
+
+    function displayRowHtml(meta) {
+        var thumb = meta.thumb
+            ? `<span class="estoque-item-thumb-wrap"><img src="${meta.thumb}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy"></span>`
+            : `<div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>`;
+        var obsRaw = meta.obs || '';
+        var obsShow = obsRaw.length > 48 ? obsRaw.slice(0, 48) + '…' : obsRaw;
+        return `
+<tr class="lc-item-row" role="button" tabindex="0" data-item-id="${meta.itemId}">
+  <td class="ps-3">${thumb}</td>
+  <td><div class="fw-semibold lc-item-desc">${escapeHtml(meta.desc || '—')}</div></td>
+  <td class="small">${meta.cat || '—'}</td>
+  <td class="small text-nowrap"><span class="lc-item-marca">${cellMarca(meta)}</span></td>
+  <td class="small text-end text-nowrap"><span class="lc-item-preco">${cellPreco(meta)}</span></td>
+  <td class="small text-break"><span class="lc-item-fornecedor">${cellFornecedor(meta)}</span></td>
+  <td class="text-end text-nowrap"><span class="badge ${meta.saldoClass || 'text-bg-secondary'} rounded-pill fs-6 fw-semibold px-3">${meta.saldo || '—'}</span></td>
+  <td class="text-nowrap">${meta.unid || '—'}</td>
+  <td class="text-end text-nowrap"><span class="lc-item-qty">${meta.qty}</span></td>
+  <td class="small text-muted"><span class="lc-item-obs">${obsShow || '—'}</span></td>
+  <td class="pe-3 text-end">
+    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 js-lc-remove-item" data-item-id="${meta.itemId}" title="Remover"><i class="bi bi-trash"></i></button>
+  </td>
+</tr>`;
+    }
+
+    function upsertDisplayRow(meta) {
+        var existing = displayBody.querySelector(
+            'tr.lc-item-row[data-item-id="' + meta.itemId + '"]'
+        );
+        if (!existing) {
+            var tmp = document.createElement('tbody');
+            tmp.innerHTML = displayRowHtml(meta);
+            var row = tmp.querySelector('tr');
+            if (!row) return;
+            displayBody.appendChild(row);
+            return;
+        }
+        var qtyEl = existing.querySelector('.lc-item-qty');
+        if (qtyEl) qtyEl.textContent = meta.qty;
+        var obsEl = existing.querySelector('.lc-item-obs');
+        if (obsEl) {
+            var o = meta.obs || '';
+            obsEl.textContent = o.length > 48 ? o.slice(0, 48) + '…' : o || '—';
+        }
+        var descCell = existing.querySelector('td:nth-child(2)');
+        if (descCell) {
+            descCell.innerHTML =
+                '<div class="fw-semibold lc-item-desc">' +
+                escapeHtml(meta.desc || '—') +
+                '</div>';
+        }
+        var catCell = existing.querySelector('td:nth-child(3)');
+        if (catCell) catCell.textContent = meta.cat || '—';
+        var mEl = existing.querySelector('.lc-item-marca');
+        if (mEl) mEl.innerHTML = cellMarca(meta);
+        var pEl = existing.querySelector('.lc-item-preco');
+        if (pEl) pEl.innerHTML = cellPreco(meta);
+        var fEl = existing.querySelector('.lc-item-fornecedor');
+        if (fEl) fEl.innerHTML = cellFornecedor(meta);
+    }
+
+    function newRowHtml(idx) {
+        var opts = optsProto ? optsProto.innerHTML : '';
+        return (
+            '<tr class="formset-row lc-formset-row" data-item-id="">' +
+            '<td>' +
+            '<input type="hidden" name="itens-' +
+            idx +
+            '-id" id="id_itens-' +
+            idx +
+            '-id">' +
+            '<select name="itens-' +
+            idx +
+            '-item" id="id_itens-' +
+            idx +
+            '-item" class="form-select rounded-3">' +
+            opts +
+            '</select></td>' +
+            '<td><input type="number" name="itens-' +
+            idx +
+            '-quantidade_comprar" id="id_itens-' +
+            idx +
+            '-quantidade_comprar" class="form-control rounded-3" step="0.0001" min="0" value="0"></td>' +
+            '<td><input type="text" name="itens-' +
+            idx +
+            '-observacoes" id="id_itens-' +
+            idx +
+            '-observacoes" class="form-control rounded-3" value="" maxlength="500" autocomplete="off"></td>' +
+            '<td><input type="checkbox" name="itens-' +
+            idx +
+            '-DELETE" id="id_itens-' +
+            idx +
+            '-DELETE"></td>' +
+            '</tr>'
+        );
+    }
+
+    function addOrSumItem(itemId, qty, meta) {
+        if (!itemId || !Number.isFinite(qty) || qty <= 0) return;
+        var existing = body.querySelector(
+            'tr.lc-formset-row[data-item-id="' + itemId + '"]'
+        );
+        if (existing) {
+            var del = existing.querySelector('input[name$="-DELETE"]');
+            clearMarkDelete(del);
+            existing.style.display = '';
+            if (meta) saveMetaOnFormRow(existing, meta);
+            var selExisting = existing.querySelector('select[name$="-item"]');
+            if (selExisting) selExisting.value = String(itemId);
+            var qEl = existing.querySelector('input[name$="-quantidade_comprar"]');
+            var cur = parseFloat((qEl.value || '').replace(',', '.'));
+            if (!Number.isFinite(cur)) cur = 0;
+            var next = cur + qty;
+            if (qEl) qEl.value = String(next.toFixed(4));
+            var oEl = existing.querySelector('input[name$="-observacoes"]');
+            if (oEl && meta && meta.obs && !String(oEl.value || '').trim()) {
+                oEl.value = meta.obs;
+            }
+            var mRow = metaFromFormRow(existing);
+            upsertDisplayRow(
+                Object.assign({}, mRow, {
+                    itemId: String(itemId),
+                    qty: fmtQty(qEl ? qEl.value : next),
+                    obs: oEl ? oEl.value || '' : mRow.obs,
+                    marca: (meta && meta.marca) || mRow.marca,
+                    preco: (meta && meta.preco) || mRow.preco,
+                    fornecedor: (meta && meta.fornecedor) || mRow.fornecedor,
+                })
+            );
+            return;
+        }
+        var idx = parseInt(totalEl.value || '0', 10);
+        if (!Number.isFinite(idx)) idx = 0;
+        var tmp = document.createElement('tbody');
+        tmp.innerHTML = newRowHtml(idx);
+        var row = tmp.querySelector('tr');
+        if (!row) return;
+        var sel = row.querySelector('select');
+        var qEl = row.querySelector('input[name$="-quantidade_comprar"]');
+        var oEl = row.querySelector('input[name$="-observacoes"]');
+        if (sel) sel.value = String(itemId);
+        if (qEl) qEl.value = String(qty.toFixed(4));
+        if (oEl && meta && meta.obs) oEl.value = meta.obs;
+        row.dataset.itemId = String(itemId);
+        saveMetaOnFormRow(row, meta || {});
+        body.appendChild(row);
+        totalEl.value = String(idx + 1);
+        if (emptyMsg) emptyMsg.classList.add('d-none');
+        var m = metaFromFormRow(row);
+        upsertDisplayRow({
+            itemId: String(itemId),
+            desc: m.desc,
+            cat: m.cat,
+            min: m.min,
+            saldo: m.saldo,
+            saldoClass: m.saldoClass,
+            saldoRaw: m.saldoRaw,
+            unid: m.unid,
+            thumb: m.thumb,
+            marca: m.marca,
+            preco: m.preco,
+            fornecedor: m.fornecedor,
+            qty: fmtQty(qEl ? qEl.value : qty),
+            obs: oEl ? oEl.value || '' : '',
+        });
+    }
+
+    function openEditModal(itemId) {
+        var fr = body.querySelector('tr.lc-formset-row[data-item-id="' + itemId + '"]');
+        var dr = displayBody.querySelector('tr.lc-item-row[data-item-id="' + itemId + '"]');
+        if (!fr || !dr) return;
+        var qtyInput = fr.querySelector('input[name$="-quantidade_comprar"]');
+        var obsInput = fr.querySelector('input[name$="-observacoes"]');
+        var descEl = dr.querySelector('.lc-item-desc');
+        var desc = descEl ? descEl.textContent : 'Item';
+        var currentQty = qtyInput ? qtyInput.value || '' : '';
+        var currentObs = obsInput ? obsInput.value || '' : '';
+
+        var modalEl = document.getElementById('modalPadrao');
+        var modalContent = document.getElementById('modal-content');
+        if (!modalEl || !modalContent) return;
+        modalContent.innerHTML =
+            '<div class="modal-header border-0 pb-0">' +
+            '<h5 class="modal-title fw-bold mb-0">Editar item</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>' +
+            '</div>' +
+            '<div class="modal-body pt-2">' +
+            '<div class="mb-3"><div class="fw-semibold lc-edit-desc"></div>' +
+            '<div class="text-muted small">Quantidade a comprar e observações do item.</div></div>' +
+            '<div class="mb-2"><label class="form-label fw-semibold" for="lc-edit-qty">Quantidade a comprar</label>' +
+            '<input type="number" id="lc-edit-qty" class="form-control rounded-3" step="0.0001" min="0.0001"></div>' +
+            '<div class="mb-2"><label class="form-label fw-semibold" for="lc-edit-obs">Observações do item</label>' +
+            '<input type="text" id="lc-edit-obs" class="form-control rounded-3" maxlength="500" autocomplete="off"></div>' +
+            '</div>' +
+            '<div class="modal-footer border-0 pt-0 d-flex justify-content-between gap-2 flex-wrap">' +
+            '<button type="button" class="estoque-btn estoque-btn-danger-outline js-lc-delete-in-edit" data-item-id="' +
+            itemId +
+            '">Excluir item</button>' +
+            '<div class="d-flex gap-2 ms-auto">' +
+            '<button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Cancelar</button>' +
+            '<button type="button" class="estoque-btn estoque-btn-primary js-lc-save-edit" data-item-id="' +
+            itemId +
+            '">Salvar</button>' +
+            '</div></div>';
+        var descEl = modalContent.querySelector('.lc-edit-desc');
+        if (descEl) descEl.textContent = desc;
+        var qf = document.getElementById('lc-edit-qty');
+        var of = document.getElementById('lc-edit-obs');
+        if (qf) qf.value = currentQty;
+        if (of) of.value = currentObs;
+
+        if (window.bootstrap) {
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
+    document.body.addEventListener('click', function (e) {
+        var btn = e.target.closest('.js-lc-add-item');
+        if (btn) {
+            var tr = btn.closest('tr');
+            var qtyEl = tr ? tr.querySelector('.js-lc-item-qtd') : null;
+            var qty = parseFloat(String(qtyEl ? qtyEl.value : '').replace(',', '.'));
+            var itemId = parseInt(btn.getAttribute('data-item-id') || '', 10);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                window.alert('Informe a quantidade a comprar.');
+                return;
+            }
+            addOrSumItem(itemId, qty, {
+                desc: btn.getAttribute('data-item-desc') || '',
+                cat: btn.getAttribute('data-item-cat') || '',
+                min: btn.getAttribute('data-item-min') || '',
+                saldo: btn.getAttribute('data-item-saldo') || '',
+                saldoClass: btn.getAttribute('data-item-saldo-class') || '',
+                saldoRaw: parseBrDec(btn.getAttribute('data-item-saldo-raw') || ''),
+                unid: btn.getAttribute('data-item-unid') || '',
+                thumb: btn.getAttribute('data-item-thumb') || '',
+                marca: btn.getAttribute('data-item-marca') || '',
+                preco: btn.getAttribute('data-item-preco') || '',
+                fornecedor: btn.getAttribute('data-item-fornecedor') || '',
+                obs: '',
+            });
+            return;
+        }
+
+        var rm = e.target.closest('.js-lc-remove-item');
+        if (rm) {
+            var iid = rm.getAttribute('data-item-id');
+            if (!iid) return;
+            var fr = body.querySelector('tr.lc-formset-row[data-item-id="' + iid + '"]');
+            if (fr) {
+                var del = fr.querySelector('input[name$="-DELETE"]');
+                markDelete(del);
+                fr.style.display = 'none';
+            }
+            var dr = displayBody.querySelector('tr.lc-item-row[data-item-id="' + iid + '"]');
+            if (dr) dr.remove();
+            if (!displayBody.querySelector('tr') && emptyMsg) {
+                emptyMsg.classList.remove('d-none');
+            }
+            return;
+        }
+
+        var saveEdit = e.target.closest('.js-lc-save-edit');
+        if (saveEdit) {
+            var iid2 = saveEdit.getAttribute('data-item-id');
+            var qtyField = document.getElementById('lc-edit-qty');
+            var obsField = document.getElementById('lc-edit-obs');
+            var newQty = qtyField
+                ? parseFloat(String(qtyField.value || '').replace(',', '.'))
+                : NaN;
+            var newObs = obsField ? String(obsField.value || '') : '';
+            if (!Number.isFinite(newQty) || newQty <= 0) {
+                window.alert('Informe uma quantidade válida.');
+                return;
+            }
+            var fr2 = body.querySelector('tr.lc-formset-row[data-item-id="' + iid2 + '"]');
+            var qEl2 = fr2 ? fr2.querySelector('input[name$="-quantidade_comprar"]') : null;
+            var oEl2 = fr2 ? fr2.querySelector('input[name$="-observacoes"]') : null;
+            if (qEl2) qEl2.value = String(newQty.toFixed(4));
+            if (oEl2) oEl2.value = newObs;
+            var frMeta = metaFromFormRow(fr2);
+            upsertDisplayRow(
+                Object.assign({}, frMeta, {
+                    itemId: String(iid2),
+                    qty: fmtQty(newQty),
+                    obs: newObs,
+                })
+            );
+            var modalEl2 = document.getElementById('modalPadrao');
+            if (modalEl2 && window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalEl2).hide();
+            }
+            return;
+        }
+
+        var delEdit = e.target.closest('.js-lc-delete-in-edit');
+        if (delEdit) {
+            var iid3 = delEdit.getAttribute('data-item-id');
+            var fr3 = body.querySelector('tr.lc-formset-row[data-item-id="' + iid3 + '"]');
+            if (fr3) {
+                var del3 = fr3.querySelector('input[name$="-DELETE"]');
+                markDelete(del3);
+                fr3.style.display = 'none';
+            }
+            var dr3 = displayBody.querySelector('tr.lc-item-row[data-item-id="' + iid3 + '"]');
+            if (dr3) dr3.remove();
+            var modalEl3 = document.getElementById('modalPadrao');
+            if (modalEl3 && window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalEl3).hide();
+            }
+            if (!displayBody.querySelector('tr') && emptyMsg) {
+                emptyMsg.classList.remove('d-none');
+            }
+            return;
+        }
+    });
+
+    displayBody.addEventListener('click', function (e) {
+        var tr = e.target.closest('tr.lc-item-row');
+        if (!tr) return;
+        if (e.target.closest('button')) return;
+        openEditModal(tr.getAttribute('data-item-id'));
+    });
+    displayBody.addEventListener('keydown', function (e) {
+        var tr = e.target.closest('tr.lc-item-row');
+        if (!tr) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEditModal(tr.getAttribute('data-item-id'));
+        }
+    });
+
+    if (SERVER_HYDRATE) {
+        (function hydrateServerFormset() {
+            var hasRows = false;
+            body.querySelectorAll('tr.lc-formset-row').forEach(function (fr) {
+                var sel = fr.querySelector('select[name$="-item"]');
+                var qEl = fr.querySelector('input[name$="-quantidade_comprar"]');
+                if (!sel || !sel.value) return;
+                var itemId = sel.value;
+                fr.dataset.itemId = itemId;
+                var del = fr.querySelector('input[name$="-DELETE"]');
+                if (del && del.type === 'checkbox' && del.checked) return;
+                if (fr.style.display === 'none') return;
+                var m = metaFromFormRow(fr);
+                if (!m.desc && sel && sel.selectedOptions && sel.selectedOptions[0]) {
+                    m.desc = sel.selectedOptions[0].text || '';
+                }
+                var qty = qEl ? fmtQty(qEl.value) : '';
+                if (!qty) return;
+                upsertDisplayRow({
+                    itemId: String(itemId),
+                    desc: m.desc,
+                    cat: m.cat,
+                    min: m.min,
+                    saldo: m.saldo,
+                    saldoClass: m.saldoClass,
+                    saldoRaw: m.saldoRaw,
+                    unid: m.unid,
+                    thumb: m.thumb,
+                    marca: m.marca,
+                    preco: m.preco,
+                    fornecedor: m.fornecedor,
+                    qty: qty,
+                    obs: m.obs,
+                });
+                hasRows = true;
+            });
+            if (hasRows && emptyMsg) emptyMsg.classList.add('d-none');
+        })();
+    }
+})();

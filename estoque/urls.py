@@ -6,6 +6,7 @@ from . import (
     cautela_views,
     ferramenta_views,
     item_views,
+    lista_compra_views,
     relatorios_views,
     requisicoes_views,
     views,
@@ -20,6 +21,51 @@ urlpatterns = [
         'partial/dashboard-cards/',
         empresa_scoped(views.partial_dashboard_cards),
         name='partial_dashboard_cards',
+    ),
+    path(
+        'listas-compra/',
+        empresa_scoped(lista_compra_views.lista_compra_estoque),
+        name='lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/nova/',
+        empresa_scoped(lista_compra_views.nova_lista_compra_estoque),
+        name='nova_lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/<int:pk>/editar/',
+        empresa_scoped(lista_compra_views.editar_lista_compra_estoque),
+        name='editar_lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/<int:pk>/modal/excluir/',
+        empresa_scoped(lista_compra_views.modal_excluir_lista_compra_estoque),
+        name='modal_excluir_lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/<int:pk>/excluir/',
+        empresa_scoped(lista_compra_views.excluir_lista_compra_estoque),
+        name='excluir_lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/<int:pk>/imprimir/',
+        empresa_scoped(lista_compra_views.imprimir_lista_compra_estoque),
+        name='imprimir_lista_compra_estoque',
+    ),
+    path(
+        'listas-compra/<int:pk>/imprimir/pdf/',
+        empresa_scoped(lista_compra_views.imprimir_lista_compra_estoque_pdf),
+        name='imprimir_lista_compra_estoque_pdf',
+    ),
+    path(
+        'listas-compra/modal/buscar-itens/',
+        empresa_scoped(lista_compra_views.modal_buscar_itens_lista_compra),
+        name='modal_buscar_itens_lista_compra',
+    ),
+    path(
+        'listas-compra/partial/buscar-itens/',
+        empresa_scoped(lista_compra_views.partial_buscar_itens_lista_compra),
+        name='partial_buscar_itens_lista_compra',
     ),
     path('requisicoes/', empresa_scoped(requisicoes_views.lista_requisicoes), name='requisicoes'),
     path(

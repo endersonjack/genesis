@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Estoque | Genesis ERP{% endblock %}
+
+{% block body_class %}estoque-pages{% endblock %}
+
+{% block content %}
+{% include 'estoque/includes/estoque_ui_assets.html' %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Listas de compra</h2>
+        <p class="text-muted mb-0">Pedidos de compra elaborados pelo almoxarifado — não movimentam estoque.</p>
+    </div>
+    <div class="estoque-top-actions">
+        <a href="{% url 'estoque:dashboard' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-light text-decoration-none">
+            <i class="bi bi-arrow-left"></i>
+            <span>Estoque</span>
+        </a>
+        <a href="{% url 'estoque:nova_lista_compra_estoque' empresa_id=request.empresa_ativa.pk %}"
+           class="estoque-btn estoque-btn-primary text-decoration-none">
+            <i class="bi bi-plus-lg"></i>
+            <span>Nova lista</span>
+        </a>
+    </div>
+</div>
+
+<form id="lista-compra-filtros-form"
+      class="d-flex flex-wrap align-items-stretch align-items-md-center gap-2 mb-3"
+      hx-get="{% url 'estoque:lista_compra_estoque' empresa_id=request.empresa_ativa.pk %}"
+      hx-target="#estoque-list-inner"
+      hx-trigger="change from:select[name='status'], keyup changed delay:400ms from:input[name='q'], search from:input[name='q']"
+      hx-push-url="true"
+      hx-indicator="#estoque-list-hx-skeleton"
+      data-no-global-loading>
+    <div class="input-group shadow-sm rounded-3 overflow-hidden flex-grow-1" style="max-width: 28rem; min-width: 12rem;">
+        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+        <input type="search"
+               name="q"
+               id="estoque-list-q"
+               class="form-control border-start-0"
+               value="{{ q|default:'' }}"
+               placeholder="Buscar por nome, texto ou item…"
+               autocomplete="off">
+    </div>
+    <select name="status"
+            class="form-select shadow-sm rounded-3"
+            style="max-width: 14rem;"
+            aria-label="Filtrar por status">
+        <option value="" {% if not status_f %}selected{% endif %}>Todos os status</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_f == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<div id="estoque-list-panel" class="estoque-list-panel">
+    <div id="estoque-list-hx-skeleton" class="htmx-indicator estoque-list-hx-skeleton">
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+        <div class="estoque-hx-skeleton estoque-list-hx-skeleton-row w-100"></div>
+    </div>
+    <div id="estoque-list-inner">
+        {% include 'estoque/lista_compra/_lista_conteudo.html' %}
+    </div>
+</div>
+
+{% include 'estoque/includes/modal_cadastro_estoque.html' %}
+{% endblock %}

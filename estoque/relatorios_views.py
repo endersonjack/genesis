@@ -41,7 +41,34 @@ _SECOES_RELATORIO = frozenset({
 })
 
 REL_PAGE = 30
+# Auditoria (movimentar + cautelas): sempre no máximo 30 por página, inclusive no modo impressão.
+REL_PAGE_AUDITORIA = 30
 REL_PAGE_IMPRESSAO = 50_000
+
+# Parâmetros de paginação da tela — removidos na URL de exportação PDF para gerar
+# a lista completa (até REL_PAGE_IMPRESSAO) com os mesmos filtros.
+_REL_EXPORT_POP_PAGES = (
+    'req_func_page',
+    'caut_func_page',
+    'freq_det_page',
+    'fferr_page',
+    'ferr_linhas_page',
+    'item_log_page',
+    'log_page',
+    'clog_page',
+)
+
+
+def _build_rel_export_queries(request) -> dict[str, str]:
+    base = request.GET.copy()
+    for k in _REL_EXPORT_POP_PAGES:
+        base.pop(k, None)
+    out: dict[str, str] = {}
+    for sec in _SECOES_RELATORIO:
+        q = base.copy()
+        q['secao'] = sec
+        out[sec] = q.urlencode()
+    return out
 
 
 def _rel_page_query(request, secao_val: str, *pop_keys: str) -> str:
@@ -453,13 +480,20 @@ def _relatorios_build_context(
                         'motivo', 'situacao_ferramentas'
                     )
                     .prefetch_related('ferramentas_devolvidas')
-                    .order_by('data_entrega', 'pk')
+                    .order_by('-data_entrega', '-pk')
                 ),
             )
+            # Inclui cautelas em que a ferramenta ainda está no M2M e cautelas em que
+            # já foi devolvida (remove do M2M, mas permanece em entregas.ferramentas_devolvidas).
             cautelas_com_ferr = (
-                Cautela.objects.filter(empresa=empresa, ferramentas=ferramenta)
+                Cautela.objects.filter(empresa=empresa)
+                .filter(
+                    Q(ferramentas=ferramenta)
+                    | Q(entregas__ferramentas_devolvidas=ferramenta)
+                )
                 .select_related('funcionario', 'local', 'obra')
-                .prefetch_related(entregas_pref)
+                .prefetch_related(entregas_pref, 'ferramentas')
+                .distinct()
             )
             if ferr_ini:
                 cautelas_com_ferr = cautelas_com_ferr.filter(
@@ -476,6 +510,8 @@ def _relatorios_build_context(
             def _entrega_que_devolveu(
                 cautela: Cautela, ferramenta_id: int
             ) -> Entrega_Cautela | None:
+                # Prefetch ordena por data_entrega decrescente: primeira correspondência
+                # é a devolução mais recente desta ferramenta nesta cautela.
                 for ent in cautela.entregas.all():
                     dev_pks = {
                         f.pk for f in ent.ferramentas_devolvidas.all()
@@ -486,7 +522,14 @@ def _relatorios_build_context(
 
             for c in cautelas_com_ferr:
                 di = c.data_inicio_cautela
-                ent = _entrega_que_devolveu(c, ferr_pk)
+                ainda_na_cautela = ferr_pk in {
+                    f.pk for f in c.ferramentas.all()
+                }
+                ent = (
+                    None
+                    if ainda_na_cautela
+                    else _entrega_que_devolveu(c, ferr_pk)
+                )
                 de = ent.data_entrega if ent else None
                 if de is not None:
                     dias = max(0, (de - di).days)
@@ -624,7 +667,7 @@ def _relatorios_build_context(
         if item_pks:
             log_item_q |= Q(detalhes__item_id__in=item_pks)
         logs_qs = logs_qs.filter(log_item_q)
-    logs_paginator = Paginator(logs_qs, page_size)
+    logs_paginator = Paginator(logs_qs, REL_PAGE_AUDITORIA)
     log_page_param = request.GET.get('log_page') or 1
     try:
         logs_page_obj = logs_paginator.page(log_page_param)
@@ -662,7 +705,7 @@ def _relatorios_build_context(
             cqs = cqs.filter(detalhes__cautela_id=int(clog_busca))
         else:
             cqs = cqs.filter(resumo__icontains=clog_busca)
-    cp = Paginator(cqs, page_size)
+    cp = Paginator(cqs, REL_PAGE_AUDITORIA)
     cpnum = request.GET.get('clog_page') or 1
     try:
         cautela_logs_page_obj = cp.page(cpnum)
@@ -679,6 +722,7 @@ def _relatorios_build_context(
     ctx = {
         'page_title': 'Relatórios de estoque',
         'rel_page': page_size,
+        'rel_page_auditoria': REL_PAGE_AUDITORIA,
         'funcionario': funcionario,
         'funcionario_id': func_id,
         'func_data_ini': request.GET.get('func_data_ini') or '',
@@ -725,6 +769,7 @@ def _relatorios_build_context(
         ),
         'relatorios_page_url_name': relatorios_page_url_name,
         'relatorios_get_query': request.GET.urlencode(),
+        'rel_export_q': _build_rel_export_queries(request),
     }
     return ctx
 

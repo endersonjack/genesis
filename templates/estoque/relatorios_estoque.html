@@ -225,11 +225,12 @@
                  data-panel="funcionario"
                  id="sec-funcionario">
             <div class="section-card rel-ff-tool-report">
-                <div class="section-card-header">
-                    <div>
+                <div class="section-card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div class="min-w-0">
                         <h5>Histórico do funcionário (resumo)</h5>
                         <small>Lista resumida de requisições e cautelas. Nas outras abas deste grupo, use requisição detalhada ou ferramentas (cautela) para mais colunas e filtros.</small>
                     </div>
+                    {% include 'estoque/_relatorio_export_pdf_link.html' with export_q=rel_export_q.funcionario %}
                 </div>
                 <div class="section-card-body">
                     <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
@@ -425,11 +426,12 @@
                  data-panel="ferramenta"
                  id="sec-ferramenta">
             <div class="section-card rel-ff-tool-report">
-                <div class="section-card-header">
-                    <div>
+                <div class="section-card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div class="min-w-0">
                         <h5>Relatório de ferramenta</h5>
                         <small>Quem usou, período e situação (cautela ou pós-devolução).</small>
                     </div>
+                    {% include 'estoque/_relatorio_export_pdf_link.html' with export_q=rel_export_q.ferramenta %}
                 </div>
                 <div class="section-card-body">
                     <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">
@@ -574,11 +576,12 @@
                  data-panel="item"
                  id="sec-item">
             <div class="section-card rel-ff-tool-report">
-                <div class="section-card-header">
-                    <div>
+                <div class="section-card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div class="min-w-0">
                         <h5>Relatório de item</h5>
                         <small>Entradas e saídas registradas na auditoria (manual e via requisição).</small>
                     </div>
+                    {% include 'estoque/_relatorio_export_pdf_link.html' with export_q=rel_export_q.item %}
                 </div>
                 <div class="section-card-body">
                     <form method="get" class="rel-ff-filtros-form d-flex align-items-end flex-wrap gap-2 gap-md-3 mb-3 pb-1">

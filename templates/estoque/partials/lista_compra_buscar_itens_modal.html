@@ -1,0 +1,81 @@
+{% load humanize %}
+<div class="modal-header border-0 pb-0">
+    <h5 class="modal-title fw-bold mb-0">Buscar itens</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body pt-2">
+    <div class="mb-3">
+        <label class="form-label fw-semibold mb-1" for="req-itens-q">Descrição</label>
+        <div class="d-flex align-items-stretch gap-2">
+            <div class="input-group input-group-lg flex-grow-1" style="min-width: 0;">
+                <input type="text"
+                       id="req-itens-q"
+                       class="form-control rounded-3"
+                       placeholder="Digite..."
+                       autocomplete="off"
+                       hx-get="{% url 'estoque:partial_buscar_itens_lista_compra' empresa_id=request.empresa_ativa.pk %}"
+                       hx-trigger="input delay:280ms, load"
+                       hx-target="#req-itens-list"
+                       hx-include="#req-itens-filtros"
+                       data-no-global-loading>
+                <button type="button"
+                        class="btn btn-outline-secondary rounded-end-3"
+                        id="req-itens-q-clear"
+                        title="Limpar descrição">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="d-flex align-items-center">
+                {% include 'estoque/includes/leitor_estoque_toggle.html' with leitor_capture_id='lc-buscar-itens-leitor-cap' leitor_mode='requisicao-buscar' %}
+            </div>
+        </div>
+    </div>
+
+    <div id="req-itens-filtros" class="d-none">
+        <input type="hidden" name="q" value="" id="req-itens-q-hidden">
+    </div>
+
+    <div id="req-itens-list"></div>
+
+    <script>
+    (function () {
+        var modal = document.getElementById('modalPadrao');
+        var dialog = modal ? modal.querySelector('.modal-dialog') : null;
+        if (dialog) {
+            dialog.classList.add('modal-xl');
+            dialog.classList.remove('modal-lg');
+            if (!dialog.dataset.lcItensWidenBound) {
+                dialog.dataset.lcItensWidenBound = '1';
+                modal.addEventListener(
+                    'hidden.bs.modal',
+                    function () {
+                        dialog.classList.remove('modal-xl');
+                        dialog.classList.add('modal-lg');
+                    },
+                    { once: true }
+                );
+            }
+        }
+
+        var q = document.getElementById('req-itens-q');
+        var qh = document.getElementById('req-itens-q-hidden');
+        var clearBtn = document.getElementById('req-itens-q-clear');
+        if (!q || !qh) return;
+        q.addEventListener('input', function () {
+            qh.value = q.value || '';
+        });
+        if (clearBtn && !clearBtn.dataset.bound) {
+            clearBtn.dataset.bound = '1';
+            clearBtn.addEventListener('click', function () {
+                q.value = '';
+                qh.value = '';
+                q.focus();
+                q.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        }
+    })();
+    </script>
+</div>
+<div class="modal-footer border-0 pt-0 d-flex justify-content-end">
+    <button type="button" class="estoque-btn estoque-btn-light" data-bs-dismiss="modal">Fechar</button>
+</div>

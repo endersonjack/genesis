@@ -598,3 +598,87 @@ class Entrega_Cautela(TimeStampedModel):
             f'{self.cautela} — {self.get_tipo_display()} em '
             f'{self.data_entrega:%d/%m/%Y}'
         )
+
+
+class ListaCompraEstoque(TimeStampedModel):
+    """Lista informativa de compras elaborada pelo almoxarifado (não altera saldo)."""
+
+    class Status(models.TextChoices):
+        RASCUNHO = 'rascunho', 'Rascunho'
+        SOLICITADO = 'solicitado', 'Solicitado'
+        COMPRADO = 'comprado', 'Comprado'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='listas_compra_estoque',
+    )
+    nome = models.CharField(
+        'Nome da lista',
+        max_length=200,
+        blank=True,
+        help_text='Identificação opcional (ex.: compras da semana, obra X).',
+    )
+    data_pedido = models.DateField('Data do pedido')
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.RASCUNHO,
+        db_index=True,
+    )
+    observacoes = models.TextField('Observações gerais', blank=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='listas_compra_estoque_criadas',
+    )
+
+    class Meta:
+        verbose_name = 'Lista de compra (estoque)'
+        verbose_name_plural = 'Listas de compra (estoque)'
+        ordering = ['-data_pedido', '-pk']
+        indexes = [
+            models.Index(fields=['empresa', 'data_pedido']),
+            models.Index(fields=['empresa', 'status', 'data_pedido']),
+        ]
+
+    def __str__(self):
+        if (self.nome or '').strip():
+            return f'{self.nome.strip()} (#{self.pk})'
+        return f'Lista compra #{self.pk} — {self.data_pedido:%d/%m/%Y}'
+
+
+class ListaCompraEstoqueItem(models.Model):
+    lista = models.ForeignKey(
+        ListaCompraEstoque,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    item = models.ForeignKey(
+        Item,
+        on_delete=models.PROTECT,
+        related_name='linhas_lista_compra_estoque',
+    )
+    quantidade_comprar = models.DecimalField(
+        'Quantidade a comprar',
+        max_digits=14,
+        decimal_places=4,
+        default=0,
+    )
+    observacoes = models.TextField('Observações do item', blank=True)
+
+    class Meta:
+        verbose_name = 'Item da lista de compra'
+        verbose_name_plural = 'Itens da lista de compra'
+        ordering = ['pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['lista', 'item'],
+                name='uniq_lista_compra_item',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.item} × {self.quantidade_comprar}'

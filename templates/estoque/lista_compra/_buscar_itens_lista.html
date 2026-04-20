@@ -1,0 +1,115 @@
+{% load humanize %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th class="ps-3" style="width:56px;"></th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Marca</th>
+                <th class="text-end">Preço</th>
+                <th>Fornecedor</th>
+                <th class="text-end">Mín.</th>
+                <th class="text-end">Saldo</th>
+                <th>Unid</th>
+                <th class="text-end">Qtd a comprar</th>
+                <th class="pe-3"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if hint %}
+            <tr>
+                <td colspan="11" class="ps-3 py-4 text-muted small">
+                    {{ hint }}
+                </td>
+            </tr>
+            {% endif %}
+            {% for it in page_obj %}
+            <tr class="{% if it.quantidade_estoque <= 0 %}table-secondary{% endif %}">
+                <td class="ps-3">
+                    {% with im=it.imagem_listagem %}
+                        {% if im %}
+                            <span class="estoque-item-thumb-wrap">
+                                <img src="{{ im.imagem.url }}" alt="" class="item-thumb" width="44" height="44" decoding="async" loading="lazy">
+                            </span>
+                        {% else %}
+                            <div class="item-thumb d-flex align-items-center justify-content-center text-muted small">—</div>
+                        {% endif %}
+                    {% endwith %}
+                </td>
+                <td class="fw-semibold">{{ it.descricao|truncatechars:80 }}</td>
+                <td>{{ it.categoria.nome }}</td>
+                <td class="small text-nowrap">{{ it.marca|default:"—" }}</td>
+                <td class="text-end text-nowrap small">
+                    {% if it.preco is not None %}
+                        R$ {{ it.preco|floatformat:2|intcomma }}
+                    {% else %}—{% endif %}
+                </td>
+                <td class="small">{% if it.fornecedor_id %}{{ it.fornecedor.nome }}{% else %}—{% endif %}</td>
+                <td class="text-end text-nowrap">{{ it.quantidade_minima|floatformat:4|intcomma }}</td>
+                <td class="text-end text-nowrap">
+                    {% if it.quantidade_estoque <= 0 %}
+                        <span class="badge text-bg-danger rounded-pill fs-6 fw-semibold px-3">{{ it.quantidade_estoque|floatformat:4|intcomma }}</span>
+                    {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
+                        <span class="badge text-bg-warning rounded-pill fs-6 fw-semibold px-3">{{ it.quantidade_estoque|floatformat:4|intcomma }}</span>
+                    {% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %}
+                        <span class="badge text-bg-secondary rounded-pill fs-6 fw-semibold px-3">{{ it.quantidade_estoque|floatformat:4|intcomma }}</span>
+                    {% else %}
+                        <span class="badge text-bg-success rounded-pill fs-6 fw-semibold px-3">{{ it.quantidade_estoque|floatformat:4|intcomma }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-nowrap">{{ it.unidade_medida.abreviada }}</td>
+                <td class="text-end">
+                    <input type="number"
+                           class="form-control form-control-sm rounded-3 js-req-item-qtd js-lc-item-qtd"
+                           style="max-width: 140px; margin-left: auto;"
+                           step="0.0001"
+                           min="0"
+                           value=""
+                           placeholder="0">
+                </td>
+                <td class="pe-3 text-end">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary rounded-3 js-lc-add-item"
+                            data-item-id="{{ it.pk }}"
+                            data-item-desc="{{ it.descricao|escape }}"
+                            data-item-cat="{{ it.categoria.nome|escape }}"
+                            data-item-min="{{ it.quantidade_minima|floatformat:4|intcomma }}"
+                            data-item-min-raw="{{ it.quantidade_minima|floatformat:4 }}"
+                            data-item-unid="{{ it.unidade_medida.abreviada|escape }}"
+                            data-item-marca="{{ it.marca|default:''|escape }}"
+                            {% if it.preco is not None %}
+                            data-item-preco="R$ {{ it.preco|floatformat:2|intcomma }}"
+                            {% endif %}
+                            {% if it.fornecedor_id %}
+                            data-item-fornecedor="{{ it.fornecedor.nome|escape }}"
+                            {% endif %}
+                            {% with im=it.imagem_listagem %}
+                                {% if im %}data-item-thumb="{{ im.imagem.url }}"{% endif %}
+                            {% endwith %}
+                            {% if it.quantidade_estoque <= 0 %}
+                                data-item-saldo-class="text-bg-danger"
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque < it.quantidade_minima %}
+                                data-item-saldo-class="text-bg-warning"
+                            {% elif it.quantidade_minima > 0 and it.quantidade_estoque == it.quantidade_minima %}
+                                data-item-saldo-class="text-bg-secondary"
+                            {% else %}
+                                data-item-saldo-class="text-bg-success"
+                            {% endif %}
+                            data-item-saldo="{{ it.quantidade_estoque|floatformat:4|intcomma }}"
+                            data-item-saldo-raw="{{ it.quantidade_estoque|floatformat:4 }}">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not hint and not page_obj %}
+            <tr>
+                <td colspan="11" class="ps-3 py-4 text-muted small">
+                    Nenhum resultado.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,30 @@
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">Dados do pedido</h5>
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.data_pedido.id_for_label }}">{{ form.data_pedido.label }}</label>
+                {{ form.data_pedido }}
+                {% if form.data_pedido.errors %}<div class="text-danger small mt-1">{{ form.data_pedido.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+                {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>

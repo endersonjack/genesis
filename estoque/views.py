@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import F, Q
+from django.db.models import Case, F, IntegerField, Q, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -12,6 +12,9 @@ from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import CategoriaFerramentaForm, CategoriaItemForm, UnidadeMedidaForm
 from .models import CategoriaFerramenta, CategoriaItem, Cautela, Item, UnidadeMedida
+
+# Itens no card «Atenção» do dashboard (saldo zerado ou abaixo do mínimo).
+DASHBOARD_ITENS_ATENCAO_MAX = 10
 
 
 def _empresa(request):
@@ -63,9 +66,16 @@ def partial_dashboard_cards(request):
         )
         .select_related('categoria', 'unidade_medida')
         .prefetch_related('imagens')
-        .order_by('descricao')
+        .annotate(
+            _dash_atencao_prio=Case(
+                When(quantidade_estoque__lte=0, then=0),
+                default=1,
+                output_field=IntegerField(),
+            )
+        )
+        .order_by('_dash_atencao_prio', 'descricao')
     )
-    itens_atencao_estoque = list(qs_atencao[:10])
+    itens_atencao_estoque = list(qs_atencao[:DASHBOARD_ITENS_ATENCAO_MAX])
 
     hoje = timezone.localdate()
     tem_cautelas_vencidas = Cautela.objects.filter(

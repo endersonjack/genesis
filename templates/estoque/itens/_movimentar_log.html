@@ -1,10 +1,11 @@
 {% load humanize %}
 <div class="section-card rel-ff-tool-report">
-    <div class="section-card-header">
-        <div>
+    <div class="section-card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div class="min-w-0">
             <h5>Auditoria — Movimentar (itens)</h5>
             <small>Entradas, saídas e movimentos ligados a requisições. Cada saldo é o valor no momento do evento. A busca usa a descrição na auditoria e o item no cadastro. Operações só de cautela estão em «Auditoria — Cautelas».</small>
         </div>
+        {% include 'estoque/_relatorio_export_pdf_link.html' with export_q=rel_export_q.auditoria_movimentar %}
     </div>
     <div class="section-card-body">
         <form method="get"
@@ -101,10 +102,10 @@
                 </tbody>
             </table>
         </div>
-        {% if logs_page_obj.paginator.num_pages > 1 %}
         <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3" aria-label="Páginas do log">
             <div class="small text-muted d-none d-sm-block">
-                Página {{ logs_page_obj.number }} de {{ logs_page_obj.paginator.num_pages }} (até {{ rel_page|default:30 }} por página)
+                Página {{ logs_page_obj.number }} de {{ logs_page_obj.paginator.num_pages }}
+                (até {{ rel_page_auditoria|default:30 }} por página)
             </div>
             <ul class="pagination pagination-sm mb-0 ms-sm-auto">
                 {% if logs_page_obj.has_previous %}
@@ -130,7 +131,6 @@
                 {% endif %}
             </ul>
         </nav>
-        {% endif %}
         {% else %}
         <div class="p-4 text-center text-muted border rounded-3 bg-light">
             {% if log_busca %}
