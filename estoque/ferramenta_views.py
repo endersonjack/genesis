@@ -9,6 +9,11 @@ from auditoria.registry import registrar_auditoria
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
+from .exclusao_estoque import (
+    cautelas_com_ferramenta,
+    descricao_com_sufixo_excluido,
+    ferramenta_precisa_arquivar,
+)
 from .forms import FerramentaForm
 from .item_views import _etiqueta_pdf_para_png_bytes
 from .models import Cautela, Entrega_Cautela, Ferramenta, FerramentaImagem
@@ -388,7 +393,7 @@ def lista_ferramentas(request):
 
     q = (request.GET.get('q') or '').strip()
     qs = (
-        Ferramenta.objects.filter(empresa=empresa)
+        Ferramenta.objects.filter(empresa=empresa, ativo=True)
         .select_related('categoria', 'fornecedor')
         .prefetch_related('imagens')
         .order_by('descricao')
@@ -517,6 +522,13 @@ def modal_excluir_ferramenta(request, pk):
         return redirect_empresa(
             request, 'estoque:ferramenta_excluir', kwargs={'pk': pk}
         )
+
+    if ferramenta_precisa_arquivar(ferramenta):
+        resp = HttpResponse(status=200)
+        resp['HX-Redirect'] = reverse_empresa(
+            request, 'estoque:ferramenta_excluir', kwargs={'pk': pk}
+        )
+        return resp
 
     return render(
         request,
@@ -750,32 +762,80 @@ def ferramenta_excluir(request, pk):
         return redirect('selecionar_empresa')
 
     ferramenta = get_object_or_404(Ferramenta, pk=pk, empresa=empresa)
-    if request.method == 'POST':
-        desc = ferramenta.descricao[:120]
-        fid = ferramenta.pk
-        for img in list(ferramenta.imagens.all()):
-            img.imagem.delete(save=False)
-            img.delete()
-        if ferramenta.qrcode_imagem:
-            ferramenta.qrcode_imagem.delete(save=False)
-        ferramenta.delete()
-        registrar_auditoria(
-            request,
-            acao='delete',
-            resumo=f'Ferramenta «{desc}» excluída.',
-            modulo='estoque',
-            detalhes={'ferramenta_id': fid},
-        )
-        messages.success(request, 'Ferramenta excluída.')
-        if _is_htmx(request):
-            return _hx_redirect_lista(request, 'estoque:lista_ferramentas')
-        return redirect_empresa(request, 'estoque:lista_ferramentas')
+    cautelas_v = list(cautelas_com_ferramenta(ferramenta))
+    tem_vinculos = bool(cautelas_v)
 
+    if request.method == 'POST':
+        if tem_vinculos:
+            if request.POST.get('confirmar_arquivamento') != '1':
+                messages.error(
+                    request,
+                    'Marque a confirmação para arquivar esta ferramenta com vínculos.',
+                )
+            else:
+                with transaction.atomic():
+                    locked = Ferramenta.objects.select_for_update().get(
+                        pk=ferramenta.pk, empresa=empresa
+                    )
+                    desc_antes = locked.descricao[:120]
+                    nova = descricao_com_sufixo_excluido(
+                        locked.descricao,
+                        Ferramenta._meta.get_field('descricao').max_length,
+                    )
+                    locked.descricao = nova
+                    locked.ativo = False
+                    locked.save(update_fields=['descricao', 'ativo'])
+                registrar_auditoria(
+                    request,
+                    acao='update',
+                    resumo=(
+                        'Ferramenta arquivada (excluída lógica): '
+                        f'«{desc_antes}» → «{nova[:120]}».'
+                    ),
+                    modulo='estoque',
+                    detalhes={'ferramenta_id': locked.pk, 'arquivado': True},
+                )
+                messages.success(
+                    request,
+                    'Ferramenta arquivada: o nome passou a incluir «(EXCLUÍDO)» e o '
+                    'cadastro ficou inativo, preservando o histórico em cautelas.',
+                )
+                if _is_htmx(request):
+                    return _hx_redirect_lista(request, 'estoque:lista_ferramentas')
+                return redirect_empresa(request, 'estoque:lista_ferramentas')
+        else:
+            desc = ferramenta.descricao[:120]
+            fid = ferramenta.pk
+            for img in list(ferramenta.imagens.all()):
+                img.imagem.delete(save=False)
+                img.delete()
+            if ferramenta.qrcode_imagem:
+                ferramenta.qrcode_imagem.delete(save=False)
+            ferramenta.delete()
+            registrar_auditoria(
+                request,
+                acao='delete',
+                resumo=f'Ferramenta «{desc}» excluída.',
+                modulo='estoque',
+                detalhes={'ferramenta_id': fid},
+            )
+            messages.success(request, 'Ferramenta excluída.')
+            if _is_htmx(request):
+                return _hx_redirect_lista(request, 'estoque:lista_ferramentas')
+            return redirect_empresa(request, 'estoque:lista_ferramentas')
+
+    nova_desc_prev = descricao_com_sufixo_excluido(
+        ferramenta.descricao,
+        Ferramenta._meta.get_field('descricao').max_length,
+    )
     return render(
         request,
         'estoque/ferramentas/excluir.html',
         {
             'page_title': 'Excluir ferramenta',
             'ferramenta': ferramenta,
+            'tem_vinculos': tem_vinculos,
+            'cautelas_vinculadas': cautelas_v,
+            'nova_descricao_prevista': nova_desc_prev,
         },
     )

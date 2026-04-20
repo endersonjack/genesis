@@ -13,6 +13,12 @@ from auditoria.registry import registrar_auditoria
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
+from .exclusao_estoque import (
+    descricao_com_sufixo_excluido,
+    item_precisa_arquivar,
+    listas_compra_com_item,
+    requisicoes_com_item,
+)
 from .forms import ItemForm
 from .models import (
     CategoriaItem,
@@ -661,7 +667,7 @@ def lista_itens(request):
 
     q = (request.GET.get('q') or '').strip()
     itens = (
-        Item.objects.filter(empresa=empresa)
+        Item.objects.filter(empresa=empresa, ativo=True)
         .select_related('categoria', 'unidade_medida', 'fornecedor')
         .prefetch_related('imagens')
         .order_by('descricao')
@@ -1317,6 +1323,13 @@ def modal_excluir_item(request, pk):
     if not _is_htmx(request):
         return redirect_empresa(request, 'estoque:item_excluir', kwargs={'pk': pk})
 
+    if item_precisa_arquivar(item):
+        resp = HttpResponse(status=200)
+        resp['HX-Redirect'] = reverse_empresa(
+            request, 'estoque:item_excluir', kwargs={'pk': pk}
+        )
+        return resp
+
     return render(
         request,
         'estoque/partials/item_excluir_modal.html',
@@ -1514,32 +1527,81 @@ def item_excluir(request, pk):
         return redirect('selecionar_empresa')
 
     item = get_object_or_404(Item, pk=pk, empresa=empresa)
-    if request.method == 'POST':
-        desc = item.descricao[:120]
-        iid = item.pk
-        for img in list(item.imagens.all()):
-            img.imagem.delete(save=False)
-            img.delete()
-        if item.qrcode_imagem:
-            item.qrcode_imagem.delete(save=False)
-        item.delete()
-        registrar_auditoria(
-            request,
-            acao='delete',
-            resumo=f'Item «{desc}» excluído.',
-            modulo='estoque',
-            detalhes={'item_id': iid},
-        )
-        messages.success(request, 'Item excluído.')
-        if _is_htmx(request):
-            return _hx_redirect_lista(request, 'estoque:lista_itens')
-        return redirect_empresa(request, 'estoque:lista_itens')
+    requisicoes_v = requisicoes_com_item(item)
+    listas_v = listas_compra_com_item(item)
+    tem_vinculos = bool(requisicoes_v or listas_v)
 
+    if request.method == 'POST':
+        if tem_vinculos:
+            if request.POST.get('confirmar_arquivamento') != '1':
+                messages.error(
+                    request,
+                    'Marque a confirmação para arquivar este item com vínculos.',
+                )
+            else:
+                with transaction.atomic():
+                    locked = Item.objects.select_for_update().get(
+                        pk=item.pk, empresa=empresa
+                    )
+                    desc_antes = locked.descricao[:120]
+                    nova = descricao_com_sufixo_excluido(
+                        locked.descricao,
+                        Item._meta.get_field('descricao').max_length,
+                    )
+                    locked.descricao = nova
+                    locked.ativo = False
+                    locked.save(update_fields=['descricao', 'ativo'])
+                registrar_auditoria(
+                    request,
+                    acao='update',
+                    resumo=(
+                        f'Item arquivado (excluído lógico): «{desc_antes}» → «{nova[:120]}».'
+                    ),
+                    modulo='estoque',
+                    detalhes={'item_id': locked.pk, 'arquivado': True},
+                )
+                messages.success(
+                    request,
+                    'Item arquivado: o nome passou a incluir «(EXCLUÍDO)» e o cadastro '
+                    'ficou inativo, preservando requisições e listas vinculadas.',
+                )
+                if _is_htmx(request):
+                    return _hx_redirect_lista(request, 'estoque:lista_itens')
+                return redirect_empresa(request, 'estoque:lista_itens')
+        else:
+            desc = item.descricao[:120]
+            iid = item.pk
+            for img in list(item.imagens.all()):
+                img.imagem.delete(save=False)
+                img.delete()
+            if item.qrcode_imagem:
+                item.qrcode_imagem.delete(save=False)
+            item.delete()
+            registrar_auditoria(
+                request,
+                acao='delete',
+                resumo=f'Item «{desc}» excluído.',
+                modulo='estoque',
+                detalhes={'item_id': iid},
+            )
+            messages.success(request, 'Item excluído.')
+            if _is_htmx(request):
+                return _hx_redirect_lista(request, 'estoque:lista_itens')
+            return redirect_empresa(request, 'estoque:lista_itens')
+
+    nova_desc_prev = descricao_com_sufixo_excluido(
+        item.descricao,
+        Item._meta.get_field('descricao').max_length,
+    )
     return render(
         request,
         'estoque/itens/excluir.html',
         {
             'page_title': 'Excluir item',
             'item': item,
+            'tem_vinculos': tem_vinculos,
+            'requisicoes_vinculadas': requisicoes_v,
+            'listas_compra_vinculadas': listas_v,
+            'nova_descricao_prevista': nova_desc_prev,
         },
     )

@@ -7,20 +7,63 @@
 {% block content %}
 {% include 'estoque/includes/estoque_ui_assets.html' %}
 <div class="row justify-content-center">
-    <div class="col-12 col-md-8 col-lg-6">
+    <div class="col-12 col-md-10 col-lg-8">
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-body p-4">
                 <h2 class="h5 fw-bold mb-2">Excluir ferramenta</h2>
-                <p class="text-muted">Confirma a exclusão desta ferramenta?</p>
+
+                {% if tem_vinculos %}
+                <div class="alert alert-warning border-0 mb-3" role="alert">
+                    <strong>Esta ferramenta não pode ser apagada do sistema</strong> porque já consta em
+                    cautelas (em uso ou no histórico de devoluções). Em vez disso, pode <strong>arquivá-la</strong>:
+                    o nome passará a ser
+                    <span class="text-break fw-semibold">{{ nova_descricao_prevista|truncatechars:280 }}</span>
+                    e o cadastro ficará <strong>inativo</strong>, mantendo o histórico intacto.
+                </div>
+
+                <h3 class="h6 fw-bold mt-3">Cautelas vinculadas</h3>
+                <ul class="small mb-3 list-unstyled border rounded-3 p-3 bg-light" style="max-height:16rem;overflow-y:auto;">
+                    {% for c in cautelas_vinculadas %}
+                    <li class="mb-2">
+                        <a href="{% url 'estoque:cautela_detalhe' empresa_id=request.empresa_ativa.pk pk=c.pk %}">
+                            Cautela #{{ c.pk }}</a>
+                        <span class="text-muted">— início {{ c.data_inicio_cautela|date:"d/m/Y" }}</span>
+                        <span class="badge rounded-pill text-bg-secondary ms-1">{{ c.get_situacao_display }}</span>
+                        <span class="badge rounded-pill text-bg-light text-dark border ms-1">{{ c.get_entrega_display }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <form method="post"
+                      class="d-flex flex-column gap-3 mt-3 js-estoque-form-busy"
+                      data-estoque-busy-label="Arquivando…">
+                    {% csrf_token %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" name="confirmar_arquivamento"
+                               id="id_confirmar_arquivamento_ferr" required>
+                        <label class="form-check-label small" for="id_confirmar_arquivamento_ferr">
+                            Confirmo que desejo arquivar esta ferramenta com o sufixo «(EXCLUÍDO)» e inativar o cadastro.
+                        </label>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="estoque-btn estoque-btn-danger">Arquivar ferramenta</button>
+                        <a href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
+                           class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
+                    </div>
+                </form>
+
+                {% else %}
+                <p class="text-muted">Confirma a exclusão definitiva desta ferramenta?</p>
                 <p class="fw-semibold mb-0">{{ ferramenta.descricao|truncatechars:200 }}</p>
                 <form method="post"
                       class="d-flex flex-wrap gap-2 mt-3 js-estoque-form-busy"
                       data-estoque-busy-label="Excluindo…">
                     {% csrf_token %}
-                    <button type="submit" class="estoque-btn estoque-btn-danger">Excluir</button>
-                    <a href="{% url 'estoque:lista_ferramentas' empresa_id=request.empresa_ativa.pk %}"
+                    <button type="submit" class="estoque-btn estoque-btn-danger">Excluir definitivamente</button>
+                    <a href="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=ferramenta.pk %}"
                        class="estoque-btn estoque-btn-light text-decoration-none">Cancelar</a>
                 </form>
+                {% endif %}
             </div>
         </div>
     </div>
