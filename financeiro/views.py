@@ -268,20 +268,38 @@ def buscar_pagamentos(request):
     valor_raw = str(request.GET.get('valor', '')).strip()
     data_inicio = str(request.GET.get('data_inicio', '')).strip()
     data_fim = str(request.GET.get('data_fim', '')).strip()
+    status_vencido_raw = str(request.GET.get('status_vencido', '')).strip()
     status_aberto_raw = str(request.GET.get('status_aberto', '')).strip()
     status_pago_raw = str(request.GET.get('status_pago', '')).strip()
-    tem_status_expresso = 'status_aberto' in request.GET or 'status_pago' in request.GET
-    status_aberto = (
-        status_aberto_raw in ('1', 'on', 'true')
+    tem_status_expresso = (
+        'status_vencido' in request.GET
+        or 'status_aberto' in request.GET
+        or 'status_pago' in request.GET
+    )
+    status_vencido = (
+        status_vencido_raw in ('1', 'on', 'true')
         if tem_status_expresso
         else True
     )
+    status_aberto = status_aberto_raw in ('1', 'on', 'true')
     status_pago = status_pago_raw in ('1', 'on', 'true')
     resultados = []
     erro_valor = ''
-    filtros_ativos = any([query, fornecedor, valor_raw, data_inicio, data_fim, status_aberto, status_pago])
+    filtros_ativos = any(
+        [
+            query,
+            fornecedor,
+            valor_raw,
+            data_inicio,
+            data_fim,
+            status_vencido,
+            status_aberto,
+            status_pago,
+        ]
+    )
 
     if filtros_ativos:
+        hoje = timezone.localdate()
         valor = None
         if valor_raw:
             try:
@@ -312,8 +330,17 @@ def buscar_pagamentos(request):
             nfs_qs = nfs_qs.filter(
                 Q(numero_nf__icontains=query) | Q(boletos__numero_doc__icontains=query)
             )
-        if status_aberto or status_pago:
+        if status_vencido or status_aberto or status_pago:
             status_filter = Q()
+            if status_vencido:
+                status_filter |= Q(
+                    pagamento__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
+                    boletos__status__in=[
+                        BoletoPagamento.Status.RASCUNHO,
+                        BoletoPagamento.Status.EMITIDO,
+                    ],
+                    boletos__vencimento__lt=hoje,
+                )
             if status_aberto:
                 status_filter |= (
                     Q(pagamento__isnull=True)
@@ -352,6 +379,14 @@ def buscar_pagamentos(request):
             origens = set()
             boletos_all = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
             boletos_relacionados = list(boletos_all)
+            boletos_vencidos = [
+                boleto for boleto in boletos_all
+                if (
+                    boleto.status
+                    in (BoletoPagamento.Status.RASCUNHO, BoletoPagamento.Status.EMITIDO)
+                    and boleto.vencimento < hoje
+                )
+            ]
             status_labels = []
             pg = getattr(nf, 'pagamento', None)
             tem_boleto_aberto = any(
@@ -382,6 +417,8 @@ def buscar_pagamentos(request):
                 ]
                 if boletos_relacionados:
                     origens.add('numero_doc')
+            elif status_vencido and not status_aberto and not status_pago:
+                boletos_relacionados = boletos_vencidos
             if valor_raw and not erro_valor and valor is not None:
                 if nf.total_itens_calc == valor:
                     origens.add('valor_nf')
@@ -396,8 +433,17 @@ def buscar_pagamentos(request):
             resultados.append(
                 {
                     'nf': nf,
+                    'tipo_pagamento_label': pg.get_tipo_display() if pg else 'Sem pagamento',
                     'origens': origens,
                     'boletos_relacionados': boletos_relacionados,
+                    'boletos_vencidos': boletos_vencidos,
+                    'vencimento_mais_antigo': boletos_vencidos[0].vencimento
+                    if boletos_vencidos
+                    else None,
+                    'total_boletos_relacionados': sum(
+                        (boleto.valor for boleto in boletos_relacionados),
+                        Decimal('0'),
+                    ),
                     'total_itens': nf.total_itens_calc,
                     'status_labels': status_labels,
                 }
@@ -407,12 +453,13 @@ def buscar_pagamentos(request):
         request,
         'financeiro/busca_pagamentos.html',
         {
-            'page_title': 'Buscar lançamentos',
+            'page_title': 'Buscar Pagamentos',
             'query': query,
             'fornecedor': fornecedor,
             'valor': valor_raw,
             'data_inicio': data_inicio,
             'data_fim': data_fim,
+            'status_vencido': status_vencido,
             'status_aberto': status_aberto,
             'status_pago': status_pago,
             'erro_valor': erro_valor,

@@ -13,26 +13,83 @@
         padding: 1.25rem;
         margin-bottom: 1.25rem;
     }
-    .fin-search-form {
-        width: 100%;
+    .financeiro-search-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .financeiro-search-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.65rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
     }
     .fin-search-form .form-label {
-        font-size: .82rem;
-        margin-bottom: .35rem;
-    }
-    .fin-search-form .form-control,
-    .fin-search-form .btn {
-        min-height: 2.35rem;
-    }
-    .fin-result-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 1rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        padding: 1rem;
-    }
-    .fin-result-meta {
-        font-size: .85rem;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
         color: #64748b;
+        font-weight: 800;
+        margin-bottom: .25rem;
+    }
+    .fin-search-form .form-control {
+        border-radius: .8rem;
+        min-height: 38px;
+        padding-top: .42rem;
+        padding-bottom: .42rem;
+        font-size: .92rem;
     }
     .fin-status-filters {
         gap: .5rem;
@@ -40,98 +97,150 @@
     .fin-status-check {
         display: inline-flex;
         align-items: center;
-        gap: .4rem;
-        font-size: .84rem;
-        padding: .2rem .55rem;
+        gap: .45rem;
+        font-size: .85rem;
+        padding: .32rem .68rem;
         border: 1px solid #d9e2ec;
         border-radius: 999px;
-        background: #f8fafc;
+        background: #fff;
+        color: #0f172a;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
     }
     .fin-status-check .form-check-input {
         margin: 0;
         float: none;
     }
-    .fin-clear-btn {
-        width: 2.35rem;
-        height: 2.35rem;
-        padding: 0;
+    .financeiro-board-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-board-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td {
+        vertical-align: middle;
+        font-size: .92rem;
+    }
+    .financeiro-action-icon {
+        width: 34px;
+        height: 34px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 999px;
     }
+    .financeiro-clickable-row {
+        cursor: pointer;
+    }
+    .financeiro-clickable-row:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, 0.35);
+        outline-offset: -3px;
+    }
+    @media (max-width: 767.98px) {
+        .financeiro-top-actions,
+        .financeiro-top-btn {
+            width: 100%;
+        }
+    }
 </style>
 
-<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
-    <div>
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
-            <h2 class="fw-bold mb-0">Buscar Lançamentos</h2>
-            <div class="d-flex flex-wrap align-items-center fin-status-filters">
-                <div class="fin-status-check">
-                    <input class="form-check-input" type="checkbox" value="1" id="statusAberto" name="status_aberto" form="buscarLancamentosForm" {% if status_aberto %}checked{% endif %}>
-                    <label class="form-check-label fw-semibold mb-0" for="statusAberto">
-                        Em aberto
-                    </label>
-                </div>
-                <div class="fin-status-check">
-                    <input class="form-check-input" type="checkbox" value="1" id="statusPago" name="status_pago" form="buscarLancamentosForm" {% if status_pago %}checked{% endif %}>
-                    <label class="form-check-label fw-semibold mb-0" for="statusPago">
-                        Pagos
-                    </label>
+<div class="fin-card financeiro-search-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-search-icon" aria-hidden="true">
+            <i class="bi bi-search"></i>
+        </span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+                <h2 class="fw-bold mb-0">Buscar Pagamentos</h2>
+                <div class="d-flex flex-wrap align-items-center fin-status-filters">
+                    <div class="fin-status-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="statusVencido" name="status_vencido" form="buscarLancamentosForm" {% if status_vencido %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold mb-0" for="statusVencido">Vencidos</label>
+                    </div>
+                    <div class="fin-status-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="statusAberto" name="status_aberto" form="buscarLancamentosForm" {% if status_aberto %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold mb-0" for="statusAberto">Em aberto</label>
+                    </div>
+                    <div class="fin-status-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="statusPago" name="status_pago" form="buscarLancamentosForm" {% if status_pago %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold mb-0" for="statusPago">Pagos</label>
+                    </div>
                 </div>
             </div>
+            <p class="text-muted mb-0">Pesquise pagamentos por documento, nota fiscal, valor, período, fornecedor e situação.</p>
         </div>
-        <p class="text-muted mb-0">Pesquisa por documento, nota fiscal, valor, período, fornecedor e situação.</p>
     </div>
-    <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
-        Voltar
-    </a>
+    <div class="financeiro-top-actions d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
 </div>
 
 <div class="fin-card">
     <form method="get" class="fin-search-form" id="buscarLancamentosForm">
         <div class="row g-2 align-items-end">
-            <div class="col-12 col-lg-2">
-                <label class="form-label fw-semibold">Nº doc ou nota fiscal</label>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label">Nº doc ou NF</label>
                 <input type="text"
                        name="q"
                        class="form-control"
                        value="{{ query }}"
                        aria-label="Buscar por número do documento ou nota fiscal">
             </div>
-            <div class="col-12 col-lg-3">
-                <label class="form-label fw-semibold">Fornecedor</label>
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label">Fornecedor</label>
                 <input type="text"
                        name="fornecedor"
                        class="form-control"
                        value="{{ fornecedor }}"
                        placeholder="Nome do fornecedor">
             </div>
-            <div class="col-12 col-md-4 col-lg-2">
-                <label class="form-label fw-semibold">Valor</label>
+            <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label">Valor</label>
                 <input type="text"
                        name="valor"
                        class="form-control"
                        value="{{ valor }}"
+                       data-mask="br-moeda"
                        placeholder="0,00">
                 {% if erro_valor %}<div class="text-danger small mt-1">{{ erro_valor }}</div>{% endif %}
             </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <label class="form-label fw-semibold">Início</label>
+            <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label">Início</label>
                 <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
             </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <label class="form-label fw-semibold">Fim</label>
+            <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label">Fim</label>
                 <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
             </div>
-            <div class="col-12 col-lg-1">
-                <label class="form-label fw-semibold d-block">&nbsp;</label>
-                <div class="d-flex gap-2 justify-content-lg-end">
-                    <button type="submit" class="btn btn-primary flex-shrink-0 px-3" aria-label="Buscar">
+            <div class="col-6 col-md-3 col-xl-1">
+                <div class="d-flex gap-2 justify-content-end">
+                    <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary px-3" style="min-height:38px;" aria-label="Buscar">
                         <i class="bi bi-search"></i>
                     </button>
                     <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
-                       class="btn btn-outline-secondary fin-clear-btn flex-shrink-0"
+                       class="financeiro-top-btn financeiro-top-btn-light px-3"
+                       style="min-height:38px;"
                        aria-label="Limpar filtros"
                        title="Limpar filtros">
                         <i class="bi bi-x-lg"></i>
@@ -142,61 +251,114 @@
     </form>
 </div>
 
-{% if filtros_ativos %}
+<div class="financeiro-board-card mb-0">
+    <div class="financeiro-board-header">
+        <div>
+            <h3 class="h6 fw-bold mb-0">Resultados</h3>
+        </div>
+    </div>
+
     {% if resultados %}
-        <div class="d-grid gap-3">
-            {% for item in resultados %}
-            <a href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=item.nf.pk %}"
-               class="fin-result-card text-decoration-none text-reset">
-                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                    <div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                            <span class="badge text-bg-danger">NF {{ item.nf.numero_nf }}</span>
-                            {% if 'nota_fiscal' in item.origens %}
-                            <span class="badge text-bg-primary">Nota fiscal</span>
-                            {% endif %}
-                            {% if 'numero_doc' in item.origens %}
-                            <span class="badge text-bg-secondary">Nº doc</span>
-                            {% endif %}
-                            {% if 'valor_nf' in item.origens %}
-                            <span class="badge text-bg-success">Valor NF</span>
-                            {% endif %}
-                            {% if 'valor_doc' in item.origens %}
-                            <span class="badge text-bg-success">Valor doc</span>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Tipo</th>
+                    <th>Fornecedor</th>
+                    <th class="text-nowrap">NF</th>
+                    <th>Docs</th>
+                    <th class="text-nowrap">Nº Parcela</th>
+                    <th class="text-end text-nowrap">Valor Parcela</th>
+                    <th class="text-nowrap">Vencimento</th>
+                    <th>Status</th>
+                    <th class="text-end">Valor NF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in resultados %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=item.nf.pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
+                    <td class="small text-muted text-nowrap">{{ item.tipo_pagamento_label }}</td>
+                    <td class="small fw-semibold">{{ item.nf.fornecedor.nome }}</td>
+                    <td class="small text-muted text-nowrap">{{ item.nf.numero_nf }}</td>
+                    <td class="small text-muted" style="max-width: 16rem;">
+                        {% if item.boletos_relacionados %}
+                            <span class="d-inline-block text-truncate w-100"
+                                  title="{% for boleto in item.boletos_relacionados %}{{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                {% for boleto in item.boletos_relacionados %}
+                                    {{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted text-nowrap">
+                        {% if item.boletos_relacionados %}
+                            {% for boleto in item.boletos_relacionados %}
+                                {{ boleto.parcela }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="text-end small fw-semibold text-nowrap">
+                        {% if item.boletos_relacionados %}
+                            {% for boleto in item.boletos_relacionados %}
+                                R$ {{ boleto.valor|moeda_br }}{% if not forloop.last %}<br>{% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="small text-nowrap">
+                        {% if item.boletos_relacionados %}
+                            {% for boleto in item.boletos_relacionados %}
+                                {{ boleto.vencimento|date:"d/m/Y" }}{% if not forloop.last %}<br>{% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="small">
+                        <div class="d-flex flex-wrap gap-1">
+                            {% if item.boletos_vencidos %}
+                            <span class="badge text-bg-danger">Vencido</span>
                             {% endif %}
                             {% for status_label in item.status_labels %}
                             <span class="badge {% if status_label == 'Pago' %}text-bg-success{% elif status_label == 'Em aberto' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ status_label }}</span>
                             {% endfor %}
                         </div>
-                        <div class="fw-bold fs-5">{{ item.nf.fornecedor.nome }}</div>
-                        <div class="fin-result-meta mt-1">
-                            Emissão {{ item.nf.data_emissao|date:"d/m/Y" }} • Caixa {{ item.nf.caixa.nome }}
-                        </div>
-                        {% if item.boletos_relacionados %}
-                        <div class="fin-result-meta mt-2">
-                            Docs encontrados:
-                            {% for boleto in item.boletos_relacionados %}
-                                {{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="text-end">
-                        <div class="small text-muted text-uppercase fw-semibold">Total</div>
-                        <div class="fw-bold fs-5">R$ {{ item.total_itens|moeda_br }}</div>
-                    </div>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="fin-card text-center text-muted">
-            Nenhum lançamento encontrado com os filtros informados.
-        </div>
-    {% endif %}
-{% else %}
-    <div class="fin-card text-center text-muted">
-        Preencha um ou mais filtros para buscar lançamentos.
+                    </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ item.total_itens|moeda_br }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-{% endif %}
+    {% else %}
+    <div class="p-4 text-center text-muted">
+        Nenhum pagamento encontrado com os filtros informados.
+    </div>
+    {% endif %}
+</div>
+<script>
+document.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    window.location.href = row.dataset.rowHref;
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    event.preventDefault();
+    window.location.href = row.dataset.rowHref;
+});
+</script>
 {% endblock %}

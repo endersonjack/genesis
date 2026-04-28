@@ -67,6 +67,28 @@
         font-weight: 800;
     }
     .fin-table td { vertical-align: middle; }
+    .financeiro-nf-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .financeiro-nf-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.65rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+    }
     .nf-actions .dropdown-toggle::after {
         display: none;
     }
@@ -76,6 +98,28 @@
         justify-content: space-between;
         gap: 1rem;
         flex-wrap: wrap;
+    }
+    .financeiro-card-title {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .financeiro-section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
     }
     .fin-card-edit {
         font-size: .82rem;
@@ -97,12 +141,80 @@
         font-size: 1.35rem;
         color: #0d6efd;
     }
+    .financeiro-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .85rem;
+    }
+    .financeiro-info-item,
+    .financeiro-summary-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #f8fafc;
+        padding: .9rem 1rem;
+    }
+    .financeiro-info-item--full {
+        grid-column: 1 / -1;
+    }
+    .financeiro-info-label,
+    .financeiro-summary-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #64748b;
+        font-weight: 800;
+        margin-bottom: .25rem;
+    }
+    .financeiro-info-value,
+    .financeiro-summary-value {
+        color: #0f172a;
+        font-weight: 800;
+    }
+    .financeiro-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .85rem;
+    }
+    .financeiro-summary-item--highlight {
+        background: #ecfdf5;
+        border-color: #bbf7d0;
+        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
+    }
+    .financeiro-summary-item--danger {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        box-shadow: 0 10px 24px rgba(249, 115, 22, 0.10);
+    }
+    .financeiro-payment-total-pill {
+        border-radius: 999px;
+        padding: .6rem 1rem;
+        background: #fff;
+        border: 1px solid #dbe4ee;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        font-weight: 800;
+        color: #0f172a;
+    }
+    @media (max-width: 767.98px) {
+        .financeiro-info-grid,
+        .financeiro-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
-<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
-    <div>
-        <h2 class="fw-bold mb-1">{{ page_title }}</h2>
-        <div class="text-muted small">Status</div>
+<div class="fin-card financeiro-nf-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-nf-icon" aria-hidden="true">
+            <i class="bi bi-receipt"></i>
+        </span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="badge {{ resumo_pagamento.situacao_badge_class }}">{{ resumo_pagamento.situacao_label }}</span>
+                <span class="text-muted small">NF {{ nf.numero_nf }} • {{ nf.fornecedor.nome }}</span>
+            </div>
+        </div>
     </div>
     <div class="nf-actions d-flex flex-wrap gap-2">
         <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
@@ -171,53 +283,77 @@
     <div class="col-12 col-xl-6">
         <div class="fin-card">
             <div class="fin-card-header mb-2">
-                <div class="fw-bold">Descrição</div>
+                <div class="financeiro-card-title">
+                    <span class="financeiro-section-icon" aria-hidden="true">
+                        <i class="bi bi-card-text"></i>
+                    </span>
+                    <div>
+                        <div>Descrição</div>
+                        <div class="small text-muted fw-semibold">Dados principais da nota</div>
+                    </div>
+                </div>
                 <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=descricao" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold fin-card-edit" title="Editar descrição" aria-label="Editar descrição">
                     <i class="bi bi-pencil-square"></i>
                 </a>
             </div>
-            <div class="small text-muted mb-1">Fornecedor</div>
-            <div class="fw-semibold">{{ nf.fornecedor.nome }}</div>
-            <div class="row g-3 mt-1">
-                <div class="col-12 col-sm-6">
-                    <div class="small text-muted mb-1">Nº NF</div>
-                    <div class="fw-semibold">{{ nf.numero_nf }}</div>
+            <div class="financeiro-info-grid mt-3">
+                <div class="financeiro-info-item financeiro-info-item--full">
+                    <div class="financeiro-info-label">Fornecedor</div>
+                    <div class="financeiro-info-value">{{ nf.fornecedor.nome }}</div>
                 </div>
-                <div class="col-12 col-sm-6">
-                    <div class="small text-muted mb-1">Data de Emissão</div>
-                    <div class="fw-semibold">{{ nf.data_emissao|date:"d/m/Y" }}</div>
+                <div class="financeiro-info-item">
+                    <div class="financeiro-info-label">Nº NF</div>
+                    <div class="financeiro-info-value">{{ nf.numero_nf }}</div>
+                </div>
+                <div class="financeiro-info-item">
+                    <div class="financeiro-info-label">Data de Emissão</div>
+                    <div class="financeiro-info-value">{{ nf.data_emissao|date:"d/m/Y" }}</div>
+                </div>
+                <div class="financeiro-info-item financeiro-info-item--full">
+                    <div class="financeiro-info-label">Caixa</div>
+                    <div class="financeiro-info-value">{{ nf.caixa.nome }}</div>
+                </div>
+                <div class="financeiro-info-item financeiro-info-item--full">
+                    <div class="financeiro-info-label">Descrição</div>
+                    <div class="financeiro-info-value">{{ nf.descricao|default:"—" }}</div>
                 </div>
             </div>
-            <div class="small text-muted mt-3 mb-1">Caixa</div>
-            <div class="fw-semibold">{{ nf.caixa.nome }}</div>
-            <div class="small text-muted mt-3 mb-1">Descrição</div>
-            <div class="fw-semibold">{{ nf.descricao|default:"—" }}</div>
         </div>
     </div>
     <div class="col-12 col-xl-6">
         <div class="fin-card">
             <div class="fin-card-header mb-2">
-                <div class="fw-bold">Resumo</div>
+                <div class="financeiro-card-title">
+                    <span class="financeiro-section-icon" aria-hidden="true">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </span>
+                    <div>
+                        <div>Resumo financeiro</div>
+                        <div class="small text-muted fw-semibold">Valores e situação da nota</div>
+                    </div>
+                </div>
             </div>
-            <div class="d-flex justify-content-between">
-                <span class="text-muted">Valor total da Nota</span>
-                <strong>R$ {{ total_itens|moeda_br }}</strong>
-            </div>
-            <div class="d-flex justify-content-between mt-2">
-                <span class="text-muted">Pagamento</span>
-                <strong>{{ resumo_pagamento.pagamento_label }}</strong>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <span class="text-muted">Situação</span>
-                <span class="badge {{ resumo_pagamento.situacao_badge_class }}">{{ resumo_pagamento.situacao_label }}</span>
-            </div>
-            <div class="d-flex justify-content-between mt-2">
-                <span class="text-muted">Valor pago</span>
-                <strong class="text-success">R$ {{ resumo_pagamento.valor_pago|moeda_br }}</strong>
-            </div>
-            <div class="d-flex justify-content-between mt-2">
-                <span class="text-muted">Valor em aberto</span>
-                <strong class="{% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</strong>
+            <div class="financeiro-summary-grid mt-3">
+                <div class="financeiro-summary-item">
+                    <div class="financeiro-summary-label">Valor total da Nota</div>
+                    <div class="financeiro-summary-value">R$ {{ total_itens|moeda_br }}</div>
+                </div>
+                <div class="financeiro-summary-item">
+                    <div class="financeiro-summary-label">Pagamento</div>
+                    <div class="financeiro-summary-value">{{ resumo_pagamento.pagamento_label }}</div>
+                </div>
+                <div class="financeiro-summary-item">
+                    <div class="financeiro-summary-label">Situação</div>
+                    <span class="badge {{ resumo_pagamento.situacao_badge_class }}">{{ resumo_pagamento.situacao_label }}</span>
+                </div>
+                <div class="financeiro-summary-item financeiro-summary-item--highlight">
+                    <div class="financeiro-summary-label">Valor pago</div>
+                    <div class="financeiro-summary-value text-success">R$ {{ resumo_pagamento.valor_pago|moeda_br }}</div>
+                </div>
+                <div class="financeiro-summary-item {% if resumo_pagamento.valor_em_aberto %}financeiro-summary-item--danger{% endif %}" style="grid-column: 1 / -1;">
+                    <div class="financeiro-summary-label">Valor em aberto</div>
+                    <div class="financeiro-summary-value {% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</div>
+                </div>
             </div>
         </div>
     </div>
@@ -225,7 +361,15 @@
 
 <div class="fin-card p-0 overflow-hidden">
     <div class="fin-card-header p-3 border-bottom bg-white">
-        <div class="fw-bold">Itens</div>
+        <div class="financeiro-card-title">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-list-check"></i>
+            </span>
+            <div>
+                <div>Itens</div>
+                <div class="small text-muted fw-semibold">Composição da nota fiscal</div>
+            </div>
+        </div>
         <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=itens" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold fin-card-edit" title="Editar itens" aria-label="Editar itens">
             <i class="bi bi-pencil-square"></i>
         </a>
@@ -263,9 +407,14 @@
 {% if pagamento %}
 <div class="fin-card fin-payment-card p-0 overflow-hidden">
     <div class="fin-card-header p-3 border-bottom bg-white bg-opacity-75">
-        <div>
-            <div class="fw-bold">Pagamento</div>
-            <div class="small text-muted">Condição e valor a pagar da nota fiscal</div>
+        <div class="financeiro-card-title">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-credit-card"></i>
+            </span>
+            <div>
+                <div>Pagamento</div>
+                <div class="small text-muted fw-semibold">Condição, boletos e liquidação da nota</div>
+            </div>
         </div>
         <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento" class="btn btn-sm btn-primary rounded-pill fw-semibold fin-card-edit" title="Editar pagamento" aria-label="Editar pagamento">
             <i class="bi bi-pencil-square"></i>
@@ -285,7 +434,7 @@
                     <div class="fw-bold">Boletos</div>
                     <div class="small text-muted">Parcelas vinculadas a este pagamento</div>
                 </div>
-                <div class="fw-bold text-primary">R$ {{ total_boletos|moeda_br }}</div>
+                <div class="financeiro-payment-total-pill">Total boletos: R$ {{ total_boletos|moeda_br }}</div>
             </div>
             <div class="table-responsive rounded-3 overflow-hidden border bg-white">
                 <table class="table table-sm table-hover fin-table mb-0 align-middle">
