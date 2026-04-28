@@ -111,6 +111,32 @@
     .financeiro-board-body {
         background: #f8fafc;
     }
+    .financeiro-totals {
+        display: flex;
+        justify-content: flex-end;
+        gap: .75rem;
+        flex-wrap: wrap;
+        padding: 1rem 1.25rem;
+        border-top: 1px solid #e5edf5;
+        background: #fff;
+    }
+    .financeiro-total-card {
+        min-width: 12rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: .8rem 1rem;
+        background: #f8fafc;
+    }
+    .financeiro-total-card strong {
+        display: block;
+        font-size: 1.05rem;
+        line-height: 1.2;
+    }
+    .financeiro-total-card--liquido {
+        background: #ecfdf5;
+        border-color: #bbf7d0;
+        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
+    }
     .fin-table th {
         font-size: .72rem;
         text-transform: uppercase;
@@ -277,6 +303,20 @@
             </tbody>
         </table>
     </div>
+    <div class="financeiro-totals">
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Valor Bruto</div>
+            <strong>R$ {{ totais_abertos.valor|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Impostos</div>
+            <strong class="text-danger">R$ {{ totais_abertos.impostos|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card financeiro-total-card--liquido">
+            <div class="small text-success fw-semibold">Valor Líquido</div>
+            <strong class="text-success">R$ {{ totais_abertos.valor_liquido|moeda_br }}</strong>
+        </div>
+    </div>
     {% else %}
     <div class="p-4 text-center text-muted">Nenhum recebimento em aberto.</div>
     {% endif %}
@@ -352,6 +392,20 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    <div class="financeiro-totals">
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Valor Bruto</div>
+            <strong>R$ {{ totais_pagos.valor|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Impostos</div>
+            <strong class="text-danger">R$ {{ totais_pagos.impostos|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card financeiro-total-card--liquido">
+            <div class="small text-success fw-semibold">Valor Líquido</div>
+            <strong class="text-success">R$ {{ totais_pagos.valor_liquido|moeda_br }}</strong>
+        </div>
     </div>
     {% else %}
     <div class="p-4 text-center text-muted">Nenhum recebimento liquidado ainda.</div>

@@ -85,6 +85,14 @@ def _recebimento_para_linha(recebimento, tipo: str) -> dict:
     }
 
 
+def _totais_recebimentos(recebimentos: list[dict]) -> dict:
+    return {
+        'valor': sum((r['valor'] for r in recebimentos), Decimal('0')),
+        'impostos': sum((r['impostos'] for r in recebimentos), Decimal('0')),
+        'valor_liquido': sum((r['valor_liquido'] for r in recebimentos), Decimal('0')),
+    }
+
+
 def _criar_movimento_recebimento(recebimento, categoria_origem, data_liquidacao=None):
     data_liquidacao = data_liquidacao or timezone.localdate()
     mov = MovimentoCaixa(
@@ -729,6 +737,8 @@ def movimentar_caixa(request):
             'page_title': 'Recebimentos',
             'recebimentos_abertos': recebimentos_abertos,
             'recebimentos_pagos': recebimentos_pagos,
+            'totais_abertos': _totais_recebimentos(recebimentos_abertos),
+            'totais_pagos': _totais_recebimentos(recebimentos_pagos),
         },
     )
 
