@@ -184,6 +184,8 @@ class RecebimentoAvulsoForm(forms.Form):
         return parse_valor_moeda_obrigatorio(raw)
 
     def clean_valor_liquido(self):
+        if self.fields['valor_liquido'].disabled:
+            return Decimal('0')
         return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor_liquido'))
 
     def clean(self):
