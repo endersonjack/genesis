@@ -8,6 +8,7 @@ app_name = 'financeiro'
 
 urlpatterns = [
     path('', empresa_scoped(views.dashboard), name='dashboard'),
+    path('relatorios/', empresa_scoped(views.relatorios), name='relatorios'),
     path('buscar/', empresa_scoped(views.buscar_pagamentos), name='buscar_pagamentos'),
     path(
         'partial/dashboard-cards/',

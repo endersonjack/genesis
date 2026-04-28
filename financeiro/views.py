@@ -258,6 +258,111 @@ def dashboard(request):
 
 
 @login_required
+def relatorios(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    hoje = timezone.localdate()
+    dec = DecimalField(max_digits=16, decimal_places=2)
+    caixas = list(_caixas_com_saldo(empresa, somente_ativos=True))
+    saldo_consolidado = sum((caixa.saldo for caixa in caixas), Decimal('0'))
+
+    recebimentos_abertos_av = RecebimentoAvulso.objects.filter(
+        empresa=empresa,
+        status=RecebimentoAvulso.Status.ABERTO,
+    ).aggregate(
+        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
+        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
+    )
+    recebimentos_abertos_med = RecebimentoMedicao.objects.filter(
+        empresa=empresa,
+        status=RecebimentoMedicao.Status.ABERTO,
+    ).aggregate(
+        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
+        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
+    )
+    recebimentos_pagos_av = RecebimentoAvulso.objects.filter(
+        empresa=empresa,
+        status=RecebimentoAvulso.Status.PAGO,
+    ).aggregate(
+        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
+        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
+    )
+    recebimentos_pagos_med = RecebimentoMedicao.objects.filter(
+        empresa=empresa,
+        status=RecebimentoMedicao.Status.PAGO,
+    ).aggregate(
+        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
+        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
+    )
+
+    boletos_abertos_status = (
+        BoletoPagamento.Status.RASCUNHO,
+        BoletoPagamento.Status.EMITIDO,
+    )
+    boletos_vencidos = BoletoPagamento.objects.filter(
+        pagamento_nf__empresa=empresa,
+        vencimento__lt=hoje,
+        status__in=boletos_abertos_status,
+    ).aggregate(
+        total=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+    )
+    boletos_a_vencer = BoletoPagamento.objects.filter(
+        pagamento_nf__empresa=empresa,
+        vencimento__gte=hoje,
+        status__in=boletos_abertos_status,
+    ).aggregate(
+        total=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
+    )
+    notas_sem_pagamento = list(
+        PagamentoNotaFiscal.objects.filter(
+            empresa=empresa,
+            pagamento__isnull=True,
+        )
+        .select_related('fornecedor')
+        .prefetch_related('itens')
+    )
+    total_notas_sem_pagamento = sum(
+        (nf.total_itens() for nf in notas_sem_pagamento),
+        Decimal('0'),
+    )
+
+    def somar_agregados(a, b):
+        return {
+            'valor': a['valor'] + b['valor'],
+            'impostos': a['impostos'] + b['impostos'],
+            'liquido': a['liquido'] + b['liquido'],
+        }
+
+    return render(
+        request,
+        'financeiro/relatorios.html',
+        {
+            'page_title': 'Relatórios Financeiros',
+            'saldo_consolidado': saldo_consolidado,
+            'total_caixas_ativos': len(caixas),
+            'recebimentos_abertos': somar_agregados(
+                recebimentos_abertos_av,
+                recebimentos_abertos_med,
+            ),
+            'recebimentos_pagos': somar_agregados(
+                recebimentos_pagos_av,
+                recebimentos_pagos_med,
+            ),
+            'boletos_vencidos_total': boletos_vencidos['total'],
+            'boletos_a_vencer_total': boletos_a_vencer['total'],
+            'notas_sem_pagamento_total': total_notas_sem_pagamento,
+            'notas_sem_pagamento_qtd': len(notas_sem_pagamento),
+        },
+    )
+
+
+@login_required
 def buscar_pagamentos(request):
     empresa = _empresa(request)
     if not empresa:
