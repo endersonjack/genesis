@@ -63,7 +63,7 @@
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                             <div>
                                 <div class="fw-bold">Em aberto/Sem pagamento</div>
-                                <div class="small text-muted">Boletos vencidos + notas fiscais sem pagamento.</div>
+                                <div class="small text-muted">Boletos vencidos + notas sem pagamento/parciais.</div>
                             </div>
                             <div class="text-end">
                                 <div class="small text-muted text-uppercase fw-semibold">Total</div>
@@ -112,7 +112,22 @@
                                         <td class="text-end pe-4 fw-semibold small">-</td>
                                     </tr>
                                     {% endfor %}
-                                    {% if not boletos_vencidos and not notas_sem_pagamento %}
+                                    {% for nf in notas_pagamento_parcial %}
+                                    <tr class="financeiro-clickable-row"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+                                        tabindex="0"
+                                        role="link">
+                                        <td class="ps-4 small">
+                                            <span class="badge text-bg-primary">Pago Parcial</span>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 22rem;">
+                                            {{ nf.fornecedor.nome }} - NF {{ nf.numero_nf }}
+                                            <div class="text-muted small">{{ nf.pagamento_label_dashboard }} - Emiss&atilde;o {{ nf.data_emissao|date:"d/m/Y" }}</div>
+                                        </td>
+                                        <td class="text-end pe-4 fw-semibold small">R$ {{ nf.valor_em_aberto_dashboard|moeda_br }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not boletos_vencidos and not notas_sem_pagamento and not notas_pagamento_parcial %}
                                     <tr>
                                         <td colspan="3" class="py-4 text-center text-muted small">Nenhum registro em aberto para hoje.</td>
                                     </tr>

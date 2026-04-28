@@ -605,10 +605,10 @@ class PagamentoNotaFiscalPagamento(TimeStampedModel):
         CREDITO = 'credito', 'Crédito'
         BOLETOS = 'boletos', 'Boletos'
 
-    pagamento_nf = models.OneToOneField(
+    pagamento_nf = models.ForeignKey(
         PagamentoNotaFiscal,
         on_delete=models.CASCADE,
-        related_name='pagamento',
+        related_name='pagamentos',
     )
     tipo = models.CharField(max_length=10, choices=TipoPagamento.choices, db_index=True)
     data = models.DateField(default=timezone.localdate, db_index=True)

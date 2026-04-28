@@ -33,7 +33,8 @@ from .forms import (
     PagamentoNotaFiscalItemEditFormSet,
     PagamentoNotaFiscalForm,
     PagamentoNotaFiscalItemFormSet,
-    PagamentoNotaFiscalPagamentoForm,
+    PagamentoNotaFiscalPagamentoEditFormSet,
+    PagamentoNotaFiscalPagamentoFormSet,
     RecebimentoAvulsoEditForm,
     RecebimentoAvulsoForm,
     RecebimentoLiquidacaoForm,
@@ -144,59 +145,67 @@ def _aplicar_situacao_boleto(boleto: BoletoPagamento, hoje=None) -> BoletoPagame
     return boleto
 
 
-def _resumo_pagamento_nf(pagamento, boletos, total_itens: Decimal, hoje=None) -> dict:
+def _resumo_pagamento_nf(pagamentos, boletos, total_itens: Decimal, hoje=None) -> dict:
     hoje = hoje or timezone.localdate()
-    total_pago = Decimal('0')
-    valor_em_aberto = total_itens
-    pagamento_label = 'Sem pagamento'
-    situacao_label = 'Sem pagamento'
-    situacao_badge_class = 'text-bg-secondary'
+    pagamentos = list(pagamentos or [])
+    boletos_validos = [
+        boleto for boleto in boletos
+        if boleto.status != BoletoPagamento.Status.CANCELADO
+    ]
+    pagamentos_diretos = [
+        pagamento for pagamento in pagamentos
+        if pagamento.tipo
+        in (
+            PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA,
+            PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO,
+        )
+    ]
+    tem_config_boletos = any(
+        pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS
+        for pagamento in pagamentos
+    ) or bool(boletos_validos)
+    total_pagamentos_diretos = sum(
+        (pagamento.total_a_pagar() for pagamento in pagamentos_diretos),
+        Decimal('0'),
+    )
+    total_boletos_pago = sum(
+        (boleto.valor_pago or Decimal('0') for boleto in boletos_validos),
+        Decimal('0'),
+    )
+    total_pago = total_pagamentos_diretos + total_boletos_pago
+    valor_em_aberto = max(total_itens - total_pago, Decimal('0'))
 
-    if not pagamento:
-        return {
-            'pagamento_label': pagamento_label,
-            'situacao_label': situacao_label,
-            'situacao_badge_class': situacao_badge_class,
-            'valor_pago': total_pago,
-            'valor_em_aberto': valor_em_aberto,
-        }
+    labels = []
+    if pagamentos_diretos:
+        tipos = []
+        if any(p.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA for p in pagamentos_diretos):
+            tipos.append('À vista')
+        if any(p.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO for p in pagamentos_diretos):
+            tipos.append('Crédito')
+        labels.append(' + '.join(tipos))
+    if tem_config_boletos:
+        parcelas = len(boletos_validos)
+        labels.append(f'Boletos ({parcelas} parcela{"s" if parcelas != 1 else ""})')
+    pagamento_label = ' + '.join(labels) if labels else 'Sem pagamento'
 
-    if pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS:
-        total_boletos = sum((boleto.valor for boleto in boletos), Decimal('0'))
-        total_pago = sum((boleto.valor_pago or Decimal('0') for boleto in boletos), Decimal('0'))
-        valor_em_aberto = max(total_boletos - total_pago, Decimal('0'))
-        parcelas = len(boletos)
-        pagamento_label = f'Boletos ({parcelas} parcela{"s" if parcelas != 1 else ""})'
-        boletos_validos = [
-            boleto for boleto in boletos
-            if boleto.status != BoletoPagamento.Status.CANCELADO
-        ]
-        boletos_pagos = [
-            boleto for boleto in boletos_validos
-            if boleto.status == BoletoPagamento.Status.PAGO
-        ]
-        boletos_abertos = [
-            boleto for boleto in boletos_validos
-            if boleto.status != BoletoPagamento.Status.PAGO
-        ]
-        if boletos_validos and len(boletos_pagos) == len(boletos_validos):
-            situacao_label = 'Pago'
-            situacao_badge_class = 'text-bg-success'
-        elif boletos_pagos:
-            situacao_label = 'Parcial'
-            situacao_badge_class = 'text-bg-primary'
-        elif any(boleto.vencimento < hoje for boleto in boletos_abertos):
-            situacao_label = 'Vencido'
-            situacao_badge_class = 'text-bg-danger'
-        else:
-            situacao_label = 'Em aberto'
-            situacao_badge_class = 'text-bg-warning'
-    else:
-        pagamento_label = pagamento.get_tipo_display()
-        total_pago = pagamento.total_a_pagar()
-        valor_em_aberto = Decimal('0')
+    boletos_abertos = [
+        boleto for boleto in boletos_validos
+        if boleto.status != BoletoPagamento.Status.PAGO
+    ]
+    tem_boleto_vencido = any(boleto.vencimento < hoje for boleto in boletos_abertos)
+
+    if tem_boleto_vencido:
+        situacao_label = 'Vencido'
+        situacao_badge_class = 'text-bg-danger'
+    elif total_pago >= total_itens and total_itens > 0:
         situacao_label = 'Pago'
         situacao_badge_class = 'text-bg-success'
+    elif total_pago > 0:
+        situacao_label = 'Pago Parcial'
+        situacao_badge_class = 'text-bg-primary'
+    else:
+        situacao_label = 'Não pago'
+        situacao_badge_class = 'text-bg-secondary'
 
     return {
         'pagamento_label': pagamento_label,
@@ -204,7 +213,86 @@ def _resumo_pagamento_nf(pagamento, boletos, total_itens: Decimal, hoje=None) ->
         'situacao_badge_class': situacao_badge_class,
         'valor_pago': total_pago,
         'valor_em_aberto': valor_em_aberto,
+        'total_pagamentos_diretos': total_pagamentos_diretos,
+        'total_boletos_pago': total_boletos_pago,
     }
+
+
+def _initial_pagamentos_nf(nf):
+    return [
+        {
+            'tipo': pagamento.tipo,
+            'data': pagamento.data.isoformat() if pagamento.data else '',
+            'valor': format_decimal_br_moeda(pagamento.valor),
+            'acrescimos': format_decimal_br_moeda(pagamento.acrescimos),
+            'descontos': format_decimal_br_moeda(pagamento.descontos),
+            'observacao': pagamento.observacao,
+        }
+        for pagamento in nf.pagamentos.all().order_by('data', 'pk')
+    ]
+
+
+def _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, total_itens: Decimal) -> None:
+    pagamentos = []
+    tem_pagamento_boletos = False
+
+    for form in pagamentos_fs:
+        if not getattr(form, 'cleaned_data', None):
+            continue
+        if form.cleaned_data.get('DELETE'):
+            continue
+        tipo = form.cleaned_data.get('tipo')
+        valor = form.cleaned_data.get('valor') or Decimal('0')
+        observacao = (form.cleaned_data.get('observacao') or '').strip()
+        acrescimos = form.cleaned_data.get('acrescimos') or Decimal('0')
+        descontos = form.cleaned_data.get('descontos') or Decimal('0')
+        data = form.cleaned_data.get('data') or nf.data_emissao
+        if not tipo and valor == 0 and not observacao and acrescimos == 0 and descontos == 0:
+            continue
+        if not tipo:
+            raise ValidationError('Informe o tipo de cada pagamento preenchido.')
+
+        pagamento = form.save(commit=False)
+        pagamento.pagamento_nf = nf
+        pagamento.data = data
+        if pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS:
+            tem_pagamento_boletos = True
+            if not pagamento.valor or pagamento.valor == 0:
+                pagamento.valor = total_itens
+        pagamento.full_clean()
+        pagamentos.append(pagamento)
+
+    PagamentoNotaFiscalPagamento.objects.filter(pagamento_nf=nf).delete()
+    nf.boletos.all().delete()
+
+    for pagamento in pagamentos:
+        pagamento.pk = None
+        pagamento.save()
+
+    if not tem_pagamento_boletos:
+        return
+
+    boletos = []
+    for boleto_form in boletos_fs:
+        if not getattr(boleto_form, 'cleaned_data', None):
+            continue
+        if boleto_form.cleaned_data.get('DELETE'):
+            continue
+        boletos.append(
+            BoletoPagamento(
+                pagamento_nf=nf,
+                numero_doc=boleto_form.cleaned_data['numero_doc'],
+                parcela=boleto_form.cleaned_data['parcela'],
+                vencimento=boleto_form.cleaned_data['vencimento'],
+                valor=boleto_form.cleaned_data['valor'],
+                status=BoletoPagamento.Status.RASCUNHO,
+            )
+        )
+    if not boletos:
+        raise ValidationError('Pagamento por boletos exige gerar e salvar ao menos 1 boleto.')
+    for boleto in boletos:
+        boleto.full_clean()
+    BoletoPagamento.objects.bulk_create(boletos)
 
 
 def _annotate_saldo(qs):
@@ -322,7 +410,7 @@ def relatorios(request):
     notas_sem_pagamento = list(
         PagamentoNotaFiscal.objects.filter(
             empresa=empresa,
-            pagamento__isnull=True,
+            pagamentos__isnull=True,
         )
         .select_related('fornecedor')
         .prefetch_related('itens')
@@ -414,8 +502,8 @@ def buscar_pagamentos(request):
 
         nfs_qs = (
             PagamentoNotaFiscal.objects.filter(empresa=empresa)
-            .select_related('fornecedor', 'caixa', 'pagamento')
-            .prefetch_related('boletos')
+            .select_related('fornecedor', 'caixa')
+            .prefetch_related('boletos', 'pagamentos')
             .annotate(
                 total_itens_calc=Coalesce(
                     Sum('itens__valor_total'),
@@ -435,42 +523,6 @@ def buscar_pagamentos(request):
             nfs_qs = nfs_qs.filter(
                 Q(numero_nf__icontains=query) | Q(boletos__numero_doc__icontains=query)
             )
-        if status_vencido or status_aberto or status_pago:
-            status_filter = Q()
-            if status_vencido:
-                status_filter |= Q(
-                    pagamento__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
-                    boletos__status__in=[
-                        BoletoPagamento.Status.RASCUNHO,
-                        BoletoPagamento.Status.EMITIDO,
-                    ],
-                    boletos__vencimento__lt=hoje,
-                )
-            if status_aberto:
-                status_filter |= (
-                    Q(pagamento__isnull=True)
-                    | Q(
-                        pagamento__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
-                        boletos__status__in=[
-                            BoletoPagamento.Status.RASCUNHO,
-                            BoletoPagamento.Status.EMITIDO,
-                        ],
-                    )
-                )
-            if status_pago:
-                status_filter |= (
-                    Q(
-                        pagamento__tipo__in=[
-                            PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA,
-                            PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO,
-                        ]
-                    )
-                    | Q(
-                        pagamento__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
-                        boletos__status=BoletoPagamento.Status.PAGO,
-                    )
-                )
-            nfs_qs = nfs_qs.filter(status_filter)
         if valor_raw and not erro_valor:
             if valor is None:
                 resultados = []
@@ -482,6 +534,7 @@ def buscar_pagamentos(request):
 
         for nf in nfs_qs.distinct():
             origens = set()
+            pagamentos = list(nf.pagamentos.all().order_by('data', 'pk'))
             boletos_all = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
             boletos_relacionados = list(boletos_all)
             boletos_vencidos = [
@@ -492,27 +545,22 @@ def buscar_pagamentos(request):
                     and boleto.vencimento < hoje
                 )
             ]
-            status_labels = []
-            pg = getattr(nf, 'pagamento', None)
-            tem_boleto_aberto = any(
-                boleto.status in (BoletoPagamento.Status.RASCUNHO, BoletoPagamento.Status.EMITIDO)
-                for boleto in boletos_all
+            resumo = _resumo_pagamento_nf(
+                pagamentos,
+                boletos_all,
+                nf.total_itens_calc,
+                hoje,
             )
-            tem_boleto_pago = any(
-                boleto.status == BoletoPagamento.Status.PAGO for boleto in boletos_all
-            )
-            if pg is None:
-                status_labels.append('Sem pagamento')
-            elif pg.tipo in (
-                PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA,
-                PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO,
-            ):
-                status_labels.append('Pago')
-            else:
-                if tem_boleto_aberto:
-                    status_labels.append('Em aberto')
-                if tem_boleto_pago:
-                    status_labels.append('Pago')
+            status_labels = [resumo['situacao_label']]
+            if status_vencido or status_aberto or status_pago:
+                situacao = resumo['situacao_label']
+                corresponde_status = (
+                    (status_vencido and situacao == 'Vencido')
+                    or (status_aberto and situacao in ('Não pago', 'Pago Parcial'))
+                    or (status_pago and situacao == 'Pago')
+                )
+                if not corresponde_status:
+                    continue
             if query:
                 if query.lower() in (nf.numero_nf or '').lower():
                     origens.add('nota_fiscal')
@@ -538,7 +586,7 @@ def buscar_pagamentos(request):
             resultados.append(
                 {
                     'nf': nf,
-                    'tipo_pagamento_label': pg.get_tipo_display() if pg else 'Sem pagamento',
+                    'tipo_pagamento_label': resumo['pagamento_label'],
                     'origens': origens,
                     'boletos_relacionados': boletos_relacionados,
                     'boletos_vencidos': boletos_vencidos,
@@ -609,15 +657,57 @@ def partial_dashboard_cards(request):
         PagamentoNotaFiscal.objects.filter(
             empresa=empresa,
             data_emissao__lte=hoje,
-            pagamento__isnull=True,
+            pagamentos__isnull=True,
         )
         .select_related('fornecedor', 'caixa')
         .order_by('-data_emissao', '-pk')[:50]
     )
+    notas_com_pagamento = (
+        PagamentoNotaFiscal.objects.filter(
+            empresa=empresa,
+            pagamentos__isnull=False,
+        )
+        .select_related('fornecedor', 'caixa')
+        .prefetch_related('pagamentos', 'boletos')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            )
+        )
+        .order_by('-data_emissao', '-pk')
+        .distinct()
+    )
+    notas_pagamento_parcial = []
+    for nf in notas_com_pagamento:
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pagamentos_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        resumo_nf = _resumo_pagamento_nf(
+            pagamentos_nf,
+            boletos_nf,
+            nf.total_itens_calc,
+            hoje,
+        )
+        if resumo_nf['situacao_label'] != 'Pago Parcial':
+            continue
+        nf.valor_em_aberto_dashboard = resumo_nf['valor_em_aberto']
+        nf.pagamento_label_dashboard = resumo_nf['pagamento_label']
+        notas_pagamento_parcial.append(nf)
+        if len(notas_pagamento_parcial) >= 50:
+            break
     total_boletos_venc_hoje = sum((b.valor for b in boletos_venc_hoje), Decimal('0'))
     total_boletos_vencidos = sum((b.valor for b in boletos_vencidos), Decimal('0'))
     total_notas_sem_pagamento = sum((nf.total_itens() for nf in notas_sem_pagamento), Decimal('0'))
-    total_em_aberto_sem_pagamento = total_boletos_vencidos + total_notas_sem_pagamento
+    total_notas_pagamento_parcial = sum(
+        (nf.valor_em_aberto_dashboard for nf in notas_pagamento_parcial),
+        Decimal('0'),
+    )
+    total_em_aberto_sem_pagamento = (
+        total_boletos_vencidos
+        + total_notas_sem_pagamento
+        + total_notas_pagamento_parcial
+    )
     ultimos_lancamentos = list(
         MovimentoCaixa.objects.filter(empresa=empresa)
         .select_related('caixa')
@@ -627,7 +717,8 @@ def partial_dashboard_cards(request):
     # Feed unificado (últimas movimentações): entradas/saídas + NFs (com/sem pagamento)
     nf_qs = (
         PagamentoNotaFiscal.objects.filter(empresa=empresa)
-        .select_related('fornecedor', 'caixa', 'pagamento')
+        .select_related('fornecedor', 'caixa')
+        .prefetch_related('pagamentos')
         .annotate(
             total_itens=Coalesce(
                 Sum('itens__valor_total'),
@@ -659,14 +750,18 @@ def partial_dashboard_cards(request):
             }
         )
     for nf in nf_qs:
-        pg = getattr(nf, 'pagamento', None)
-        if pg and pg.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS:
+        pagamentos_nf = list(nf.pagamentos.all())
+        tipos_pagamento = {pg.tipo for pg in pagamentos_nf}
+        if len(tipos_pagamento) > 1:
+            badge_text = 'Misto'
+            badge_class = 'text-bg-danger'
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS in tipos_pagamento:
             badge_text = 'Boleto'
             badge_class = 'text-bg-danger'
-        elif pg and pg.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA:
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA in tipos_pagamento:
             badge_text = 'À vista'
             badge_class = 'text-bg-danger'
-        elif pg and pg.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO:
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO in tipos_pagamento:
             badge_text = 'Crédito'
             badge_class = 'text-bg-danger'
         else:
@@ -699,6 +794,7 @@ def partial_dashboard_cards(request):
             'total_boletos_venc_hoje': total_boletos_venc_hoje,
             'boletos_vencidos': boletos_vencidos,
             'notas_sem_pagamento': notas_sem_pagamento,
+            'notas_pagamento_parcial': notas_pagamento_parcial,
             'total_em_aberto_sem_pagamento': total_em_aberto_sem_pagamento,
             'ultimos_lancamentos': ultimos_lancamentos,
             'ultimos_eventos': eventos,
@@ -1332,7 +1428,11 @@ def pagamento_nf_novo(request):
             'default_caixa_id': form.initial.get('caixa'),
         },
     )
-    pagamento_form = PagamentoNotaFiscalPagamentoForm(request.POST or None, prefix='pg')
+    pagamentos_fs = PagamentoNotaFiscalPagamentoFormSet(
+        request.POST or None,
+        prefix='pagamentos',
+        form_kwargs={'default_data': timezone.localdate()},
+    )
     boletos_fs = BoletoRascunhoFormSet(request.POST or None, prefix='boletos')
     dup_nf = None
     force_save = str(request.POST.get('force_save', '')).strip() == '1'
@@ -1341,7 +1441,7 @@ def pagamento_nf_novo(request):
         ok = (
             form.is_valid()
             and itens_fs.is_valid()
-            and pagamento_form.is_valid()
+            and pagamentos_fs.is_valid()
             and boletos_fs.is_valid()
         )
 
@@ -1382,43 +1482,7 @@ def pagamento_nf_novo(request):
                     raise ValidationError('Informe pelo menos 1 item da NF.')
                 PagamentoNotaFiscalItem.objects.bulk_create(itens_objs)
 
-                total_itens = nf.total_itens()
-                pg = pagamento_form.save(commit=False)
-                if pagamento_form.cleaned_data.get('tipo'):
-                    pg.pagamento_nf = nf
-                    # Defaults desejados
-                    if not pg.data:
-                        pg.data = nf.data_emissao
-                    if not pg.valor or pg.valor == 0:
-                        pg.valor = total_itens
-                    pg.full_clean()
-                    pg.save()
-
-                    # Boletos só se tipo == boletos
-                    if pg.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS:
-                        boletos = []
-                        for bf in boletos_fs:
-                            if not getattr(bf, 'cleaned_data', None):
-                                continue
-                            if bf.cleaned_data.get('DELETE'):
-                                continue
-                            boletos.append(
-                                BoletoPagamento(
-                                    pagamento_nf=nf,
-                                    numero_doc=bf.cleaned_data['numero_doc'],
-                                    parcela=bf.cleaned_data['parcela'],
-                                    vencimento=bf.cleaned_data['vencimento'],
-                                    valor=bf.cleaned_data['valor'],
-                                    status=BoletoPagamento.Status.RASCUNHO,
-                                )
-                            )
-                        if not boletos:
-                            raise ValidationError(
-                                'Pagamento por boletos exige gerar e salvar ao menos 1 boleto.'
-                            )
-                        for b in boletos:
-                            b.full_clean()
-                        BoletoPagamento.objects.bulk_create(boletos)
+                _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF registrado.')
             return redirect_empresa(request, 'financeiro:dashboard')
@@ -1430,7 +1494,7 @@ def pagamento_nf_novo(request):
             'page_title': 'Nota Fiscal',
             'form': form,
             'itens_fs': itens_fs,
-            'pagamento_form': pagamento_form,
+            'pagamentos_fs': pagamentos_fs,
             'boletos_fs': boletos_fs,
             'modo': 'novo',
             'dup_nf': dup_nf,
@@ -1471,9 +1535,11 @@ def pagamento_nf_editar(request, pk: int):
             for i in nf.itens.all().order_by('pk')
         ],
     )
-    pg_inst = getattr(nf, 'pagamento', None)
-    pagamento_form = PagamentoNotaFiscalPagamentoForm(
-        request.POST or None, instance=pg_inst, prefix='pg'
+    pagamentos_fs = PagamentoNotaFiscalPagamentoEditFormSet(
+        request.POST or None,
+        prefix='pagamentos',
+        initial=_initial_pagamentos_nf(nf),
+        form_kwargs={'default_data': nf.data_emissao},
     )
     boletos_fs = BoletoRascunhoFormSet(
         request.POST or None,
@@ -1490,13 +1556,12 @@ def pagamento_nf_editar(request, pk: int):
     )
     dup_nf = None
     force_save = str(request.POST.get('force_save', '')).strip() == '1'
-    pagamento_tipo_anterior = pg_inst.tipo if pg_inst else ''
 
     if request.method == 'POST':
         ok = (
             form.is_valid()
             and itens_fs.is_valid()
-            and pagamento_form.is_valid()
+            and pagamentos_fs.is_valid()
             and boletos_fs.is_valid()
         )
         if ok:
@@ -1537,51 +1602,7 @@ def pagamento_nf_editar(request, pk: int):
                     raise ValidationError('Informe pelo menos 1 item da NF.')
                 PagamentoNotaFiscalItem.objects.bulk_create(itens_objs)
 
-                total_itens = nf.total_itens()
-                pg = pagamento_form.save(commit=False)
-                novo_tipo_pagamento = pagamento_form.cleaned_data.get('tipo')
-                # Pagamento opcional: se tipo vazio, remove pagamento/boletos (rascunho) e mantém NF.
-                if not novo_tipo_pagamento:
-                    nf.boletos.all().delete()
-                    PagamentoNotaFiscalPagamento.objects.filter(pagamento_nf=nf).delete()
-                else:
-                    if pagamento_tipo_anterior and pagamento_tipo_anterior != novo_tipo_pagamento:
-                        nf.boletos.all().delete()
-                        PagamentoNotaFiscalPagamento.objects.filter(pagamento_nf=nf).delete()
-                        pg.pk = None
-                    pg.pagamento_nf = nf
-                    if not pg.data:
-                        pg.data = nf.data_emissao
-                    if not pg.valor or pg.valor == 0:
-                        pg.valor = total_itens
-                    pg.full_clean()
-                    pg.save()
-
-                    nf.boletos.all().delete()
-                    if pg.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS:
-                        boletos = []
-                        for bf in boletos_fs:
-                            if not getattr(bf, 'cleaned_data', None):
-                                continue
-                            if bf.cleaned_data.get('DELETE'):
-                                continue
-                            boletos.append(
-                                BoletoPagamento(
-                                    pagamento_nf=nf,
-                                    numero_doc=bf.cleaned_data['numero_doc'],
-                                    parcela=bf.cleaned_data['parcela'],
-                                    vencimento=bf.cleaned_data['vencimento'],
-                                    valor=bf.cleaned_data['valor'],
-                                    status=BoletoPagamento.Status.RASCUNHO,
-                                )
-                            )
-                        if not boletos:
-                            raise ValidationError(
-                                'Pagamento por boletos exige gerar e salvar ao menos 1 boleto.'
-                            )
-                        for b in boletos:
-                            b.full_clean()
-                        BoletoPagamento.objects.bulk_create(boletos)
+                _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF atualizado.')
             return redirect_empresa(request, 'financeiro:dashboard')
@@ -1593,7 +1614,7 @@ def pagamento_nf_editar(request, pk: int):
             'page_title': 'Nota Fiscal',
             'form': form,
             'itens_fs': itens_fs,
-            'pagamento_form': pagamento_form,
+            'pagamentos_fs': pagamentos_fs,
             'boletos_fs': boletos_fs,
             'modo': 'editar',
             'nf': nf,
@@ -1621,7 +1642,7 @@ def pagamento_nf_detalhe(request, pk: int):
     itens = list(
         nf.itens.select_related('categoria', 'caixa').order_by('pk')
     )
-    pagamento = getattr(nf, 'pagamento', None)
+    pagamentos = list(nf.pagamentos.order_by('data', 'pk'))
     hoje = timezone.localdate()
     boletos = [
         _aplicar_situacao_boleto(boleto, hoje)
@@ -1637,7 +1658,7 @@ def pagamento_nf_detalhe(request, pk: int):
 
     total_itens = nf.total_itens()
     total_boletos = sum((b.valor for b in boletos), Decimal('0'))
-    resumo_pagamento = _resumo_pagamento_nf(pagamento, boletos, total_itens, hoje)
+    resumo_pagamento = _resumo_pagamento_nf(pagamentos, boletos, total_itens, hoje)
 
     return render(
         request,
@@ -1646,7 +1667,7 @@ def pagamento_nf_detalhe(request, pk: int):
             'page_title': f'Nota Fiscal nº {nf.numero_nf}',
             'nf': nf,
             'itens': itens,
-            'pagamento': pagamento,
+            'pagamentos': pagamentos,
             'boletos': boletos,
             'pode_pagar_boletos': pode_pagar_boletos,
             'total_itens': total_itens,
@@ -1792,7 +1813,6 @@ def pagamento_nf_excluir(request, pk: int):
     nf = get_object_or_404(
         PagamentoNotaFiscal.objects.filter(empresa=empresa).select_related(
             'fornecedor',
-            'pagamento',
         ),
         pk=pk,
     )
@@ -1806,7 +1826,7 @@ def pagamento_nf_excluir(request, pk: int):
                 kwargs={'pk': nf.pk},
             )
         boletos = list(nf.boletos.order_by('vencimento', 'parcela', 'pk'))
-        pagamento = getattr(nf, 'pagamento', None)
+        pagamentos = list(nf.pagamentos.order_by('data', 'pk'))
         total_boletos = sum((boleto.valor for boleto in boletos), Decimal('0'))
         total_pago_boletos = sum(
             (boleto.valor_pago or Decimal('0') for boleto in boletos),
@@ -1817,7 +1837,7 @@ def pagamento_nf_excluir(request, pk: int):
             'financeiro/partials/pagamento_nf_excluir_modal.html',
             {
                 'nf': nf,
-                'pagamento': pagamento,
+                'pagamentos': pagamentos,
                 'boletos': boletos,
                 'total_boletos': total_boletos,
                 'total_pago_boletos': total_pago_boletos,

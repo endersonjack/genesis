@@ -117,6 +117,94 @@
     .fin-payment-card[hidden] {
         display: none !important;
     }
+    .fin-payment-cards-list {
+        display: grid;
+        gap: .85rem;
+    }
+    .fin-payment-summary-card {
+        border: 1px solid #dbe4ee;
+        border-left: 5px solid {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        border-radius: 1.15rem;
+        background: #fff;
+        padding: 1rem;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+        transition: all .18s ease;
+    }
+    .fin-payment-summary-card:hover {
+        background: #f8fafc;
+        transform: translateY(-1px);
+    }
+    .fin-payment-summary-card__grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .85rem;
+    }
+    .fin-payment-summary-card__label {
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        margin-bottom: .18rem;
+    }
+    .fin-payment-summary-card__value {
+        color: #0f172a;
+        font-size: .92rem;
+        font-weight: 700;
+        word-break: break-word;
+    }
+    .fin-payment-installments {
+        border-top: 1px solid #e2e8f0;
+        margin-top: .9rem;
+        padding-top: .9rem;
+    }
+    .fin-payment-installment-pill {
+        border: 1px solid #dbe4ee;
+        border-radius: .9rem;
+        background: #f8fafc;
+        padding: .65rem .75rem;
+    }
+    @media (max-width: 991.98px) {
+        .fin-payment-summary-card__grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 575.98px) {
+        .fin-payment-summary-card__grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .fin-payment-type-option {
+        border: 1px solid #dbe4ee;
+        border-radius: 1.15rem;
+        background: #fff;
+        min-height: 100%;
+        text-align: left;
+        transition: all .18s ease;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+    .fin-payment-type-option:hover,
+    .fin-payment-type-option.is-active {
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        transform: translateY(-1px);
+    }
+    .fin-payment-type-option__icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        margin-bottom: .75rem;
+    }
+    .fin-payment-modal-panel {
+        border: 1px solid #e2e8f0;
+        border-radius: 1.15rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1rem;
+    }
 </style>
 
 <form method="post" novalidate id="pagamentoNfForm">
@@ -317,55 +405,128 @@
                     </div>
                 </div>
 
-                <div class="fin-payment-picker">
-                    <label class="form-label fw-semibold" for="{{ pagamento_form.tipo.id_for_label }}">{{ pagamento_form.tipo.label }}</label>
-                    {{ pagamento_form.tipo }}
-                    {% if pagamento_form.tipo.errors %}<div class="text-danger small mt-1">{{ pagamento_form.tipo.errors }}</div>{% endif %}
-                    <div class="form-text">Escolha o tipo de pagamento para abrir o formulário correspondente.</div>
-                </div>
-
-                <div id="pagamentoEmptyState" class="fin-payment-card text-center text-muted">
-                    Selecione um tipo de pagamento para preencher os dados.
-                </div>
-
-                <div id="pagamentoBaseCard" class="fin-payment-card" hidden>
+                <div class="fin-payment-card">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <div>
-                            <div class="fin-muted-label mb-1" id="paymentCardEyebrow">Pagamento</div>
-                            <div class="fw-bold mb-0" id="paymentCardTitle">Dados do pagamento</div>
-                            <div class="text-muted small" id="paymentCardDescription">Preencha as informações do pagamento.</div>
+                            <div class="fin-muted-label mb-1">Pagamentos</div>
+                            <div class="fw-bold mb-0">Adicionar tipo e pagamento a Nota Fiscal</div>
                         </div>
+                        <button type="button"
+                                class="financeiro-top-btn financeiro-top-btn-primary"
+                                id="btnAddPagamento"
+                                data-bs-toggle="modal"
+                                data-bs-target="#pagamentoModal">
+                            <i class="bi bi-plus-lg"></i> Adicionar pagamento
+                        </button>
                     </div>
-
-                    <div class="row g-3">
-                        <div class="col-12 col-lg-4">
-                            <label class="form-label fw-semibold" for="{{ pagamento_form.data.id_for_label }}">{{ pagamento_form.data.label }}</label>
-                            {{ pagamento_form.data }}
-                            {% if pagamento_form.data.errors %}<div class="text-danger small">{{ pagamento_form.data.errors }}</div>{% endif %}
+                    {{ pagamentos_fs.management_form }}
+                    {{ pagamentos_fs.non_form_errors }}
+                    <div class="fin-payment-cards-list" id="pagamentosCards">
+                        {% for pf in pagamentos_fs %}
+                        <div class="pagamento-row fin-payment-summary-card">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <div class="fin-muted-label mb-1">Pagamento</div>
+                                    <div class="fw-bold js-pagamento-summary" data-field="tipo"></div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <div class="d-none">{{ pf.DELETE }}</div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3 btn-edit-pagamento" aria-label="Editar pagamento">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 btn-remove-pagamento" aria-label="Remover pagamento">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="fin-payment-summary-card__grid">
+                                <div>
+                                    <div class="fin-payment-summary-card__label">Data</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="data"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.data }}</div>
+                                    {% if pf.data.errors %}<div class="text-danger small">{{ pf.data.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <div class="fin-payment-summary-card__label">Valor</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="valor"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.valor }}</div>
+                                    {% if pf.valor.errors %}<div class="text-danger small">{{ pf.valor.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <div class="fin-payment-summary-card__label">Acréscimos</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="acrescimos"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.acrescimos }}</div>
+                                    {% if pf.acrescimos.errors %}<div class="text-danger small">{{ pf.acrescimos.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <div class="fin-payment-summary-card__label">Descontos</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="descontos"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.descontos }}</div>
+                                    {% if pf.descontos.errors %}<div class="text-danger small">{{ pf.descontos.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <div class="fin-payment-summary-card__label">Observações</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="observacao"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.tipo }}{{ pf.observacao }}</div>
+                                    {% if pf.tipo.errors %}<div class="text-danger small">{{ pf.tipo.errors }}</div>{% endif %}
+                                    {% if pf.observacao.errors %}<div class="text-danger small">{{ pf.observacao.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="fin-payment-installments js-pagamento-boletos" hidden></div>
                         </div>
-                        <div class="col-12 col-lg-4">
-                            <label class="form-label fw-semibold" for="{{ pagamento_form.valor.id_for_label }}">{{ pagamento_form.valor.label }}</label>
-                            {{ pagamento_form.valor }}
-                            {% if pagamento_form.valor.errors %}<div class="text-danger small">{{ pagamento_form.valor.errors }}</div>{% endif %}
-                            <div class="form-text">Dica: use o total dos itens (pode ajustar).</div>
-                        </div>
-                        <div class="col-12 col-lg-4">
-                            <label class="form-label fw-semibold" for="{{ pagamento_form.acrescimos.id_for_label }}">{{ pagamento_form.acrescimos.label }}</label>
-                            {{ pagamento_form.acrescimos }}
-                            {% if pagamento_form.acrescimos.errors %}<div class="text-danger small">{{ pagamento_form.acrescimos.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-12 col-lg-4">
-                            <label class="form-label fw-semibold" for="{{ pagamento_form.descontos.id_for_label }}">{{ pagamento_form.descontos.label }}</label>
-                            {{ pagamento_form.descontos }}
-                            {% if pagamento_form.descontos.errors %}<div class="text-danger small">{{ pagamento_form.descontos.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-12 col-lg-8">
-                            <label class="form-label fw-semibold" for="{{ pagamento_form.observacao.id_for_label }}">{{ pagamento_form.observacao.label }}</label>
-                            {{ pagamento_form.observacao }}
-                            {% if pagamento_form.observacao.errors %}<div class="text-danger small">{{ pagamento_form.observacao.errors }}</div>{% endif %}
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+                <template id="pagamentoRowTemplate">
+                    <div class="pagamento-row fin-payment-summary-card">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                            <div>
+                                <div class="fin-muted-label mb-1">Pagamento</div>
+                                <div class="fw-bold js-pagamento-summary" data-field="tipo"></div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <div class="d-none js-pagamento-fields">
+                                    {{ pagamentos_fs.empty_form.tipo }}
+                                    {{ pagamentos_fs.empty_form.data }}
+                                    {{ pagamentos_fs.empty_form.valor }}
+                                    {{ pagamentos_fs.empty_form.acrescimos }}
+                                    {{ pagamentos_fs.empty_form.descontos }}
+                                    {{ pagamentos_fs.empty_form.observacao }}
+                                </div>
+                            <input type="checkbox" class="d-none" name="pagamentos-__prefix__-DELETE" id="id_pagamentos-__prefix__-DELETE">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-3 btn-edit-pagamento me-1" aria-label="Editar pagamento">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-3 btn-remove-pagamento" aria-label="Remover pagamento">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            </div>
+                        </div>
+                        <div class="fin-payment-summary-card__grid">
+                            <div>
+                                <div class="fin-payment-summary-card__label">Data</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="data"></div>
+                            </div>
+                            <div>
+                                <div class="fin-payment-summary-card__label">Valor</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="valor"></div>
+                            </div>
+                            <div>
+                                <div class="fin-payment-summary-card__label">Acréscimos</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="acrescimos"></div>
+                            </div>
+                            <div>
+                                <div class="fin-payment-summary-card__label">Descontos</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="descontos"></div>
+                            </div>
+                            <div>
+                                <div class="fin-payment-summary-card__label">Observações</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="observacao"></div>
+                            </div>
+                        </div>
+                        <div class="fin-payment-installments js-pagamento-boletos" hidden></div>
+                    </div>
+                </template>
 
                 <div class="fin-payment-card mt-3" id="boletosSection" hidden>
                     <div class="border-top-0 pt-0">
@@ -472,6 +633,128 @@
         </button>
     </div>
 </form>
+
+<div class="modal fade" id="pagamentoModal" tabindex="-1" aria-labelledby="pagamentoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div>
+                    <h5 class="modal-title fw-bold" id="pagamentoModalLabel">Adicionar pagamento</h5>
+                    <p class="text-muted small mb-0">Escolha o tipo e informe os dados deste pagamento.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-4">
+                        <button type="button" class="fin-payment-type-option w-100 p-3 js-payment-type-option" data-payment-type="avista">
+                            <span class="fin-payment-type-option__icon"><i class="bi bi-cash-stack"></i></span>
+                            <div class="fw-bold">À vista</div>
+                            <div class="small text-muted">Pagamento direto com data e valor pago.</div>
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <button type="button" class="fin-payment-type-option w-100 p-3 js-payment-type-option" data-payment-type="credito">
+                            <span class="fin-payment-type-option__icon"><i class="bi bi-credit-card"></i></span>
+                            <div class="fw-bold">Crédito</div>
+                            <div class="small text-muted">Valor no crédito com acréscimos ou descontos.</div>
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <button type="button" class="fin-payment-type-option w-100 p-3 js-payment-type-option" data-payment-type="{{ pagamento_tipo_boletos }}">
+                            <span class="fin-payment-type-option__icon"><i class="bi bi-receipt"></i></span>
+                            <div class="fw-bold">Boletos</div>
+                            <div class="small text-muted">Abra o gerador para criar as parcelas.</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fin-payment-modal-panel">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <div class="fin-muted-label mb-1">Dados do pagamento</div>
+                            <div class="fw-bold mb-0" id="pagamentoModalTitle">Selecione um tipo</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-muted">Total da NF</div>
+                            <div class="fw-bold" id="pagamentoModalNfTotal">R$ 0,00</div>
+                        </div>
+                    </div>
+                    <div id="pagamentoModalBoletosInfo" hidden>
+                        <div class="alert alert-light border rounded-4 small mb-3">
+                            Preencha os dados para gerar as parcelas de boleto.
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="pagamentoModalBoletosQtd">Qtd parcelas</label>
+                                <input class="form-control rounded-3" type="number" min="1" id="pagamentoModalBoletosQtd" value="1">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="pagamentoModalBoletosNumeroBase">Número doc</label>
+                                <input class="form-control rounded-3" type="text" id="pagamentoModalBoletosNumeroBase" placeholder="Ex.: 12345">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="pagamentoModalBoletosValorParcela">Valor parcela</label>
+                                <input class="form-control rounded-3 text-end" type="text" id="pagamentoModalBoletosValorParcela" data-mask="br-moeda" inputmode="decimal" placeholder="0,00">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="pagamentoModalBoletosData1">1º vencimento</label>
+                                <input class="form-control rounded-3" type="date" id="pagamentoModalBoletosData1">
+                            </div>
+                        </div>
+                        <div id="pagamentoModalBoletosPreview" hidden>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div class="fw-bold">Boletos gerados (rascunho)</div>
+                                <div class="financeiro-payment-total-pill">Total: <span id="pagamentoModalBoletosPreviewTotal">R$ 0,00</span></div>
+                            </div>
+                            <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+                                <table class="table table-sm table-hover fin-table mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Parcela</th>
+                                            <th>Número doc</th>
+                                            <th>Vencimento</th>
+                                            <th class="text-end pe-3">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pagamentoModalBoletosPreviewBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3" id="pagamentoModalCampos">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold" for="pagamentoModalData">Data</label>
+                            <input type="date" class="form-control rounded-3" id="pagamentoModalData">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold" for="pagamentoModalValor">Valor (R$)</label>
+                            <input type="text" class="form-control rounded-3 text-end" id="pagamentoModalValor" data-mask="br-moeda" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="col-12 col-md-4 js-payment-credit-field">
+                            <label class="form-label fw-semibold" for="pagamentoModalAcrescimos">Acréscimos (R$)</label>
+                            <input type="text" class="form-control rounded-3 text-end" id="pagamentoModalAcrescimos" data-mask="br-moeda" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="col-12 col-md-4 js-payment-credit-field">
+                            <label class="form-label fw-semibold" for="pagamentoModalDescontos">Descontos (R$)</label>
+                            <input type="text" class="form-control rounded-3 text-end" id="pagamentoModalDescontos" data-mask="br-moeda" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="col-12 col-md-8">
+                            <label class="form-label fw-semibold" for="pagamentoModalObs">Observação</label>
+                            <input type="text" class="form-control rounded-3" id="pagamentoModalObs" placeholder="Observação deste pagamento">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="financeiro-top-btn financeiro-top-btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="financeiro-top-btn financeiro-top-btn-primary" id="btnConfirmarPagamentoModal">
+                    <i class="bi bi-check2-circle"></i> Adicionar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% if dup_nf %}
 <div class="modal fade" id="dupNfModal" tabindex="-1" aria-hidden="true">
@@ -581,13 +864,32 @@
             return row.querySelector(`input[name$="${namePart}"], input[name*="${namePart}"], select[name$="${namePart}"]`);
         }
 
-        const pgTipo = document.getElementById('{{ pagamento_form.tipo.id_for_label }}');
         const boletosSection = document.getElementById('boletosSection');
-        const pagamentoEmptyState = document.getElementById('pagamentoEmptyState');
-        const pagamentoBaseCard = document.getElementById('pagamentoBaseCard');
-        const paymentCardEyebrow = document.getElementById('paymentCardEyebrow');
-        const paymentCardTitle = document.getElementById('paymentCardTitle');
-        const paymentCardDescription = document.getElementById('paymentCardDescription');
+        const pagamentosTotal = document.getElementById('id_pagamentos-TOTAL_FORMS');
+        const pagamentosBody = document.getElementById('pagamentosCards');
+        const pagamentoTpl = document.getElementById('pagamentoRowTemplate');
+        const btnAddPagamento = document.getElementById('btnAddPagamento');
+        const pagamentoModalEl = document.getElementById('pagamentoModal');
+        const pagamentoModalPanel = pagamentoModalEl ? pagamentoModalEl.querySelector('.fin-payment-modal-panel') : null;
+        const pagamentoModalTitle = document.getElementById('pagamentoModalTitle');
+        const pagamentoModalNfTotal = document.getElementById('pagamentoModalNfTotal');
+        const pagamentoModalCampos = document.getElementById('pagamentoModalCampos');
+        const pagamentoModalBoletosInfo = document.getElementById('pagamentoModalBoletosInfo');
+        const pagamentoModalBoletosQtd = document.getElementById('pagamentoModalBoletosQtd');
+        const pagamentoModalBoletosNumeroBase = document.getElementById('pagamentoModalBoletosNumeroBase');
+        const pagamentoModalBoletosValorParcela = document.getElementById('pagamentoModalBoletosValorParcela');
+        const pagamentoModalBoletosData1 = document.getElementById('pagamentoModalBoletosData1');
+        const pagamentoModalBoletosPreview = document.getElementById('pagamentoModalBoletosPreview');
+        const pagamentoModalBoletosPreviewBody = document.getElementById('pagamentoModalBoletosPreviewBody');
+        const pagamentoModalBoletosPreviewTotal = document.getElementById('pagamentoModalBoletosPreviewTotal');
+        const pagamentoModalData = document.getElementById('pagamentoModalData');
+        const pagamentoModalValor = document.getElementById('pagamentoModalValor');
+        const pagamentoModalAcrescimos = document.getElementById('pagamentoModalAcrescimos');
+        const pagamentoModalDescontos = document.getElementById('pagamentoModalDescontos');
+        const pagamentoModalObs = document.getElementById('pagamentoModalObs');
+        const pagamentoTypeOptions = Array.from(document.querySelectorAll('.js-payment-type-option'));
+        const pagamentoCreditFields = Array.from(document.querySelectorAll('.js-payment-credit-field'));
+        const btnConfirmarPagamentoModal = document.getElementById('btnConfirmarPagamentoModal');
         const btnSalvarTopo = document.getElementById('btnSalvarTopo');
         const bottomTabActions = document.getElementById('bottomTabActions');
         const btnNextTab = document.getElementById('btnNextTab');
@@ -597,49 +899,16 @@
             document.getElementById('tab-itens'),
             document.getElementById('tab-pagamento')
         ].filter(Boolean);
-
-        const paymentModeMeta = {
-            avista: {
-                eyebrow: 'Pagamento a vista',
-                title: 'Dados do pagamento a vista',
-                description: 'Informe data, valor final e observacoes deste pagamento.'
-            },
-            credito: {
-                eyebrow: 'Pagamento no credito',
-                title: 'Dados do pagamento no credito',
-                description: 'Preencha os dados da compra no credito, incluindo acrescimos e descontos se houver.'
-            },
-            boletos: {
-                eyebrow: 'Pagamento por boletos',
-                title: 'Dados base do pagamento',
-                description: 'Defina os dados gerais e depois gere, confira e salve os boletos abaixo.'
-            }
-        };
+        let pagamentoModalTipo = '';
+        let pagamentoModalEditingRow = null;
+        let pagamentoModalBoletosRascunho = [];
 
         function toggleBoletos() {
-            const val = (pgTipo && pgTipo.value) ? pgTipo.value : '';
-            const meta = paymentModeMeta[val];
-            const hasType = Boolean(meta);
-            const isBoletos = val === '{{ pagamento_tipo_boletos }}';
-
-            if (pagamentoEmptyState) {
-                pagamentoEmptyState.hidden = hasType;
-            }
-            if (pagamentoBaseCard) {
-                pagamentoBaseCard.hidden = !hasType || isBoletos;
-            }
+            const isBoletos = Array.from(document.querySelectorAll('#pagamentosCards select[name$="-tipo"]'))
+                .some(select => select.value === '{{ pagamento_tipo_boletos }}' && !select.closest('tr')?.querySelector('input[name$="-DELETE"]')?.checked);
             if (boletosSection) {
-                boletosSection.hidden = !isBoletos;
+                boletosSection.hidden = true;
             }
-            if (meta) {
-                if (paymentCardEyebrow) paymentCardEyebrow.textContent = meta.eyebrow;
-                if (paymentCardTitle) paymentCardTitle.textContent = meta.title;
-                if (paymentCardDescription) paymentCardDescription.textContent = meta.description;
-            }
-        }
-        if (pgTipo) {
-            pgTipo.addEventListener('change', toggleBoletos);
-            toggleBoletos();
         }
 
         function getActiveTabIndex() {
@@ -768,19 +1037,517 @@
             return sum;
         }
 
-        const pgValor = document.getElementById('{{ pagamento_form.valor.id_for_label }}');
+        function computePagamentosTotal() {
+            let sum = 0;
+            document.querySelectorAll('#pagamentosCards .pagamento-row').forEach(row => {
+                const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (delEl && delEl.checked) return;
+                const tipoEl = row.querySelector('select[name$="-tipo"]');
+                if (!tipoEl || !tipoEl.value) return;
+                const valorEl = row.querySelector('input[name$="-valor"]');
+                const acrescimosEl = row.querySelector('input[name$="-acrescimos"]');
+                const descontosEl = row.querySelector('input[name$="-descontos"]');
+                sum += parseBrMoneyToNumber(valorEl ? valorEl.value : '0,00');
+                sum += parseBrMoneyToNumber(acrescimosEl ? acrescimosEl.value : '0,00');
+                sum -= parseBrMoneyToNumber(descontosEl ? descontosEl.value : '0,00');
+            });
+            return Math.max(0, sum);
+        }
+
+        function getPagamentoSugerido() {
+            return Math.max(0, computeNfTotal() - computePagamentosTotal());
+        }
+
         const valorParcelaInput = document.getElementById('boletosValorParcela');
         const qtdInput = document.getElementById('boletosQtd');
+
+        function coletarBoletosDoFormset() {
+            const body = document.querySelector('#boletosTable tbody');
+            if (!body) return [];
+            return Array.from(body.querySelectorAll('tr.boleto-row')).map(row => {
+                const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (delEl && delEl.checked) return null;
+                return {
+                    parcela: row.querySelector('input[name$="-parcela"]')?.value || '',
+                    numeroDoc: row.querySelector('input[name$="-numero_doc"]')?.value || '',
+                    vencimento: row.querySelector('input[name$="-vencimento"]')?.value || '',
+                    valor: row.querySelector('input[name$="-valor"]')?.value || '',
+                };
+            }).filter(Boolean);
+        }
+
+        function renderBoletosNoCard(row, data) {
+            const box = row.querySelector('.js-pagamento-boletos');
+            if (!box) return;
+            if (data.tipo !== '{{ pagamento_tipo_boletos }}') {
+                box.hidden = true;
+                box.innerHTML = '';
+                return;
+            }
+            const boletos = coletarBoletosDoFormset();
+            box.hidden = false;
+            if (!boletos.length) {
+                box.innerHTML = '<div class="small text-muted">Nenhuma parcela gerada ainda.</div>';
+                return;
+            }
+            const totalParcelas = boletos.length;
+            box.innerHTML = `
+                <div class="fin-payment-summary-card__label mb-2">Parcelas</div>
+                <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+                    <table class="table table-sm table-hover fin-table mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Parcela</th>
+                                <th>Doc</th>
+                                <th>Vencimento</th>
+                                <th class="pe-3">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${boletos.map((boleto, index) => `
+                                <tr>
+                                    <td class="ps-3 small fw-semibold">${boleto.parcela || index + 1}/${totalParcelas}</td>
+                                    <td class="small">${boleto.numeroDoc || '-'}</td>
+                                    <td class="small">${formatIsoDateBr(boleto.vencimento)}</td>
+                                    <td class="pe-3 small"><span class="badge text-bg-secondary">Rascunho</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function getPagamentoField(row, fieldName) {
+            return row.querySelector(`[name$="-${fieldName}"]`);
+        }
+
+        function formatIsoDateBr(isoDate) {
+            const parts = String(isoDate || '').split('-');
+            if (parts.length !== 3) return isoDate || '-';
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function getPagamentoRowData(row) {
+            const tipoEl = getPagamentoField(row, 'tipo');
+            const tipoLabel = tipoEl && tipoEl.options ? (tipoEl.options[tipoEl.selectedIndex]?.textContent || '') : '';
+            return {
+                tipo: tipoEl ? tipoEl.value : '',
+                tipoLabel: tipoLabel.trim(),
+                data: getPagamentoField(row, 'data')?.value || '',
+                valor: getPagamentoField(row, 'valor')?.value || '0,00',
+                acrescimos: getPagamentoField(row, 'acrescimos')?.value || '0,00',
+                descontos: getPagamentoField(row, 'descontos')?.value || '0,00',
+                observacao: getPagamentoField(row, 'observacao')?.value || '',
+            };
+        }
+
+        function setPagamentoRowData(row, data) {
+            const tipoEl = getPagamentoField(row, 'tipo');
+            const dataEl = getPagamentoField(row, 'data');
+            const valorEl = getPagamentoField(row, 'valor');
+            const acrescimosEl = getPagamentoField(row, 'acrescimos');
+            const descontosEl = getPagamentoField(row, 'descontos');
+            const observacaoEl = getPagamentoField(row, 'observacao');
+            if (tipoEl && data.tipo) tipoEl.value = data.tipo;
+            if (dataEl) dataEl.value = data.data || '';
+            if (valorEl) {
+                valorEl.value = data.valor || '0,00';
+                valorEl.dataset.manual = '1';
+            }
+            if (acrescimosEl) acrescimosEl.value = data.acrescimos || '0,00';
+            if (descontosEl) descontosEl.value = data.descontos || '0,00';
+            if (observacaoEl) observacaoEl.value = data.observacao || '';
+        }
+
+        function renderPagamentoRow(row) {
+            const data = getPagamentoRowData(row);
+            const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            const isEmpty = !data.tipo && parseBrMoneyToNumber(data.valor) === 0 && !data.observacao;
+            if (delEl && delEl.checked) {
+                row.style.display = 'none';
+                return;
+            }
+            if (isEmpty) {
+                row.style.display = 'none';
+                return;
+            }
+            row.style.display = '';
+            row.querySelectorAll('.js-pagamento-summary').forEach(summary => {
+                const field = summary.dataset.field;
+                if (field === 'tipo') summary.textContent = data.tipoLabel || '-';
+                if (field === 'data') summary.textContent = formatIsoDateBr(data.data);
+                if (field === 'valor') summary.textContent = 'R$ ' + (data.valor || '0,00');
+                if (field === 'acrescimos') summary.textContent = 'R$ ' + (data.acrescimos || '0,00');
+                if (field === 'descontos') summary.textContent = 'R$ ' + (data.descontos || '0,00');
+                if (field === 'observacao') summary.textContent = data.observacao || '-';
+            });
+            renderBoletosNoCard(row, data);
+        }
+
+        function bindPagamentoRow(row) {
+            const tipoEl = row.querySelector('select[name$="-tipo"]');
+            const valorEl = row.querySelector('input[name$="-valor"]');
+            const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            const btnRemove = row.querySelector('.btn-remove-pagamento');
+            const btnEdit = row.querySelector('.btn-edit-pagamento');
+
+            if (tipoEl) tipoEl.addEventListener('change', () => {
+                renderPagamentoRow(row);
+                toggleBoletos();
+            });
+            if (valorEl) {
+                valorEl.addEventListener('input', () => {
+                    valorEl.dataset.manual = '1';
+                    renderPagamentoRow(row);
+                });
+            }
+            row.querySelectorAll('input[name$="-data"], input[name$="-acrescimos"], input[name$="-descontos"], input[name$="-observacao"]').forEach(input => {
+                input.addEventListener('input', () => renderPagamentoRow(row));
+                input.addEventListener('change', () => renderPagamentoRow(row));
+            });
+            if (btnEdit) {
+                btnEdit.addEventListener('click', () => {
+                    pagamentoModalEditingRow = row;
+                    const data = getPagamentoRowData(row);
+                    pagamentoModalTipo = data.tipo || 'avista';
+                    if (pagamentoModalEl && window.bootstrap && window.bootstrap.Modal) {
+                        window.bootstrap.Modal.getOrCreateInstance(pagamentoModalEl).show();
+                    }
+                });
+            }
+            if (btnRemove) {
+                btnRemove.addEventListener('click', () => {
+                    if (delEl) delEl.checked = true;
+                    row.style.display = 'none';
+                    toggleBoletos();
+                });
+            }
+            renderPagamentoRow(row);
+        }
+
+        function addPagamentoRow(data) {
+            if (!pagamentosTotal || !pagamentosBody || !pagamentoTpl) return;
+            const pagamentoData = data || {};
+            const idx = parseInt(pagamentosTotal.value || '0', 10);
+            const frag = pagamentoTpl.content.cloneNode(true);
+            const tr = frag.querySelector('.pagamento-row');
+            tr.innerHTML = tr.innerHTML.replaceAll('__prefix__', String(idx));
+            pagamentosBody.appendChild(tr);
+            pagamentosTotal.value = String(idx + 1);
+            bindPagamentoRow(tr);
+            const dataEmissaoEl = document.getElementById('{{ form.data_emissao.id_for_label }}');
+            setPagamentoRowData(tr, {
+                tipo: pagamentoData.tipo || '',
+                data: pagamentoData.data || (dataEmissaoEl ? dataEmissaoEl.value : ''),
+                valor: pagamentoData.valor || formatNumberToBrMoney(getPagamentoSugerido() || computeNfTotal()),
+                acrescimos: pagamentoData.acrescimos || '0,00',
+                descontos: pagamentoData.descontos || '0,00',
+                observacao: pagamentoData.observacao || '',
+            });
+            if (window.genesisInputMaskScan) {
+                window.genesisInputMaskScan(tr);
+            }
+            renderPagamentoRow(tr);
+            toggleBoletos();
+            return tr;
+        }
+        if (pagamentosBody) pagamentosBody.querySelectorAll('.pagamento-row').forEach(bindPagamentoRow);
+        toggleBoletos();
+
+        function setPagamentoModalTipo(tipo) {
+            pagamentoModalTipo = tipo || '';
+            pagamentoTypeOptions.forEach(option => {
+                option.classList.toggle('is-active', option.dataset.paymentType === pagamentoModalTipo);
+            });
+            const exibeAjustes = pagamentoModalTipo === 'avista' || pagamentoModalTipo === 'credito';
+            const isBoletos = pagamentoModalTipo === '{{ pagamento_tipo_boletos }}';
+            pagamentoCreditFields.forEach(field => {
+                field.hidden = !exibeAjustes;
+            });
+            if (pagamentoModalCampos) {
+                pagamentoModalCampos.hidden = isBoletos;
+            }
+            if (pagamentoModalBoletosInfo) {
+                pagamentoModalBoletosInfo.hidden = !isBoletos;
+            }
+            const meta = {
+                avista: {
+                    title: 'Pagamento à vista',
+                },
+                credito: {
+                    title: 'Pagamento no crédito',
+                },
+                '{{ pagamento_tipo_boletos }}': {
+                    title: 'Pagamento por boletos',
+                },
+            }[pagamentoModalTipo];
+            if (pagamentoModalTitle) {
+                pagamentoModalTitle.textContent = meta ? meta.title : 'Selecione um tipo';
+            }
+            if (btnConfirmarPagamentoModal) {
+                btnConfirmarPagamentoModal.disabled = !pagamentoModalTipo;
+                btnConfirmarPagamentoModal.innerHTML = isBoletos
+                    ? '<i class="bi bi-receipt"></i> Gerar boletos'
+                    : '<i class="bi bi-check2-circle"></i> Adicionar';
+            }
+        }
+
+        function prepararPagamentoModal(tipoInicial, rowData) {
+            const totalNf = computeNfTotal();
+            if (pagamentoModalNfTotal) {
+                pagamentoModalNfTotal.textContent = 'R$ ' + formatNumberToBrMoney(totalNf);
+            }
+            const dataEmissaoEl = document.getElementById('{{ form.data_emissao.id_for_label }}');
+            if (pagamentoModalData) {
+                pagamentoModalData.value = rowData?.data || (dataEmissaoEl ? dataEmissaoEl.value : '');
+            }
+            if (pagamentoModalValor) {
+                pagamentoModalValor.value = rowData?.valor || formatNumberToBrMoney(getPagamentoSugerido() || totalNf);
+            }
+            if (pagamentoModalAcrescimos) {
+                pagamentoModalAcrescimos.value = rowData?.acrescimos || '0,00';
+            }
+            if (pagamentoModalDescontos) {
+                pagamentoModalDescontos.value = rowData?.descontos || '0,00';
+            }
+            if (pagamentoModalObs) {
+                pagamentoModalObs.value = rowData?.observacao || '';
+            }
+            if (pagamentoModalBoletosQtd) {
+                pagamentoModalBoletosQtd.value = qtdInput ? (qtdInput.value || '1') : '1';
+            }
+            if (pagamentoModalBoletosNumeroBase) {
+                pagamentoModalBoletosNumeroBase.value = numeroBaseInput ? (numeroBaseInput.value || '') : '';
+            }
+            if (pagamentoModalBoletosValorParcela) {
+                const qtd = parseInt(pagamentoModalBoletosQtd ? pagamentoModalBoletosQtd.value || '1' : '1', 10);
+                pagamentoModalBoletosValorParcela.value = valorParcelaInput && valorParcelaInput.value
+                    ? valorParcelaInput.value
+                    : formatNumberToBrMoney(totalNf / Math.max(qtd, 1));
+            }
+            if (pagamentoModalBoletosData1) {
+                pagamentoModalBoletosData1.value = data1Input && data1Input.value
+                    ? data1Input.value
+                    : (dataEmissaoEl ? dataEmissaoEl.value : '');
+            }
+            limparBoletosModalPreview();
+            setPagamentoModalTipo(tipoInicial || 'avista');
+            if (window.genesisInputMaskScan && pagamentoModalEl) {
+                window.genesisInputMaskScan(pagamentoModalEl);
+            }
+        }
+
+        function limparBoletosModalPreview() {
+            pagamentoModalBoletosRascunho = [];
+            if (pagamentoModalBoletosPreviewBody) {
+                pagamentoModalBoletosPreviewBody.innerHTML = '';
+            }
+            if (pagamentoModalBoletosPreview) {
+                pagamentoModalBoletosPreview.hidden = true;
+            }
+            if (pagamentoModalBoletosPreviewTotal) {
+                pagamentoModalBoletosPreviewTotal.textContent = 'R$ 0,00';
+            }
+            if (btnConfirmarPagamentoModal && pagamentoModalTipo === '{{ pagamento_tipo_boletos }}') {
+                btnConfirmarPagamentoModal.innerHTML = '<i class="bi bi-receipt"></i> Gerar boletos';
+            }
+        }
+
+        function gerarBoletosModalPreview() {
+            const qtd = parseInt(pagamentoModalBoletosQtd ? pagamentoModalBoletosQtd.value || '0' : '0', 10);
+            const base = (pagamentoModalBoletosNumeroBase ? pagamentoModalBoletosNumeroBase.value || '' : '').trim();
+            const valor = (pagamentoModalBoletosValorParcela ? pagamentoModalBoletosValorParcela.value || '' : '').trim();
+            const data1 = (pagamentoModalBoletosData1 ? pagamentoModalBoletosData1.value || '' : '').trim();
+            if (!qtd || qtd < 1 || !valor || !data1) return false;
+
+            pagamentoModalBoletosRascunho = [];
+            for (let i = 1; i <= qtd; i++) {
+                pagamentoModalBoletosRascunho.push({
+                    parcela: i,
+                    numeroDoc: base ? `${base}-${i}` : '',
+                    vencimento: addDaysISO(data1, (i - 1) * 30),
+                    valor,
+                });
+            }
+            renderizarBoletosModalPreview();
+            return true;
+        }
+
+        function renderizarBoletosModalPreview() {
+            if (pagamentoModalBoletosPreviewBody) {
+                pagamentoModalBoletosPreviewBody.innerHTML = pagamentoModalBoletosRascunho.map(boleto => `
+                    <tr>
+                        <td class="ps-3">
+                            <input type="number" min="1" class="form-control form-control-sm rounded-3 js-modal-boleto-parcela" value="${boleto.parcela}">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm rounded-3 js-modal-boleto-doc" value="${boleto.numeroDoc || ''}">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm rounded-3 js-modal-boleto-vencimento" value="${boleto.vencimento}">
+                        </td>
+                        <td class="pe-3">
+                            <input type="text" class="form-control form-control-sm rounded-3 text-end js-modal-boleto-valor" data-mask="br-moeda" inputmode="decimal" value="${boleto.valor}">
+                        </td>
+                    </tr>
+                `).join('');
+                if (window.genesisInputMaskScan) {
+                    window.genesisInputMaskScan(pagamentoModalBoletosPreviewBody);
+                }
+                pagamentoModalBoletosPreviewBody.querySelectorAll('.js-modal-boleto-valor').forEach(input => {
+                    input.addEventListener('input', atualizarTotalBoletosModalPreview);
+                    input.addEventListener('blur', atualizarTotalBoletosModalPreview);
+                });
+            }
+            if (pagamentoModalBoletosPreview) {
+                pagamentoModalBoletosPreview.hidden = false;
+            }
+            if (pagamentoModalBoletosPreviewTotal) {
+                atualizarTotalBoletosModalPreview();
+            }
+            if (btnConfirmarPagamentoModal) {
+                btnConfirmarPagamentoModal.innerHTML = '<i class="bi bi-check2-circle"></i> Confirmar boletos';
+            }
+        }
+
+        function atualizarTotalBoletosModalPreview() {
+            if (!pagamentoModalBoletosPreviewTotal || !pagamentoModalBoletosPreviewBody) return;
+            let total = 0;
+            pagamentoModalBoletosPreviewBody.querySelectorAll('.js-modal-boleto-valor').forEach(input => {
+                total += parseBrMoneyToNumber(input.value);
+            });
+            pagamentoModalBoletosPreviewTotal.textContent = 'R$ ' + formatNumberToBrMoney(total);
+        }
+
+        function coletarBoletosModalPreview() {
+            if (!pagamentoModalBoletosPreviewBody) return [];
+            return Array.from(pagamentoModalBoletosPreviewBody.querySelectorAll('tr')).map(row => ({
+                parcela: row.querySelector('.js-modal-boleto-parcela')?.value || '',
+                numeroDoc: row.querySelector('.js-modal-boleto-doc')?.value || '',
+                vencimento: row.querySelector('.js-modal-boleto-vencimento')?.value || '',
+                valor: row.querySelector('.js-modal-boleto-valor')?.value || '',
+            })).filter(boleto => boleto.parcela && boleto.vencimento && boleto.valor);
+        }
+
+        function carregarBoletosFormsetNoModal() {
+            pagamentoModalBoletosRascunho = coletarBoletosDoFormset().map(boleto => ({
+                parcela: boleto.parcela || '',
+                numeroDoc: boleto.numeroDoc || '',
+                vencimento: boleto.vencimento || '',
+                valor: boleto.valor || '0,00',
+            }));
+            if (pagamentoModalBoletosRascunho.length) {
+                renderizarBoletosModalPreview();
+            }
+        }
+
+        if (btnAddPagamento) {
+            btnAddPagamento.addEventListener('click', () => {
+                pagamentoModalEditingRow = null;
+                pagamentoModalTipo = 'avista';
+            });
+        }
+        pagamentoTypeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                setPagamentoModalTipo(option.dataset.paymentType || '');
+            });
+        });
+        if (pagamentoModalBoletosQtd) {
+            pagamentoModalBoletosQtd.addEventListener('input', () => {
+                if (!pagamentoModalBoletosValorParcela) return;
+                const qtd = parseInt(pagamentoModalBoletosQtd.value || '0', 10);
+                pagamentoModalBoletosValorParcela.value = qtd > 0
+                    ? formatNumberToBrMoney(computeNfTotal() / qtd)
+                    : '';
+                limparBoletosModalPreview();
+            });
+        }
+        [pagamentoModalBoletosNumeroBase, pagamentoModalBoletosValorParcela, pagamentoModalBoletosData1].forEach(input => {
+            if (!input) return;
+            input.addEventListener('input', limparBoletosModalPreview);
+            input.addEventListener('change', limparBoletosModalPreview);
+        });
+        if (pagamentoModalEl) {
+            pagamentoModalEl.addEventListener('shown.bs.modal', () => {
+                const rowData = pagamentoModalEditingRow ? getPagamentoRowData(pagamentoModalEditingRow) : null;
+                prepararPagamentoModal(pagamentoModalTipo || rowData?.tipo || 'avista', rowData);
+                if (rowData?.tipo === '{{ pagamento_tipo_boletos }}') {
+                    carregarBoletosFormsetNoModal();
+                }
+                if (pagamentoModalValor) {
+                    pagamentoModalValor.focus();
+                    pagamentoModalValor.select();
+                }
+            });
+        }
+        if (btnConfirmarPagamentoModal) {
+            btnConfirmarPagamentoModal.addEventListener('click', () => {
+                if (!pagamentoModalTipo) return;
+                if (
+                    pagamentoModalTipo === '{{ pagamento_tipo_boletos }}'
+                    && pagamentoModalBoletosRascunho.length === 0
+                ) {
+                    gerarBoletosModalPreview();
+                    return;
+                }
+                const pagamentoData = {
+                    tipo: pagamentoModalTipo,
+                    data: pagamentoModalData ? pagamentoModalData.value : '',
+                    valor: pagamentoModalTipo === '{{ pagamento_tipo_boletos }}' ? formatNumberToBrMoney(computeNfTotal()) : (pagamentoModalValor ? pagamentoModalValor.value : ''),
+                    acrescimos: pagamentoModalAcrescimos && pagamentoModalTipo !== '{{ pagamento_tipo_boletos }}' ? pagamentoModalAcrescimos.value : '0,00',
+                    descontos: pagamentoModalDescontos && pagamentoModalTipo !== '{{ pagamento_tipo_boletos }}' ? pagamentoModalDescontos.value : '0,00',
+                    observacao: pagamentoModalTipo === '{{ pagamento_tipo_boletos }}' ? '' : (pagamentoModalObs ? pagamentoModalObs.value : ''),
+                };
+                if (pagamentoModalEditingRow) {
+                    setPagamentoRowData(pagamentoModalEditingRow, pagamentoData);
+                    renderPagamentoRow(pagamentoModalEditingRow);
+                    toggleBoletos();
+                } else {
+                    addPagamentoRow(pagamentoData);
+                }
+                if (pagamentoModalTipo === '{{ pagamento_tipo_boletos }}' && boletosSection) {
+                    boletosSection.hidden = true;
+                    clearBoletos();
+                    pagamentoModalBoletosRascunho = coletarBoletosModalPreview();
+                    pagamentoModalBoletosRascunho.forEach(boleto => {
+                        const idx = parseInt(boletosTotal.value || '0', 10);
+                        const frag = boletoTpl.content.cloneNode(true);
+                        const tr = frag.querySelector('tr');
+                        tr.innerHTML = tr.innerHTML.replaceAll('__prefix__', String(idx));
+                        boletosBody.appendChild(tr);
+
+                        const numeroDoc = document.querySelector(`input[name="boletos-${idx}-numero_doc"]`);
+                        const parcela = document.querySelector(`input[name="boletos-${idx}-parcela"]`);
+                        const venc = document.querySelector(`input[name="boletos-${idx}-vencimento"]`);
+                        const vlr = document.querySelector(`input[name="boletos-${idx}-valor"]`);
+
+                        if (numeroDoc) numeroDoc.value = boleto.numeroDoc;
+                        if (parcela) parcela.value = String(boleto.parcela);
+                        if (venc) venc.value = boleto.vencimento;
+                        if (vlr) vlr.value = boleto.valor;
+
+                        boletosTotal.value = String(idx + 1);
+                        bindBoletoRow(tr);
+                    });
+                    if (window.genesisInputMaskScan) {
+                        window.genesisInputMaskScan(document.getElementById('boletosTable'));
+                    }
+                    updateBoletosTotal();
+                    document.querySelectorAll('#pagamentosCards .pagamento-row').forEach(renderPagamentoRow);
+                }
+                pagamentoModalEditingRow = null;
+                if (pagamentoModalEl && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(pagamentoModalEl).hide();
+                }
+            });
+        }
 
         function recalcAll() {
             const total = computeNfTotal();
             if (nfTotalText) nfTotalText.textContent = 'R$ ' + formatNumberToBrMoney(total);
             if (boletosNfTotalText) boletosNfTotalText.textContent = 'R$ ' + formatNumberToBrMoney(total);
 
-            // Se o usuário não mexeu no valor do pagamento ainda, manter sincronizado com total.
-            if (pgValor && pgValor.dataset.manual !== '1') {
-                pgValor.value = formatNumberToBrMoney(total);
-            }
             // Se boletos: se não foi editado manualmente, manter valor parcela = total da nota / qtd parcelas.
             if (valorParcelaInput && valorParcelaInput.dataset.manual !== '1' && qtdInput) {
                 const qtd = parseInt(qtdInput.value || '0', 10);
@@ -896,6 +1663,7 @@
         function updateBoletosTotal() {
             if (!boletosTotalText) return;
             boletosTotalText.textContent = 'R$ ' + formatNumberToBrMoney(computeBoletosTotal());
+            document.querySelectorAll('#pagamentosCards .pagamento-row').forEach(renderPagamentoRow);
         }
 
         function bindBoletoRow(row) {
@@ -987,11 +1755,6 @@
             }
         }
         if (dataEmissao) dataEmissao.addEventListener('change', () => { data1Input.value = dataEmissao.value; });
-        if (pgValor) {
-            pgValor.addEventListener('input', () => {
-                pgValor.dataset.manual = '1';
-            });
-        }
         if (valorParcelaInput) {
             valorParcelaInput.addEventListener('input', () => {
                 valorParcelaInput.dataset.manual = '1';
@@ -1143,8 +1906,9 @@
 
         if (pagamentoNfForm) {
             pagamentoNfForm.addEventListener('submit', (event) => {
-                const tipoAtual = pgTipo ? pgTipo.value : '';
-                if (tipoAtual !== '{{ pagamento_tipo_boletos }}') return;
+                const temBoletos = Array.from(document.querySelectorAll('#pagamentosCards select[name$="-tipo"]'))
+                    .some(select => select.value === '{{ pagamento_tipo_boletos }}' && !select.closest('tr')?.querySelector('input[name$="-DELETE"]')?.checked);
+                if (!temBoletos) return;
                 const confirmInp = getOrCreateHiddenInput('confirmar_diferenca_boletos');
                 if (confirmInp && confirmInp.value === '1') return;
                 if (!boletoTotalsDiffer()) return;

@@ -70,22 +70,18 @@
             </div>
         </div>
 
-        {% if pagamento %}
+        {% if pagamentos %}
         <div class="financeiro-modal-summary p-3 mb-3">
-            <div class="fw-bold mb-2">Pagamento que será excluído</div>
+            <div class="fw-bold mb-2">Pagamentos que serão excluídos</div>
             <div class="row g-2 small">
-                <div class="col-12 col-md-4">
-                    <span class="text-muted">Tipo</span>
-                    <div class="fw-semibold">{{ pagamento.get_tipo_display }}</div>
+                {% for pagamento in pagamentos %}
+                <div class="col-12 col-md-6">
+                    <div class="border rounded-4 p-2 h-100">
+                        <div class="fw-semibold">{{ pagamento.get_tipo_display }} · {{ pagamento.data|date:"d/m/Y" }}</div>
+                        <div class="text-muted">Total: R$ {{ pagamento.total_a_pagar|moeda_br }}</div>
+                    </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <span class="text-muted">Data</span>
-                    <div class="fw-semibold">{{ pagamento.data|date:"d/m/Y" }}</div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <span class="text-muted">Total a pagar</span>
-                    <div class="fw-semibold">R$ {{ pagamento.total_a_pagar|moeda_br }}</div>
-                </div>
+                {% endfor %}
             </div>
         </div>
         {% else %}

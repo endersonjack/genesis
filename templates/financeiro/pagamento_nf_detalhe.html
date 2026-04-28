@@ -404,7 +404,7 @@
     </div>
 </div>
 
-{% if pagamento %}
+{% if pagamentos or boletos %}
 <div class="fin-card fin-payment-card p-0 overflow-hidden">
     <div class="fin-card-header p-3 border-bottom bg-white bg-opacity-75">
         <div class="financeiro-card-title">
@@ -421,10 +421,40 @@
         </a>
     </div>
     <div class="p-3">
-        {% if pagamento.observacao %}
-        <div class="mt-3">
-            <div class="small text-muted">Observação</div>
-            <div class="fw-semibold">{{ pagamento.observacao }}</div>
+        {% if pagamentos %}
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                <div>
+                    <div class="fw-bold">Pagamentos registrados</div>
+                    <div class="small text-muted">Valores diretos e configuração de boletos da nota</div>
+                </div>
+            </div>
+            <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+                <table class="table table-sm table-hover fin-table mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Tipo</th>
+                            <th>Data</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-end">Acréscimos</th>
+                            <th class="text-end">Descontos</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pagamentos %}
+                        <tr>
+                            <td class="ps-4 small fw-semibold">{{ p.get_tipo_display }}</td>
+                            <td class="small">{{ p.data|date:"d/m/Y" }}</td>
+                            <td class="text-end fw-semibold small">R$ {{ p.valor|moeda_br }}</td>
+                            <td class="text-end small">R$ {{ p.acrescimos|moeda_br }}</td>
+                            <td class="text-end small">R$ {{ p.descontos|moeda_br }}</td>
+                            <td class="small">{{ p.observacao|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
         {% if boletos %}

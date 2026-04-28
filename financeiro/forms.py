@@ -874,12 +874,13 @@ class PagamentoNotaFiscalPagamentoForm(forms.ModelForm):
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control rounded-3'}),
-            'observacao': forms.Textarea(
-                attrs={'class': 'form-control rounded-3', 'rows': 3}
+            'observacao': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'placeholder': 'Observação'}
             ),
         }
 
     def __init__(self, *args, **kwargs):
+        default_data = kwargs.pop('default_data', None)
         super().__init__(*args, **kwargs)
         # Pagamento é opcional: pode salvar NF + itens e preencher depois.
         if 'tipo' in self.fields:
@@ -888,16 +889,39 @@ class PagamentoNotaFiscalPagamentoForm(forms.ModelForm):
             self.fields['data'].required = False
         if 'observacao' in self.fields:
             self.fields['observacao'].required = False
+        for field_name in ('valor', 'acrescimos', 'descontos'):
+            self.fields[field_name].required = False
+        if default_data and not self.is_bound and not self.initial.get('data'):
+            self.initial['data'] = default_data.isoformat()
         if self.instance and self.instance.pk:
             self.initial['valor'] = format_decimal_br_moeda(self.instance.valor)
             self.initial['acrescimos'] = format_decimal_br_moeda(self.instance.acrescimos)
             self.initial['descontos'] = format_decimal_br_moeda(self.instance.descontos)
         else:
+            self.initial.setdefault('valor', '0,00')
             self.initial.setdefault('acrescimos', '0,00')
             self.initial.setdefault('descontos', '0,00')
 
+    def _raw_value(self, field_name: str) -> str:
+        if not self.is_bound:
+            return ''
+        return str(self.data.get(self.add_prefix(field_name), '')).strip()
+
+    def _linha_vazia(self) -> bool:
+        zeros = ('', '0', '0,0', '0,00', '0.00')
+        return (
+            self._raw_value('tipo') == ''
+            and self._raw_value('data') == ''
+            and self._raw_value('valor') in zeros
+            and self._raw_value('acrescimos') in zeros
+            and self._raw_value('descontos') in zeros
+            and self._raw_value('observacao') == ''
+        )
+
     def clean_valor(self):
         raw = self.cleaned_data.get('valor')
+        if self._linha_vazia() and raw in (None, '', '0', '0,0', '0,00'):
+            return Decimal('0')
         if raw in (None, ''):
             return Decimal('0')
         return parse_valor_moeda_obrigatorio(raw)
@@ -923,6 +947,19 @@ class PagamentoNotaFiscalPagamentoForm(forms.ModelForm):
             obj.full_clean()
             obj.save()
         return obj
+
+
+PagamentoNotaFiscalPagamentoFormSet = formset_factory(
+    PagamentoNotaFiscalPagamentoForm,
+    extra=1,
+    can_delete=True,
+)
+
+PagamentoNotaFiscalPagamentoEditFormSet = formset_factory(
+    PagamentoNotaFiscalPagamentoForm,
+    extra=0,
+    can_delete=True,
+)
 
 
 class BoletoRascunhoForm(forms.Form):
