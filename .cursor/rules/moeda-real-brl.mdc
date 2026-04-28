@@ -1,0 +1,11 @@
+---
+description: Moeda do sistema em Real (pt-BR) — exibição 5.200,00 e máscara br-moeda nos formulários.
+alwaysApply: false
+---
+
+# Moeda Real (BRL)
+
+- **Padrão de exibição**: separador de milhar **ponto**, decimal **vírgula** — exemplo **5.200,00** (não usar 5,200.00).
+- **Templates monetários (financeiro e valores em R$)**: preferir o filtro `{% load moeda %}` e **`{{ valor|moeda_br }}`** junto com o prefixo `R$` no HTML (ex.: `R$ {{ x|moeda_br }}`). Evitar `intcomma` após `floatformat` para valores em reais — o `intcomma` do humanize segue locale inglês.
+- **Campos de entrada de valores em R$**: usar widget com **`data-mask="br-moeda"`** (ver `static/js/input_masks.js`) e **`parse_valor_moeda_br` / `parse_valor_moeda_obrigatorio`** em `core/moeda_fmt.py` no `clean_*` do formulário; referência: `obras/forms.py` (`ObraForm.valor`).
+- **Utilitário único**: `core/moeda_fmt.py` (`format_decimal_br_moeda`, parsing).

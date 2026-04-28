@@ -1,0 +1,78 @@
+<div class="estoque-board-card mb-4">
+    <div class="estoque-board-body d-flex flex-column h-100">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 flex-grow-1 mb-3">
+            <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+                <div class="flex-shrink-0 d-flex align-items-center justify-content-center text-white"
+                     style="width:56px;height:56px;border-radius:16px;background:var(--estoque-cor-requisicoes);">
+                    <i class="bi bi-wallet2" style="font-size:1.65rem;" aria-hidden="true"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Caixas</p>
+                    <h3 class="fw-bold mb-1" style="color:#0f172a;">Caixas da empresa</h3>
+                    <p class="text-muted mb-0 small" style="max-width:28rem;">
+                        Caixa geral consolidado e subcaixas (por obra ou personalizadas). Saldos consideram entradas e saídas lançadas no sistema.
+                    </p>
+                    <p class="mb-0 mt-2 small">
+                        <span class="text-muted">Saldo consolidado (ativos):</span>
+                        <strong class="{% if saldo_consolidado < 0 %}text-danger{% else %}text-success{% endif %} tabular-nums">
+                            R$ {{ saldo_consolidado|floatformat:2 }}
+                        </strong>
+                    </p>
+                </div>
+            </div>
+            <div class="d-flex flex-column flex-shrink-0 align-self-start gap-2"
+                 style="min-width:min(100%,280px);">
+                <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}"
+                   class="btn btn-lg estoque-board-req-btn rounded-3 fw-bold px-4 py-2 text-white text-decoration-none d-inline-flex align-items-center justify-content-center">
+                    Recebimentos&nbsp;→
+                </a>
+                {% if user.is_staff %}
+                <a href="{% url 'admin:financeiro_caixa_changelist' %}?empresa__id__exact={{ request.empresa_ativa.pk }}"
+                   class="btn btn-lg rounded-3 fw-bold px-3 py-2 text-decoration-none d-inline-flex align-items-center justify-content-center"
+                   style="border-width:2px;border-style:solid;border-color:var(--estoque-cor-requisicoes);color:var(--estoque-cor-requisicoes);background:transparent;">
+                    <i class="bi bi-gear me-1"></i> Caixas (admin)
+                </a>
+                {% else %}
+                <p class="small text-muted mb-0">Use Recebimentos e Pagamentos para gerar movimentos de caixa.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="border rounded-3 bg-white overflow-hidden">
+            <div class="table-responsive mb-0">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" scope="col">Caixa</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Obra</th>
+                            <th class="pe-3 text-end" scope="col">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in caixas_dashboard %}
+                        <tr>
+                            <td class="ps-3 fw-semibold small">{{ c.nome }}</td>
+                            <td class="small">
+                                <span class="badge rounded-pill {% if c.tipo == 'geral' %}text-bg-primary{% elif c.tipo == 'obra' %}text-bg-secondary{% else %}text-bg-light text-dark border{% endif %}">
+                                    {{ c.get_tipo_display }}
+                                </span>
+                            </td>
+                            <td class="small text-muted">{% if c.obra_id %}{{ c.obra.nome }}{% else %}—{% endif %}</td>
+                            <td class="pe-3 text-end small tabular-nums fw-semibold {% if c.saldo < 0 %}text-danger{% endif %}">
+                                R$ {{ c.saldo|floatformat:2 }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="ps-3 pe-3 py-4 text-muted text-center small">
+                                Nenhum caixa ativo. O caixa geral é criado automaticamente — verifique no Admin ou contacte o suporte.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

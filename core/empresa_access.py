@@ -93,6 +93,9 @@ def modulo_permitido_para_usuario(rest: str, vinculo) -> tuple[bool, str]:
         return bool(getattr(vinculo, 'editar_empresas', False)), (
             'Você não tem acesso para editar as preferências desta empresa.'
         )
+    if seg == 'financeiro':
+        return bool(getattr(vinculo, 'financeiro', False)), (
+            'Você não tem acesso ao módulo Financeiro nesta empresa.'
+        )
 
-    # Financeiro ainda não tem urls dedicadas; mantém neutro caso exista rota no futuro.
     return True, ''

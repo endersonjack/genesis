@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-form-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .financeiro-mini-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        padding: 1rem;
+    }
+</style>
+
+<div class="fin-card financeiro-form-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">+ Pagamento</h2>
+        <p class="text-muted mb-0">Saídas de caixa (pagamentos).</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-wallet2"></i> Abrir caixas
+        </a>
+    </div>
+</div>
+
+<div class="fin-card mb-0">
+    <p class="mb-3">Escolha o tipo de pagamento.</p>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-receipt"></i> Nota Fiscal
+        </a>
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-wallet2"></i> Abrir caixas
+        </a>
+    </div>
+    <div class="text-muted small mt-3">
+        Outros tipos (Impostos, Pessoal, Bancário, Aluguéis, Veículos e Avulsos) entram na próxima etapa.
+    </div>
+</div>
+{% endblock %}

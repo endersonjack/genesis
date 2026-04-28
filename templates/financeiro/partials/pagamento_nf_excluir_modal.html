@@ -1,0 +1,146 @@
+{% load moeda %}
+
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-summary {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir Nota Fiscal</h5>
+        <div class="text-muted small">NF nº {{ nf.numero_nf }} · {{ nf.fornecedor.nome }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'financeiro:pagamento_nf_excluir' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading
+    class="d-flex flex-column"
+    style="max-height: calc(100vh - 9rem);">
+    {% csrf_token %}
+    <div class="modal-body overflow-auto flex-grow-1">
+        <div class="alert alert-danger rounded-4 mb-3">
+            <div class="fw-bold">Confirme a exclusão definitiva.</div>
+            <div class="small">Esta ação removerá a nota fiscal e todos os registros financeiros vinculados abaixo.</div>
+        </div>
+
+        <div class="financeiro-modal-summary p-3 mb-3">
+            <div class="fw-bold mb-2">Nota Fiscal</div>
+            <div class="row g-2 small">
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Fornecedor</span>
+                    <div class="fw-semibold">{{ nf.fornecedor.nome }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Nº NF</span>
+                    <div class="fw-semibold">{{ nf.numero_nf }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Emissão</span>
+                    <div class="fw-semibold">{{ nf.data_emissao|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if pagamento %}
+        <div class="financeiro-modal-summary p-3 mb-3">
+            <div class="fw-bold mb-2">Pagamento que será excluído</div>
+            <div class="row g-2 small">
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Tipo</span>
+                    <div class="fw-semibold">{{ pagamento.get_tipo_display }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Data</span>
+                    <div class="fw-semibold">{{ pagamento.data|date:"d/m/Y" }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Total a pagar</span>
+                    <div class="fw-semibold">R$ {{ pagamento.total_a_pagar|moeda_br }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="financeiro-modal-summary p-3 mb-3 small text-muted">
+            Não há dados de pagamento vinculados.
+        </div>
+        {% endif %}
+
+        <div class="financeiro-modal-summary p-3">
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                <div>
+                    <div class="fw-bold">Boletos que serão excluídos</div>
+                    <div class="small text-muted">{{ boletos|length }} boleto(s) vinculado(s)</div>
+                </div>
+                <div class="text-end small">
+                    <div><span class="text-muted">Total:</span> <strong>R$ {{ total_boletos|moeda_br }}</strong></div>
+                    <div><span class="text-muted">Pago:</span> <strong>R$ {{ total_pago_boletos|moeda_br }}</strong></div>
+                </div>
+            </div>
+            {% if boletos %}
+            <div class="table-responsive rounded-3 overflow-hidden border">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Doc</th>
+                            <th>Vencimento</th>
+                            <th>Status</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-end pe-3">Valor pago</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for boleto in boletos %}
+                        <tr>
+                            <td class="ps-3 small fw-semibold">{{ boleto.numero_doc|default:"—" }}</td>
+                            <td class="small">{{ boleto.vencimento|date:"d/m/Y" }}</td>
+                            <td class="small"><span class="badge text-bg-secondary">{{ boleto.get_status_display }}</span></td>
+                            <td class="text-end small fw-semibold">R$ {{ boleto.valor|moeda_br }}</td>
+                            <td class="text-end pe-3 small fw-semibold">
+                                {% if boleto.valor_pago %}R$ {{ boleto.valor_pago|moeda_br }}{% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="small text-muted">Não há boletos vinculados.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between flex-shrink-0 bg-white">
+        <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="financeiro-modal-btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir definitivamente
+        </button>
+    </div>
+</form>

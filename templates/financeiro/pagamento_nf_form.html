@@ -1,0 +1,1176 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+    .financeiro-form-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .fin-table th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; }
+    .fin-muted-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b; font-weight: 800; }
+    .fin-header-total {
+        min-width: 11rem;
+        text-align: center;
+    }
+    .fin-item-compact td {
+        padding: .4rem .35rem;
+    }
+    .fin-item-compact .form-control,
+    .fin-item-compact .form-select {
+        min-height: 2.1rem;
+        padding: .28rem .55rem;
+        font-size: .9rem;
+    }
+    .fin-item-compact .btn {
+        padding: .28rem .5rem;
+        font-size: .82rem;
+    }
+    .fin-desc-compact .form-label {
+        margin-bottom: .3rem;
+        font-size: .9rem;
+    }
+    .fin-desc-compact .form-control,
+    .fin-desc-compact .form-select {
+        min-height: 2.2rem;
+        padding: .32rem .6rem;
+        font-size: .92rem;
+    }
+    .fin-desc-compact .dropdown-menu .form-control {
+        min-height: 2rem;
+        padding: .28rem .55rem;
+    }
+    .fin-desc-compact .form-text {
+        font-size: .76rem;
+        margin-top: .25rem;
+    }
+    .fin-payment-picker {
+        max-width: 28rem;
+        margin: 0 auto 1.5rem;
+        text-align: center;
+    }
+    .fin-payment-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1.25rem;
+    }
+    .fin-payment-card[hidden] {
+        display: none !important;
+    }
+</style>
+
+<form method="post" novalidate id="pagamentoNfForm">
+    {% csrf_token %}
+
+    <div class="fin-card financeiro-form-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">Nota Fiscal</h2>
+            <p class="text-muted mb-0">Lançamento de Pagamento tipo Nota Fiscal</p>
+        </div>
+        <div class="fin-header-total">
+            <div class="fin-muted-label mb-0">Total da NF</div>
+            <div class="fw-bold fs-4 mb-0" id="nfTotalText">R$ 0,00</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% if modo == 'editar' and nf %}{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}{% else %}{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="financeiro-top-btn financeiro-top-btn-light">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary" id="btnSalvarTopo">
+                <i class="bi bi-check2-circle"></i> Salvar
+            </button>
+        </div>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-warning rounded-4">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="fin-card p-0 overflow-hidden">
+        <div class="p-3 border-bottom bg-white">
+            <ul class="nav nav-tabs" id="pagamentoNfTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if active_tab == 'descricao' %}active{% endif %} fw-semibold" id="tab-descricao" data-bs-toggle="tab" data-bs-target="#pane-descricao" type="button" role="tab" aria-controls="pane-descricao" aria-selected="{% if active_tab == 'descricao' %}true{% else %}false{% endif %}">
+                        Descrição
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if active_tab == 'itens' %}active{% endif %} fw-semibold" id="tab-itens" data-bs-toggle="tab" data-bs-target="#pane-itens" type="button" role="tab" aria-controls="pane-itens" aria-selected="{% if active_tab == 'itens' %}true{% else %}false{% endif %}">
+                        Itens
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if active_tab == 'pagamento' %}active{% endif %} fw-semibold" id="tab-pagamento" data-bs-toggle="tab" data-bs-target="#pane-pagamento" type="button" role="tab" aria-controls="pane-pagamento" aria-selected="{% if active_tab == 'pagamento' %}true{% else %}false{% endif %}">
+                        Pagamento
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="tab-content">
+            <div class="tab-pane fade {% if active_tab == 'descricao' %}show active{% endif %} p-4" id="pane-descricao" role="tabpanel" aria-labelledby="tab-descricao" tabindex="0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <div class="fin-muted-label">1) Descrição do pagamento</div>
+                        <div class="fw-bold">Dados da Nota Fiscal</div>
+                    </div>
+                </div>
+
+                <div class="row g-2 fin-desc-compact">
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label fw-semibold">{{ form.fornecedor.label }}</label>
+                        <div class="dropdown w-100" data-bs-popper="static">
+                            {# Mantém o select real para POST/validação, mas oculto #}
+                            <div class="d-none">
+                                {{ form.fornecedor }}
+                            </div>
+                            <button type="button"
+                                    class="form-select rounded-3 text-start d-flex align-items-center justify-content-between"
+                                    id="fornecedorDropdownBtn"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <span id="fornecedorDropdownLabel">Selecione…</span>
+                                <span class="ms-2 text-muted"><i class="bi bi-chevron-down"></i></span>
+                            </button>
+                            <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="fornecedorDropdownBtn" style="max-height: 22rem; overflow: auto;">
+                                <div class="mb-2">
+                                    <input type="text"
+                                           class="form-control rounded-3"
+                                           id="fornecedorDropdownSearch"
+                                           placeholder="Buscar…"
+                                           autocomplete="off">
+                                </div>
+                                <div id="fornecedorDropdownList" class="list-group list-group-flush"></div>
+                            </div>
+                        </div>
+                        {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label fw-semibold" for="{{ form.numero_nf.id_for_label }}">{{ form.numero_nf.label }}</label>
+                        {{ form.numero_nf }}
+                        {% if form.numero_nf.errors %}<div class="text-danger small">{{ form.numero_nf.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label fw-semibold" for="{{ form.data_emissao.id_for_label }}">{{ form.data_emissao.label }}</label>
+                        {{ form.data_emissao }}
+                        {% if form.data_emissao.errors %}<div class="text-danger small">{{ form.data_emissao.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold" for="{{ form.caixa.id_for_label }}">{{ form.caixa.label }}</label>
+                        {{ form.caixa }}
+                        {% if form.caixa.errors %}<div class="text-danger small">{{ form.caixa.errors }}</div>{% endif %}
+                        <div class="form-text">Este é o caixa padrão para os itens (pode mudar por item).</div>
+                    </div>
+                    <div class="col-12 col-lg-8">
+                        <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                        {{ form.descricao }}
+                        {% if form.descricao.errors %}<div class="text-danger small">{{ form.descricao.errors }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade {% if active_tab == 'itens' %}show active{% endif %} p-0" id="pane-itens" role="tabpanel" aria-labelledby="tab-itens" tabindex="0">
+                <div class="p-3 border-bottom bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <div class="fin-muted-label mb-1">2) Itens da NF</div>
+                        <div class="fw-bold mb-0">Serviços e produtos</div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary rounded-3 fw-semibold" id="btnAddItem">
+                            <i class="bi bi-plus-lg"></i> Adicionar item
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-0">
+                    {{ itens_fs.management_form }}
+                    <div class="table-responsive">
+                        <table class="table table-hover fin-table fin-item-compact mb-0 align-middle" id="itensTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width: 8rem;">Tipo</th>
+                                    <th style="min-width: 14rem;">Descrição</th>
+                                    <th style="min-width: 12rem;">Categoria</th>
+                                    <th style="min-width: 6.5rem;">Quant.</th>
+                                    <th style="min-width: 5.5rem;">Unid.</th>
+                                    <th style="min-width: 8.5rem;" class="text-end">Vlr unit.</th>
+                                    <th style="min-width: 8.5rem;" class="text-end">Vlr total</th>
+                                    <th style="min-width: 11rem;">Caixa</th>
+                                    <th style="width: 1%;">Remover</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in itens_fs %}
+                                <tr class="item-row">
+                                    <td>
+                                        {{ f.tipo }}
+                                        {% if f.tipo.errors %}<div class="text-danger small">{{ f.tipo.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.descricao }}
+                                        {% if f.descricao.errors %}<div class="text-danger small">{{ f.descricao.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.categoria }}
+                                        {% if f.categoria.errors %}<div class="text-danger small">{{ f.categoria.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.quantidade }}
+                                        {% if f.quantidade.errors %}<div class="text-danger small">{{ f.quantidade.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.unidade }}
+                                        {% if f.unidade.errors %}<div class="text-danger small">{{ f.unidade.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.valor_unitario }}
+                                        {% if f.valor_unitario.errors %}<div class="text-danger small">{{ f.valor_unitario.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.valor_total }}
+                                        {% if f.valor_total.errors %}<div class="text-danger small">{{ f.valor_total.errors }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ f.caixa }}
+                                        {% if f.caixa.errors %}<div class="text-danger small">{{ f.caixa.errors }}</div>{% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-none">{{ f.DELETE }}</div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 fw-semibold btn-remove-item">
+                                            Remover
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade {% if active_tab == 'pagamento' %}show active{% endif %} p-4" id="pane-pagamento" role="tabpanel" aria-labelledby="tab-pagamento" tabindex="0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <div class="fin-muted-label mb-1">3) Pagamento</div>
+                        <div class="fw-bold mb-0">Condições</div>
+                    </div>
+                </div>
+
+                <div class="fin-payment-picker">
+                    <label class="form-label fw-semibold" for="{{ pagamento_form.tipo.id_for_label }}">{{ pagamento_form.tipo.label }}</label>
+                    {{ pagamento_form.tipo }}
+                    {% if pagamento_form.tipo.errors %}<div class="text-danger small mt-1">{{ pagamento_form.tipo.errors }}</div>{% endif %}
+                    <div class="form-text">Escolha o tipo de pagamento para abrir o formulário correspondente.</div>
+                </div>
+
+                <div id="pagamentoEmptyState" class="fin-payment-card text-center text-muted">
+                    Selecione um tipo de pagamento para preencher os dados.
+                </div>
+
+                <div id="pagamentoBaseCard" class="fin-payment-card" hidden>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <div class="fin-muted-label mb-1" id="paymentCardEyebrow">Pagamento</div>
+                            <div class="fw-bold mb-0" id="paymentCardTitle">Dados do pagamento</div>
+                            <div class="text-muted small" id="paymentCardDescription">Preencha as informações do pagamento.</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ pagamento_form.data.id_for_label }}">{{ pagamento_form.data.label }}</label>
+                            {{ pagamento_form.data }}
+                            {% if pagamento_form.data.errors %}<div class="text-danger small">{{ pagamento_form.data.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ pagamento_form.valor.id_for_label }}">{{ pagamento_form.valor.label }}</label>
+                            {{ pagamento_form.valor }}
+                            {% if pagamento_form.valor.errors %}<div class="text-danger small">{{ pagamento_form.valor.errors }}</div>{% endif %}
+                            <div class="form-text">Dica: use o total dos itens (pode ajustar).</div>
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ pagamento_form.acrescimos.id_for_label }}">{{ pagamento_form.acrescimos.label }}</label>
+                            {{ pagamento_form.acrescimos }}
+                            {% if pagamento_form.acrescimos.errors %}<div class="text-danger small">{{ pagamento_form.acrescimos.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold" for="{{ pagamento_form.descontos.id_for_label }}">{{ pagamento_form.descontos.label }}</label>
+                            {{ pagamento_form.descontos }}
+                            {% if pagamento_form.descontos.errors %}<div class="text-danger small">{{ pagamento_form.descontos.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-8">
+                            <label class="form-label fw-semibold" for="{{ pagamento_form.observacao.id_for_label }}">{{ pagamento_form.observacao.label }}</label>
+                            {{ pagamento_form.observacao }}
+                            {% if pagamento_form.observacao.errors %}<div class="text-danger small">{{ pagamento_form.observacao.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fin-payment-card mt-3" id="boletosSection" hidden>
+                    <div class="border-top-0 pt-0">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div>
+                                <div class="fin-muted-label mb-1">Boletos</div>
+                                <div class="fw-bold mb-0">Gerador (rascunho editável)</div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary rounded-3 fw-semibold" id="btnGerarBoletos">
+                                Gerar Boletos
+                            </button>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="boletosQtd">Qtd de parcelas</label>
+                                <input class="form-control rounded-3" type="number" min="1" id="boletosQtd" value="1">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="boletosNumeroBase">Número doc</label>
+                                <input class="form-control rounded-3" type="text" id="boletosNumeroBase" placeholder="Ex.: 12345">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="boletosValorParcela">Valor parcela (R$)</label>
+                                <input class="form-control rounded-3 text-end" type="text" id="boletosValorParcela" data-mask="br-moeda" placeholder="0,00">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold" for="boletosData1">Data 1ª parcela</label>
+                                <input class="form-control rounded-3" type="date" id="boletosData1">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            {{ boletos_fs.management_form }}
+                            <div class="table-responsive">
+                                <table class="table table-hover fin-table mb-0 align-middle" id="boletosTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 8rem;">Parcela</th>
+                                            <th>Número doc</th>
+                                            <th style="width: 12rem;">Vencimento</th>
+                                            <th style="width: 12rem;" class="text-end">Valor</th>
+                                            <th style="width: 1%;" class="text-end">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bf in boletos_fs %}
+                                        <tr class="boleto-row">
+                                            <td>{{ bf.parcela }}</td>
+                                            <td>{{ bf.numero_doc }}</td>
+                                            <td>{{ bf.vencimento }}</td>
+                                            <td>{{ bf.valor }}</td>
+                                            <td class="text-end">
+                                                <div class="d-none">{{ bf.DELETE }}</div>
+                                                <button type="button" class="btn btn-sm btn-outline-danger rounded-3 btn-remove-boleto" aria-label="Remover boleto">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3">
+                                <div>
+                                    <div class="text-muted small mb-1">Total da Nota Fiscal</div>
+                                    <div class="fw-semibold" id="boletosNfTotalText">R$ 0,00</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fin-muted-label mb-1">Total dos boletos</div>
+                                    <div class="fw-bold fs-5 mb-0" id="boletosTotalText">R$ 0,00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <template id="boletoRowTemplate">
+                    <tr class="boleto-row">
+                        <td><input type="number" min="1" class="form-control rounded-3" name="boletos-__prefix__-parcela" readonly></td>
+                        <td><input type="text" class="form-control rounded-3" name="boletos-__prefix__-numero_doc"></td>
+                        <td><input type="date" class="form-control rounded-3" name="boletos-__prefix__-vencimento"></td>
+                        <td><input type="text" class="form-control rounded-3 text-end" data-mask="br-moeda" name="boletos-__prefix__-valor"></td>
+                        <td class="text-end">
+                            <input type="checkbox" class="d-none" name="boletos-__prefix__-DELETE" id="id_boletos-__prefix__-DELETE">
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-3 btn-remove-boleto" aria-label="Remover boleto">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <div class="fin-card d-flex justify-content-end gap-2" id="bottomTabActions">
+        <a href="{% if modo == 'editar' and nf %}{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}{% else %}{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <button type="button" class="financeiro-top-btn financeiro-top-btn-primary" id="btnNextTab">
+            Próxima aba
+        </button>
+        <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary" id="btnSalvarRodape" hidden>
+            <i class="bi bi-check2-circle"></i> Salvar
+        </button>
+    </div>
+</form>
+
+{% if dup_nf %}
+<div class="modal fade" id="dupNfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Nota Fiscal já cadastrada</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Já existe uma Nota Fiscal com este <strong>Fornecedor</strong> e <strong>Nº NF</strong>.</p>
+                <div class="p-3 rounded-4 border bg-light small">
+                    <div><strong>Fornecedor:</strong> {{ dup_nf.fornecedor }}</div>
+                    <div><strong>Nº NF:</strong> {{ dup_nf.numero_nf }}</div>
+                    <div><strong>Emissão:</strong> {{ dup_nf.data_emissao }}</div>
+                </div>
+                <div class="mt-3">
+                    <a class="btn btn-outline-secondary rounded-3 fw-semibold"
+                       href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=dup_nf.pk %}">
+                        Ver nota anterior
+                    </a>
+                </div>
+                <div class="text-muted small mt-3">
+                    Se você quiser cadastrar mesmo assim, clique em <strong>Salvar mesmo assim</strong>.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary rounded-3 fw-semibold" id="btnForceSave">
+                    Salvar mesmo assim
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="boletosDiffModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Diferença nos boletos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">O total dos boletos está diferente do total da nota fiscal. Deseja continuar mesmo assim?</p>
+                <div class="p-3 rounded-4 border bg-light small">
+                    <div><strong>Total da nota:</strong> <span id="modalNfTotalText">R$ 0,00</span></div>
+                    <div><strong>Total dos boletos:</strong> <span id="modalBoletosTotalText">R$ 0,00</span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary rounded-3 fw-semibold" id="btnConfirmarBoletosDiff">
+                    Continuar e salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        function parseBrMoneyToNumber(v) {
+            // Espelha a lógica do input_masks.js (br-moeda → python): pt-BR 1.234,56 -> 1234.56
+            let s = String(v == null ? '' : v).trim().replace(/\s/g, '');
+            if (!s) return 0;
+            if (s.indexOf('-') !== -1) return 0;
+            if (s.indexOf(',') !== -1) {
+                s = s.replace(/[^\d.,]/g, '');
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                s = s.replace(/[^\d.]/g, '');
+                if ((s.match(/\./g) || []).length > 1) {
+                    s = s.replace(/\./g, '');
+                }
+            }
+            const parts = s.split('.');
+            if (parts.length > 2) return 0;
+            let intp = (parts[0] || '').replace(/\D/g, '');
+            let frac = (parts[1] || '').replace(/\D/g, '');
+            if (!intp && !frac) return 0;
+            intp = intp.replace(/^0+(?=\d)/, '');
+            if (!intp) intp = '0';
+            if (frac.length === 0) frac = '00';
+            else if (frac.length === 1) frac = frac + '0';
+            else if (frac.length > 2) frac = frac.slice(0, 2);
+            const n = Number(intp + '.' + frac);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function formatNumberToBrMoney(n) {
+            const cents = Math.round((Number(n || 0) + Number.EPSILON) * 100);
+            const abs = Math.abs(cents);
+            const intp = Math.floor(abs / 100);
+            const frac = String(abs % 100).padStart(2, '0');
+            const intStr = String(intp).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            const out = intStr + ',' + frac;
+            return cents < 0 ? '-' + out : out;
+        }
+
+        function findFirstInputByNamePrefix(row, namePart) {
+            return row.querySelector(`input[name$="${namePart}"], input[name*="${namePart}"], select[name$="${namePart}"]`);
+        }
+
+        const pgTipo = document.getElementById('{{ pagamento_form.tipo.id_for_label }}');
+        const boletosSection = document.getElementById('boletosSection');
+        const pagamentoEmptyState = document.getElementById('pagamentoEmptyState');
+        const pagamentoBaseCard = document.getElementById('pagamentoBaseCard');
+        const paymentCardEyebrow = document.getElementById('paymentCardEyebrow');
+        const paymentCardTitle = document.getElementById('paymentCardTitle');
+        const paymentCardDescription = document.getElementById('paymentCardDescription');
+        const btnSalvarTopo = document.getElementById('btnSalvarTopo');
+        const bottomTabActions = document.getElementById('bottomTabActions');
+        const btnNextTab = document.getElementById('btnNextTab');
+        const btnSalvarRodape = document.getElementById('btnSalvarRodape');
+        const tabButtons = [
+            document.getElementById('tab-descricao'),
+            document.getElementById('tab-itens'),
+            document.getElementById('tab-pagamento')
+        ].filter(Boolean);
+
+        const paymentModeMeta = {
+            avista: {
+                eyebrow: 'Pagamento a vista',
+                title: 'Dados do pagamento a vista',
+                description: 'Informe data, valor final e observacoes deste pagamento.'
+            },
+            credito: {
+                eyebrow: 'Pagamento no credito',
+                title: 'Dados do pagamento no credito',
+                description: 'Preencha os dados da compra no credito, incluindo acrescimos e descontos se houver.'
+            },
+            boletos: {
+                eyebrow: 'Pagamento por boletos',
+                title: 'Dados base do pagamento',
+                description: 'Defina os dados gerais e depois gere, confira e salve os boletos abaixo.'
+            }
+        };
+
+        function toggleBoletos() {
+            const val = (pgTipo && pgTipo.value) ? pgTipo.value : '';
+            const meta = paymentModeMeta[val];
+            const hasType = Boolean(meta);
+            const isBoletos = val === '{{ pagamento_tipo_boletos }}';
+
+            if (pagamentoEmptyState) {
+                pagamentoEmptyState.hidden = hasType;
+            }
+            if (pagamentoBaseCard) {
+                pagamentoBaseCard.hidden = !hasType || isBoletos;
+            }
+            if (boletosSection) {
+                boletosSection.hidden = !isBoletos;
+            }
+            if (meta) {
+                if (paymentCardEyebrow) paymentCardEyebrow.textContent = meta.eyebrow;
+                if (paymentCardTitle) paymentCardTitle.textContent = meta.title;
+                if (paymentCardDescription) paymentCardDescription.textContent = meta.description;
+            }
+        }
+        if (pgTipo) {
+            pgTipo.addEventListener('change', toggleBoletos);
+            toggleBoletos();
+        }
+
+        function getActiveTabIndex() {
+            return tabButtons.findIndex(btn => btn.classList.contains('active'));
+        }
+
+        function updateTabActions() {
+            const activeIndex = getActiveTabIndex();
+            const isPagamento = activeIndex === tabButtons.length - 1;
+            if (btnSalvarTopo) {
+                btnSalvarTopo.hidden = !isPagamento;
+            }
+            if (btnNextTab) {
+                btnNextTab.hidden = isPagamento;
+            }
+            if (btnSalvarRodape) {
+                btnSalvarRodape.hidden = !isPagamento;
+            }
+            if (btnNextTab && !isPagamento) {
+                const nextBtn = tabButtons[activeIndex + 1];
+                btnNextTab.textContent = nextBtn ? `Ir para ${nextBtn.textContent.trim()}` : 'Próxima aba';
+            }
+        }
+
+        if (btnNextTab) {
+            btnNextTab.addEventListener('click', () => {
+                const activeIndex = getActiveTabIndex();
+                const nextBtn = tabButtons[activeIndex + 1];
+                if (!nextBtn) return;
+                if (window.bootstrap && bootstrap.Tab) {
+                    bootstrap.Tab.getOrCreateInstance(nextBtn).show();
+                } else {
+                    nextBtn.click();
+                }
+            });
+        }
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('shown.bs.tab', updateTabActions);
+        });
+        updateTabActions();
+
+        // Itens: duplicar a última linha (server-side formset simples).
+        const btnAddItem = document.getElementById('btnAddItem');
+        const itensTotal = document.getElementById('id_itens-TOTAL_FORMS');
+        const itensTableBody = document.querySelector('#itensTable tbody');
+        const caixaPadraoSelect = document.getElementById('{{ form.caixa.id_for_label }}');
+        const nfTotalText = document.getElementById('nfTotalText');
+
+        function cloneLastItemRow() {
+            const rows = itensTableBody.querySelectorAll('tr.item-row');
+            const last = rows[rows.length - 1];
+            if (!last) return;
+            const idx = parseInt(itensTotal.value || '0', 10);
+            const html = last.innerHTML.replaceAll(/itens-(\d+)-/g, 'itens-' + idx + '-').replaceAll(/id_itens-(\d+)-/g, 'id_itens-' + idx + '-');
+            const tr = document.createElement('tr');
+            tr.className = 'item-row';
+            tr.innerHTML = html;
+            tr.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'checkbox') el.checked = false;
+                if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number' || el.type === 'date')) el.value = '';
+                if (el.tagName === 'SELECT') {
+                    if (el.name.endsWith('-tipo')) {
+                        el.value = 'produto';
+                    } else if (el.name.endsWith('-unidade')) {
+                        const hasUnd = Array.from(el.options || []).some(opt => opt.value === 'UND');
+                        el.value = hasUnd ? 'UND' : '';
+                    } else if (el.name.endsWith('-caixa')) {
+                        el.value = '';
+                    } else {
+                        el.selectedIndex = 0;
+                    }
+                }
+                if (el.tagName === 'TEXTAREA') el.value = '';
+                // ao clonar, os data-* "bound" das máscaras vêm junto e impedem rebind
+                el.removeAttribute('data-cpf-mask-bound');
+                el.removeAttribute('data-cnpj-mask-bound');
+                el.removeAttribute('data-br-moeda-bound');
+                el.removeAttribute('data-br-hours-bound');
+                if (el.dataset) {
+                    delete el.dataset.cpfMaskBound;
+                    delete el.dataset.cnpjMaskBound;
+                    delete el.dataset.brMoedaBound;
+                    delete el.dataset.brHoursBound;
+                }
+            });
+            // Default do caixa do item = caixa padrão da NF
+            const caixaItem = tr.querySelector('select[name^="itens-' + idx + '-caixa"]');
+            if (caixaItem && caixaPadraoSelect) {
+                caixaItem.value = caixaPadraoSelect.value;
+            }
+            itensTableBody.appendChild(tr);
+            itensTotal.value = String(idx + 1);
+            bindItemRow(tr);
+            if (window.genesisInputMaskScan) {
+                window.genesisInputMaskScan(tr);
+            }
+            recalcAll();
+        }
+        if (btnAddItem) btnAddItem.addEventListener('click', cloneLastItemRow);
+
+        // Cálculos: total por item e total da nota
+        function calcRow(row) {
+            const qtyEl = row.querySelector('input[name$="-quantidade"]');
+            const unitEl = row.querySelector('input[name$="-valor_unitario"]');
+            const totalEl = row.querySelector('input[name$="-valor_total"]');
+            const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (!qtyEl || !unitEl || !totalEl) return 0;
+            if (delEl && delEl.checked) return 0;
+
+            // quantidade pode vir com vírgula (ex.: "1,0000") dependendo de locale do Django/browser
+            const qtyRaw = String(qtyEl.value || '').trim().replace(',', '.').replace(/[^\d.]/g, '');
+            const qty = Number(qtyRaw || '0');
+            const unit = parseBrMoneyToNumber(unitEl.value);
+            const computed = Math.max(0, qty * unit);
+
+            totalEl.value = formatNumberToBrMoney(computed);
+            return computed;
+        }
+
+        function computeNfTotal() {
+            let sum = 0;
+            itensTableBody.querySelectorAll('tr.item-row').forEach(row => {
+                sum += calcRow(row);
+            });
+            return sum;
+        }
+
+        const pgValor = document.getElementById('{{ pagamento_form.valor.id_for_label }}');
+        const valorParcelaInput = document.getElementById('boletosValorParcela');
+        const qtdInput = document.getElementById('boletosQtd');
+
+        function recalcAll() {
+            const total = computeNfTotal();
+            if (nfTotalText) nfTotalText.textContent = 'R$ ' + formatNumberToBrMoney(total);
+            if (boletosNfTotalText) boletosNfTotalText.textContent = 'R$ ' + formatNumberToBrMoney(total);
+
+            // Se o usuário não mexeu no valor do pagamento ainda, manter sincronizado com total.
+            if (pgValor && pgValor.dataset.manual !== '1') {
+                pgValor.value = formatNumberToBrMoney(total);
+            }
+            // Se boletos: se não foi editado manualmente, manter valor parcela = total da nota / qtd parcelas.
+            if (valorParcelaInput && valorParcelaInput.dataset.manual !== '1' && qtdInput) {
+                const qtd = parseInt(qtdInput.value || '0', 10);
+                valorParcelaInput.value = qtd > 0 ? formatNumberToBrMoney(total / qtd) : '';
+            }
+        }
+
+        function bindItemRow(row) {
+            const qtyEl = row.querySelector('input[name$="-quantidade"]');
+            const unitEl = row.querySelector('input[name$="-valor_unitario"]');
+            const totalEl = row.querySelector('input[name$="-valor_total"]');
+            const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            const btnRemove = row.querySelector('.btn-remove-item');
+
+            // Se veio do servidor já marcado para exclusão (ex.: POST inválido), manter oculto.
+            if (delEl && delEl.checked) {
+                row.style.display = 'none';
+            }
+
+            function onChange() {
+                recalcAll();
+            }
+            if (qtyEl) qtyEl.addEventListener('input', onChange);
+            if (unitEl) unitEl.addEventListener('input', onChange);
+            // a máscara br-moeda ajusta valor no blur; recalc no blur evita “ficar errado” até mexer em outro campo
+            if (qtyEl) qtyEl.addEventListener('blur', onChange);
+            if (unitEl) unitEl.addEventListener('blur', onChange);
+            if (delEl) delEl.addEventListener('change', recalcAll);
+            if (btnRemove) {
+                btnRemove.addEventListener('click', () => {
+                    if (delEl) delEl.checked = true;
+                    row.style.display = 'none';
+                    recalcAll();
+                });
+            }
+        }
+
+        itensTableBody.querySelectorAll('tr.item-row').forEach(bindItemRow);
+        if (window.genesisInputMaskScan) {
+            window.genesisInputMaskScan(itensTableBody);
+        }
+
+        // Boletos: gera linhas a partir do gerador
+        const btnGerarBoletos = document.getElementById('btnGerarBoletos');
+        const boletosTotal = document.getElementById('id_boletos-TOTAL_FORMS');
+        const boletosBody = document.querySelector('#boletosTable tbody');
+        const boletoTpl = document.getElementById('boletoRowTemplate');
+        const numeroBaseInput = document.getElementById('boletosNumeroBase');
+        const data1Input = document.getElementById('boletosData1');
+        const boletosTotalText = document.getElementById('boletosTotalText');
+        const boletosNfTotalText = document.getElementById('boletosNfTotalText');
+        const pagamentoNfForm = document.getElementById('pagamentoNfForm');
+        const boletosDiffModalEl = document.getElementById('boletosDiffModal');
+        const modalNfTotalText = document.getElementById('modalNfTotalText');
+        const modalBoletosTotalText = document.getElementById('modalBoletosTotalText');
+        const btnConfirmarBoletosDiff = document.getElementById('btnConfirmarBoletosDiff');
+
+        function addDaysISO(isoDate, days) {
+            const d = new Date(isoDate + 'T00:00:00');
+            d.setDate(d.getDate() + days);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function clearBoletos() {
+            boletosBody.querySelectorAll('tr.boleto-row').forEach(tr => tr.remove());
+            boletosTotal.value = '0';
+            updateBoletosTotal();
+        }
+
+        function atualizarAtributosBoleto(el, oldIndex, newIndex) {
+            ['name', 'id', 'for'].forEach(attr => {
+                const value = el.getAttribute(attr);
+                if (!value) return;
+                el.setAttribute(attr, value.replace(`boletos-${oldIndex}-`, `boletos-${newIndex}-`));
+            });
+        }
+
+        function renumerarBoletos() {
+            const rows = Array.from(boletosBody.querySelectorAll('tr.boleto-row'));
+            rows.forEach((row, index) => {
+                const firstField = row.querySelector('[name^="boletos-"]');
+                if (firstField) {
+                    const match = firstField.name.match(/^boletos-(\d+)-/);
+                    const currentIndex = match ? match[1] : null;
+                    if (currentIndex !== null && currentIndex !== String(index)) {
+                        row.querySelectorAll('input, label, button').forEach(el => {
+                            atualizarAtributosBoleto(el, currentIndex, String(index));
+                        });
+                    }
+                }
+                const parcela = row.querySelector('input[name$="-parcela"]');
+                if (parcela) {
+                    parcela.value = String(index + 1);
+                }
+            });
+            boletosTotal.value = String(rows.length);
+            updateBoletosTotal();
+        }
+
+        function computeBoletosTotal() {
+            let sum = 0;
+            boletosBody.querySelectorAll('tr.boleto-row').forEach(row => {
+                const valorEl = row.querySelector('input[name$="-valor"]');
+                if (!valorEl) return;
+                sum += parseBrMoneyToNumber(valorEl.value);
+            });
+            return sum;
+        }
+
+        function updateBoletosTotal() {
+            if (!boletosTotalText) return;
+            boletosTotalText.textContent = 'R$ ' + formatNumberToBrMoney(computeBoletosTotal());
+        }
+
+        function bindBoletoRow(row) {
+            const btnRemove = row.querySelector('.btn-remove-boleto');
+            const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            const parcelaEl = row.querySelector('input[name$="-parcela"]');
+            const valorEl = row.querySelector('input[name$="-valor"]');
+            if (parcelaEl) {
+                parcelaEl.readOnly = true;
+            }
+            if (valorEl) {
+                valorEl.addEventListener('input', updateBoletosTotal);
+                valorEl.addEventListener('blur', updateBoletosTotal);
+            }
+            if (!btnRemove) return;
+            btnRemove.addEventListener('click', () => {
+                if (delEl) {
+                    delEl.checked = true;
+                }
+                row.remove();
+                renumerarBoletos();
+            });
+        }
+
+        function gerarBoletos() {
+            const qtd = parseInt(qtdInput.value || '0', 10);
+            const base = (numeroBaseInput.value || '').trim();
+            // Valor parcela: por padrão = total da NF / qtd (mas usuário pode editar).
+            if (valorParcelaInput && (valorParcelaInput.dataset.manual !== '1') && qtd > 0) {
+                const totalNf = computeNfTotal();
+                const per = totalNf / qtd;
+                valorParcelaInput.value = formatNumberToBrMoney(per);
+            }
+            const valor = (valorParcelaInput.value || '').trim();
+            const data1 = (data1Input.value || '').trim();
+            if (!qtd || qtd < 1) return;
+            if (!valor) return;
+            if (!data1) return;
+
+            clearBoletos();
+            for (let i = 1; i <= qtd; i++) {
+                const idx = parseInt(boletosTotal.value || '0', 10);
+                const frag = boletoTpl.content.cloneNode(true);
+                const tr = frag.querySelector('tr');
+                tr.innerHTML = tr.innerHTML.replaceAll('__prefix__', String(idx));
+                boletosBody.appendChild(tr);
+
+                const numeroDoc = document.querySelector(`input[name="boletos-${idx}-numero_doc"]`);
+                const parcela = document.querySelector(`input[name="boletos-${idx}-parcela"]`);
+                const venc = document.querySelector(`input[name="boletos-${idx}-vencimento"]`);
+                const vlr = document.querySelector(`input[name="boletos-${idx}-valor"]`);
+
+                if (numeroDoc) numeroDoc.value = base ? `${base}-${i}` : '';
+                if (parcela) parcela.value = String(i);
+                if (venc) venc.value = addDaysISO(data1, (i - 1) * 30);
+                if (vlr) vlr.value = valor;
+
+                boletosTotal.value = String(idx + 1);
+                bindBoletoRow(tr);
+            }
+            if (window.genesisInputMaskScan) {
+                window.genesisInputMaskScan(document.getElementById('boletosTable'));
+            }
+            updateBoletosTotal();
+        }
+        if (btnGerarBoletos) btnGerarBoletos.addEventListener('click', gerarBoletos);
+        boletosBody.querySelectorAll('tr.boleto-row').forEach(bindBoletoRow);
+
+        // Defaults: data 1ª parcela = data emissão; valor parcela = valor do pagamento
+        const dataEmissao = document.getElementById('{{ form.data_emissao.id_for_label }}');
+        function syncDefaults() {
+            const boletosRows = Array.from(boletosBody.querySelectorAll('tr.boleto-row'));
+            if (qtdInput && boletosRows.length > 0) {
+                qtdInput.value = String(boletosRows.length);
+            }
+            if (data1Input && !data1Input.value && boletosRows.length > 0) {
+                const firstVenc = boletosRows[0].querySelector('input[name$="-vencimento"]');
+                if (firstVenc && firstVenc.value) {
+                    data1Input.value = firstVenc.value;
+                }
+            }
+            if (dataEmissao && dataEmissao.value && data1Input && !data1Input.value) data1Input.value = dataEmissao.value;
+            if (valorParcelaInput && qtdInput && !valorParcelaInput.value) {
+                const totalNf = computeNfTotal();
+                const qtd = parseInt(qtdInput.value || '0', 10);
+                if (qtd > 0) {
+                    valorParcelaInput.value = formatNumberToBrMoney(totalNf / qtd);
+                }
+            }
+        }
+        if (dataEmissao) dataEmissao.addEventListener('change', () => { data1Input.value = dataEmissao.value; });
+        if (pgValor) {
+            pgValor.addEventListener('input', () => {
+                pgValor.dataset.manual = '1';
+            });
+        }
+        if (valorParcelaInput) {
+            valorParcelaInput.addEventListener('input', () => {
+                valorParcelaInput.dataset.manual = '1';
+            });
+        }
+        if (qtdInput) {
+            qtdInput.addEventListener('input', () => {
+                if (!valorParcelaInput || valorParcelaInput.dataset.manual === '1') return;
+                const qtd = parseInt(qtdInput.value || '0', 10);
+                if (!qtd || qtd < 1) {
+                    valorParcelaInput.value = '';
+                    return;
+                }
+                const totalNf = computeNfTotal();
+                valorParcelaInput.value = formatNumberToBrMoney(totalNf / qtd);
+            });
+        }
+        syncDefaults();
+        updateBoletosTotal();
+
+        // Recalcula ao carregar (pré-preenchidos em edição).
+        recalcAll();
+
+        // Fornecedor: um único controle (dropdown + busca interna) mantendo o <select> real oculto.
+        const fornecedorSelect = document.getElementById('{{ form.fornecedor.id_for_label }}');
+        const fornecedorBtn = document.getElementById('fornecedorDropdownBtn');
+        const fornecedorLabel = document.getElementById('fornecedorDropdownLabel');
+        const fornecedorSearch = document.getElementById('fornecedorDropdownSearch');
+        const fornecedorList = document.getElementById('fornecedorDropdownList');
+
+        function fornecedorSelectedText() {
+            if (!fornecedorSelect) return '';
+            const opt = fornecedorSelect.options[fornecedorSelect.selectedIndex];
+            return opt ? (opt.textContent || '').trim() : '';
+        }
+
+        function setFornecedorLabel() {
+            if (!fornecedorLabel) return;
+            const t = fornecedorSelectedText();
+            fornecedorLabel.textContent = t && t !== '---------' ? t : 'Selecione…';
+        }
+
+        function renderFornecedorList(filter) {
+            if (!(fornecedorSelect && fornecedorList)) return;
+            const f = String(filter || '').trim().toLowerCase();
+            const current = String(fornecedorSelect.value || '');
+            fornecedorList.innerHTML = '';
+
+            const opts = Array.from(fornecedorSelect.options || []);
+            let count = 0;
+            opts.forEach(o => {
+                const val = String(o.value || '');
+                const txt = String(o.textContent || '').trim();
+                if (!val || txt === '---------') return;
+                if (f && !txt.toLowerCase().includes(f) && val !== current) return;
+
+                const a = document.createElement('button');
+                a.type = 'button';
+                a.className = 'list-group-item list-group-item-action';
+                a.textContent = txt;
+                if (val === current) {
+                    a.classList.add('active');
+                }
+                a.addEventListener('click', () => {
+                    fornecedorSelect.value = val;
+                    fornecedorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    setFornecedorLabel();
+                    if (window.bootstrap && bootstrap.Dropdown && fornecedorBtn) {
+                        const dd = bootstrap.Dropdown.getOrCreateInstance(fornecedorBtn);
+                        dd.hide();
+                    }
+                });
+                fornecedorList.appendChild(a);
+                count += 1;
+            });
+
+            if (count === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'text-muted small px-2 py-2';
+                empty.textContent = 'Nenhum fornecedor encontrado.';
+                fornecedorList.appendChild(empty);
+            }
+        }
+
+        if (fornecedorSelect) {
+            setFornecedorLabel();
+            renderFornecedorList('');
+            fornecedorSelect.addEventListener('change', () => {
+                setFornecedorLabel();
+                renderFornecedorList(fornecedorSearch ? fornecedorSearch.value : '');
+            });
+        }
+        if (fornecedorBtn) {
+            fornecedorBtn.addEventListener('shown.bs.dropdown', () => {
+                if (fornecedorSearch) {
+                    fornecedorSearch.focus();
+                    fornecedorSearch.select();
+                }
+                renderFornecedorList(fornecedorSearch ? fornecedorSearch.value : '');
+            });
+        }
+        if (fornecedorSearch) {
+            fornecedorSearch.addEventListener('input', () => renderFornecedorList(fornecedorSearch.value));
+        }
+
+        // Duplicidade NF: modal + submit com flag force_save
+        {% if show_dup_modal %}
+        const dupModalEl = document.getElementById('dupNfModal');
+        if (dupModalEl && window.bootstrap && window.bootstrap.Modal) {
+            const m = new window.bootstrap.Modal(dupModalEl);
+            m.show();
+        }
+        {% endif %}
+
+        const btnForce = document.getElementById('btnForceSave');
+        if (btnForce) {
+            btnForce.addEventListener('click', () => {
+                const formEl = document.querySelector('form[method="post"]');
+                if (!formEl) return;
+                let inp = formEl.querySelector('input[name="force_save"]');
+                if (!inp) {
+                    inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'force_save';
+                    formEl.appendChild(inp);
+                }
+                inp.value = '1';
+                formEl.submit();
+            });
+        }
+
+        function getOrCreateHiddenInput(name) {
+            if (!pagamentoNfForm) return null;
+            let inp = pagamentoNfForm.querySelector(`input[name="${name}"]`);
+            if (!inp) {
+                inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = name;
+                pagamentoNfForm.appendChild(inp);
+            }
+            return inp;
+        }
+
+        function boletoTotalsDiffer() {
+            const totalNf = computeNfTotal();
+            const totalBoletos = computeBoletosTotal();
+            return Math.abs(totalNf - totalBoletos) > 0.009;
+        }
+
+        if (pagamentoNfForm) {
+            pagamentoNfForm.addEventListener('submit', (event) => {
+                const tipoAtual = pgTipo ? pgTipo.value : '';
+                if (tipoAtual !== '{{ pagamento_tipo_boletos }}') return;
+                const confirmInp = getOrCreateHiddenInput('confirmar_diferenca_boletos');
+                if (confirmInp && confirmInp.value === '1') return;
+                if (!boletoTotalsDiffer()) return;
+
+                event.preventDefault();
+                const totalNfFmt = 'R$ ' + formatNumberToBrMoney(computeNfTotal());
+                const totalBoletosFmt = 'R$ ' + formatNumberToBrMoney(computeBoletosTotal());
+                if (modalNfTotalText) modalNfTotalText.textContent = totalNfFmt;
+                if (modalBoletosTotalText) modalBoletosTotalText.textContent = totalBoletosFmt;
+                if (boletosDiffModalEl && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(boletosDiffModalEl).show();
+                }
+            });
+        }
+
+        if (btnConfirmarBoletosDiff) {
+            btnConfirmarBoletosDiff.addEventListener('click', () => {
+                const confirmInp = getOrCreateHiddenInput('confirmar_diferenca_boletos');
+                if (confirmInp) confirmInp.value = '1';
+                if (boletosDiffModalEl && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(boletosDiffModalEl).hide();
+                }
+                if (pagamentoNfForm) pagamentoNfForm.submit();
+            });
+        }
+    })();
+</script>
+{% endblock %}
+

@@ -244,6 +244,25 @@
         </div>
         {% endif %}
 
+        {% if request.usuario_mod_financeiro or request.usuario_admin_empresa or request.user.is_superuser %}
+        <p class="quick-access-section-title">Financeiro</p>
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-4">
+                <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
+                    <div class="quick-access-tile">
+                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
+                            <i class="bi bi-cash-stack"></i>
+                        </span>
+                        <div>
+                            <div class="quick-access-tile-title">Dashboard financeiro</div>
+                            <p class="quick-access-tile-desc">Caixas, saldos e lançamentos</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
         {% if request.usuario_mod_estoque or request.usuario_admin_empresa or request.user.is_superuser %}
         <p class="quick-access-section-title">Estoque</p>
         <div class="row g-3 mb-4">
@@ -314,7 +333,7 @@
         </div>
         {% endif %}
 
-        {% if not request.usuario_mod_rh and not request.usuario_mod_estoque and not request.usuario_mod_locais and not request.usuario_mod_auditoria_total and not request.usuario_mod_auditoria_sua and not request.usuario_mod_editar_empresas and not request.usuario_admin_empresa and not request.user.is_superuser %}
+        {% if not request.usuario_mod_rh and not request.usuario_mod_financeiro and not request.usuario_mod_estoque and not request.usuario_mod_locais and not request.usuario_mod_auditoria_total and not request.usuario_mod_auditoria_sua and not request.usuario_mod_editar_empresas and not request.usuario_admin_empresa and not request.user.is_superuser %}
         <p class="text-muted small mb-0">Nenhum atalho disponível para o seu perfil nesta empresa.</p>
         {% endif %}
 

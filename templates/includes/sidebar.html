@@ -87,7 +87,7 @@
                 {% endif %}
 
                 {% if request.usuario_mod_financeiro or request.usuario_admin_empresa or request.user.is_superuser %}
-                <a href="#" class="menu-link">
+                <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="menu-link {% if '/financeiro/' in request.path %}active{% endif %}">
                     <i class="bi bi-cash-stack"></i>
                     <span>Financeiro</span>
                 </a>

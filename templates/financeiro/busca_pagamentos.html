@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .fin-search-form {
+        width: 100%;
+    }
+    .fin-search-form .form-label {
+        font-size: .82rem;
+        margin-bottom: .35rem;
+    }
+    .fin-search-form .form-control,
+    .fin-search-form .btn {
+        min-height: 2.35rem;
+    }
+    .fin-result-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1rem;
+    }
+    .fin-result-meta {
+        font-size: .85rem;
+        color: #64748b;
+    }
+    .fin-status-filters {
+        gap: .5rem;
+    }
+    .fin-status-check {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .84rem;
+        padding: .2rem .55rem;
+        border: 1px solid #d9e2ec;
+        border-radius: 999px;
+        background: #f8fafc;
+    }
+    .fin-status-check .form-check-input {
+        margin: 0;
+        float: none;
+    }
+    .fin-clear-btn {
+        width: 2.35rem;
+        height: 2.35rem;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+    }
+</style>
+
+<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+            <h2 class="fw-bold mb-0">Buscar Lançamentos</h2>
+            <div class="d-flex flex-wrap align-items-center fin-status-filters">
+                <div class="fin-status-check">
+                    <input class="form-check-input" type="checkbox" value="1" id="statusAberto" name="status_aberto" form="buscarLancamentosForm" {% if status_aberto %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold mb-0" for="statusAberto">
+                        Em aberto
+                    </label>
+                </div>
+                <div class="fin-status-check">
+                    <input class="form-check-input" type="checkbox" value="1" id="statusPago" name="status_pago" form="buscarLancamentosForm" {% if status_pago %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold mb-0" for="statusPago">
+                        Pagos
+                    </label>
+                </div>
+            </div>
+        </div>
+        <p class="text-muted mb-0">Pesquisa por documento, nota fiscal, valor, período, fornecedor e situação.</p>
+    </div>
+    <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+        Voltar
+    </a>
+</div>
+
+<div class="fin-card">
+    <form method="get" class="fin-search-form" id="buscarLancamentosForm">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-2">
+                <label class="form-label fw-semibold">Nº doc ou nota fiscal</label>
+                <input type="text"
+                       name="q"
+                       class="form-control"
+                       value="{{ query }}"
+                       aria-label="Buscar por número do documento ou nota fiscal">
+            </div>
+            <div class="col-12 col-lg-3">
+                <label class="form-label fw-semibold">Fornecedor</label>
+                <input type="text"
+                       name="fornecedor"
+                       class="form-control"
+                       value="{{ fornecedor }}"
+                       placeholder="Nome do fornecedor">
+            </div>
+            <div class="col-12 col-md-4 col-lg-2">
+                <label class="form-label fw-semibold">Valor</label>
+                <input type="text"
+                       name="valor"
+                       class="form-control"
+                       value="{{ valor }}"
+                       placeholder="0,00">
+                {% if erro_valor %}<div class="text-danger small mt-1">{{ erro_valor }}</div>{% endif %}
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <label class="form-label fw-semibold">Início</label>
+                <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <label class="form-label fw-semibold">Fim</label>
+                <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+            </div>
+            <div class="col-12 col-lg-1">
+                <label class="form-label fw-semibold d-block">&nbsp;</label>
+                <div class="d-flex gap-2 justify-content-lg-end">
+                    <button type="submit" class="btn btn-primary flex-shrink-0 px-3" aria-label="Buscar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
+                       class="btn btn-outline-secondary fin-clear-btn flex-shrink-0"
+                       aria-label="Limpar filtros"
+                       title="Limpar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if filtros_ativos %}
+    {% if resultados %}
+        <div class="d-grid gap-3">
+            {% for item in resultados %}
+            <a href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=item.nf.pk %}"
+               class="fin-result-card text-decoration-none text-reset">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                    <div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="badge text-bg-danger">NF {{ item.nf.numero_nf }}</span>
+                            {% if 'nota_fiscal' in item.origens %}
+                            <span class="badge text-bg-primary">Nota fiscal</span>
+                            {% endif %}
+                            {% if 'numero_doc' in item.origens %}
+                            <span class="badge text-bg-secondary">Nº doc</span>
+                            {% endif %}
+                            {% if 'valor_nf' in item.origens %}
+                            <span class="badge text-bg-success">Valor NF</span>
+                            {% endif %}
+                            {% if 'valor_doc' in item.origens %}
+                            <span class="badge text-bg-success">Valor doc</span>
+                            {% endif %}
+                            {% for status_label in item.status_labels %}
+                            <span class="badge {% if status_label == 'Pago' %}text-bg-success{% elif status_label == 'Em aberto' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ status_label }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="fw-bold fs-5">{{ item.nf.fornecedor.nome }}</div>
+                        <div class="fin-result-meta mt-1">
+                            Emissão {{ item.nf.data_emissao|date:"d/m/Y" }} • Caixa {{ item.nf.caixa.nome }}
+                        </div>
+                        {% if item.boletos_relacionados %}
+                        <div class="fin-result-meta mt-2">
+                            Docs encontrados:
+                            {% for boleto in item.boletos_relacionados %}
+                                {{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted text-uppercase fw-semibold">Total</div>
+                        <div class="fw-bold fs-5">R$ {{ item.total_itens|moeda_br }}</div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="fin-card text-center text-muted">
+            Nenhum lançamento encontrado com os filtros informados.
+        </div>
+    {% endif %}
+{% else %}
+    <div class="fin-card text-center text-muted">
+        Preencha um ou mais filtros para buscar lançamentos.
+    </div>
+{% endif %}
+{% endblock %}

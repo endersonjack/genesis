@@ -40,6 +40,7 @@ _EMPRESA_SWAP_DASHBOARD_REST_PATTERNS = tuple(
         r'^/estoque/itens/\d+/imagens/\d+/excluir/',
         r'^/estoque/itens/\d+',
         r'^/estoque/requisicoes/\d+',
+        r'^/financeiro/caixas/\d+',
     )
 )
 

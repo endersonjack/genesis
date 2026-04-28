@@ -1,0 +1,369 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-icon-only {
+        min-width: 46px;
+        padding-left: .85rem;
+        padding-right: .85rem;
+    }
+    .fin-table th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; }
+    .nf-actions .dropdown-toggle::after {
+        display: none;
+    }
+    .fin-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .fin-card-edit {
+        font-size: .82rem;
+        font-weight: 700;
+        min-width: 2.35rem;
+        min-height: 2.35rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .fin-payment-card {
+        border-color: #d9e2ec;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .fin-payment-card .payment-total {
+        font-size: 1.35rem;
+        color: #0d6efd;
+    }
+</style>
+
+<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+        <div class="text-muted small">Status</div>
+    </div>
+    <div class="nf-actions d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+        {% if pode_pagar_boletos %}
+        <button
+            type="button"
+            class="financeiro-top-btn financeiro-top-btn-primary"
+            hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-cash-coin me-1"></i> Pagar
+        </button>
+        {% endif %}
+        <div class="dropdown" data-bs-popper="static">
+            <button
+                type="button"
+                class="financeiro-top-btn financeiro-top-btn-light financeiro-top-btn-icon-only dropdown-toggle"
+                id="nf-dropdown-acoes"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Ações da nota fiscal"
+                title="Ações">
+                <i class="bi bi-gear fs-5"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="nf-dropdown-acoes">
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=descricao">
+                        <i class="bi bi-pencil-square me-2 text-primary"></i> Editar descrição
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=itens">
+                        <i class="bi bi-list-check me-2 text-primary"></i> Editar itens
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento">
+                        <i class="bi bi-credit-card me-2 text-primary"></i> Editar pagamento
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <button
+                        type="button"
+                        class="dropdown-item text-danger"
+                        hx-get="{% url 'financeiro:pagamento_nf_excluir' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-trash me-2"></i> Excluir
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-6">
+        <div class="fin-card">
+            <div class="fin-card-header mb-2">
+                <div class="fw-bold">Descrição</div>
+                <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=descricao" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold fin-card-edit" title="Editar descrição" aria-label="Editar descrição">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+            </div>
+            <div class="small text-muted mb-1">Fornecedor</div>
+            <div class="fw-semibold">{{ nf.fornecedor.nome }}</div>
+            <div class="row g-3 mt-1">
+                <div class="col-12 col-sm-6">
+                    <div class="small text-muted mb-1">Nº NF</div>
+                    <div class="fw-semibold">{{ nf.numero_nf }}</div>
+                </div>
+                <div class="col-12 col-sm-6">
+                    <div class="small text-muted mb-1">Data de Emissão</div>
+                    <div class="fw-semibold">{{ nf.data_emissao|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+            <div class="small text-muted mt-3 mb-1">Caixa</div>
+            <div class="fw-semibold">{{ nf.caixa.nome }}</div>
+            <div class="small text-muted mt-3 mb-1">Descrição</div>
+            <div class="fw-semibold">{{ nf.descricao|default:"—" }}</div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-6">
+        <div class="fin-card">
+            <div class="fin-card-header mb-2">
+                <div class="fw-bold">Resumo</div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">Valor total da Nota</span>
+                <strong>R$ {{ total_itens|moeda_br }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span class="text-muted">Pagamento</span>
+                <strong>{{ resumo_pagamento.pagamento_label }}</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="text-muted">Situação</span>
+                <span class="badge {{ resumo_pagamento.situacao_badge_class }}">{{ resumo_pagamento.situacao_label }}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span class="text-muted">Valor pago</span>
+                <strong class="text-success">R$ {{ resumo_pagamento.valor_pago|moeda_br }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span class="text-muted">Valor em aberto</span>
+                <strong class="{% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="fin-card p-0 overflow-hidden">
+    <div class="fin-card-header p-3 border-bottom bg-white">
+        <div class="fw-bold">Itens</div>
+        <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=itens" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold fin-card-edit" title="Editar itens" aria-label="Editar itens">
+            <i class="bi bi-pencil-square"></i>
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th class="text-end">Valor Unit</th>
+                    <th>Und</th>
+                    <th class="text-end pe-4">Valor Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in itens %}
+                <tr>
+                    <td class="ps-4 small fw-semibold">{{ forloop.counter }}</td>
+                    <td class="small">{{ i.descricao }}</td>
+                    <td class="small text-muted">{% if i.categoria_id %}{{ i.categoria.nome }}{% else %}—{% endif %}</td>
+                    <td class="text-end small fw-semibold">R$ {{ i.valor_unitario|moeda_br }}</td>
+                    <td class="small">{{ i.unidade|default:"—" }}</td>
+                    <td class="text-end pe-4 fw-semibold small">R$ {{ i.valor_total|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="py-4 text-center text-muted small">Sem itens.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if pagamento %}
+<div class="fin-card fin-payment-card p-0 overflow-hidden">
+    <div class="fin-card-header p-3 border-bottom bg-white bg-opacity-75">
+        <div>
+            <div class="fw-bold">Pagamento</div>
+            <div class="small text-muted">Condição e valor a pagar da nota fiscal</div>
+        </div>
+        <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento" class="btn btn-sm btn-primary rounded-pill fw-semibold fin-card-edit" title="Editar pagamento" aria-label="Editar pagamento">
+            <i class="bi bi-pencil-square"></i>
+        </a>
+    </div>
+    <div class="p-3">
+        {% if pagamento.observacao %}
+        <div class="mt-3">
+            <div class="small text-muted">Observação</div>
+            <div class="fw-semibold">{{ pagamento.observacao }}</div>
+        </div>
+        {% endif %}
+        {% if boletos %}
+        <div>
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                <div>
+                    <div class="fw-bold">Boletos</div>
+                    <div class="small text-muted">Parcelas vinculadas a este pagamento</div>
+                </div>
+                <div class="fw-bold text-primary">R$ {{ total_boletos|moeda_br }}</div>
+            </div>
+            <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+                <table class="table table-sm table-hover fin-table mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Doc</th>
+                            <th>Vencimento</th>
+                            <th>Situação</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-end">Valor pago</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in boletos %}
+                        <tr>
+                            <td class="ps-4 small fw-semibold">{{ b.numero_doc }}</td>
+                            <td class="small">{{ b.vencimento|date:"d/m/Y" }}</td>
+                            <td class="small"><span class="badge {{ b.situacao_badge_class }}">{{ b.situacao_label }}</span></td>
+                            <td class="text-end fw-semibold small">R$ {{ b.valor|moeda_br }}</td>
+                            <td class="text-end fw-semibold small">
+                                {% if b.valor_pago %}
+                                    R$ {{ b.valor_pago|moeda_br }}
+                                    {% if b.data_pagamento %}
+                                        <div class="text-muted fw-normal">em {{ b.data_pagamento|date:"d/m/Y" }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 small">
+                                {% if b.status == 'pago' %}
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-primary rounded-3 fw-semibold"
+                                    hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao"
+                                    title="Editar pagamento do boleto"
+                                    aria-label="Editar pagamento do boleto {{ b.numero_doc }}">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                {% elif b.status != 'cancelado' %}
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-success rounded-3 fw-semibold"
+                                    hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao"
+                                    title="Pagar boleto"
+                                    aria-label="Pagar boleto {{ b.numero_doc }}">
+                                    <i class="bi bi-cash-coin"></i>
+                                </button>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-form-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.5rem;
+        max-width: 40rem;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <h2 class="fw-bold mb-0">{{ page_title }}</h2>
+    <div class="d-flex flex-wrap gap-2">
+        {% if modo == 'editar' and caixa %}
+        <a href="{% url 'financeiro:caixa_detalhe' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}" class="btn btn-outline-secondary rounded-pill">Voltar</a>
+        {% else %}
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Voltar</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if modo == 'editar' and caixa %}
+<div class="alert alert-light border rounded-4 small mb-3">
+    Tipo: <strong>{{ caixa.get_tipo_display }}</strong>.
+    {% if caixa.tipo == 'geral' %}Apenas nome e status ativo podem ser alterados aqui.{% endif %}
+</div>
+{% endif %}
+
+<div class="fin-form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}
+        <div class="mb-3">
+            {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="form-check">
+                {{ field }}
+                <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            </div>
+            {% else %}
+            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% endif %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" class="btn btn-primary rounded-pill px-4">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

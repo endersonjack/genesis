@@ -1,0 +1,19 @@
+---
+description: Financeiro deve seguir padrão visual de botões e cards do módulo RH.
+globs: templates/financeiro/**/*.html
+alwaysApply: false
+---
+
+# Financeiro — Botões E Cards
+
+Ao criar ou alterar telas do Financeiro, seguir o padrão visual do dashboard de RH:
+
+- Botões de topo: usar formato pílula (`border-radius: 999px`), altura mínima próxima de `46px`, `font-weight: 700`, sombra leve e ícone + texto quando houver espaço.
+- Botões primários do módulo devem usar a cor ativa da empresa (`request.empresa_ativa.cor_tema`) quando o template tiver CSS inline com acesso ao request.
+- Botões secundários devem ser brancos, borda `#dbe4ee`, texto `#0f172a`, hover `#f8fafc` e leve `translateY(-1px)`.
+- Botões só ícone devem manter área clicável quadrada/pílula, `title` e `aria-label`.
+- Cards principais: borda `#d9e2ec`, raio `1.25rem`, fundo branco ou gradiente suave, sombra `0 12px 30px rgba(15, 23, 42, 0.05)`.
+- Cards de destaque/atalho podem usar barra lateral interna com a cor da empresa, igual ao hero do RH.
+- Cards internos/mini cards: fundo branco, borda `#e2e8f0`, raio `1rem`, sombra `0 6px 20px rgba(15, 23, 42, 0.04)`.
+
+Evitar misturar botões Bootstrap padrão (`btn-outline-*`, `rounded-3`) em áreas de topo/dashboard quando já houver classes `financeiro-top-*` ou `financeiro-board-*` disponíveis.

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-form-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.5rem;
+        max-width: 42rem;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <h2 class="fw-bold mb-0">{{ page_title }}</h2>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Voltar</a>
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-primary rounded-pill">Caixas</a>
+    </div>
+</div>
+
+<div class="fin-form-card">
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" class="btn btn-primary rounded-pill px-4">Salvar</button>
+            <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Cancelar</a>
+        </div>
+    </form>
+</div>
+<script>
+(() => {
+    const bruto = document.querySelector('.js-recebimento-valor');
+    const impostos = document.querySelector('.js-recebimento-impostos');
+    const liquido = document.querySelector('.js-recebimento-liquido');
+    if (!bruto || !impostos || !liquido) return;
+
+    const parseMoeda = (valor) => {
+        const normalizado = String(valor || '').replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+        const numero = Number.parseFloat(normalizado);
+        return Number.isFinite(numero) ? numero : 0;
+    };
+    const formatMoeda = (valor) => valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const recalcular = () => {
+        liquido.value = formatMoeda(Math.max(parseMoeda(bruto.value) - parseMoeda(impostos.value), 0));
+    };
+    [bruto, impostos].forEach((input) => {
+        input.addEventListener('input', () => window.setTimeout(recalcular, 0));
+        input.addEventListener('blur', () => window.setTimeout(recalcular, 0));
+    });
+    recalcular();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .fin-table th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; }
+    tr.fin-row-inactive td { opacity: .65; }
+</style>
+
+<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+        <p class="text-muted mb-0">Organize os lançamentos por tipo de movimentação.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Dashboard</a>
+        <a href="{% url 'financeiro:categoria_novo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-primary rounded-pill">
+            <i class="bi bi-plus-lg"></i> Nova categoria
+        </a>
+    </div>
+</div>
+
+<div class="fin-card p-0 overflow-hidden">
+    <div class="p-3 border-bottom bg-white">
+        <h3 class="h6 fw-bold mb-0">Categorias</h3>
+    </div>
+    {% if categorias %}
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Tipo de movimentação</th>
+                    <th>Natureza</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in categorias %}
+                <tr class="{% if not c.ativo %}fin-row-inactive{% endif %}">
+                    <td class="fw-semibold">{{ c.nome }}</td>
+                    <td>{{ c.get_movimentacao_tipo_display }}</td>
+                    <td>
+                        {% if c.tipo == 'entrada' %}
+                        <span class="badge text-bg-success rounded-pill">Recebimento</span>
+                        {% else %}
+                        <span class="badge text-bg-danger rounded-pill">Pagamento</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if c.ativo %}
+                        <span class="badge text-bg-success rounded-pill">Ativo</span>
+                        {% else %}
+                        <span class="badge text-bg-secondary rounded-pill">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'financeiro:categoria_editar' empresa_id=request.empresa_ativa.pk pk=c.pk %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                            Editar
+                        </a>
+                        {% if c.ativo %}
+                        <form method="post" action="{% url 'financeiro:categoria_inativar' empresa_id=request.empresa_ativa.pk pk=c.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">Inativar</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{% url 'financeiro:categoria_reativar' empresa_id=request.empresa_ativa.pk pk=c.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill">Reativar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">Nenhuma categoria cadastrada.</div>
+    {% endif %}
+</div>
+{% endblock %}
+

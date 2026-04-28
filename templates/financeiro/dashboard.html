@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Financeiro | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .financeiro-page-header {
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-top-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn i {
+        font-size: 1rem;
+        line-height: 1;
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.15);
+    }
+    .financeiro-top-btn-icon-only {
+        min-width: 46px;
+        padding-left: .85rem;
+        padding-right: .85rem;
+    }
+    .financeiro-top-more-dropdown .dropdown-toggle::after {
+        display: none;
+    }
+    .financeiro-top-search {
+        width: clamp(16rem, 28vw, 24rem);
+        min-width: 0;
+        flex: 0 1 auto;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-search .form-control {
+        border-radius: 999px 0 0 999px;
+        border: 1px solid #dbe4ee;
+        border-right: 0;
+        min-height: 46px;
+        min-width: 0;
+        font-weight: 600;
+    }
+    .financeiro-top-search .btn {
+        border-radius: 0 999px 999px 0;
+        border: 1px solid #dbe4ee;
+        min-height: 46px;
+    }
+    .financeiro-board-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .financeiro-board-body {
+        padding: 1.25rem;
+        background: #f8fafc;
+    }
+    .financeiro-action-hero {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        overflow: hidden;
+        position: relative;
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .financeiro-action-hero__icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.65rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+    }
+    .financeiro-action-hero__eyebrow {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+    .financeiro-action-hero__title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+    }
+    .mini-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+    }
+    .financeiro-dash-caixa-card {
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .financeiro-dash-caixa-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08) !important;
+    }
+    .financeiro-dash-action {
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+        border: 1px solid #e2e8f0 !important;
+        min-height: 6.5rem;
+    }
+    .financeiro-dash-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08) !important;
+        border-color: #cbd5e1 !important;
+    }
+    .financeiro-dash-action__icon {
+        width: 3.25rem;
+        height: 3.25rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    .financeiro-dash-action--recebimento .financeiro-dash-action__icon {
+        background: rgba(22, 163, 74, 0.12);
+        color: #15803d;
+    }
+    .financeiro-dash-action--pagamento .financeiro-dash-action__icon {
+        background: rgba(220, 38, 38, 0.1);
+        color: #b91c1c;
+    }
+    .financeiro-dash-action-trigger {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        text-align: inherit;
+    }
+    #financeiro-dash-cards-root.htmx-request .financeiro-dash-skeleton {
+        opacity: .55;
+        pointer-events: none;
+    }
+    .financeiro-clickable-row {
+        cursor: pointer;
+    }
+    .financeiro-clickable-row:focus-visible {
+        outline: 2px solid #0d6efd;
+        outline-offset: -2px;
+    }
+    .financeiro-payment-type-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1.1rem;
+        background: #fff;
+        min-height: 9rem;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .financeiro-payment-type-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        border-color: #cbd5e1;
+    }
+    .financeiro-payment-type-card.is-disabled {
+        background: #f8fafc;
+        border-style: dashed;
+        color: #64748b;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+    .financeiro-payment-type-card.is-disabled:hover {
+        transform: none;
+        border-color: #e2e8f0;
+        box-shadow: none;
+    }
+    .financeiro-payment-type-card__icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: .9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        margin-bottom: .9rem;
+    }
+    .financeiro-payment-type-card__icon--nf {
+        background: rgba(220, 38, 38, 0.1);
+        color: #b91c1c;
+    }
+    .financeiro-payment-type-card__icon--impostos,
+    .financeiro-payment-type-card__icon--pessoal,
+    .financeiro-payment-type-card__icon--bancario,
+    .financeiro-payment-type-card__icon--aluguels,
+    .financeiro-payment-type-card__icon--veiculos,
+    .financeiro-payment-type-card__icon--avulso,
+    .financeiro-payment-type-card__icon--avulso-mensal {
+        background: rgba(148, 163, 184, 0.18);
+        color: #475569;
+    }
+    @media (max-width: 767.98px) {
+        .financeiro-top-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+        .financeiro-top-btn,
+        .financeiro-top-search {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="financeiro-page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">Financeiro</h2>
+        <p class="text-muted mb-0">Caixas, saldos e lançamentos.</p>
+    </div>
+    <div class="financeiro-top-actions ms-auto">
+        <form method="get"
+              action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
+              class="input-group financeiro-top-search">
+            <input type="text"
+                   name="q"
+                   class="form-control"
+                   placeholder="nº doc ou nota fiscal"
+                   aria-label="Buscar por número do documento ou nota fiscal">
+            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar">
+                <i class="bi bi-search"></i>
+            </button>
+        </form>
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}"
+           class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-wallet2"></i>
+            <span>Caixas</span>
+        </a>
+        <div class="dropdown financeiro-top-more-dropdown" data-bs-popper="static">
+            <button type="button"
+                    class="financeiro-top-btn financeiro-top-btn-light financeiro-top-btn-icon-only dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Ações do Financeiro">
+                <i class="bi bi-gear"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:categoria_lista' empresa_id=request.empresa_ativa.pk %}">
+                        <i class="bi bi-tags me-2"></i> Categoria
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-6">
+        <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}"
+           class="text-decoration-none text-reset d-block h-100">
+            <div class="financeiro-action-hero h-100 p-3 p-md-4">
+                <div class="d-flex align-items-center gap-3 h-100">
+                    <span class="financeiro-action-hero__icon" aria-hidden="true">
+                        <i class="bi bi-plus-lg"></i>
+                    </span>
+                    <div>
+                        <div class="financeiro-action-hero__eyebrow">Entrada</div>
+                        <div class="financeiro-action-hero__title">Recebimento</div>
+                        <div class="small text-muted">Avulso ou por medição</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-6">
+        <button type="button"
+                class="financeiro-dash-action-trigger text-decoration-none text-reset d-block h-100"
+                data-bs-toggle="modal"
+                data-bs-target="#pagamentoTipoModal">
+            <div class="financeiro-action-hero h-100 p-3 p-md-4">
+                <div class="d-flex align-items-center gap-3 h-100">
+                    <span class="financeiro-action-hero__icon" aria-hidden="true">
+                        <i class="bi bi-plus-lg"></i>
+                    </span>
+                    <div>
+                        <div class="financeiro-action-hero__eyebrow">Saída</div>
+                        <div class="financeiro-action-hero__title">Pagamento</div>
+                        <div class="small text-muted">Saídas no caixa</div>
+                    </div>
+                </div>
+            </div>
+        </button>
+    </div>
+</div>
+
+<div id="financeiro-dash-cards-root"
+     hx-get="{% url 'financeiro:partial_dashboard_cards' empresa_id=request.empresa_ativa.pk %}"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     data-no-global-loading>
+    {% include 'financeiro/partials/dashboard_cards_skeleton.html' %}
+</div>
+
+<div class="modal fade" id="pagamentoTipoModal" tabindex="-1" aria-labelledby="pagamentoTipoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div>
+                    <h5 class="modal-title fw-bold" id="pagamentoTipoModalLabel">Escolha o tipo de pagamento</h5>
+                    <p class="text-muted small mb-0">Selecione como deseja lançar a saída no Financeiro.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}"
+                           class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--nf">
+                                    <i class="bi bi-receipt-cutoff"></i>
+                                </span>
+                                <div class="fw-bold">Nota Fiscal</div>
+                                <div class="small text-muted mt-1">Pagamento por NF com itens e boletos.</div>
+                            </div>
+                            <div class="small fw-semibold text-primary mt-3">Abrir</div>
+                        </a>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--impostos">
+                                    <i class="bi bi-bank2"></i>
+                                </span>
+                                <div class="fw-bold">Impostos</div>
+                                <div class="small text-muted mt-1">Tributos e encargos fiscais.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--pessoal">
+                                    <i class="bi bi-people"></i>
+                                </span>
+                                <div class="fw-bold">Pessoal</div>
+                                <div class="small text-muted mt-1">Folha, benefícios e adiantamentos.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--bancario">
+                                    <i class="bi bi-credit-card-2-front"></i>
+                                </span>
+                                <div class="fw-bold">Bancário</div>
+                                <div class="small text-muted mt-1">Tarifas, juros e serviços bancários.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--aluguels">
+                                    <i class="bi bi-house-door"></i>
+                                </span>
+                                <div class="fw-bold">Aluguéis</div>
+                                <div class="small text-muted mt-1">Locações de imóveis e equipamentos.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--veiculos">
+                                    <i class="bi bi-truck"></i>
+                                </span>
+                                <div class="fw-bold">Veículos</div>
+                                <div class="small text-muted mt-1">Combustível, oficina e despesas da frota.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--avulso">
+                                    <i class="bi bi-cash-stack"></i>
+                                </span>
+                                <div class="fw-bold">Avulso</div>
+                                <div class="small text-muted mt-1">Pagamento pontual fora dos grupos principais.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                            <div>
+                                <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--avulso-mensal">
+                                    <i class="bi bi-calendar3"></i>
+                                </span>
+                                <div class="fw-bold">Avulso Mensal</div>
+                                <div class="small text-muted mt-1">Despesas recorrentes sem módulo próprio.</div>
+                            </div>
+                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('click', function (event) {
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    window.location.href = row.dataset.rowHref;
+});
+
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    event.preventDefault();
+    window.location.href = row.dataset.rowHref;
+});
+</script>
+{% endblock %}

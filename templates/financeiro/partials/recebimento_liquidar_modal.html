@@ -1,0 +1,137 @@
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-liquidacao-summary {
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 1rem;
+        padding: 1rem;
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">{{ page_title }}</h5>
+        <div class="text-muted small">Confirme os valores antes de lançar este recebimento no caixa.</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{{ post_url }}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading
+    class="d-flex flex-column"
+    style="max-height: calc(100vh - 9rem);"
+    novalidate>
+    {% csrf_token %}
+    <div class="modal-body overflow-auto flex-grow-1">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-4">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="financeiro-liquidacao-summary mb-3">
+            <div class="small text-muted text-uppercase fw-bold mb-1" style="letter-spacing:.06em;">Recebimento</div>
+            <div class="fw-bold">{{ recebimento.cliente.nome }}</div>
+            <div class="small text-muted">{{ recebimento.descricao }}</div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-lg-6">
+                <label class="form-label fw-semibold" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
+                {{ form.data_pagamento }}
+                {% if form.data_pagamento.errors %}<div class="text-danger small mt-1">{{ form.data_pagamento.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-lg-6">
+                <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+                {{ form.valor }}
+                {% if form.valor.errors %}<div class="text-danger small mt-1">{{ form.valor.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-lg-6">
+                <label class="form-label fw-semibold" for="{{ form.impostos.id_for_label }}">{{ form.impostos.label }}</label>
+                {{ form.impostos }}
+                {% if form.impostos.errors %}<div class="text-danger small mt-1">{{ form.impostos.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-lg-6">
+                <label class="form-label fw-semibold" for="{{ form.valor_liquido.id_for_label }}">{{ form.valor_liquido.label }}</label>
+                {{ form.valor_liquido }}
+                {% if form.valor_liquido.errors %}<div class="text-danger small mt-1">{{ form.valor_liquido.errors }}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="alert alert-info rounded-4 small mt-3 mb-0">
+            O valor líquido lançado no caixa deve ser o valor bruto menos os impostos.
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between flex-shrink-0 bg-white">
+        <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Confirmar liquidação
+        </button>
+    </div>
+</form>
+
+<script>
+(() => {
+    const container = document.getElementById('modal-content') || document;
+    const bruto = container.querySelector('.js-liquidacao-valor');
+    const impostos = container.querySelector('.js-liquidacao-impostos');
+    const liquido = container.querySelector('.js-liquidacao-liquido');
+    if (!bruto || !impostos || !liquido) return;
+
+    const parseMoeda = (valor) => {
+        const normalizado = String(valor || '')
+            .replace(/\./g, '')
+            .replace(',', '.')
+            .replace(/[^\d.-]/g, '');
+        const numero = Number.parseFloat(normalizado);
+        return Number.isFinite(numero) ? numero : 0;
+    };
+    const formatMoeda = (valor) => valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+    const recalcularLiquido = () => {
+        liquido.value = formatMoeda(Math.max(parseMoeda(bruto.value) - parseMoeda(impostos.value), 0));
+    };
+    const recalcularImpostos = () => {
+        impostos.value = formatMoeda(Math.max(parseMoeda(bruto.value) - parseMoeda(liquido.value), 0));
+    };
+
+    [bruto, impostos].forEach((input) => {
+        input.addEventListener('input', () => window.setTimeout(recalcularLiquido, 0));
+        input.addEventListener('blur', () => window.setTimeout(recalcularLiquido, 0));
+    });
+    liquido.addEventListener('input', () => window.setTimeout(recalcularImpostos, 0));
+    liquido.addEventListener('blur', () => window.setTimeout(recalcularImpostos, 0));
+})();
+</script>

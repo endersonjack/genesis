@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}Recebimentos | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+    .financeiro-recebimentos-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+        box-shadow:
+            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
+            0 14px 36px rgba(15, 23, 42, 0.07);
+    }
+    .financeiro-recebimentos-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.65rem;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+    }
+    .financeiro-board-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .financeiro-board-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-section-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-board-body {
+        background: #f8fafc;
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; font-size: .95rem; }
+    .financeiro-top-actions .dropdown-toggle::after {
+        margin-left: .35rem;
+    }
+    @media (max-width: 767.98px) {
+        .financeiro-top-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+        .financeiro-top-btn,
+        .financeiro-top-actions .dropdown {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="fin-card financeiro-recebimentos-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-recebimentos-icon" aria-hidden="true">
+            <i class="bi bi-cash-stack"></i>
+        </span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <h2 class="fw-bold mb-1">Recebimentos</h2>
+            <p class="text-muted mb-0">Recebimentos em aberto e liquidações efetivadas no caixa.</p>
+        </div>
+    </div>
+    <div class="financeiro-top-actions d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <div class="dropdown">
+            <button class="financeiro-top-btn financeiro-top-btn-primary dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="true"
+                    aria-expanded="false">
+                <i class="bi bi-plus-lg"></i> Lançar Recebimento
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li>
+                    <button
+                       type="button"
+                       class="dropdown-item fw-semibold"
+                       hx-get="{% url 'financeiro:recebimento_avulso_novo' empresa_id=request.empresa_ativa.pk %}"
+                       hx-target="#modal-content"
+                       hx-swap="innerHTML"
+                       data-no-global-loading
+                       data-bs-toggle="modal"
+                       data-bs-target="#modalPadrao">
+                        Recebimento avulso
+                    </button>
+                </li>
+                <li>
+                    <button
+                       type="button"
+                       class="dropdown-item fw-semibold"
+                       hx-get="{% url 'financeiro:recebimento_medicao_novo' empresa_id=request.empresa_ativa.pk %}"
+                       hx-target="#modal-content"
+                       hx-swap="innerHTML"
+                       data-no-global-loading
+                       data-bs-toggle="modal"
+                       data-bs-target="#modalPadrao">
+                        Recebimento de medição
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="financeiro-board-card">
+    <div class="financeiro-board-header">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-hourglass-split"></i>
+            </span>
+            <div>
+                <h3 class="h6 fw-bold mb-0">Recebimentos em aberto</h3>
+                <div class="small text-muted">Ainda não entraram no caixa. Use Liquidar para registrar o pagamento efetivo.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ recebimentos_abertos|length }} em aberto</span>
+    </div>
+    {% if recebimentos_abertos %}
+    <div class="financeiro-board-body table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Data prevista</th>
+                    <th>Data liquidação</th>
+                    <th>Caixa</th>
+                    <th>Tipo</th>
+                    <th>Cliente</th>
+                    <th class="text-nowrap">NF</th>
+                    <th class="text-end">Valor bruto</th>
+                    <th class="text-end">Impostos</th>
+                    <th class="text-end">Valor líquido</th>
+                    <th>Descrição</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recebimentos_abertos %}
+                <tr>
+                    <td class="text-nowrap">{{ r.data|date:'d/m/Y' }}</td>
+                    <td class="text-nowrap text-muted">—</td>
+                    <td class="small">{{ r.caixa.nome }}</td>
+                    <td class="small text-muted text-nowrap">
+                        {{ r.tipo_label }}
+                    </td>
+                    <td class="small">
+                        {{ r.cliente.nome }}
+                    </td>
+                    <td class="small text-muted text-nowrap">
+                        {{ r.nf|default:"—" }}
+                    </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
+                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
+                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="small" style="max-width: 12rem;">
+                        <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <button type="button"
+                                class="btn btn-sm btn-success rounded-pill fw-semibold"
+                                hx-get="{% url 'financeiro:recebimento_liquidar' empresa_id=request.empresa_ativa.pk tipo=r.tipo pk=r.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-check2-circle me-1"></i> Liquidar
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">Nenhum recebimento em aberto.</div>
+    {% endif %}
+</div>
+
+<div class="financeiro-board-card mb-0">
+    <div class="financeiro-board-header">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-check2-circle"></i>
+            </span>
+            <div>
+                <h3 class="h6 fw-bold mb-0">Pagos/Liquidados</h3>
+                <div class="small text-muted">Recebimentos que já foram efetivamente lançados no caixa.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-success">{{ recebimentos_pagos|length }} liquidados</span>
+    </div>
+    {% if recebimentos_pagos %}
+    <div class="financeiro-board-body table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Data liquidação</th>
+                    <th>Caixa</th>
+                    <th>Tipo</th>
+                    <th>Cliente</th>
+                    <th class="text-nowrap">NF</th>
+                    <th class="text-end">Valor bruto</th>
+                    <th class="text-end">Impostos</th>
+                    <th class="text-end">Valor líquido</th>
+                    <th>Descrição</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recebimentos_pagos %}
+                <tr>
+                    <td class="text-nowrap">{{ r.data_pagamento|date:'d/m/Y' }}</td>
+                    <td class="small">{{ r.caixa.nome }}</td>
+                    <td class="small text-muted text-nowrap">{{ r.tipo_label }}</td>
+                    <td class="small">{{ r.cliente.nome }}</td>
+                    <td class="small text-muted text-nowrap">{{ r.nf|default:"—" }}</td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
+                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
+                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="small" style="max-width: 12rem;">
+                        <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">Nenhum recebimento liquidado ainda.</div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}

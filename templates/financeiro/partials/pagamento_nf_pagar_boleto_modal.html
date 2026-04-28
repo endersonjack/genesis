@@ -1,0 +1,198 @@
+{% load moeda %}
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-modal-choice {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">
+            {% if modo == 'editar' %}Editar pagamento do boleto{% else %}Pagar boleto{% endif %}
+        </h5>
+        <div class="text-muted small">Nota Fiscal nº {{ nf.numero_nf }} · {{ nf.fornecedor.nome }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading
+    class="d-flex flex-column"
+    style="max-height: calc(100vh - 9rem);"
+    id="boleto-pagamento-form">
+    {% csrf_token %}
+    <div class="modal-body overflow-auto flex-grow-1 py-3">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 small">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="fw-bold mb-2">Boletos</div>
+        <div class="d-grid gap-2 mb-3">
+            {% for boleto in boletos %}
+            <label class="financeiro-modal-choice p-2 d-flex gap-3 align-items-start">
+                <input
+                    class="form-check-input mt-1 js-boleto-opcao"
+                    type="radio"
+                    name="boleto"
+                    value="{{ boleto.pk }}"
+                    data-valor="{{ boleto.valor }}"
+                    {% if boleto.is_selected %}checked{% endif %}>
+                <span class="flex-grow-1">
+                    <span class="d-flex flex-wrap justify-content-between gap-2">
+                        <strong>{{ boleto.numero_doc|default:"Sem número" }}</strong>
+                        <span class="badge {{ boleto.situacao_badge_class }}">{{ boleto.situacao_label }}</span>
+                    </span>
+                    <span class="d-flex flex-wrap gap-3 small text-muted mt-1">
+                        <span>Parcela {{ boleto.parcela }}</span>
+                        <span>Vencimento {{ boleto.vencimento|date:"d/m/Y" }}</span>
+                        <span class="fw-semibold text-body">R$ {{ boleto.valor|moeda_br }}</span>
+                    </span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+        {% if form.boleto.errors %}
+            <div class="text-danger small mb-3">{{ form.boleto.errors }}</div>
+        {% endif %}
+
+        <div class="row g-2">
+            <div class="col-12 col-lg-4">
+                <label class="form-label fw-semibold small mb-1" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
+                {{ form.data_pagamento }}
+                {% if form.data_pagamento.errors %}<div class="text-danger small mt-1">{{ form.data_pagamento.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-lg-4">
+                <label class="form-label fw-semibold small mb-1" for="{{ form.acrescimos.id_for_label }}">{{ form.acrescimos.label }}</label>
+                {{ form.acrescimos }}
+                {% if form.acrescimos.errors %}<div class="text-danger small mt-1">{{ form.acrescimos.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-lg-4">
+                <label class="form-label fw-semibold small mb-1" for="{{ form.descontos.id_for_label }}">{{ form.descontos.label }}</label>
+                {{ form.descontos }}
+                {% if form.descontos.errors %}<div class="text-danger small mt-1">{{ form.descontos.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <div class="rounded-4 border border-primary-subtle bg-primary-subtle p-3 mt-1">
+                    <label class="form-label fw-bold text-primary mb-1" for="{{ form.valor_pago.id_for_label }}">{{ form.valor_pago.label }}</label>
+                    {{ form.valor_pago }}
+                    {% if form.valor_pago.errors %}<div class="text-danger small mt-1">{{ form.valor_pago.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small mb-1" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
+                {{ form.observacao }}
+                {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer flex-shrink-0 bg-white justify-content-between">
+        <div>
+            {% if modo == 'editar' and selected_boleto and selected_boleto.status == 'pago' %}
+            <button
+                type="submit"
+                name="action"
+                value="excluir_pagamento"
+                class="financeiro-modal-btn btn-outline-danger"
+                onclick="return confirm('Excluir o pagamento deste boleto? Ele voltará para não pago.');">
+                <i class="bi bi-trash me-1"></i> Excluir pagamento
+            </button>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" name="action" value="salvar" class="financeiro-modal-btn financeiro-modal-btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> {% if modo == 'editar' %}Salvar alterações{% else %}Confirmar pagamento{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    var form = document.getElementById('boleto-pagamento-form');
+    if (!form) return;
+
+    var valorPago = form.querySelector('[name="valor_pago"]');
+    var acrescimos = form.querySelector('[name="acrescimos"]');
+    var descontos = form.querySelector('[name="descontos"]');
+
+    function parseMoney(raw) {
+        var value = String(raw || '').trim().replace(/\s/g, '');
+        if (!value) return 0;
+        if (value.indexOf(',') !== -1) {
+            value = value.replace(/\./g, '').replace(',', '.');
+        }
+        value = value.replace(/[^\d.]/g, '');
+        var parsed = parseFloat(value);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
+    function formatMoney(value) {
+        return Math.max(value, 0).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function boletoSelecionado() {
+        return form.querySelector('.js-boleto-opcao:checked');
+    }
+
+    function recalcular() {
+        var selected = boletoSelecionado();
+        if (!selected || !valorPago) return;
+        var base = parseMoney(selected.dataset.valor);
+        var total = base + parseMoney(acrescimos && acrescimos.value) - parseMoney(descontos && descontos.value);
+        valorPago.value = formatMoney(total);
+    }
+
+    form.querySelectorAll('.js-boleto-opcao').forEach(function (radio) {
+        radio.addEventListener('change', recalcular);
+    });
+    [acrescimos, descontos].forEach(function (input) {
+        if (input) {
+            input.addEventListener('input', function () { window.setTimeout(recalcular, 0); });
+            input.addEventListener('blur', function () { window.setTimeout(recalcular, 0); });
+        }
+    });
+    recalcular();
+})();
+</script>

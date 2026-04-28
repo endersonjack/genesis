@@ -124,10 +124,15 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internacionalização
+# Moeda do sistema: Real (pt-BR) — exibição tipo 5.200,00 (milhar com ponto, decimal com vírgula).
+# Valores em R$ nos templates: filtro |moeda_br (core.templatetags.moeda); inputs: data-mask="br-moeda".
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Fortaleza'
 USE_I18N = True
 USE_TZ = True
+USE_THOUSAND_SEPARATOR = True
+DECIMAL_SEPARATOR = ','
+THOUSAND_SEPARATOR = '.'
 
 # Arquivos estáticos
 STATIC_URL = '/static/'

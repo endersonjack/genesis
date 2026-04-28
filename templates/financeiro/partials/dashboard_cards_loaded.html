@@ -1,0 +1,177 @@
+{% load moeda %}
+<div class="financeiro-board-card">
+    <div class="bg-white border-bottom py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <h3 class="h5 fw-bold mb-0">Posi&ccedil;&atilde;o hoje</h3>
+            <div class="small text-muted">Vencimentos e movimenta&ccedil;&otilde;es de {{ hoje|date:"d/m/Y" }}.</div>
+        </div>
+    </div>
+    <div class="financeiro-board-body">
+        <div class="row g-3">
+            <div class="col-12 col-xl-6">
+                <div class="mini-card h-100">
+                    <div class="card-header bg-white border-bottom py-3 px-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold">Boletos vencendo hoje</div>
+                                <div class="small text-muted">Em aberto (rascunho/emitido).</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-muted text-uppercase fw-semibold">Total</div>
+                                <div class="fw-bold">R$ {{ total_boletos_venc_hoje|moeda_br }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Doc</th>
+                                        <th>Fornecedor</th>
+                                        <th class="text-end pe-4">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for b in boletos_venc_hoje %}
+                                    <tr class="financeiro-clickable-row"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=b.pagamento_nf.pk %}"
+                                        tabindex="0"
+                                        role="link">
+                                        <td class="ps-4 fw-semibold small">{{ b.numero_doc }}</td>
+                                        <td class="small text-truncate" style="max-width: 18rem;">
+                                            {{ b.pagamento_nf.fornecedor.nome }}
+                                            <div class="text-muted small">NF {{ b.pagamento_nf.numero_nf }}</div>
+                                        </td>
+                                        <td class="text-end pe-4 fw-semibold small">R$ {{ b.valor|moeda_br }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="py-4 text-center text-muted small">Nenhum boleto vencendo hoje.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <div class="mini-card h-100">
+                    <div class="card-header bg-white border-bottom py-3 px-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold">Em aberto/Sem pagamento</div>
+                                <div class="small text-muted">Boletos vencidos + notas fiscais sem pagamento.</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-muted text-uppercase fw-semibold">Total</div>
+                                <div class="fw-bold">R$ {{ total_em_aberto_sem_pagamento|moeda_br }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Tipo</th>
+                                        <th>Refer&ecirc;ncia</th>
+                                        <th class="text-end pe-4">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for b in boletos_vencidos %}
+                                    <tr class="financeiro-clickable-row"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=b.pagamento_nf.pk %}"
+                                        tabindex="0"
+                                        role="link">
+                                        <td class="ps-4 small">
+                                            <span class="badge text-bg-danger">Boleto</span>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 22rem;">
+                                            {{ b.pagamento_nf.fornecedor.nome }} - Doc {{ b.numero_doc }}
+                                            <div class="text-muted small">Venc. {{ b.vencimento|date:"d/m/Y" }} - NF {{ b.pagamento_nf.numero_nf }}</div>
+                                        </td>
+                                        <td class="text-end pe-4 fw-semibold small">R$ {{ b.valor|moeda_br }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% for nf in notas_sem_pagamento %}
+                                    <tr class="financeiro-clickable-row"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+                                        tabindex="0"
+                                        role="link">
+                                        <td class="ps-4 small">
+                                            <span class="badge text-bg-secondary">Sem pagamento</span>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 22rem;">
+                                            {{ nf.fornecedor.nome }} - NF {{ nf.numero_nf }}
+                                            <div class="text-muted small">Emiss&atilde;o {{ nf.data_emissao|date:"d/m/Y" }}</div>
+                                        </td>
+                                        <td class="text-end pe-4 fw-semibold small">-</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not boletos_vencidos and not notas_sem_pagamento %}
+                                    <tr>
+                                        <td colspan="3" class="py-4 text-center text-muted small">Nenhum registro em aberto para hoje.</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="mini-card">
+                    <div class="card-header bg-white border-bottom py-3 px-4">
+                        <div class="fw-bold">&Uacute;ltimas movimenta&ccedil;&otilde;es de caixa</div>
+                        <div class="small text-muted">&Uacute;ltimos 10 registros (entradas e pagamentos).</div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Data</th>
+                                        <th>Caixa</th>
+                                        <th>Tipo</th>
+                                        <th>Descri&ccedil;&atilde;o</th>
+                                        <th class="text-end pe-4">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for e in ultimos_eventos %}
+                                    <tr class="{% if e.kind == 'nf' and e.nf_pk %}financeiro-clickable-row{% endif %}"
+                                        {% if e.kind == 'nf' and e.nf_pk %}
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=e.nf_pk %}"
+                                        tabindex="0"
+                                        role="link"
+                                        {% endif %}
+                                    >
+                                        <td class="ps-4 small">{{ e.data|date:"d/m/Y" }}</td>
+                                        <td class="small fw-semibold">{{ e.caixa_nome }}</td>
+                                        <td class="small">
+                                            <span class="badge {{ e.badge_class }}">{{ e.badge_text }}</span>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 34rem;">{{ e.descricao }}</td>
+                                        <td class="text-end pe-4 fw-semibold small">
+                                            {{ e.valor_sinal }} R$ {{ e.valor|moeda_br }}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="py-4 text-center text-muted small">Sem lancamentos ainda.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

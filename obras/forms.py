@@ -1,66 +1,10 @@
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django import forms
 
+from core.moeda_fmt import format_decimal_br_moeda, parse_valor_moeda_br
+
 from .models import Obra
-
-
-def _format_decimal_br_moeda(d: Decimal) -> str:
-    """Exibe Decimal no padrão 1.234,56 (máscara br-moeda)."""
-    d = d.quantize(Decimal('0.01'))
-    neg = d < 0
-    d = abs(d)
-    whole = int(d)
-    frac = int((d - Decimal(whole)) * 100)
-    if whole == 0:
-        intp = '0'
-    else:
-        s = str(whole)
-        blocks = []
-        while s:
-            blocks.append(s[-3:])
-            s = s[:-3]
-        intp = '.'.join(reversed(blocks))
-    out = f'{intp},{frac:02d}'
-    return ('-' if neg else '') + out
-
-
-def _parse_valor_moeda(raw) -> Decimal | None:
-    """
-    Aceita valor já normalizado pelo JS (1234.56), formato BR (1.234,56)
-    ou só vírgula como decimal (1234,56).
-    """
-    if raw is None:
-        return None
-    s = (
-        str(raw)
-        .strip()
-        .replace(' ', '')
-        .replace('R$', '')
-        .replace('r$', '')
-    )
-    if not s:
-        return None
-    if s in ('-', ',', '.'):
-        raise forms.ValidationError('Informe um valor numérico válido.')
-    if ',' in s and '.' in s:
-        s = s.replace('.', '').replace(',', '.')
-    elif ',' in s:
-        s = s.replace(',', '.')
-    else:
-        if s.count('.') > 1:
-            s = s.replace('.', '')
-    try:
-        d = Decimal(s)
-    except InvalidOperation:
-        raise forms.ValidationError('Informe um valor numérico válido.')
-    if d < 0:
-        raise forms.ValidationError('O valor não pode ser negativo.')
-    if d == 0:
-        return None
-    if abs(d) >= Decimal('1e15'):
-        raise forms.ValidationError('Valor inválido.')
-    return d.quantize(Decimal('0.01'))
 
 
 class ObraForm(forms.ModelForm):
@@ -144,7 +88,7 @@ class ObraForm(forms.ModelForm):
             self.fields.pop('valor', None)
             self.initial.pop('valor', None)
         elif self.instance.pk and self.instance.valor is not None:
-            self.initial['valor'] = _format_decimal_br_moeda(self.instance.valor)
+            self.initial['valor'] = format_decimal_br_moeda(self.instance.valor)
 
     def clean_valor(self):
-        return _parse_valor_moeda(self.cleaned_data.get('valor'))
+        return parse_valor_moeda_br(self.cleaned_data.get('valor'))
