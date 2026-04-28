@@ -108,11 +108,26 @@ class RecebimentoAvulsoForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(self, *args, empresa=None, instance=None, **kwargs):
         self.empresa = empresa
+        self.instance = instance
         super().__init__(*args, **kwargs)
         self.initial.setdefault('impostos', format_decimal_br_moeda(Decimal('0')))
         self.initial.setdefault('valor_liquido', format_decimal_br_moeda(Decimal('0')))
+        if instance and not self.is_bound:
+            self.initial.update(
+                {
+                    'caixa': instance.caixa_id,
+                    'cliente': instance.cliente_id,
+                    'categoria': instance.categoria_id,
+                    'descricao': instance.descricao,
+                    'data': instance.data.isoformat() if instance.data else '',
+                    'valor': format_decimal_br_moeda(instance.valor),
+                    'impostos': format_decimal_br_moeda(instance.impostos),
+                    'valor_liquido': format_decimal_br_moeda(instance.valor_liquido),
+                    'observacao': instance.observacao,
+                }
+            )
         if empresa:
             self.fields['caixa'].queryset = Caixa.objects.filter(
                 empresa=empresa, ativo=True
@@ -168,14 +183,64 @@ class RecebimentoAvulsoForm(forms.Form):
             return Decimal('0')
         return parse_valor_moeda_obrigatorio(raw)
 
+    def clean_valor_liquido(self):
+        return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor_liquido'))
+
     def clean(self):
         cleaned = super().clean()
         valor = cleaned.get('valor')
         impostos = cleaned.get('impostos') or Decimal('0')
         if valor is not None and impostos >= valor:
             self.add_error('impostos', 'Impostos devem ser menores que o valor bruto.')
-        if valor is not None:
+        if valor is not None and self.fields['valor_liquido'].disabled:
             cleaned['valor_liquido'] = valor - impostos
+        elif valor is not None and cleaned.get('valor_liquido') != valor - impostos:
+            self.add_error(
+                'valor_liquido',
+                'Valor líquido deve ser o valor bruto menos impostos.',
+            )
+        return cleaned
+
+
+class RecebimentoAvulsoEditForm(RecebimentoAvulsoForm):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento/liquidação',
+        required=False,
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    field_order = (
+        'caixa',
+        'cliente',
+        'categoria',
+        'descricao',
+        'data',
+        'data_pagamento',
+        'valor',
+        'impostos',
+        'valor_liquido',
+        'comprovante',
+        'observacao',
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        super().__init__(*args, instance=instance, **kwargs)
+        self.fields['valor_liquido'].disabled = False
+        self.fields['valor_liquido'].required = True
+        if instance and not self.is_bound:
+            self.initial['data_pagamento'] = (
+                instance.data_pagamento.isoformat() if instance.data_pagamento else ''
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            self.instance
+            and self.instance.status == self.instance.Status.PAGO
+            and not cleaned.get('data_pagamento')
+        ):
+            self.add_error('data_pagamento', 'Informe a data de pagamento/liquidação.')
         return cleaned
 
 
@@ -308,6 +373,14 @@ class RecebimentoMedicaoForm(RecebimentoAvulsoForm):
             self.fields['obra'].queryset = Obra.objects.filter(empresa=empresa).order_by(
                 'nome'
             )
+        if self.instance and not self.is_bound:
+            self.initial.update(
+                {
+                    'obra': self.instance.obra_id,
+                    'medicao_numero': self.instance.medicao_numero,
+                    'nota_fiscal_numero': self.instance.nota_fiscal_numero,
+                }
+            )
 
     def clean(self):
         cleaned = super().clean()
@@ -322,6 +395,51 @@ class RecebimentoMedicaoForm(RecebimentoAvulsoForm):
             )
         if obra and obra.empresa_id != self.empresa.pk:
             self.add_error('obra', 'Obra inválida para esta empresa.')
+        return cleaned
+
+
+class RecebimentoMedicaoEditForm(RecebimentoMedicaoForm):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento/liquidação',
+        required=False,
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    field_order = (
+        'caixa',
+        'cliente',
+        'categoria',
+        'obra',
+        'medicao_numero',
+        'nota_fiscal_numero',
+        'descricao',
+        'data',
+        'data_pagamento',
+        'valor',
+        'impostos',
+        'valor_liquido',
+        'comprovante',
+        'observacao',
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        super().__init__(*args, instance=instance, **kwargs)
+        self.fields['valor_liquido'].disabled = False
+        self.fields['valor_liquido'].required = True
+        if instance and not self.is_bound:
+            self.initial['data_pagamento'] = (
+                instance.data_pagamento.isoformat() if instance.data_pagamento else ''
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            self.instance
+            and self.instance.status == self.instance.Status.PAGO
+            and not cleaned.get('data_pagamento')
+        ):
+            self.add_error('data_pagamento', 'Informe a data de pagamento/liquidação.')
         return cleaned
 
 

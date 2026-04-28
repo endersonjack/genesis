@@ -82,6 +82,11 @@ urlpatterns = [
         empresa_scoped(views.recebimento_liquidar),
         name='recebimento_liquidar',
     ),
+    path(
+        'movimentar/recebimentos/<str:tipo>/<int:pk>/editar/',
+        empresa_scoped(views.recebimento_editar),
+        name='recebimento_editar',
+    ),
     path('categorias/', empresa_scoped(views.categoria_lista), name='categoria_lista'),
     path('categorias/novo/', empresa_scoped(views.categoria_novo), name='categoria_novo'),
     path(

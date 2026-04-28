@@ -34,8 +34,10 @@ from .forms import (
     PagamentoNotaFiscalForm,
     PagamentoNotaFiscalItemFormSet,
     PagamentoNotaFiscalPagamentoForm,
+    RecebimentoAvulsoEditForm,
     RecebimentoAvulsoForm,
     RecebimentoLiquidacaoForm,
+    RecebimentoMedicaoEditForm,
     RecebimentoMedicaoForm,
 )
 from .models import (
@@ -66,12 +68,14 @@ def _recebimento_para_linha(recebimento, tipo: str) -> dict:
     return {
         'pk': recebimento.pk,
         'tipo': tipo,
-        'tipo_label': 'Recebimento avulso' if tipo == 'avulso' else 'Recebimento de medição',
+        'tipo_label': 'Avulso' if tipo == 'avulso' else 'Medição',
         'data': recebimento.data,
         'data_pagamento': recebimento.data_pagamento,
         'caixa': recebimento.caixa,
         'cliente': recebimento.cliente,
+        'medicao': getattr(recebimento, 'medicao_numero', ''),
         'nf': getattr(recebimento, 'nota_fiscal_numero', ''),
+        'obra': getattr(recebimento, 'obra', None),
         'valor': recebimento.valor,
         'impostos': recebimento.impostos,
         'valor_liquido': recebimento.valor_liquido,
@@ -793,6 +797,109 @@ def recebimento_liquidar(request, tipo: str, pk: int):
                 'post_url': reverse_empresa(
                     request,
                     'financeiro:recebimento_liquidar',
+                    kwargs={'tipo': tipo, 'pk': recebimento.pk},
+                ),
+            },
+        )
+    return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+
+@login_required
+def recebimento_editar(request, tipo: str, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    if tipo == 'avulso':
+        recebimento = get_object_or_404(
+            RecebimentoAvulso.objects.filter(empresa=empresa).select_related('caixa', 'movimento'),
+            pk=pk,
+        )
+        form_class = RecebimentoAvulsoEditForm
+    elif tipo == 'medicao':
+        recebimento = get_object_or_404(
+            RecebimentoMedicao.objects.filter(empresa=empresa).select_related(
+                'caixa',
+                'movimento',
+                'obra',
+            ),
+            pk=pk,
+        )
+        form_class = RecebimentoMedicaoEditForm
+    else:
+        messages.error(request, 'Tipo de recebimento inválido.')
+        return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    if request.method == 'POST' and request.POST.get('action') == 'excluir':
+        with transaction.atomic():
+            movimento = getattr(recebimento, 'movimento', None)
+            recebimento.delete()
+            if movimento:
+                movimento.delete()
+        messages.success(request, 'Recebimento excluído.')
+        if _is_htmx(request):
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = reverse_empresa(request, 'financeiro:movimentar_caixa')
+            return response
+        return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    form = form_class(
+        request.POST or None,
+        request.FILES or None,
+        empresa=empresa,
+        instance=recebimento,
+    )
+    if request.method == 'POST' and form.is_valid():
+        cd = form.cleaned_data
+        with transaction.atomic():
+            recebimento.caixa = cd['caixa']
+            recebimento.cliente = cd['cliente']
+            recebimento.categoria = cd.get('categoria')
+            recebimento.data = cd['data']
+            recebimento.data_pagamento = cd.get('data_pagamento')
+            recebimento.valor = cd['valor']
+            recebimento.impostos = cd['impostos']
+            recebimento.valor_liquido = cd['valor_liquido']
+            recebimento.descricao = cd['descricao']
+            recebimento.observacao = cd.get('observacao') or ''
+            if cd.get('comprovante'):
+                recebimento.comprovante = cd['comprovante']
+            if tipo == 'medicao':
+                recebimento.obra = cd['obra']
+                recebimento.medicao_numero = cd['medicao_numero']
+                recebimento.nota_fiscal_numero = (cd.get('nota_fiscal_numero') or '').strip()
+            recebimento.full_clean()
+            recebimento.save()
+
+            movimento = getattr(recebimento, 'movimento', None)
+            if movimento:
+                movimento.caixa = recebimento.caixa
+                movimento.valor = recebimento.valor_liquido
+                movimento.data = recebimento.data_pagamento or recebimento.data
+                movimento.descricao = recebimento.descricao
+                movimento.observacao = recebimento.observacao
+                movimento.full_clean()
+                movimento.save()
+
+        messages.success(request, 'Recebimento atualizado.')
+        if _is_htmx(request):
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = reverse_empresa(request, 'financeiro:movimentar_caixa')
+            return response
+        return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    if _is_htmx(request):
+        return render(
+            request,
+            'financeiro/partials/recebimento_editar_modal.html',
+            {
+                'page_title': 'Editar recebimento',
+                'form': form,
+                'recebimento': recebimento,
+                'tipo': tipo,
+                'post_url': reverse_empresa(
+                    request,
+                    'financeiro:recebimento_editar',
                     kwargs={'tipo': tipo, 'pk': recebimento.pk},
                 ),
             },

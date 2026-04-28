@@ -208,50 +208,68 @@
         <table class="table table-hover fin-table mb-0 align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Data prevista</th>
-                    <th>Data liquidação</th>
-                    <th>Caixa</th>
+                    <th>#</th>
+                    <th>Data</th>
                     <th>Tipo</th>
-                    <th>Cliente</th>
+                    <th>Medição</th>
                     <th class="text-nowrap">NF</th>
+                    <th>Cliente</th>
                     <th class="text-end">Valor bruto</th>
                     <th class="text-end">Impostos</th>
                     <th class="text-end">Valor líquido</th>
+                    <th>Obra</th>
                     <th>Descrição</th>
-                    <th></th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in recebimentos_abertos %}
                 <tr>
+                    <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
                     <td class="text-nowrap">{{ r.data|date:'d/m/Y' }}</td>
-                    <td class="text-nowrap text-muted">—</td>
-                    <td class="small">{{ r.caixa.nome }}</td>
                     <td class="small text-muted text-nowrap">
                         {{ r.tipo_label }}
+                    </td>
+                    <td class="small text-muted text-nowrap">{{ r.medicao|default:"—" }}</td>
+                    <td class="small text-muted text-nowrap">
+                        {{ r.nf|default:"—" }}
                     </td>
                     <td class="small">
                         {{ r.cliente.nome }}
                     </td>
-                    <td class="small text-muted text-nowrap">
-                        {{ r.nf|default:"—" }}
-                    </td>
                     <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
                     <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
                     <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="small text-muted" style="max-width: 10rem;">
+                        <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
+                    </td>
                     <td class="small" style="max-width: 12rem;">
                         <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
                     </td>
                     <td class="text-end text-nowrap">
                         <button type="button"
-                                class="btn btn-sm btn-success rounded-pill fw-semibold"
+                                class="btn btn-sm btn-success rounded-circle"
+                                title="Liquidar"
+                                aria-label="Liquidar"
                                 hx-get="{% url 'financeiro:recebimento_liquidar' empresa_id=request.empresa_ativa.pk tipo=r.tipo pk=r.pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 data-no-global-loading
                                 data-bs-toggle="modal"
                                 data-bs-target="#modalPadrao">
-                            <i class="bi bi-check2-circle me-1"></i> Liquidar
+                            <i class="bi bi-check2-circle"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-circle ms-1"
+                                title="Editar"
+                                aria-label="Editar"
+                                hx-get="{% url 'financeiro:recebimento_editar' empresa_id=request.empresa_ativa.pk tipo=r.tipo pk=r.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-pencil-square"></i>
                         </button>
                     </td>
                 </tr>
@@ -282,30 +300,53 @@
         <table class="table table-hover fin-table mb-0 align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Data liquidação</th>
-                    <th>Caixa</th>
+                    <th>#</th>
+                    <th>Data</th>
+                    <th>Data pagamento</th>
                     <th>Tipo</th>
-                    <th>Cliente</th>
+                    <th>Medição</th>
                     <th class="text-nowrap">NF</th>
+                    <th>Cliente</th>
                     <th class="text-end">Valor bruto</th>
                     <th class="text-end">Impostos</th>
                     <th class="text-end">Valor líquido</th>
+                    <th>Obra</th>
                     <th>Descrição</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in recebimentos_pagos %}
                 <tr>
+                    <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
+                    <td class="text-nowrap">{{ r.data|date:'d/m/Y' }}</td>
                     <td class="text-nowrap">{{ r.data_pagamento|date:'d/m/Y' }}</td>
-                    <td class="small">{{ r.caixa.nome }}</td>
                     <td class="small text-muted text-nowrap">{{ r.tipo_label }}</td>
-                    <td class="small">{{ r.cliente.nome }}</td>
+                    <td class="small text-muted text-nowrap">{{ r.medicao|default:"—" }}</td>
                     <td class="small text-muted text-nowrap">{{ r.nf|default:"—" }}</td>
+                    <td class="small">{{ r.cliente.nome }}</td>
                     <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
                     <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
                     <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="small text-muted" style="max-width: 10rem;">
+                        <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
+                    </td>
                     <td class="small" style="max-width: 12rem;">
                         <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-circle"
+                                title="Editar"
+                                aria-label="Editar"
+                                hx-get="{% url 'financeiro:recebimento_editar' empresa_id=request.empresa_ativa.pk tipo=r.tipo pk=r.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
