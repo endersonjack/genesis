@@ -11,8 +11,10 @@ from django.db.models import (
     DecimalField,
     ExpressionWrapper,
     F,
+    OuterRef,
     Q,
     Sum,
+    Subquery,
     Value,
 )
 from django.db.models.functions import Coalesce
@@ -65,20 +67,31 @@ def _is_htmx(request) -> bool:
     return str(request.headers.get('HX-Request', '')).lower() == 'true'
 
 
+def _formset_tem_erros(formset) -> bool:
+    return any(bool(errors) for errors in formset.errors) or bool(
+        formset.non_form_errors()
+    )
+
+
+def _pagamento_nf_tem_erros_validacao(form, itens_fs, pagamentos_fs, boletos_fs) -> bool:
+    return (
+        bool(form.errors)
+        or bool(form.non_field_errors())
+        or _formset_tem_erros(itens_fs)
+        or _formset_tem_erros(pagamentos_fs)
+        or _formset_tem_erros(boletos_fs)
+    )
+
+
 def _active_tab_pagamento_nf(request, form, itens_fs, pagamentos_fs, boletos_fs) -> str:
     requested = (request.GET.get('tab') or 'descricao').strip().lower()
     if request.method != 'POST':
         return requested
     if form.errors or form.non_field_errors():
         return 'descricao'
-    if itens_fs.errors or itens_fs.non_form_errors():
+    if _formset_tem_erros(itens_fs):
         return 'itens'
-    if (
-        pagamentos_fs.errors
-        or pagamentos_fs.non_form_errors()
-        or boletos_fs.errors
-        or boletos_fs.non_form_errors()
-    ):
+    if _formset_tem_erros(pagamentos_fs) or _formset_tem_erros(boletos_fs):
         return 'pagamento'
     return requested
 
@@ -213,12 +226,12 @@ def _resumo_pagamento_nf(pagamentos, boletos, total_itens: Decimal, hoje=None) -
     ]
     tem_boleto_vencido = any(boleto.vencimento < hoje for boleto in boletos_abertos)
 
-    if tem_boleto_vencido:
-        situacao_label = 'Vencido'
-        situacao_badge_class = 'text-bg-danger'
-    elif total_pago >= total_itens and total_itens > 0:
+    if total_pago >= total_itens and total_itens > 0:
         situacao_label = 'Pago'
         situacao_badge_class = 'text-bg-success'
+    elif tem_boleto_vencido:
+        situacao_label = 'Vencido'
+        situacao_badge_class = 'text-bg-danger'
     elif total_pago > 0:
         situacao_label = 'Pago Parcial'
         situacao_badge_class = 'text-bg-primary'
@@ -235,6 +248,15 @@ def _resumo_pagamento_nf(pagamentos, boletos, total_itens: Decimal, hoje=None) -
         'total_pagamentos_diretos': total_pagamentos_diretos,
         'total_boletos_pago': total_boletos_pago,
     }
+
+
+def _subquery_total_itens_nf():
+    return (
+        PagamentoNotaFiscalItem.objects.filter(pagamento_nf=OuterRef('pk'))
+        .values('pagamento_nf')
+        .annotate(total=Sum('valor_total'))
+        .values('total')[:1]
+    )
 
 
 def _initial_pagamentos_nf(nf):
@@ -525,7 +547,10 @@ def buscar_pagamentos(request):
             .prefetch_related('boletos', 'pagamentos')
             .annotate(
                 total_itens_calc=Coalesce(
-                    Sum('itens__valor_total'),
+                    Subquery(
+                        _subquery_total_itens_nf(),
+                        output_field=DecimalField(max_digits=16, decimal_places=2),
+                    ),
                     Value(Decimal('0')),
                     output_field=DecimalField(max_digits=16, decimal_places=2),
                 )
@@ -690,7 +715,10 @@ def partial_dashboard_cards(request):
         .prefetch_related('pagamentos', 'boletos')
         .annotate(
             total_itens_calc=Coalesce(
-                Sum('itens__valor_total'),
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
                 Value(Decimal('0')),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             )
@@ -709,6 +737,8 @@ def partial_dashboard_cards(request):
             hoje,
         )
         if resumo_nf['situacao_label'] != 'Pago Parcial':
+            continue
+        if resumo_nf['valor_em_aberto'] <= 0:
             continue
         nf.valor_em_aberto_dashboard = resumo_nf['valor_em_aberto']
         nf.pagamento_label_dashboard = resumo_nf['pagamento_label']
@@ -740,7 +770,10 @@ def partial_dashboard_cards(request):
         .prefetch_related('pagamentos')
         .annotate(
             total_itens=Coalesce(
-                Sum('itens__valor_total'),
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
                 Value(Decimal('0')),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             )
@@ -1517,6 +1550,12 @@ def pagamento_nf_novo(request):
             'modo': 'novo',
             'dup_nf': dup_nf,
             'show_dup_modal': bool(dup_nf) and request.method == 'POST' and not force_save,
+            'has_validation_errors': _pagamento_nf_tem_erros_validacao(
+                form,
+                itens_fs,
+                pagamentos_fs,
+                boletos_fs,
+            ),
             'active_tab': _active_tab_pagamento_nf(
                 request,
                 form,
@@ -1643,6 +1682,12 @@ def pagamento_nf_editar(request, pk: int):
             'nf': nf,
             'dup_nf': dup_nf,
             'show_dup_modal': bool(dup_nf) and request.method == 'POST' and not force_save,
+            'has_validation_errors': _pagamento_nf_tem_erros_validacao(
+                form,
+                itens_fs,
+                pagamentos_fs,
+                boletos_fs,
+            ),
             'active_tab': _active_tab_pagamento_nf(
                 request,
                 form,

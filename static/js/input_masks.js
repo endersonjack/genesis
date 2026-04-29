@@ -329,6 +329,8 @@
     }
 
     window.genesisInputMaskScan = scan;
+    /* Mesmo critério de normalizeBrMasksForSubmit para cálculos na página (digitação em centavos). */
+    window.genesisBrMoedaToPython = brMoedaToPython;
 
     document.addEventListener('DOMContentLoaded', function () {
         scan(document);

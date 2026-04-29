@@ -4,6 +4,7 @@
       hx-target="#modal-content"
       hx-swap="innerHTML"
       data-no-global-loading
+      id="fornecedorRapidoForm"
       novalidate>
     {% csrf_token %}
     <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -48,7 +49,7 @@
         <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
             Cancelar
         </button>
-        <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+        <button type="submit" class="btn btn-primary rounded-3 fw-semibold" id="btnSalvarFornecedorRapido">
             Salvar fornecedor
         </button>
     </div>
@@ -82,5 +83,15 @@
         applyTipo(true);
     });
     applyTipo(false);
+
+    var formEl = document.getElementById('fornecedorRapidoForm');
+    var submitBtn = document.getElementById('btnSalvarFornecedorRapido');
+    if (formEl && submitBtn) {
+        formEl.addEventListener('submit', function () {
+            submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Salvando...';
+        });
+    }
 })();
 </script>

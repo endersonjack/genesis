@@ -237,7 +237,7 @@
         {{ form.non_field_errors }}
     </div>
     {% endif %}
-    {% if form.errors or itens_fs.errors or itens_fs.non_form_errors or pagamentos_fs.errors or pagamentos_fs.non_form_errors or boletos_fs.errors or boletos_fs.non_form_errors %}
+    {% if has_validation_errors %}
     <div class="alert alert-warning rounded-4">
         Revise os campos destacados antes de salvar a Nota Fiscal.
     </div>
@@ -851,7 +851,7 @@
 <script>
     (function () {
         function parseBrMoneyToNumber(v) {
-            // Espelha a lógica do input_masks.js (br-moeda → python): pt-BR 1.234,56 -> 1234.56
+            // Fallback quando input_masks.js ainda não expôs genesisBrMoedaToPython (espelha _toPythonMoneyString).
             let s = String(v == null ? '' : v).trim().replace(/\s/g, '');
             if (!s) return 0;
             if (s.indexOf('-') !== -1) return 0;
@@ -876,6 +876,17 @@
             else if (frac.length > 2) frac = frac.slice(0, 2);
             const n = Number(intp + '.' + frac);
             return Number.isFinite(n) ? n : 0;
+        }
+
+        /** Valor numérico de campo com máscara br-moeda (digitação em centavos = mesmo critério do submit). */
+        function moneyFieldToCalcNumber(v) {
+            if (typeof window.genesisBrMoedaToPython === 'function') {
+                var py = window.genesisBrMoedaToPython(String(v == null ? '' : v).trim());
+                if (py === '') return 0;
+                var n = parseFloat(py, 10);
+                return Number.isFinite(n) ? n : 0;
+            }
+            return parseBrMoneyToNumber(v);
         }
 
         function formatNumberToBrMoney(n) {
@@ -930,6 +941,18 @@
         let pagamentoModalTipo = '';
         let pagamentoModalEditingRow = null;
         let pagamentoModalBoletosRascunho = [];
+
+        function setNotaFiscalSavingState() {
+            [btnSalvarTopo, btnSalvarRodape].forEach(btn => {
+                if (!btn) return;
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+            });
+            if (btnNextTab) {
+                btnNextTab.disabled = true;
+            }
+        }
 
         function toggleBoletos() {
             const isBoletos = Array.from(document.querySelectorAll('#pagamentosCards select[name$="-tipo"]'))
@@ -986,6 +1009,21 @@
         const caixaPadraoSelect = document.getElementById('{{ form.caixa.id_for_label }}');
         const nfTotalText = document.getElementById('nfTotalText');
 
+        function sincronizarCaixaItensComNf() {
+            if (!caixaPadraoSelect || !itensTableBody) return;
+            const valor = caixaPadraoSelect.value;
+            itensTableBody.querySelectorAll('tr.item-row select[name$="-caixa"]').forEach(sel => {
+                const row = sel.closest('tr.item-row');
+                const delEl = row ? row.querySelector('input[type="checkbox"][name$="-DELETE"]') : null;
+                if (delEl && delEl.checked) return;
+                sel.value = valor;
+            });
+        }
+
+        if (caixaPadraoSelect) {
+            caixaPadraoSelect.addEventListener('change', sincronizarCaixaItensComNf);
+        }
+
         function cloneLastItemRow() {
             const rows = itensTableBody.querySelectorAll('tr.item-row');
             const last = rows[rows.length - 1];
@@ -1030,10 +1068,10 @@
             }
             itensTableBody.appendChild(tr);
             itensTotal.value = String(idx + 1);
-            bindItemRow(tr);
             if (window.genesisInputMaskScan) {
                 window.genesisInputMaskScan(tr);
             }
+            bindItemRow(tr);
             recalcAll();
         }
         if (btnAddItem) btnAddItem.addEventListener('click', cloneLastItemRow);
@@ -1050,7 +1088,7 @@
             // quantidade pode vir com vírgula (ex.: "1,0000") dependendo de locale do Django/browser
             const qtyRaw = String(qtyEl.value || '').trim().replace(',', '.').replace(/[^\d.]/g, '');
             const qty = Number(qtyRaw || '0');
-            const unit = parseBrMoneyToNumber(unitEl.value);
+            const unit = moneyFieldToCalcNumber(unitEl.value);
             const computed = Math.max(0, qty * unit);
 
             totalEl.value = formatNumberToBrMoney(computed);
@@ -1075,9 +1113,9 @@
                 const valorEl = row.querySelector('input[name$="-valor"]');
                 const acrescimosEl = row.querySelector('input[name$="-acrescimos"]');
                 const descontosEl = row.querySelector('input[name$="-descontos"]');
-                sum += parseBrMoneyToNumber(valorEl ? valorEl.value : '0,00');
-                sum += parseBrMoneyToNumber(acrescimosEl ? acrescimosEl.value : '0,00');
-                sum -= parseBrMoneyToNumber(descontosEl ? descontosEl.value : '0,00');
+                sum += moneyFieldToCalcNumber(valorEl ? valorEl.value : '0,00');
+                sum += moneyFieldToCalcNumber(acrescimosEl ? acrescimosEl.value : '0,00');
+                sum -= moneyFieldToCalcNumber(descontosEl ? descontosEl.value : '0,00');
             });
             return Math.max(0, sum);
         }
@@ -1193,7 +1231,7 @@
         function renderPagamentoRow(row) {
             const data = getPagamentoRowData(row);
             const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            const isEmpty = !data.tipo && parseBrMoneyToNumber(data.valor) === 0 && !data.observacao;
+            const isEmpty = !data.tipo && moneyFieldToCalcNumber(data.valor) === 0 && !data.observacao;
             if (delEl && delEl.checked) {
                 row.style.display = 'none';
                 return;
@@ -1259,6 +1297,32 @@
         function addPagamentoRow(data) {
             if (!pagamentosTotal || !pagamentosBody || !pagamentoTpl) return;
             const pagamentoData = data || {};
+            const reusableRow = Array.from(pagamentosBody.querySelectorAll('.pagamento-row')).find(row => {
+                const delEl = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                const rowData = getPagamentoRowData(row);
+                return (
+                    (!delEl || !delEl.checked)
+                    && !rowData.tipo
+                    && moneyFieldToCalcNumber(rowData.valor) === 0
+                    && moneyFieldToCalcNumber(rowData.acrescimos) === 0
+                    && moneyFieldToCalcNumber(rowData.descontos) === 0
+                    && !rowData.observacao
+                );
+            });
+            if (reusableRow) {
+                const dataEmissaoEl = document.getElementById('{{ form.data_emissao.id_for_label }}');
+                setPagamentoRowData(reusableRow, {
+                    tipo: pagamentoData.tipo || '',
+                    data: pagamentoData.data || (dataEmissaoEl ? dataEmissaoEl.value : ''),
+                    valor: pagamentoData.valor || formatNumberToBrMoney(getPagamentoSugerido() || computeNfTotal()),
+                    acrescimos: pagamentoData.acrescimos || '0,00',
+                    descontos: pagamentoData.descontos || '0,00',
+                    observacao: pagamentoData.observacao || '',
+                });
+                renderPagamentoRow(reusableRow);
+                toggleBoletos();
+                return reusableRow;
+            }
             const idx = parseInt(pagamentosTotal.value || '0', 10);
             const frag = pagamentoTpl.content.cloneNode(true);
             const tr = frag.querySelector('.pagamento-row');
@@ -1445,7 +1509,7 @@
             if (!pagamentoModalBoletosPreviewTotal || !pagamentoModalBoletosPreviewBody) return;
             let total = 0;
             pagamentoModalBoletosPreviewBody.querySelectorAll('.js-modal-boleto-valor').forEach(input => {
-                total += parseBrMoneyToNumber(input.value);
+                total += moneyFieldToCalcNumber(input.value);
             });
             pagamentoModalBoletosPreviewTotal.textContent = 'R$ ' + formatNumberToBrMoney(total);
         }
@@ -1597,14 +1661,14 @@
                 row.style.display = 'none';
             }
 
-            function onChange() {
-                recalcAll();
+            // queueMicrotask não basta: máscara só grava "0,05" após o mesmo input; setTimeout(0) roda na próxima volta.
+            function scheduleRecalc() {
+                window.setTimeout(recalcAll, 0);
             }
-            if (qtyEl) qtyEl.addEventListener('input', onChange);
-            if (unitEl) unitEl.addEventListener('input', onChange);
-            // a máscara br-moeda ajusta valor no blur; recalc no blur evita “ficar errado” até mexer em outro campo
-            if (qtyEl) qtyEl.addEventListener('blur', onChange);
-            if (unitEl) unitEl.addEventListener('blur', onChange);
+            if (qtyEl) qtyEl.addEventListener('input', scheduleRecalc);
+            if (unitEl) unitEl.addEventListener('input', scheduleRecalc);
+            if (qtyEl) qtyEl.addEventListener('blur', scheduleRecalc);
+            if (unitEl) unitEl.addEventListener('blur', scheduleRecalc);
             if (delEl) delEl.addEventListener('change', recalcAll);
             if (btnRemove) {
                 btnRemove.addEventListener('click', () => {
@@ -1615,10 +1679,10 @@
             }
         }
 
-        itensTableBody.querySelectorAll('tr.item-row').forEach(bindItemRow);
         if (window.genesisInputMaskScan) {
             window.genesisInputMaskScan(itensTableBody);
         }
+        itensTableBody.querySelectorAll('tr.item-row').forEach(bindItemRow);
 
         // Boletos: gera linhas a partir do gerador
         const btnGerarBoletos = document.getElementById('btnGerarBoletos');
@@ -1685,7 +1749,7 @@
             boletosBody.querySelectorAll('tr.boleto-row').forEach(row => {
                 const valorEl = row.querySelector('input[name$="-valor"]');
                 if (!valorEl) return;
-                sum += parseBrMoneyToNumber(valorEl.value);
+                sum += moneyFieldToCalcNumber(valorEl.value);
             });
             return sum;
         }
@@ -1991,10 +2055,19 @@
             pagamentoNfForm.addEventListener('submit', (event) => {
                 const temBoletos = Array.from(document.querySelectorAll('#pagamentosCards select[name$="-tipo"]'))
                     .some(select => select.value === '{{ pagamento_tipo_boletos }}' && !select.closest('tr')?.querySelector('input[name$="-DELETE"]')?.checked);
-                if (!temBoletos) return;
+                if (!temBoletos) {
+                    setNotaFiscalSavingState();
+                    return;
+                }
                 const confirmInp = getOrCreateHiddenInput('confirmar_diferenca_boletos');
-                if (confirmInp && confirmInp.value === '1') return;
-                if (!boletoTotalsDiffer()) return;
+                if (confirmInp && confirmInp.value === '1') {
+                    setNotaFiscalSavingState();
+                    return;
+                }
+                if (!boletoTotalsDiffer()) {
+                    setNotaFiscalSavingState();
+                    return;
+                }
 
                 event.preventDefault();
                 const totalNfFmt = 'R$ ' + formatNumberToBrMoney(computeNfTotal());
@@ -2011,6 +2084,7 @@
             btnConfirmarBoletosDiff.addEventListener('click', () => {
                 const confirmInp = getOrCreateHiddenInput('confirmar_diferenca_boletos');
                 if (confirmInp) confirmInp.value = '1';
+                setNotaFiscalSavingState();
                 if (boletosDiffModalEl && window.bootstrap && window.bootstrap.Modal) {
                     window.bootstrap.Modal.getOrCreateInstance(boletosDiffModalEl).hide();
                 }
