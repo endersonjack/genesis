@@ -27,27 +27,33 @@
                             <table class="table table-sm table-hover mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Doc</th>
+                                        <th class="ps-4 text-muted">#</th>
+                                        <th>Nº doc</th>
+                                        <th class="text-center">Parcela</th>
+                                        <th class="text-end">Valor</th>
                                         <th>Fornecedor</th>
-                                        <th class="text-end pe-4">Valor</th>
+                                        <th class="text-end pe-4">Nº NF</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for b in boletos_venc_hoje %}
+                                    {% for row in dashboard_boletos_venc_hoje_linhas %}
                                     <tr class="financeiro-clickable-row"
-                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=b.pagamento_nf.pk %}"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=row.pagamento_nf_pk %}"
                                         tabindex="0"
                                         role="link">
-                                        <td class="ps-4 fw-semibold small">{{ b.numero_doc }}</td>
-                                        <td class="small text-truncate" style="max-width: 18rem;">
-                                            {{ b.pagamento_nf.fornecedor.nome }}
-                                            <div class="text-muted small">NF {{ b.pagamento_nf.numero_nf }}</div>
+                                        <td class="ps-4 small text-muted">{{ row.index }}</td>
+                                        <td class="small fw-semibold">{{ row.numero_doc }}</td>
+                                        <td class="text-center small text-muted">{{ row.parcela_label }}</td>
+                                        <td class="text-end small fw-semibold text-primary">R$ {{ row.valor|moeda_br }}</td>
+                                        <td class="small">
+                                            <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.fornecedor_nome }}</div>
+                                            <div class="text-muted small">{{ row.fornecedor_doc }}</div>
                                         </td>
-                                        <td class="text-end pe-4 fw-semibold small">R$ {{ b.valor|moeda_br }}</td>
+                                        <td class="text-end pe-4 small fw-semibold">{{ row.numero_nf }}</td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="3" class="py-4 text-center text-muted small">Nenhum boleto vencendo hoje.</td>
+                                        <td colspan="6" class="py-4 text-center text-muted small">Nenhum boleto vencendo hoje.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -76,62 +82,42 @@
                             <table class="table table-sm table-hover mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Tipo</th>
+                                        <th class="ps-4 text-muted">#</th>
+                                        <th>Situa&ccedil;&atilde;o</th>
                                         <th>Refer&ecirc;ncia</th>
-                                        <th class="text-end pe-4">Valor</th>
+                                        <th class="text-end">Valor total</th>
+                                        <th class="text-end">Valor pago</th>
+                                        <th class="text-end pe-4">Valor &agrave; pagar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for b in boletos_vencidos %}
+                                    {% for linha in dashboard_em_aberto_linhas %}
                                     <tr class="financeiro-clickable-row"
-                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=b.pagamento_nf.pk %}"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=linha.nf_pk %}"
                                         tabindex="0"
                                         role="link">
-                                        <td class="ps-4 small">
-                                            <span class="badge text-bg-danger">Boleto</span>
+                                        <td class="ps-4 small text-muted">{{ linha.index }}</td>
+                                        <td class="small">
+                                            <span class="badge {{ linha.badge_class }}">{{ linha.situacao }}</span>
                                         </td>
-                                        <td class="small text-truncate" style="max-width: 22rem;">
-                                            {{ b.pagamento_nf.fornecedor.nome }} - Doc {{ b.numero_doc }}
-                                            <div class="text-muted small">Venc. {{ b.vencimento|date:"d/m/Y" }} - NF {{ b.pagamento_nf.numero_nf }}</div>
+                                        <td class="small">
+                                            <div class="fw-semibold text-truncate" style="max-width: 18rem;">{{ linha.ref_principal }}</div>
+                                            <div class="text-muted small">Emiss&atilde;o {{ linha.data_emissao|date:"d/m/Y" }}</div>
                                         </td>
-                                        <td class="text-end pe-4 fw-semibold small">R$ {{ b.valor|moeda_br }}</td>
+                                        <td class="text-end small">R$ {{ linha.valor_total|moeda_br }}</td>
+                                        <td class="text-end small">
+                                            <div>R$ {{ linha.valor_pago|moeda_br }}</div>
+                                            {% if linha.ultimo_pagamento %}
+                                            <div class="text-muted small">{{ linha.ultimo_pagamento|date:"d/m/Y" }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor_a_pagar|moeda_br }}</td>
                                     </tr>
-                                    {% endfor %}
-                                    {% for nf in notas_sem_pagamento %}
-                                    <tr class="financeiro-clickable-row"
-                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
-                                        tabindex="0"
-                                        role="link">
-                                        <td class="ps-4 small">
-                                            <span class="badge text-bg-secondary">Sem pagamento</span>
-                                        </td>
-                                        <td class="small text-truncate" style="max-width: 22rem;">
-                                            {{ nf.fornecedor.nome }} - NF {{ nf.numero_nf }}
-                                            <div class="text-muted small">Emiss&atilde;o {{ nf.data_emissao|date:"d/m/Y" }}</div>
-                                        </td>
-                                        <td class="text-end pe-4 fw-semibold small">-</td>
-                                    </tr>
-                                    {% endfor %}
-                                    {% for nf in notas_pagamento_parcial %}
-                                    <tr class="financeiro-clickable-row"
-                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
-                                        tabindex="0"
-                                        role="link">
-                                        <td class="ps-4 small">
-                                            <span class="badge text-bg-primary">Pago Parcial</span>
-                                        </td>
-                                        <td class="small text-truncate" style="max-width: 22rem;">
-                                            {{ nf.fornecedor.nome }} - NF {{ nf.numero_nf }}
-                                            <div class="text-muted small">{{ nf.pagamento_label_dashboard }} - Emiss&atilde;o {{ nf.data_emissao|date:"d/m/Y" }}</div>
-                                        </td>
-                                        <td class="text-end pe-4 fw-semibold small">R$ {{ nf.valor_em_aberto_dashboard|moeda_br }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                    {% if not boletos_vencidos and not notas_sem_pagamento and not notas_pagamento_parcial %}
+                                    {% empty %}
                                     <tr>
-                                        <td colspan="3" class="py-4 text-center text-muted small">Nenhum registro em aberto para hoje.</td>
+                                        <td colspan="6" class="py-4 text-center text-muted small">Nenhum registro em aberto para hoje.</td>
                                     </tr>
-                                    {% endif %}
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>

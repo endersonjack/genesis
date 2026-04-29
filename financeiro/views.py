@@ -250,6 +250,31 @@ def _resumo_pagamento_nf(pagamentos, boletos, total_itens: Decimal, hoje=None) -
     }
 
 
+def _data_ultimo_pagamento_nf(pagamentos, boletos) -> 'date | None':
+    datas = []
+    for p in pagamentos or []:
+        if getattr(p, 'data', None) and p.total_a_pagar() > 0:
+            datas.append(p.data)
+    for b in boletos or []:
+        if getattr(b, 'data_pagamento', None):
+            datas.append(b.data_pagamento)
+    return max(datas) if datas else None
+
+
+def _parcela_dashboard_boleto(boleto: BoletoPagamento) -> str:
+    """Ex.: parcela 1 de 4 boletos ativos (exclui cancelados)."""
+    nf = boleto.pagamento_nf
+    ativos = [
+        x
+        for x in nf.boletos.all()
+        if x.status != BoletoPagamento.Status.CANCELADO
+    ]
+    if not ativos:
+        return f'{boleto.parcela}/1'
+    max_p = max(x.parcela for x in ativos)
+    return f'{boleto.parcela}/{max_p}'
+
+
 def _subquery_total_itens_nf():
     return (
         PagamentoNotaFiscalItem.objects.filter(pagamento_nf=OuterRef('pk'))
@@ -686,6 +711,7 @@ def partial_dashboard_cards(request):
             status__in=boleto_status_aberto,
         )
         .select_related('pagamento_nf', 'pagamento_nf__fornecedor')
+        .prefetch_related('pagamento_nf__boletos')
         .order_by('vencimento', 'parcela', 'pk')[:50]
     )
     boletos_vencidos = list(
@@ -695,6 +721,7 @@ def partial_dashboard_cards(request):
             status__in=boleto_status_aberto,
         )
         .select_related('pagamento_nf', 'pagamento_nf__fornecedor')
+        .prefetch_related('pagamento_nf__boletos', 'pagamento_nf__pagamentos', 'pagamento_nf__itens')
         .order_by('vencimento', 'parcela', 'pk')[:100]
     )
     notas_sem_pagamento = list(
@@ -704,6 +731,16 @@ def partial_dashboard_cards(request):
             pagamentos__isnull=True,
         )
         .select_related('fornecedor', 'caixa')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+        )
         .order_by('-data_emissao', '-pk')[:50]
     )
     notas_com_pagamento = (
@@ -745,9 +782,99 @@ def partial_dashboard_cards(request):
         notas_pagamento_parcial.append(nf)
         if len(notas_pagamento_parcial) >= 50:
             break
+
+    def nf_total_dashboard(nf: PagamentoNotaFiscal) -> Decimal:
+        tc = getattr(nf, 'total_itens_calc', None)
+        if tc is not None:
+            return tc
+        items = nf.itens.all()
+        return sum((i.valor_total for i in items), Decimal('0')).quantize(Decimal('0.01'))
+
+    dashboard_em_aberto_linhas = []
+    idx_linha = 0
+    for b in boletos_vencidos:
+        idx_linha += 1
+        nf = b.pagamento_nf
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pags_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        total_nf = nf_total_dashboard(nf)
+        resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
+        ultimo = _data_ultimo_pagamento_nf(pags_nf, boletos_nf)
+        dashboard_em_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'nf_pk': nf.pk,
+                'situacao': 'Boleto vencido',
+                'badge_class': 'text-bg-danger',
+                'ref_principal': nf.fornecedor.nome,
+                'data_emissao': nf.data_emissao,
+                'valor_total': total_nf,
+                'valor_pago': resumo['valor_pago'],
+                'ultimo_pagamento': ultimo,
+                'valor_a_pagar': b.valor,
+            }
+        )
+
+    for nf in notas_sem_pagamento:
+        idx_linha += 1
+        vt = nf.total_itens_calc
+        dashboard_em_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'nf_pk': nf.pk,
+                'situacao': 'Sem pagamento',
+                'badge_class': 'text-bg-secondary',
+                'ref_principal': nf.fornecedor.nome,
+                'data_emissao': nf.data_emissao,
+                'valor_total': vt,
+                'valor_pago': Decimal('0'),
+                'ultimo_pagamento': None,
+                'valor_a_pagar': vt,
+            }
+        )
+
+    for nf in notas_pagamento_parcial:
+        idx_linha += 1
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pags_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        total_nf = nf.total_itens_calc
+        resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
+        ultimo = _data_ultimo_pagamento_nf(pags_nf, boletos_nf)
+        dashboard_em_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'nf_pk': nf.pk,
+                'situacao': 'Pago parcial',
+                'badge_class': 'text-bg-primary',
+                'ref_principal': nf.fornecedor.nome,
+                'data_emissao': nf.data_emissao,
+                'valor_total': total_nf,
+                'valor_pago': resumo['valor_pago'],
+                'ultimo_pagamento': ultimo,
+                'valor_a_pagar': nf.valor_em_aberto_dashboard,
+            }
+        )
+
+    dashboard_boletos_venc_hoje_linhas = []
+    for ii, b in enumerate(boletos_venc_hoje, start=1):
+        nf = b.pagamento_nf
+        fornecedor = nf.fornecedor
+        dashboard_boletos_venc_hoje_linhas.append(
+            {
+                'index': ii,
+                'numero_doc': b.numero_doc or '—',
+                'parcela_label': _parcela_dashboard_boleto(b),
+                'valor': b.valor,
+                'fornecedor_nome': fornecedor.nome,
+                'fornecedor_doc': fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
+                'pagamento_nf_pk': nf.pk,
+            }
+        )
+
     total_boletos_venc_hoje = sum((b.valor for b in boletos_venc_hoje), Decimal('0'))
     total_boletos_vencidos = sum((b.valor for b in boletos_vencidos), Decimal('0'))
-    total_notas_sem_pagamento = sum((nf.total_itens() for nf in notas_sem_pagamento), Decimal('0'))
+    total_notas_sem_pagamento = sum((nf.total_itens_calc for nf in notas_sem_pagamento), Decimal('0'))
     total_notas_pagamento_parcial = sum(
         (nf.valor_em_aberto_dashboard for nf in notas_pagamento_parcial),
         Decimal('0'),
@@ -842,11 +969,9 @@ def partial_dashboard_cards(request):
         'financeiro/partials/dashboard_cards_loaded.html',
         {
             'hoje': hoje,
-            'boletos_venc_hoje': boletos_venc_hoje,
+            'dashboard_boletos_venc_hoje_linhas': dashboard_boletos_venc_hoje_linhas,
             'total_boletos_venc_hoje': total_boletos_venc_hoje,
-            'boletos_vencidos': boletos_vencidos,
-            'notas_sem_pagamento': notas_sem_pagamento,
-            'notas_pagamento_parcial': notas_pagamento_parcial,
+            'dashboard_em_aberto_linhas': dashboard_em_aberto_linhas,
             'total_em_aberto_sem_pagamento': total_em_aberto_sem_pagamento,
             'ultimos_lancamentos': ultimos_lancamentos,
             'ultimos_eventos': eventos,
