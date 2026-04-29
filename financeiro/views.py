@@ -38,6 +38,7 @@ from .forms import (
     PagamentoNotaFiscalItemFormSet,
     PagamentoNotaFiscalPagamentoEditFormSet,
     PagamentoNotaFiscalPagamentoFormSet,
+    nf_numero_exige_unicidade_para_fornecedor,
     RecebimentoAvulsoEditForm,
     RecebimentoAvulsoForm,
     RecebimentoLiquidacaoForm,
@@ -1623,15 +1624,17 @@ def pagamento_nf_novo(request):
 
         if ok:
             cd = form.cleaned_data
-            dup_nf = (
-                PagamentoNotaFiscal.objects.filter(
-                    empresa=empresa,
-                    fornecedor=cd['fornecedor'],
-                    numero_nf=cd['numero_nf'],
+            dup_nf = None
+            if nf_numero_exige_unicidade_para_fornecedor(cd.get('numero_nf') or ''):
+                dup_nf = (
+                    PagamentoNotaFiscal.objects.filter(
+                        empresa=empresa,
+                        fornecedor=cd['fornecedor'],
+                        numero_nf=cd['numero_nf'],
+                    )
+                    .order_by('-pk')
+                    .first()
                 )
-                .order_by('-pk')
-                .first()
-            )
             if dup_nf and not force_save:
                 ok = False
 
@@ -1753,16 +1756,18 @@ def pagamento_nf_editar(request, pk: int):
         ok = form_ok and itens_ok and pagamentos_ok and boletos_ok
         if ok:
             cd = form.cleaned_data
-            dup_nf = (
-                PagamentoNotaFiscal.objects.filter(
-                    empresa=empresa,
-                    fornecedor=cd['fornecedor'],
-                    numero_nf=cd['numero_nf'],
+            dup_nf = None
+            if nf_numero_exige_unicidade_para_fornecedor(cd.get('numero_nf') or ''):
+                dup_nf = (
+                    PagamentoNotaFiscal.objects.filter(
+                        empresa=empresa,
+                        fornecedor=cd['fornecedor'],
+                        numero_nf=cd['numero_nf'],
+                    )
+                    .exclude(pk=nf.pk)
+                    .order_by('-pk')
+                    .first()
                 )
-                .exclude(pk=nf.pk)
-                .order_by('-pk')
-                .first()
-            )
             if dup_nf and not force_save:
                 ok = False
 

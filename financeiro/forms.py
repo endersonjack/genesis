@@ -24,6 +24,22 @@ from .models import (
     RecebimentoMedicao,
 )
 
+# NF com estes valores não exige unicidade por fornecedor nem bloqueia duplicidade (fluxo especial).
+NF_NUMERO_CANONICO_SEM = 'S/NF'
+NF_NUMERO_CANONICO_A_FAZER = 'A/FAZER'
+
+
+def nf_numero_exige_unicidade_para_fornecedor(valor: str) -> bool:
+    """Quando False, não validamos igualdade junto ao fornecedor (nota genérica ou a preencher)."""
+    v = (valor or '').strip().upper()
+    if not v:
+        return True
+    if v == NF_NUMERO_CANONICO_SEM.upper() or v == NF_NUMERO_CANONICO_A_FAZER.upper():
+        return False
+    if v in ('S/SF', 'S-SF'):
+        return False
+    return True
+
 
 class FornecedorSearchSelect(forms.Select):
     def create_option(
@@ -643,12 +659,30 @@ class FornecedorPagamentoSelect(forms.Select):
 
 
 class PagamentoNotaFiscalForm(forms.ModelForm):
+    numero_nf_modo = forms.ChoiceField(
+        required=False,
+        choices=(
+            ('', ''),
+            ('sem_nf', 'Sem Nota Fiscal'),
+            ('a_fazer', 'À Fazer'),
+        ),
+        widget=forms.HiddenInput(),
+    )
+
     class Meta:
         model = PagamentoNotaFiscal
-        fields = ('fornecedor', 'numero_nf', 'data_emissao', 'caixa', 'descricao')
+        fields = (
+            'fornecedor',
+            'numero_nf',
+            'data_emissao',
+            'caixa',
+            'descricao',
+        )
         widgets = {
             'fornecedor': FornecedorPagamentoSelect(attrs={'class': 'form-select rounded-3'}),
-            'numero_nf': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'numero_nf': forms.TextInput(
+                attrs={'class': 'form-control rounded-3', 'autocomplete': 'off', 'inputmode': 'text'}
+            ),
             'data_emissao': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control rounded-3'},
@@ -665,6 +699,14 @@ class PagamentoNotaFiscalForm(forms.ModelForm):
         if not self.is_bound and not self.initial.get('data_emissao'):
             # input type="date" exige YYYY-MM-DD para preencher no browser
             self.initial['data_emissao'] = timezone.localdate().isoformat()
+        if self.instance.pk:
+            numero = (self.instance.numero_nf or '').strip()
+            if numero.upper() == NF_NUMERO_CANONICO_SEM.upper():
+                self.initial['numero_nf_modo'] = 'sem_nf'
+            elif numero.upper() == NF_NUMERO_CANONICO_A_FAZER.upper():
+                self.initial['numero_nf_modo'] = 'a_fazer'
+            else:
+                self.initial['numero_nf_modo'] = ''
         if empresa:
             self.fields['fornecedor'].queryset = Fornecedor.objects.filter(
                 empresa=empresa
@@ -684,6 +726,23 @@ class PagamentoNotaFiscalForm(forms.ModelForm):
                 )
                 if caixa_geral:
                     self.initial['caixa'] = caixa_geral.pk
+
+    def clean(self):
+        cleaned_data = super().clean()
+        modo = (cleaned_data.get('numero_nf_modo') or '').strip()
+        numero_raw = cleaned_data.get('numero_nf')
+        numero = (numero_raw or '').strip()
+
+        if modo == 'sem_nf':
+            cleaned_data['numero_nf'] = NF_NUMERO_CANONICO_SEM
+        elif modo == 'a_fazer':
+            cleaned_data['numero_nf'] = NF_NUMERO_CANONICO_A_FAZER
+        elif not numero:
+            self.add_error('numero_nf', 'Este campo é obrigatório.')
+        else:
+            cleaned_data['numero_nf'] = numero
+
+        return cleaned_data
 
     def save(self, commit=True):
         obj = super().save(commit=False)

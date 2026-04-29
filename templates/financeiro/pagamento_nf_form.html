@@ -71,6 +71,10 @@
     }
     .fin-table td { vertical-align: middle; }
     .fin-muted-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b; font-weight: 800; }
+    .fin-desc-pane {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 0 0 1.15rem 1.15rem;
+    }
     .fin-header-total {
         min-width: 11rem;
         text-align: center;
@@ -93,10 +97,28 @@
         font-size: .9rem;
     }
     .fin-desc-compact .form-control,
-    .fin-desc-compact .form-select {
+    .fin-desc-compact .form-select,
+    .fin-desc-compact button.form-select {
         min-height: 2.2rem;
         padding: .32rem .6rem;
         font-size: .92rem;
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    .fin-desc-compact .form-control:hover:not(:disabled):not([readonly]),
+    .fin-desc-compact .form-select:hover:not(:disabled),
+    .fin-desc-compact button.form-select:hover:not(:disabled) {
+        border-color: #cbd5e1;
+        background-color: #fff;
+    }
+    .fin-desc-compact .form-control:focus,
+    .fin-desc-compact .form-select:focus,
+    .fin-desc-compact button.form-select:focus {
+        background-color: #fff;
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 .2rem rgba(148, 163, 184, 0.18);
+        outline: 0;
     }
     .fin-desc-compact .dropdown-menu .form-control {
         min-height: 2rem;
@@ -105,6 +127,18 @@
     .fin-desc-compact .form-text {
         font-size: .76rem;
         margin-top: .25rem;
+    }
+    .js-numero-nf-modos label {
+        cursor: pointer;
+        user-select: none;
+    }
+    .js-numero-nf-modos .btn {
+        border: 0 !important;
+        background: transparent;
+        padding: .15rem .25rem;
+    }
+    .js-numero-nf-modos .form-check-input {
+        margin-top: .12rem;
     }
     .fin-payment-picker {
         max-width: 28rem;
@@ -265,7 +299,7 @@
         </div>
 
         <div class="tab-content">
-            <div class="tab-pane fade {% if active_tab == 'descricao' %}show active{% endif %} p-4" id="pane-descricao" role="tabpanel" aria-labelledby="tab-descricao" tabindex="0">
+            <div class="tab-pane fade {% if active_tab == 'descricao' %}show active{% endif %} p-4 fin-desc-pane" id="pane-descricao" role="tabpanel" aria-labelledby="tab-descricao" tabindex="0">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                     <div>
                         <div class="fin-muted-label">1) Descrição do pagamento</div>
@@ -273,9 +307,9 @@
                     </div>
                 </div>
 
-                <div class="row g-2 fin-desc-compact">
+                <div class="row g-2 align-items-end fin-desc-compact">
                     <div class="col-12 col-lg-6">
-                        <label class="form-label fw-semibold">{{ form.fornecedor.label }}</label>
+                        <label class="form-label fw-semibold mb-1">{{ form.fornecedor.label }}</label>
                         <div class="d-flex gap-2">
                             <div class="dropdown flex-grow-1" data-bs-popper="static">
                                 {# Mantém o select real para POST/validação, mas oculto #}
@@ -317,25 +351,48 @@
                         {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors }}</div>{% endif %}
                     </div>
                     <div class="col-12 col-lg-3">
-                        <label class="form-label fw-semibold" for="{{ form.numero_nf.id_for_label }}">{{ form.numero_nf.label }}</label>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1 lh-sm gap-md-3">
+                            <label class="form-label fw-semibold mb-0 flex-shrink-0" for="{{ form.numero_nf.id_for_label }}">{{ form.numero_nf.label }}</label>
+                            <div class="d-inline-flex flex-wrap align-items-center gap-2 gap-sm-3 js-numero-nf-modos" role="radiogroup" aria-label="Modo do número da nota fiscal">
+                                <label class="form-check form-check-inline m-0 py-0 align-middle mb-0 d-inline-flex align-items-center gap-1">
+                                    <input class="form-check-input mt-0" type="radio" name="numero_nf_modo"
+                                           value="sem_nf" id="nf_modo_sem"
+                                           {% if form.numero_nf_modo.value == 'sem_nf' %}checked{% endif %}>
+                                    <span class="form-check-label small mb-0" title="Sem Nota Fiscal">Sem NF</span>
+                                </label>
+                                <label class="form-check form-check-inline m-0 py-0 align-middle mb-0 d-inline-flex align-items-center gap-1">
+                                    <input class="form-check-input mt-0" type="radio" name="numero_nf_modo"
+                                           value="a_fazer" id="nf_modo_afazer"
+                                           {% if form.numero_nf_modo.value == 'a_fazer' %}checked{% endif %}>
+                                    <span class="form-check-label small mb-0">&Agrave; Fazer</span>
+                                </label>
+                                <button type="button" class="btn btn-sm js-numero-nf-modo-reset text-muted"
+                                        aria-label="Limpar modo e editar número"
+                                        title="Limpar atalho e editar o número">
+                                    <i class="bi bi-eraser fs-6"></i>
+                                </button>
+                            </div>
+                        </div>
                         {{ form.numero_nf }}
                         {% if form.numero_nf.errors %}<div class="text-danger small">{{ form.numero_nf.errors }}</div>{% endif %}
                     </div>
                     <div class="col-12 col-lg-3">
-                        <label class="form-label fw-semibold" for="{{ form.data_emissao.id_for_label }}">{{ form.data_emissao.label }}</label>
+                        <label class="form-label fw-semibold mb-1" for="{{ form.data_emissao.id_for_label }}">{{ form.data_emissao.label }}</label>
                         {{ form.data_emissao }}
                         {% if form.data_emissao.errors %}<div class="text-danger small">{{ form.data_emissao.errors }}</div>{% endif %}
                     </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold" for="{{ form.caixa.id_for_label }}">{{ form.caixa.label }}</label>
+                    <div class="col-12 col-lg-4 mt-2 mt-lg-3">
+                        <label class="form-label fw-semibold mb-1" for="{{ form.caixa.id_for_label }}">{{ form.caixa.label }}</label>
                         {{ form.caixa }}
                         {% if form.caixa.errors %}<div class="text-danger small">{{ form.caixa.errors }}</div>{% endif %}
-                        <div class="form-text">Este é o caixa padrão para os itens (pode mudar por item).</div>
                     </div>
-                    <div class="col-12 col-lg-8">
-                        <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                    <div class="col-12 col-lg-8 mt-2 mt-lg-3">
+                        <label class="form-label fw-semibold mb-1" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
                         {{ form.descricao }}
                         {% if form.descricao.errors %}<div class="text-danger small">{{ form.descricao.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-4 mt-1">
+                        <div class="form-text lh-sm">Este é o caixa padrão para os itens (pode mudar por item).</div>
                     </div>
                 </div>
             </div>
@@ -1961,6 +2018,76 @@
         if (fornecedorSearch) {
             fornecedorSearch.addEventListener('input', () => renderFornecedorList(fornecedorSearch.value));
         }
+
+        (function bindNumeroNfModos() {
+            const NF_SEM = 'S/NF';
+            const NF_AF = 'A/FAZER';
+            const numeroInp = document.getElementById('{{ form.numero_nf.id_for_label }}');
+            const wrap = document.querySelector('.js-numero-nf-modos');
+            if (!numeroInp || !wrap) return;
+            const radios = wrap.querySelectorAll('input[type="radio"][name="numero_nf_modo"]');
+            const btnReset = wrap.querySelector('.js-numero-nf-modo-reset');
+
+            function modoAtual() {
+                let v = '';
+                radios.forEach((r) => {
+                    if (r.checked) {
+                        v = r.value || '';
+                    }
+                });
+                return v;
+            }
+
+            function applyModo() {
+                const m = modoAtual();
+                if (m === 'sem_nf') {
+                    numeroInp.value = NF_SEM;
+                    numeroInp.disabled = true;
+                    return;
+                }
+                if (m === 'a_fazer') {
+                    numeroInp.value = NF_AF;
+                    numeroInp.disabled = true;
+                    return;
+                }
+                numeroInp.disabled = false;
+            }
+
+            radios.forEach((r) => r.addEventListener('change', () => applyModo()));
+            if (btnReset) {
+                btnReset.addEventListener('click', () => {
+                    radios.forEach((rr) => {
+                        rr.checked = false;
+                    });
+                    numeroInp.value = '';
+                    numeroInp.disabled = false;
+                    numeroInp.focus();
+                });
+            }
+            applyModo();
+            numeroInp.addEventListener('input', () => {
+                if (!numeroInp.disabled) {
+                    radios.forEach((rr) => {
+                        rr.checked = false;
+                    });
+                }
+            });
+
+            window.__nfNumeroEnableForPost = function () {
+                if (numeroInp && numeroInp.disabled) {
+                    numeroInp.disabled = false;
+                }
+            };
+        })();
+
+        if (pagamentoNfForm) {
+            pagamentoNfForm.addEventListener('submit', () => {
+                if (typeof window.__nfNumeroEnableForPost === 'function') {
+                    window.__nfNumeroEnableForPost();
+                }
+            }, true);
+        }
+
         function selecionarFornecedorCriadoRapido(payload) {
             const id = String(payload.id || '');
             const nome = String(payload.nome || '').trim();
@@ -2029,6 +2156,9 @@
                     formEl.appendChild(inp);
                 }
                 inp.value = '1';
+                if (typeof window.__nfNumeroEnableForPost === 'function') {
+                    window.__nfNumeroEnableForPost();
+                }
                 formEl.submit();
             });
         }
@@ -2088,7 +2218,12 @@
                 if (boletosDiffModalEl && window.bootstrap && window.bootstrap.Modal) {
                     window.bootstrap.Modal.getOrCreateInstance(boletosDiffModalEl).hide();
                 }
-                if (pagamentoNfForm) pagamentoNfForm.submit();
+                if (pagamentoNfForm) {
+                    if (typeof window.__nfNumeroEnableForPost === 'function') {
+                        window.__nfNumeroEnableForPost();
+                    }
+                    pagamentoNfForm.submit();
+                }
             });
         }
     })();
