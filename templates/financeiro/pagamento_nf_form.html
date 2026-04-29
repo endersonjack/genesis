@@ -59,6 +59,9 @@
             inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
             0 14px 36px rgba(15, 23, 42, 0.07);
     }
+    .financeiro-nf-tabs-card {
+        overflow: visible;
+    }
     .fin-table th {
         font-size: .78rem;
         text-transform: uppercase;
@@ -234,8 +237,13 @@
         {{ form.non_field_errors }}
     </div>
     {% endif %}
+    {% if form.errors or itens_fs.errors or itens_fs.non_form_errors or pagamentos_fs.errors or pagamentos_fs.non_form_errors or boletos_fs.errors or boletos_fs.non_form_errors %}
+    <div class="alert alert-warning rounded-4">
+        Revise os campos destacados antes de salvar a Nota Fiscal.
+    </div>
+    {% endif %}
 
-    <div class="fin-card p-0 overflow-hidden">
+    <div class="fin-card p-0 financeiro-nf-tabs-card">
         <div class="p-3 border-bottom bg-white">
             <ul class="nav nav-tabs" id="pagamentoNfTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -1120,6 +1128,7 @@
                                 <th class="ps-3">Parcela</th>
                                 <th>Doc</th>
                                 <th>Vencimento</th>
+                                <th class="text-end">Valor</th>
                                 <th class="pe-3">Situação</th>
                             </tr>
                         </thead>
@@ -1129,6 +1138,7 @@
                                     <td class="ps-3 small fw-semibold">${boleto.parcela || index + 1}/${totalParcelas}</td>
                                     <td class="small">${boleto.numeroDoc || '-'}</td>
                                     <td class="small">${formatIsoDateBr(boleto.vencimento)}</td>
+                                    <td class="small text-end">R$ ${boleto.valor || '0,00'}</td>
                                     <td class="pe-3 small"><span class="badge text-bg-secondary">Rascunho</span></td>
                                 </tr>
                             `).join('')}
@@ -1820,6 +1830,7 @@
         function renderFornecedorList(filter) {
             if (!(fornecedorSelect && fornecedorList)) return;
             const f = String(filter || '').trim().toLowerCase();
+            const fDigits = f.replace(/\D/g, '');
             const current = String(fornecedorSelect.value || '');
             fornecedorList.innerHTML = '';
 
@@ -1828,8 +1839,15 @@
             opts.forEach(o => {
                 const val = String(o.value || '');
                 const txt = String(o.textContent || '').trim();
+                const searchText = String(o.dataset.search || txt).toLowerCase();
+                const searchDigits = searchText.replace(/\D/g, '');
                 if (!val || txt === '---------') return;
-                if (f && !txt.toLowerCase().includes(f) && val !== current) return;
+                if (
+                    f
+                    && !searchText.includes(f)
+                    && (!fDigits || !searchDigits.includes(fDigits))
+                    && val !== current
+                ) return;
 
                 const a = document.createElement('button');
                 a.type = 'button';
@@ -1879,9 +1897,7 @@
         if (fornecedorSearch) {
             fornecedorSearch.addEventListener('input', () => renderFornecedorList(fornecedorSearch.value));
         }
-        document.body.addEventListener('fornecedorCriadoRapido', (event) => {
-            const detail = event.detail || {};
-            const payload = detail.id ? detail : (detail.value || {});
+        function selecionarFornecedorCriadoRapido(payload) {
             const id = String(payload.id || '');
             const nome = String(payload.nome || '').trim();
             if (!id || !fornecedorSelect) return;
@@ -1889,9 +1905,21 @@
             let opt = Array.from(fornecedorSelect.options || []).find(o => String(o.value) === id);
             if (!opt) {
                 opt = new Option(nome || ('Fornecedor #' + id), id);
+                opt.dataset.search = [
+                    nome,
+                    payload.razao_social || '',
+                    payload.cpf_cnpj || '',
+                    payload.cpf_cnpj_formatado || ''
+                ].join(' ');
                 fornecedorSelect.add(opt);
             } else if (nome) {
                 opt.textContent = nome;
+                opt.dataset.search = [
+                    nome,
+                    payload.razao_social || '',
+                    payload.cpf_cnpj || '',
+                    payload.cpf_cnpj_formatado || ''
+                ].join(' ');
             }
 
             fornecedorSelect.value = id;
@@ -1907,6 +1935,12 @@
                 const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
                 modal.hide();
             }
+        }
+        window.selecionarFornecedorPagamentoNf = selecionarFornecedorCriadoRapido;
+        document.body.addEventListener('fornecedorCriadoRapido', (event) => {
+            const detail = event.detail || {};
+            const payload = detail.id ? detail : (detail.value || {});
+            selecionarFornecedorCriadoRapido(payload);
         });
 
         // Duplicidade NF: modal + submit com flag force_save

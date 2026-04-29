@@ -103,12 +103,41 @@ def modal_novo_rapido(request):
                 resumo=f'Fornecedor "{obj.nome}" cadastrado rapidamente.',
                 modulo='fornecedores',
             )
-            resp = HttpResponse(status=204)
+            payload = json.dumps(
+                {
+                    'id': obj.pk,
+                    'nome': obj.nome,
+                    'razao_social': obj.razao_social,
+                    'cpf_cnpj': obj.cpf_cnpj,
+                    'cpf_cnpj_formatado': obj.cpf_cnpj_formatado,
+                }
+            ).replace('<', '\\u003c')
+            resp = HttpResponse(
+                (
+                    '<div class="modal-body text-center py-4">'
+                    '<div class="spinner-border text-primary" role="status">'
+                    '<span class="visually-hidden">Selecionando...</span>'
+                    '</div>'
+                    '</div>'
+                    '<script>'
+                    '(function () {'
+                    f'var fornecedor = {payload};'
+                    'if (window.selecionarFornecedorPagamentoNf) {'
+                    'window.selecionarFornecedorPagamentoNf(fornecedor);'
+                    '}'
+                    '})();'
+                    '</script>'
+                ),
+                status=200,
+            )
             resp['HX-Trigger'] = json.dumps(
                 {
                     'fornecedorCriadoRapido': {
                         'id': obj.pk,
                         'nome': obj.nome,
+                        'razao_social': obj.razao_social,
+                        'cpf_cnpj': obj.cpf_cnpj,
+                        'cpf_cnpj_formatado': obj.cpf_cnpj_formatado,
                     }
                 }
             )

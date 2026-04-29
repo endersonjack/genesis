@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import (
     DecimalField,
@@ -62,6 +63,24 @@ def _empresa(request):
 
 def _is_htmx(request) -> bool:
     return str(request.headers.get('HX-Request', '')).lower() == 'true'
+
+
+def _active_tab_pagamento_nf(request, form, itens_fs, pagamentos_fs, boletos_fs) -> str:
+    requested = (request.GET.get('tab') or 'descricao').strip().lower()
+    if request.method != 'POST':
+        return requested
+    if form.errors or form.non_field_errors():
+        return 'descricao'
+    if itens_fs.errors or itens_fs.non_form_errors():
+        return 'itens'
+    if (
+        pagamentos_fs.errors
+        or pagamentos_fs.non_form_errors()
+        or boletos_fs.errors
+        or boletos_fs.non_form_errors()
+    ):
+        return 'pagamento'
+    return requested
 
 
 def _recebimento_para_linha(recebimento, tipo: str) -> dict:
@@ -1438,12 +1457,11 @@ def pagamento_nf_novo(request):
     force_save = str(request.POST.get('force_save', '')).strip() == '1'
 
     if request.method == 'POST':
-        ok = (
-            form.is_valid()
-            and itens_fs.is_valid()
-            and pagamentos_fs.is_valid()
-            and boletos_fs.is_valid()
-        )
+        form_ok = form.is_valid()
+        itens_ok = itens_fs.is_valid()
+        pagamentos_ok = pagamentos_fs.is_valid()
+        boletos_ok = boletos_fs.is_valid()
+        ok = form_ok and itens_ok and pagamentos_ok and boletos_ok
 
         if ok:
             cd = form.cleaned_data
@@ -1499,7 +1517,13 @@ def pagamento_nf_novo(request):
             'modo': 'novo',
             'dup_nf': dup_nf,
             'show_dup_modal': bool(dup_nf) and request.method == 'POST' and not force_save,
-            'active_tab': (request.GET.get('tab') or 'descricao').strip().lower(),
+            'active_tab': _active_tab_pagamento_nf(
+                request,
+                form,
+                itens_fs,
+                pagamentos_fs,
+                boletos_fs,
+            ),
             'pagamento_tipo_boletos': PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
         },
     )
@@ -1558,12 +1582,11 @@ def pagamento_nf_editar(request, pk: int):
     force_save = str(request.POST.get('force_save', '')).strip() == '1'
 
     if request.method == 'POST':
-        ok = (
-            form.is_valid()
-            and itens_fs.is_valid()
-            and pagamentos_fs.is_valid()
-            and boletos_fs.is_valid()
-        )
+        form_ok = form.is_valid()
+        itens_ok = itens_fs.is_valid()
+        pagamentos_ok = pagamentos_fs.is_valid()
+        boletos_ok = boletos_fs.is_valid()
+        ok = form_ok and itens_ok and pagamentos_ok and boletos_ok
         if ok:
             cd = form.cleaned_data
             dup_nf = (
@@ -1620,7 +1643,13 @@ def pagamento_nf_editar(request, pk: int):
             'nf': nf,
             'dup_nf': dup_nf,
             'show_dup_modal': bool(dup_nf) and request.method == 'POST' and not force_save,
-            'active_tab': (request.GET.get('tab') or 'descricao').strip().lower(),
+            'active_tab': _active_tab_pagamento_nf(
+                request,
+                form,
+                itens_fs,
+                pagamentos_fs,
+                boletos_fs,
+            ),
             'pagamento_tipo_boletos': PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
         },
     )

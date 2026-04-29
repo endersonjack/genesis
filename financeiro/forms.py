@@ -25,6 +25,42 @@ from .models import (
 )
 
 
+class FornecedorSearchSelect(forms.Select):
+    def create_option(
+        self,
+        name,
+        value,
+        label,
+        selected,
+        index,
+        subindex=None,
+        attrs=None,
+    ):
+        option = super().create_option(
+            name,
+            value,
+            label,
+            selected,
+            index,
+            subindex=subindex,
+            attrs=attrs,
+        )
+        fornecedor = getattr(value, 'instance', None)
+        if fornecedor is not None:
+            option['attrs']['data-search'] = ' '.join(
+                filter(
+                    None,
+                    [
+                        fornecedor.nome,
+                        fornecedor.razao_social,
+                        fornecedor.cpf_cnpj,
+                        fornecedor.cpf_cnpj_formatado,
+                    ],
+                )
+            )
+        return option
+
+
 class RecebimentoAvulsoForm(forms.Form):
     caixa = forms.ModelChoiceField(
         label='Caixa',
@@ -579,12 +615,39 @@ class CategoriaFinanceiraForm(forms.ModelForm):
         return obj
 
 
+class FornecedorPagamentoSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(
+            name,
+            value,
+            label,
+            selected,
+            index,
+            subindex=subindex,
+            attrs=attrs,
+        )
+        fornecedor = getattr(value, 'instance', None)
+        if fornecedor:
+            option['attrs']['data-search'] = ' '.join(
+                filter(
+                    None,
+                    [
+                        fornecedor.nome,
+                        fornecedor.razao_social,
+                        fornecedor.cpf_cnpj,
+                        fornecedor.cpf_cnpj_formatado,
+                    ],
+                )
+            )
+        return option
+
+
 class PagamentoNotaFiscalForm(forms.ModelForm):
     class Meta:
         model = PagamentoNotaFiscal
         fields = ('fornecedor', 'numero_nf', 'data_emissao', 'caixa', 'descricao')
         widgets = {
-            'fornecedor': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'fornecedor': FornecedorPagamentoSelect(attrs={'class': 'form-select rounded-3'}),
             'numero_nf': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
             'data_emissao': forms.DateInput(
                 format='%Y-%m-%d',
