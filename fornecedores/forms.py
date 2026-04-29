@@ -123,3 +123,77 @@ class FornecedorForm(forms.ModelForm):
         if tipo == 'PJ' and not razao:
             self.add_error('razao_social', 'Informe a razão social para Pessoa Jurídica.')
         return data
+
+
+class FornecedorQuickCreateForm(forms.ModelForm):
+    cpf_cnpj = forms.CharField(
+        label='CPF/CNPJ',
+        max_length=18,
+        required=True,
+        widget=CpfCnpjDisplayInput(
+            attrs={
+                'class': 'form-control rounded-3',
+                'id': 'id_fornecedor_rapido_cpf_cnpj',
+                'autocomplete': 'off',
+            }
+        ),
+    )
+
+    class Meta:
+        model = Fornecedor
+        fields = ('tipo', 'cpf_cnpj', 'nome', 'razao_social')
+        widgets = {
+            'tipo': forms.Select(
+                attrs={
+                    'class': 'form-select rounded-3',
+                    'id': 'id_fornecedor_rapido_tipo',
+                }
+            ),
+            'nome': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'razao_social': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        self.fields['razao_social'].required = False
+        if self.data:
+            tipo = (self.data.get('tipo') or 'PJ').upper()
+        else:
+            tipo = (getattr(self.instance, 'tipo', None) or 'PJ').upper()
+        mask = 'cpf' if tipo == 'PF' else 'cnpj'
+        self.fields['cpf_cnpj'].widget.attrs['data-mask'] = mask
+        self.fields['cpf_cnpj'].widget.attrs['maxlength'] = '14' if tipo == 'PF' else '18'
+        self.fields['cpf_cnpj'].label = 'CPF' if tipo == 'PF' else 'CNPJ'
+
+    def clean_cpf_cnpj(self):
+        raw = self.cleaned_data.get('cpf_cnpj') or ''
+        digits = ''.join(c for c in raw if c.isdigit())
+        tipo = self.cleaned_data.get('tipo') or 'PJ'
+        if tipo == 'PF':
+            if len(digits) != 11:
+                raise ValidationError('CPF deve ter 11 dígitos.')
+        else:
+            if len(digits) != 14:
+                raise ValidationError('CNPJ deve ter 14 dígitos.')
+        if self.empresa:
+            qs = Fornecedor.objects.filter(empresa=self.empresa, cpf_cnpj=digits)
+            if qs.exists():
+                raise ValidationError('Já existe um fornecedor com este CPF/CNPJ nesta empresa.')
+        return digits
+
+    def clean(self):
+        data = super().clean()
+        tipo = data.get('tipo')
+        razao = (data.get('razao_social') or '').strip()
+        if tipo == 'PJ' and not razao:
+            self.add_error('razao_social', 'Informe a razão social para Pessoa Jurídica.')
+        return data
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.empresa = self.empresa
+        if commit:
+            obj.full_clean()
+            obj.save()
+        return obj

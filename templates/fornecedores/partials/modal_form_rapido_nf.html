@@ -1,0 +1,86 @@
+<form method="post"
+      action="{{ post_url }}"
+      hx-post="{{ post_url }}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading
+      novalidate>
+    {% csrf_token %}
+    <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div>
+            <h5 class="modal-title fw-bold">Adicionar fornecedor</h5>
+            <div class="text-muted small">Cadastro rápido com os dados principais.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body px-4">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+                {{ form.tipo }}
+                {% if form.tipo.errors %}<div class="text-danger small mt-1">{{ form.tipo.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.cpf_cnpj.id_for_label }}" id="label-fornecedor-rapido-doc">{{ form.cpf_cnpj.label }}</label>
+                {{ form.cpf_cnpj }}
+                {% if form.cpf_cnpj.errors %}<div class="text-danger small mt-1">{{ form.cpf_cnpj.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.razao_social.id_for_label }}">{{ form.razao_social.label }}</label>
+                {{ form.razao_social }}
+                {% if form.razao_social.errors %}<div class="text-danger small mt-1">{{ form.razao_social.errors|join:", " }}</div>{% endif %}
+                <div class="form-text">Obrigatória para pessoa jurídica.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+            Salvar fornecedor
+        </button>
+    </div>
+</form>
+
+<script>
+(function () {
+    var tipoEl = document.getElementById('id_fornecedor_rapido_tipo');
+    var docEl = document.getElementById('id_fornecedor_rapido_cpf_cnpj');
+    var labelEl = document.getElementById('label-fornecedor-rapido-doc');
+    if (!tipoEl || !docEl) {
+        return;
+    }
+    function applyTipo(resetValue) {
+        var pf = tipoEl.value === 'PF';
+        docEl.setAttribute('data-mask', pf ? 'cpf' : 'cnpj');
+        delete docEl.dataset.cpfMaskBound;
+        delete docEl.dataset.cnpjMaskBound;
+        docEl.setAttribute('maxlength', pf ? '14' : '18');
+        if (labelEl) {
+            labelEl.textContent = pf ? 'CPF' : 'CNPJ';
+        }
+        if (resetValue) {
+            docEl.value = '';
+        }
+        if (window.genesisInputMaskScan) {
+            window.genesisInputMaskScan(document);
+        }
+    }
+    tipoEl.addEventListener('change', function () {
+        applyTipo(true);
+    });
+    applyTipo(false);
+})();
+</script>

@@ -268,29 +268,43 @@
                 <div class="row g-2 fin-desc-compact">
                     <div class="col-12 col-lg-6">
                         <label class="form-label fw-semibold">{{ form.fornecedor.label }}</label>
-                        <div class="dropdown w-100" data-bs-popper="static">
-                            {# Mantém o select real para POST/validação, mas oculto #}
-                            <div class="d-none">
-                                {{ form.fornecedor }}
+                        <div class="d-flex gap-2">
+                            <div class="dropdown flex-grow-1" data-bs-popper="static">
+                                {# Mantém o select real para POST/validação, mas oculto #}
+                                <div class="d-none">
+                                    {{ form.fornecedor }}
+                                </div>
+                                <button type="button"
+                                        class="form-select rounded-3 text-start d-flex align-items-center justify-content-between"
+                                        id="fornecedorDropdownBtn"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                    <span id="fornecedorDropdownLabel">Selecione…</span>
+                                    <span class="ms-2 text-muted"><i class="bi bi-chevron-down"></i></span>
+                                </button>
+                                <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="fornecedorDropdownBtn" style="max-height: 22rem; overflow: auto;">
+                                    <div class="mb-2">
+                                        <input type="text"
+                                               class="form-control rounded-3"
+                                               id="fornecedorDropdownSearch"
+                                               placeholder="Buscar…"
+                                               autocomplete="off">
+                                    </div>
+                                    <div id="fornecedorDropdownList" class="list-group list-group-flush"></div>
+                                </div>
                             </div>
                             <button type="button"
-                                    class="form-select rounded-3 text-start d-flex align-items-center justify-content-between"
-                                    id="fornecedorDropdownBtn"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false">
-                                <span id="fornecedorDropdownLabel">Selecione…</span>
-                                <span class="ms-2 text-muted"><i class="bi bi-chevron-down"></i></span>
+                                    class="btn btn-outline-primary rounded-3 fw-semibold px-3"
+                                    title="Adicionar fornecedor"
+                                    aria-label="Adicionar fornecedor"
+                                    hx-get="{% url 'fornecedores:modal_novo_rapido' empresa_id=request.empresa_ativa.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao"
+                                    data-no-global-loading>
+                                <i class="bi bi-plus-lg"></i>
                             </button>
-                            <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="fornecedorDropdownBtn" style="max-height: 22rem; overflow: auto;">
-                                <div class="mb-2">
-                                    <input type="text"
-                                           class="form-control rounded-3"
-                                           id="fornecedorDropdownSearch"
-                                           placeholder="Buscar…"
-                                           autocomplete="off">
-                                </div>
-                                <div id="fornecedorDropdownList" class="list-group list-group-flush"></div>
-                            </div>
                         </div>
                         {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors }}</div>{% endif %}
                     </div>
@@ -633,6 +647,12 @@
         </button>
     </div>
 </form>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
 
 <div class="modal fade" id="pagamentoModal" tabindex="-1" aria-labelledby="pagamentoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1859,6 +1879,35 @@
         if (fornecedorSearch) {
             fornecedorSearch.addEventListener('input', () => renderFornecedorList(fornecedorSearch.value));
         }
+        document.body.addEventListener('fornecedorCriadoRapido', (event) => {
+            const detail = event.detail || {};
+            const payload = detail.id ? detail : (detail.value || {});
+            const id = String(payload.id || '');
+            const nome = String(payload.nome || '').trim();
+            if (!id || !fornecedorSelect) return;
+
+            let opt = Array.from(fornecedorSelect.options || []).find(o => String(o.value) === id);
+            if (!opt) {
+                opt = new Option(nome || ('Fornecedor #' + id), id);
+                fornecedorSelect.add(opt);
+            } else if (nome) {
+                opt.textContent = nome;
+            }
+
+            fornecedorSelect.value = id;
+            fornecedorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            setFornecedorLabel();
+            if (fornecedorSearch) {
+                fornecedorSearch.value = '';
+            }
+            renderFornecedorList('');
+
+            const modalEl = document.getElementById('modalPadrao');
+            if (modalEl && window.bootstrap && window.bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.hide();
+            }
+        });
 
         // Duplicidade NF: modal + submit com flag force_save
         {% if show_dup_modal %}

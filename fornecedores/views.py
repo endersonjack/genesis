@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -14,7 +16,7 @@ from core.cadastro_copia import (
 )
 from core.urlutils import redirect_empresa, reverse_empresa
 
-from .forms import FornecedorForm
+from .forms import FornecedorForm, FornecedorQuickCreateForm
 from .models import Fornecedor
 
 
@@ -78,6 +80,50 @@ def detalhe(request, pk):
 @login_required
 def modal_novo(request):
     return _modal_fornecedor_form(request, item=None)
+
+
+@login_required
+def modal_novo_rapido(request):
+    empresa = _empresa(request)
+    if not empresa:
+        messages.error(request, 'Selecione uma empresa ativa.')
+        return redirect('selecionar_empresa')
+
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'fornecedores:lista')
+
+    post_url = reverse_empresa(request, 'fornecedores:modal_novo_rapido')
+    if request.method == 'POST':
+        form = FornecedorQuickCreateForm(request.POST, empresa=empresa)
+        if form.is_valid():
+            obj = form.save()
+            registrar_auditoria(
+                request,
+                acao='create',
+                resumo=f'Fornecedor "{obj.nome}" cadastrado rapidamente.',
+                modulo='fornecedores',
+            )
+            resp = HttpResponse(status=204)
+            resp['HX-Trigger'] = json.dumps(
+                {
+                    'fornecedorCriadoRapido': {
+                        'id': obj.pk,
+                        'nome': obj.nome,
+                    }
+                }
+            )
+            return resp
+    else:
+        form = FornecedorQuickCreateForm(empresa=empresa)
+
+    return render(
+        request,
+        'fornecedores/partials/modal_form_rapido_nf.html',
+        {
+            'form': form,
+            'post_url': post_url,
+        },
+    )
 
 
 @login_required

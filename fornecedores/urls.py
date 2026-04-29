@@ -10,6 +10,11 @@ urlpatterns = [
     path('', empresa_scoped(views.lista), name='lista'),
     path('modal/novo/', empresa_scoped(views.modal_novo), name='modal_novo'),
     path(
+        'modal/novo-rapido/',
+        empresa_scoped(views.modal_novo_rapido),
+        name='modal_novo_rapido',
+    ),
+    path(
         'modal/<int:pk>/excluir/',
         empresa_scoped(views.modal_excluir_confirm),
         name='modal_excluir_confirm',
