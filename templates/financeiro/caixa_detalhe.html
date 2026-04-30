@@ -93,8 +93,14 @@
         font-weight: 800;
         white-space: nowrap;
     }
-    .caixa-positive { color: #15803d; }
-    .caixa-negative { color: #b91c1c; }
+    .caixa-positive,
+    .caixa-table td.caixa-positive {
+        color: #2563eb !important;
+    }
+    .caixa-negative,
+    .caixa-table td.caixa-negative {
+        color: #b91c1c !important;
+    }
     .caixa-table {
         margin: 0;
         font-size: .74rem;
@@ -332,6 +338,7 @@
             <div>
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-mes">Mês</label>
                 <select id="caixa-mes" name="mes" class="form-select form-select-sm rounded-pill">
+                    <option value="0" {% if periodo.todos_os_meses %}selected{% endif %}>Todos os meses</option>
                     {% for mes_num, mes_nome in periodo.meses %}
                         <option value="{{ mes_num }}" {% if mes_num == periodo.mes %}selected{% endif %}>{{ mes_nome }}</option>
                     {% endfor %}
@@ -427,7 +434,7 @@
                                 <td class="text-end fw-bold text-nowrap {% if m.entrada %}caixa-positive{% else %}caixa-negative{% endif %}">
                                     {% if m.entrada %}+{% else %}-{% endif %} R$ {{ m.valor|moeda_br }}
                                 </td>
-                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% endif %}">
+                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% else %}caixa-positive{% endif %}">
                                     R$ {{ m.saldo_apos_lancamento|moeda_br }}
                                 </td>
                             </tr>
@@ -483,7 +490,7 @@
                                 <td class="text-end fw-bold text-nowrap {% if m.entrada %}caixa-positive{% else %}caixa-negative{% endif %}">
                                     {% if m.entrada %}+{% else %}-{% endif %} R$ {{ m.valor_liquido|moeda_br }}
                                 </td>
-                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% endif %}">
+                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% else %}caixa-positive{% endif %}">
                                     R$ {{ m.saldo_apos_lancamento|moeda_br }}
                                 </td>
                             </tr>

@@ -96,27 +96,36 @@ def _is_htmx(request) -> bool:
 
 def _periodo_caixa_params(request) -> dict:
     hoje = timezone.localdate()
+    mes_raw = str(request.GET.get('mes') or '').strip().lower()
+    todos_os_meses = mes_raw in {'todos', 'all', '0'}
     try:
-        mes = int(request.GET.get('mes') or hoje.month)
+        mes = int(mes_raw or hoje.month)
     except (TypeError, ValueError):
         mes = hoje.month
     try:
         ano = int(str(request.GET.get('ano') or hoje.year).replace('.', '').replace(',', ''))
     except (TypeError, ValueError):
         ano = hoje.year
-    if mes < 1 or mes > 12:
+    if todos_os_meses:
+        mes = 0
+    elif mes < 1 or mes > 12:
         mes = hoje.month
     if ano < 2000 or ano > hoje.year + 5:
         ano = hoje.year
 
-    inicio = date(ano, mes, 1)
-    fim = date(ano + 1, 1, 1) if mes == 12 else date(ano, mes + 1, 1)
+    if mes == 0:
+        inicio = date(ano, 1, 1)
+        fim = date(ano + 1, 1, 1)
+    else:
+        inicio = date(ano, mes, 1)
+        fim = date(ano + 1, 1, 1) if mes == 12 else date(ano, mes + 1, 1)
     return {
         'mes': mes,
         'ano': ano,
         'inicio': inicio,
         'fim': fim,
         'meses': MESES_FILTRO_CAIXA,
+        'todos_os_meses': mes == 0,
     }
 
 
@@ -1665,6 +1674,7 @@ def caixa_lista(request):
             caixa,
             inicio_mes,
             fim_mes,
+            incluir_recebimentos_abertos=True,
         )
         entradas_mes = sum(
             (l['valor_liquido'] for l in linhas_mes if l['entrada']),
@@ -1881,7 +1891,13 @@ def caixa_unificado(request):
     for caixa in caixas_ativos:
         movimentacoes.extend(_extrato_caixa(request, caixa, periodo['inicio'], periodo['fim']))
         movimentacoes_detalhadas.extend(
-            _extrato_caixa_detalhado(request, caixa, periodo['inicio'], periodo['fim'])
+            _extrato_caixa_detalhado(
+                request,
+                caixa,
+                periodo['inicio'],
+                periodo['fim'],
+                incluir_recebimentos_abertos=True,
+            )
         )
 
     movimentacoes = _recalcular_saldo_linhas(
@@ -2040,7 +2056,7 @@ def _empresa_logo_flowable(empresa):
 def _header_text_html_caixa(empresa, periodo, caixa):
     nome = _nome_empresa_pdf(empresa)
     modo = periodo.get('modo_label') or 'Extrato'
-    mes_nome = _mes_nome_pt(periodo['mes'])
+    mes_nome = 'Todos os meses' if periodo.get('todos_os_meses') else _mes_nome_pt(periodo['mes'])
     bits = [f'<b>{xml_escape(nome)}</b>']
     razao = (getattr(empresa, 'razao_social', '') or '').strip()
     if razao and razao.upper() != (nome or '').upper():
@@ -2354,7 +2370,15 @@ def caixa_unificado_pdf(request):
         if modo_extrato == 'consolidado':
             linhas.extend(_extrato_caixa(request, caixa, periodo['inicio'], periodo['fim']))
         else:
-            linhas.extend(_extrato_caixa_detalhado(request, caixa, periodo['inicio'], periodo['fim']))
+            linhas.extend(
+                _extrato_caixa_detalhado(
+                    request,
+                    caixa,
+                    periodo['inicio'],
+                    periodo['fim'],
+                    incluir_recebimentos_abertos=True,
+                )
+            )
 
     campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
     linhas = _recalcular_saldo_linhas(

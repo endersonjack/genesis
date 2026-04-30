@@ -185,6 +185,20 @@
         border-color: #fed7aa;
         box-shadow: 0 10px 24px rgba(249, 115, 22, 0.10);
     }
+    .financeiro-summary-pay-action {
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        background: #16a34a;
+        color: #fff;
+        border: 1px solid #15803d;
+        box-shadow: 0 10px 22px rgba(22, 163, 74, 0.22);
+    }
+    .financeiro-summary-pay-action:hover {
+        background: #15803d;
+        color: #fff;
+        transform: translateY(-1px);
+    }
     .financeiro-payment-total-pill {
         border-radius: 999px;
         padding: .6rem 1rem;
@@ -350,9 +364,16 @@
                     <div class="financeiro-summary-label">Valor pago</div>
                     <div class="financeiro-summary-value text-success">R$ {{ resumo_pagamento.valor_pago|moeda_br }}</div>
                 </div>
-                <div class="financeiro-summary-item {% if resumo_pagamento.valor_em_aberto %}financeiro-summary-item--danger{% endif %}" style="grid-column: 1 / -1;">
-                    <div class="financeiro-summary-label">Valor em aberto</div>
-                    <div class="financeiro-summary-value {% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</div>
+                <div class="financeiro-summary-item {% if resumo_pagamento.valor_em_aberto %}financeiro-summary-item--danger{% endif %} d-flex flex-wrap justify-content-between align-items-center gap-3" style="grid-column: 1 / -1;">
+                    <div>
+                        <div class="financeiro-summary-label">Valor em aberto</div>
+                        <div class="financeiro-summary-value {% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</div>
+                    </div>
+                    {% if resumo_pagamento.valor_em_aberto %}
+                    <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento" class="financeiro-top-btn financeiro-summary-pay-action">
+                        <i class="bi bi-cash-coin"></i> Pagar
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
