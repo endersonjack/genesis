@@ -273,6 +273,7 @@ class ValeTransporteItemForm(BaseStyledModelForm):
     def __init__(self, *args, **kwargs):
         self.tabela = kwargs.pop('tabela', None)
         super().__init__(*args, **kwargs)
+        self._original_funcao = getattr(self.instance, 'funcao', '') or ''
         self.apply_bootstrap_classes()
 
         self.fields['funcionario'].required = False
@@ -282,7 +283,6 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             dp = self.fields['data_pagamento']
             dp.widget.format = '%Y-%m-%d'
             dp.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
-            dp.help_text = 'Opcional. Data do último pagamento registrado.'
 
         if self.tabela:
             empresa = self.tabela.competencia.empresa
@@ -309,11 +309,7 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         else:
             self.funcionarios_data = {}
 
-        self.fields['nome'].help_text = 'Pode ser preenchido automaticamente pelo funcionário ou alterado manualmente.'
-        self.fields['funcao'].help_text = 'Pode ser alterada manualmente.'
-        self.fields['endereco'].help_text = 'Pode ser alterado manualmente.'
-        self.fields['valor_pago'].help_text = 'Informe o quanto já foi pago nesta linha; a linha fica verde quando o valor pago cobre o valor a pagar.'
-        self.fields['valor_pagar'].help_text = 'Calculado automaticamente por valor unitário × dias.'
+        self.fields['funcao'].disabled = True
         self.fields['valor_pagar'].widget.attrs['readonly'] = 'readonly'
 
     def save(self, commit=True):
@@ -328,8 +324,7 @@ class ValeTransporteItemForm(BaseStyledModelForm):
 
             if not instance.nome:
                 instance.nome = getattr(instance.funcionario, 'nome', '') or ''
-            if not instance.funcao:
-                instance.funcao = str(cargo) if cargo else ''
+            instance.funcao = str(cargo) if cargo else ''
             if not instance.endereco:
                 instance.endereco = getattr(instance.funcionario, 'endereco_completo', '') or ''
             if not instance.pix:
@@ -338,6 +333,8 @@ class ValeTransporteItemForm(BaseStyledModelForm):
                 instance.tipo_pix = getattr(instance.funcionario, 'tipo_pix', '') or ''
             if not instance.banco:
                 instance.banco = str(banco) if banco else ''
+        else:
+            instance.funcao = self._original_funcao
 
         if commit:
             instance.save()

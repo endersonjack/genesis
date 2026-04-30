@@ -1,31 +1,65 @@
 <style>
+    #modalPadrao:has(.vt-modal-form) .modal-dialog {
+        max-width: min(980px, calc(100vw - 1rem));
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    #modalPadrao:has(.vt-modal-form) .modal-content {
+        max-height: calc(100vh - 1.5rem);
+        overflow: hidden;
+    }
+    .vt-modal-form {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .vt-modal-form .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
+    .vt-modal-form .modal-footer {
+        flex: 0 0 auto;
+    }
     .vt-modal-form .vt-form-section {
         border: 1px solid #e2e8f0;
-        border-radius: 0.65rem;
-        padding: 0.85rem 1rem;
+        border-radius: 0.55rem;
+        padding: 0.6rem 0.75rem;
         background: #fafbfc;
     }
     .vt-modal-form .vt-form-section-title {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         color: #64748b;
         font-weight: 800;
-        margin-bottom: 0.65rem;
-        padding-bottom: 0.35rem;
+        margin-bottom: 0.45rem;
+        padding-bottom: 0.25rem;
         border-bottom: 1px solid #e2e8f0;
     }
     .vt-modal-form .form-label {
-        font-size: 0.82rem;
-        margin-bottom: 0.25rem;
+        font-size: 0.78rem;
+        margin-bottom: 0.15rem;
     }
     .vt-modal-form .form-control,
     .vt-modal-form .form-select {
-        font-size: 0.9rem;
+        font-size: 0.86rem;
+        min-height: 2rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+    }
+    .vt-modal-form textarea.form-control {
+        min-height: 4.25rem;
     }
     .vt-modal-form .vt-context-bar {
-        font-size: 0.88rem;
-        border-radius: 0.5rem;
+        font-size: 0.82rem;
+        border-radius: 0.45rem;
+    }
+    .vt-modal-form .form-text,
+    .vt-modal-form .text-danger.small {
+        font-size: 0.76rem;
     }
 </style>
 
@@ -58,7 +92,7 @@
             <span class="fw-semibold text-dark">{{ competencia.referencia }}</span>
         </div>
 
-        <div class="row g-3">
+        <div class="row g-2">
             <div class="col-12 col-lg-6">
                 <div class="vt-form-section h-100">
                     <div class="vt-form-section-title">Identificação</div>
@@ -73,13 +107,11 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
                             {{ form.nome }}
-                            {% if form.nome.help_text %}<div class="form-text small">{{ form.nome.help_text }}</div>{% endif %}
                             {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">{{ form.funcao.label }}</label>
                             {{ form.funcao }}
-                            {% if form.funcao.help_text %}<div class="form-text small">{{ form.funcao.help_text }}</div>{% endif %}
                             {% if form.funcao.errors %}<div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-12">
@@ -99,7 +131,6 @@
                         <div class="col-12">
                             <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
                             {{ form.endereco }}
-                            {% if form.endereco.help_text %}<div class="form-text small">{{ form.endereco.help_text }}</div>{% endif %}
                             {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
                         </div>
                     </div>
@@ -109,7 +140,7 @@
             <div class="col-12">
                 <div class="vt-form-section">
                     <div class="vt-form-section-title">Valores e pagamento</div>
-                    <div class="row g-2 g-lg-3">
+                    <div class="row g-2">
                         <div class="col-6 col-lg-3">
                             <label class="form-label fw-semibold" for="{{ form.valor_unitario.id_for_label }}">{{ form.valor_unitario.label }}</label>
                             {{ form.valor_unitario }}
@@ -128,19 +159,16 @@
                         <div class="col-12 col-lg-3">
                             <label class="form-label fw-semibold" for="{{ form.valor_pagar.id_for_label }}">{{ form.valor_pagar.label }}</label>
                             {{ form.valor_pagar }}
-                            {% if form.valor_pagar.help_text %}<div class="form-text small">{{ form.valor_pagar.help_text }}</div>{% endif %}
                             {% if form.valor_pagar.errors %}<div class="text-danger small mt-1">{{ form.valor_pagar.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-6 col-lg-2">
                             <label class="form-label fw-semibold" for="{{ form.valor_pago.id_for_label }}">{{ form.valor_pago.label }}</label>
                             {{ form.valor_pago }}
-                            {% if form.valor_pago.help_text %}<div class="form-text small">{{ form.valor_pago.help_text }}</div>{% endif %}
                             {% if form.valor_pago.errors %}<div class="text-danger small mt-1">{{ form.valor_pago.errors|join:", " }}</div>{% endif %}
                         </div>
                         <div class="col-6 col-lg-2">
                             <label class="form-label fw-semibold" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
                             {{ form.data_pagamento }}
-                            {% if form.data_pagamento.help_text %}<div class="form-text small">{{ form.data_pagamento.help_text }}</div>{% endif %}
                             {% if form.data_pagamento.errors %}<div class="text-danger small mt-1">{{ form.data_pagamento.errors|join:", " }}</div>{% endif %}
                         </div>
                     </div>
@@ -150,7 +178,7 @@
             <div class="col-12">
                 <div class="vt-form-section">
                     <div class="vt-form-section-title">Dados bancários / Pix</div>
-                    <div class="row g-2 g-lg-3 align-items-start">
+                    <div class="row g-2 align-items-start">
                         <div class="col-6 col-md-4 col-lg-2">
                             <label class="form-label fw-semibold" for="{{ form.tipo_pix.id_for_label }}">{{ form.tipo_pix.label }}</label>
                             {{ form.tipo_pix }}

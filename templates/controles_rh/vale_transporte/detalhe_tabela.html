@@ -92,7 +92,7 @@
     }
 
     .table-header {
-        padding: 1rem 1.25rem;
+        padding: .75rem 1rem;
         border-bottom: 1px solid #e5edf5;
         background: #fff;
         display: flex;
@@ -103,7 +103,7 @@
     }
 
     .table-title {
-        font-size: 1.05rem;
+        font-size: .98rem;
         font-weight: 800;
         color: #0f172a;
         margin: 0;
@@ -146,6 +146,7 @@
         vertical-align: middle;
         table-layout: fixed;
         width: 100%;
+        font-size: .82rem;
     }
 
     .vt-table thead th {
@@ -155,12 +156,18 @@
         border-bottom: 1px solid #dbe4ee;
         white-space: nowrap;
         position: relative;
-        padding-right: 14px;
+        padding: .42rem 12px .42rem .45rem;
+        line-height: 1.15;
+    }
+
+    .vt-table tbody td {
+        padding: .36rem .45rem;
+        line-height: 1.18;
     }
 
     .vt-table th .th-label {
         display: inline-block;
-        padding-right: 6px;
+        padding-right: 4px;
         overflow: hidden;
         text-overflow: ellipsis;
         text-transform: uppercase;
@@ -187,9 +194,9 @@
     .vt-col-resize {
         position: absolute;
         right: 0;
-        top: 2px;
-        bottom: 2px;
-        width: 12px;
+        top: 1px;
+        bottom: 1px;
+        width: 10px;
         cursor: col-resize;
         user-select: none;
         z-index: 3;
@@ -211,22 +218,22 @@
 
     .vt-table th.col-num,
     .vt-table td.col-num {
-        width: 42px;
-        min-width: 42px;
+        width: 34px;
+        min-width: 34px;
         text-align: center;
     }
 
     .vt-table th.col-drag,
     .vt-table td.col-drag {
-        width: 40px;
-        min-width: 40px;
+        width: 32px;
+        min-width: 32px;
         text-align: center;
     }
 
     .vt-drag-handle {
         cursor: grab;
         color: #94a3b8;
-        padding: 2px;
+        padding: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -237,27 +244,27 @@
     }
 
     .vt-table th.col-nome,
-    .vt-table td.col-nome { width: 200px; }
+    .vt-table td.col-nome { width: 180px; }
     .vt-table th.col-funcao,
-    .vt-table td.col-funcao { width: 130px; }
+    .vt-table td.col-funcao { width: 118px; }
     .vt-table th.col-endereco,
-    .vt-table td.col-endereco { width: 200px; }
+    .vt-table td.col-endereco { width: 180px; }
     .vt-table th.col-valor,
-    .vt-table td.col-valor { width: 100px; }
+    .vt-table td.col-valor { width: 92px; }
     .vt-table th.col-pago,
-    .vt-table td.col-pago { width: 150px; }
+    .vt-table td.col-pago { width: 128px; }
     .vt-table th.col-saldo,
-    .vt-table td.col-saldo { width: 108px; text-align: right; }
+    .vt-table td.col-saldo { width: 92px; text-align: right; }
     .vt-table th.col-data-pagamento,
-    .vt-table td.col-data-pagamento { width: 118px; }
+    .vt-table td.col-data-pagamento { width: 104px; }
     .vt-table th.col-pix,
-    .vt-table td.col-pix { width: 220px; min-width: 180px; }
+    .vt-table td.col-pix { width: 190px; min-width: 160px; }
 
     /* PIX + ícone copiar em fluxo inline (ícone colado ao texto) */
     .vt-pix-cell {
         min-width: 0;
-        font-size: .9rem;
-        line-height: 1.25;
+        font-size: .8rem;
+        line-height: 1.15;
     }
 
     .vt-pix-cell .pix-text {
@@ -271,16 +278,16 @@
         align-items: center;
         justify-content: center;
         vertical-align: middle;
-        margin-left: 0.15rem;
-        padding: 0 0.2rem;
-        min-width: 1.5rem;
+        margin-left: 0.1rem;
+        padding: 0 0.15rem;
+        min-width: 1.25rem;
         line-height: 1;
-        font-size: 0.85rem;
+        font-size: 0.76rem;
     }
     .vt-table th.col-tipo,
-    .vt-table td.col-tipo { width: 110px; }
+    .vt-table td.col-tipo { width: 94px; }
     .vt-table th.col-banco,
-    .vt-table td.col-banco { width: 120px; }
+    .vt-table td.col-banco { width: 104px; }
 
     .vt-table tbody tr.vt-row-clickable {
         cursor: pointer;
@@ -332,23 +339,24 @@
     }
 
     .hint-table-tools {
-        font-size: .78rem;
+        font-size: .74rem;
         color: #64748b;
-        margin: 0 0 .75rem;
+        margin: 0 0 .5rem;
     }
 
     .vt-pago-cell {
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: .35rem;
+        gap: .25rem;
         flex-wrap: nowrap;
     }
 
     .vt-pago-cell .btn-pago-edit {
         flex-shrink: 0;
-        padding: .15rem .4rem;
+        padding: .08rem .32rem;
         line-height: 1;
+        font-size: .76rem;
     }
 
     .vt-saldo {
