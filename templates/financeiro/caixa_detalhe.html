@@ -5,110 +5,568 @@
 
 {% block content %}
 <style>
-    .fin-card {
+    .financeiro-page-header { margin-bottom: 1.25rem; }
+    .financeiro-top-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+    .financeiro-top-more-dropdown .dropdown-toggle::after { display: none; }
+    .financeiro-board-card {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
         background: #fff;
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .financeiro-board-body {
         padding: 1.25rem;
-        margin-bottom: 1.25rem;
+        background: #f8fafc;
     }
-    .fin-table th {
-        font-size: .72rem;
-        text-transform: uppercase;
-        letter-spacing: .04em;
+    .mini-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+    }
+    .caixa-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .75rem;
+    }
+    .caixa-metric { padding: .85rem; min-width: 0; }
+    .caixa-metric-label {
         color: #64748b;
+        font-size: .72rem;
         font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        margin-bottom: .25rem;
     }
-    .fin-table td { vertical-align: middle; font-size: .95rem; }
-    .fin-entrada { color: #15803d; font-weight: 700; }
-    .fin-saida { color: #b91c1c; font-weight: 700; }
+    .caixa-metric-value {
+        color: #0f172a;
+        font-size: 1.1rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+    .caixa-positive { color: #15803d; }
+    .caixa-negative { color: #b91c1c; }
+    .caixa-table {
+        margin: 0;
+        font-size: .74rem;
+        min-width: 1080px;
+    }
+    .caixa-table th {
+        color: #64748b;
+        font-size: .66rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+        line-height: 1.12;
+        padding: .38rem .42rem;
+        text-transform: uppercase;
+        white-space: normal;
+    }
+    .caixa-table td {
+        padding: .34rem .42rem;
+        vertical-align: middle;
+    }
+    .caixa-table tbody tr[data-row-href] { cursor: pointer; }
+    .caixa-table tbody tr[data-row-href]:hover td { background: #f8fafc; }
+    .caixa-table tbody tr[data-row-href]:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+    }
+    .caixa-sort-link {
+        color: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        text-decoration: none;
+    }
+    .caixa-sort-link:hover { color: #2563eb; }
+    .caixa-sort-indicator {
+        color: #2563eb;
+        font-size: .8rem;
+        line-height: 1;
+    }
+    .caixa-ref {
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .caixa-detail-desc {
+        min-width: 14rem;
+        max-width: 22rem;
+    }
+    .caixa-scroll-top {
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    .caixa-scroll-top-inner {
+        height: .85rem;
+        min-width: 1080px;
+    }
+    .caixa-table-wrap { overflow-x: auto; }
+    .caixa-year-control {
+        display: flex;
+        align-items: stretch;
+        width: 7.5rem;
+    }
+    .caixa-year-control .form-control {
+        border-radius: 999px 0 0 999px;
+        border-right: 0;
+        text-align: center;
+    }
+    .caixa-year-buttons {
+        display: grid;
+        width: 1.8rem;
+    }
+    .caixa-year-buttons button {
+        border: 1px solid #dbe4ee;
+        background: #fff;
+        color: #475569;
+        font-size: .58rem;
+        line-height: 1;
+        padding: 0;
+    }
+    .caixa-year-buttons button:first-child { border-radius: 0 999px 0 0; }
+    .caixa-year-buttons button:last-child {
+        border-top: 0;
+        border-radius: 0 0 999px 0;
+    }
+    .caixa-year-buttons button:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+    .caixa-empty {
+        color: #64748b;
+        padding: 2.25rem 1rem;
+        text-align: center;
+    }
+    @media (max-width: 992px) {
+        .caixa-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 576px) {
+        .caixa-metrics { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 767.98px) {
+        .financeiro-top-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+        .financeiro-top-btn,
+        .financeiro-top-actions form {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+    }
 </style>
 
-<div class="fin-card d-flex flex-wrap justify-content-between align-items-start gap-3">
+<div class="financeiro-page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <h2 class="fw-bold mb-0">{{ caixa.nome }}</h2>
             {% if caixa.tipo == 'geral' %}
-            <span class="badge text-bg-info">Padrão</span>
+                <span class="badge text-bg-info">Padrao</span>
             {% endif %}
             {% if caixa.ativo %}
-            <span class="badge text-bg-success rounded-pill">Ativo</span>
+                <span class="badge text-bg-success rounded-pill">Ativo</span>
             {% else %}
-            <span class="badge text-bg-secondary rounded-pill">Inativo</span>
+                <span class="badge text-bg-secondary rounded-pill">Inativo</span>
             {% endif %}
         </div>
-        <p class="text-muted mb-2">{{ caixa.get_tipo_display }}{% if caixa.obra %} — {{ caixa.obra.nome }}{% endif %}</p>
-        <div class="fs-4 fw-bold text-body">Saldo atual: R$ {{ saldo_atual|moeda_br }}</div>
+        <p class="text-muted mb-0">
+            {{ caixa.get_tipo_display }}{% if caixa.obra %} - {{ caixa.obra.nome }}{% endif %}
+        </p>
     </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Lista</a>
-        <a href="{% url 'financeiro:caixa_editar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}" class="btn btn-outline-primary rounded-pill">
-            <i class="bi bi-pencil"></i> Editar caixa
+    <div class="financeiro-top-actions ms-auto">
+        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i>
+            <span>Lista</span>
         </a>
-    </div>
-</div>
-
-{% if caixa.ativo %}
-<form method="post" action="{% url 'financeiro:caixa_inativar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}" class="d-inline"
-      onsubmit="return confirm('Inativar este caixa? Ele deixa de aparecer em lançamentos novos; o histórico permanece.');">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-outline-danger rounded-pill btn-sm mb-3">Inativar caixa</button>
-</form>
-{% else %}
-<form method="post" action="{% url 'financeiro:caixa_reativar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}" class="d-inline">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-success rounded-pill btn-sm mb-3">Reativar caixa</button>
-</form>
-{% endif %}
-
-<div class="fin-card p-0 overflow-hidden">
-    <div class="p-3 border-bottom bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-            <h3 class="h6 fw-bold mb-1">Movimentações</h3>
-            <p class="small text-muted mb-0">Histórico gerado por recebimentos e pagamentos.</p>
+        {% if modo_extrato == 'consolidado' %}
+            <a href="{{ detalhado_url }}" class="financeiro-top-btn financeiro-top-btn-primary">
+                <i class="bi bi-table"></i>
+                <span>Extrato Detalhado</span>
+            </a>
+        {% else %}
+            <a href="{{ consolidado_url }}" class="financeiro-top-btn financeiro-top-btn-primary">
+                <i class="bi bi-journal-text"></i>
+                <span>Extrato Consolidado</span>
+            </a>
+        {% endif %}
+        <div class="dropdown financeiro-top-more-dropdown" data-bs-popper="static">
+            <button type="button"
+                    class="financeiro-top-btn financeiro-top-btn-light financeiro-top-btn-icon-only dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Ações do caixa">
+                <i class="bi bi-gear"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:caixa_editar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}">
+                        <i class="bi bi-pencil me-2"></i> Editar caixa
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    {% if caixa.ativo %}
+                        <form method="post" action="{% url 'financeiro:caixa_inativar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}"
+                              onsubmit="return confirm('Inativar este caixa? Ele deixa de aparecer em lancamentos novos; o historico permanece.');">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-danger">
+                                <i class="bi bi-slash-circle me-2"></i> Inativar
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'financeiro:caixa_reativar' empresa_id=request.empresa_ativa.pk pk=caixa.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item">
+                                <i class="bi bi-check-circle me-2"></i> Reativar
+                            </button>
+                        </form>
+                    {% endif %}
+                </li>
+            </ul>
         </div>
     </div>
-    {% if movimentos %}
-    <div class="table-responsive">
-        <table class="table table-hover fin-table mb-0 align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Data</th>
-                    <th>Natureza</th>
-                    <th>Origem</th>
-                    <th class="text-end">Valor</th>
-                    <th class="text-end">Saldo após</th>
-                    <th>Descrição</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in movimentos %}
-                <tr>
-                    <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
-                    <td>
-                        {% if m.natureza == 'entrada' %}
-                        <span class="fin-entrada">Entrada</span>
-                        {% else %}
-                        <span class="fin-saida">Saída</span>
-                        {% endif %}
-                    </td>
-                    <td class="small text-muted">{{ m.get_categoria_origem_display }}</td>
-                    <td class="text-end fw-semibold text-nowrap">
-                        {% if m.natureza == 'entrada' %}+{% else %}−{% endif %}
-                        R$ {{ m.valor|moeda_br }}
-                    </td>
-                    <td class="text-end small text-nowrap">R$ {{ m.saldo_apos_lancamento|moeda_br }}</td>
-                    <td class="small" style="max-width: 14rem;">
-                        <span class="d-inline-block text-truncate w-100" title="{{ m.descricao }}">{{ m.descricao }}</span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+</div>
+
+<div class="financeiro-board-card mb-3">
+    <div class="financeiro-board-body">
+        <div class="caixa-metrics">
+            <div class="mini-card caixa-metric">
+                <div class="caixa-metric-label">Saldo do período</div>
+                <div class="caixa-metric-value {% if saldo_atual < 0 %}caixa-negative{% else %}caixa-positive{% endif %}">
+                    R$ {{ saldo_atual|moeda_br }}
+                </div>
+            </div>
+            <div class="mini-card caixa-metric">
+                <div class="caixa-metric-label">Entradas</div>
+                <div class="caixa-metric-value caixa-positive">R$ {{ entradas_total|moeda_br }}</div>
+            </div>
+            <div class="mini-card caixa-metric">
+                <div class="caixa-metric-label">Saidas</div>
+                <div class="caixa-metric-value caixa-negative">R$ {{ saidas_total|moeda_br }}</div>
+            </div>
+            <div class="mini-card caixa-metric">
+                <div class="caixa-metric-label">Movimentacoes</div>
+                <div class="caixa-metric-value">{{ paginator.count }}</div>
+            </div>
+        </div>
     </div>
+</div>
+
+<div class="financeiro-board-card">
+    <div class="p-3 border-bottom bg-white d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div>
+            <h3 class="h6 fw-bold mb-1">
+                {% if modo_extrato == 'consolidado' %}Extrato consolidado{% else %}Extrato detalhado{% endif %}
+            </h3>
+            <p class="small text-muted mb-0">
+                {% if modo_extrato == 'consolidado' %}
+                    Pagamentos e recebimentos efetivados. Exibindo ate 50 linhas por pagina.
+                {% else %}
+                    Saidas por item de NF e entradas por recebimento. Exibindo ate 50 linhas por pagina.
+                {% endif %}
+            </p>
+        </div>
+        <form method="get" class="d-flex flex-wrap align-items-end gap-2">
+            <input type="hidden" name="modo" value="{{ modo_extrato }}">
+            {% if modo_extrato == 'detalhado' %}
+                <input type="hidden" name="sort" value="{{ sort_key }}">
+                <input type="hidden" name="dir" value="{{ sort_dir }}">
+            {% endif %}
+            <div>
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-mes">Mês</label>
+                <select id="caixa-mes" name="mes" class="form-select form-select-sm rounded-pill">
+                    {% for mes_num, mes_nome in periodo.meses %}
+                        <option value="{{ mes_num }}" {% if mes_num == periodo.mes %}selected{% endif %}>{{ mes_nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-ano">Ano</label>
+                <div class="caixa-year-control">
+                    <input id="caixa-ano"
+                           name="ano"
+                           type="text"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           value="{{ periodo.ano }}"
+                           class="form-control form-control-sm"
+                           data-year-input>
+                    <div class="caixa-year-buttons" aria-hidden="true">
+                        <button type="button" data-year-step="1">▲</button>
+                        <button type="button" data-year-step="-1">▼</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-fornecedor">Fornecedor</label>
+                <select id="caixa-fornecedor" name="fornecedor" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                    <option value="">Todos</option>
+                    {% for fornecedor in fornecedores_filtro %}
+                        <option value="{{ fornecedor.pk }}" {% if fornecedor.pk == fornecedor_id %}selected{% endif %}>{{ fornecedor.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-categoria">Categoria</label>
+                <select id="caixa-categoria" name="categoria" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias_filtro %}
+                        <option value="{{ categoria.pk }}" {% if categoria.pk == categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">Filtrar</button>
+            <a href="{{ pdf_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+        </form>
+    </div>
+
+    {% if modo_extrato == 'consolidado' %}
+        {% if movimentacoes %}
+            <div class="caixa-scroll-top" data-scroll-sync="caixa-extrato"><div class="caixa-scroll-top-inner"></div></div>
+            <div class="table-responsive caixa-table-wrap" data-scroll-sync="caixa-extrato">
+                <table class="table table-hover align-middle caixa-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Data</th>
+                            <th>Natureza</th>
+                            <th>Origem</th>
+                            <th>Referência</th>
+                            <th>Descrição</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-end">Saldo<br>Apos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movimentacoes %}
+                            <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
+                                <td class="caixa-ref">{{ m.numero }}</td>
+                                <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
+                                <td>
+                                    {% if m.entrada %}
+                                        <span class="badge rounded-pill text-bg-success">Entrada</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill text-bg-danger">Saida</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-nowrap">{{ m.origem }}</td>
+                                <td class="text-nowrap fw-semibold">{{ m.referencia }}</td>
+                                <td class="caixa-detail-desc">
+                                    <span class="d-inline-block text-truncate w-100" title="{{ m.descricao }}">{{ m.descricao }}</span>
+                                </td>
+                                <td class="text-end fw-bold text-nowrap {% if m.entrada %}caixa-positive{% else %}caixa-negative{% endif %}">
+                                    {% if m.entrada %}+{% else %}-{% endif %} R$ {{ m.valor|moeda_br }}
+                                </td>
+                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% endif %}">
+                                    R$ {{ m.saldo_apos_lancamento|moeda_br }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="caixa-empty">Nenhuma movimentacao consolidada encontrada neste período.</div>
+        {% endif %}
     {% else %}
-    <div class="p-4 text-center text-muted">Nenhum movimento neste caixa.</div>
+        {% if movimentacoes_detalhadas %}
+            <div class="caixa-scroll-top" data-scroll-sync="caixa-extrato"><div class="caixa-scroll-top-inner"></div></div>
+            <div class="table-responsive caixa-table-wrap" data-scroll-sync="caixa-extrato">
+                <table class="table table-hover align-middle caixa-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.numero.url }}"># {% if sort_links.numero.active %}<span class="caixa-sort-indicator">{{ sort_links.numero.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.data.url }}">Data {% if sort_links.data.active %}<span class="caixa-sort-indicator">{{ sort_links.data.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.natureza.url }}">Natureza {% if sort_links.natureza.active %}<span class="caixa-sort-indicator">{{ sort_links.natureza.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.categoria.url }}">Categoria {% if sort_links.categoria.active %}<span class="caixa-sort-indicator">{{ sort_links.categoria.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.nf.url }}">NF Saida /<br>NF Entrada {% if sort_links.nf.active %}<span class="caixa-sort-indicator">{{ sort_links.nf.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.pessoa.url }}">Fornecedor /<br>Cliente {% if sort_links.pessoa.active %}<span class="caixa-sort-indicator">{{ sort_links.pessoa.indicator }}</span>{% endif %}</a></th>
+                            <th><a class="caixa-sort-link" href="{{ sort_links.descricao.url }}">Descricao {% if sort_links.descricao.active %}<span class="caixa-sort-indicator">{{ sort_links.descricao.indicator }}</span>{% endif %}</a></th>
+                            <th class="text-end"><a class="caixa-sort-link justify-content-end" href="{{ sort_links.valor_bruto.url }}">Valor<br>Bruto {% if sort_links.valor_bruto.active %}<span class="caixa-sort-indicator">{{ sort_links.valor_bruto.indicator }}</span>{% endif %}</a></th>
+                            <th class="text-end"><a class="caixa-sort-link justify-content-end" href="{{ sort_links.descontos.url }}">Descontos<br>(impostos) {% if sort_links.descontos.active %}<span class="caixa-sort-indicator">{{ sort_links.descontos.indicator }}</span>{% endif %}</a></th>
+                            <th class="text-end"><a class="caixa-sort-link justify-content-end" href="{{ sort_links.valor_liquido.url }}">Valor<br>Liquido {% if sort_links.valor_liquido.active %}<span class="caixa-sort-indicator">{{ sort_links.valor_liquido.indicator }}</span>{% endif %}</a></th>
+                            <th class="text-end"><a class="caixa-sort-link justify-content-end" href="{{ sort_links.saldo.url }}">Saldo<br>Apos {% if sort_links.saldo.active %}<span class="caixa-sort-indicator">{{ sort_links.saldo.indicator }}</span>{% endif %}</a></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movimentacoes_detalhadas %}
+                            <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
+                                <td class="caixa-ref">{{ m.numero }}</td>
+                                <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
+                                <td>
+                                    {% if m.entrada %}
+                                        <span class="badge rounded-pill text-bg-success">Entrada</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill text-bg-danger">Saida</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-nowrap">{{ m.categoria }}</td>
+                                <td class="text-nowrap fw-semibold">{{ m.nf }}</td>
+                                <td class="text-nowrap">{{ m.pessoa }}</td>
+                                <td class="caixa-detail-desc">
+                                    <span class="d-inline-block text-truncate w-100" title="{{ m.descricao }}">{{ m.descricao }}</span>
+                                </td>
+                                <td class="text-end text-nowrap">R$ {{ m.valor_bruto|moeda_br }}</td>
+                                <td class="text-end text-nowrap">R$ {{ m.descontos|moeda_br }}</td>
+                                <td class="text-end fw-bold text-nowrap {% if m.entrada %}caixa-positive{% else %}caixa-negative{% endif %}">
+                                    {% if m.entrada %}+{% else %}-{% endif %} R$ {{ m.valor_liquido|moeda_br }}
+                                </td>
+                                <td class="text-end fw-semibold text-nowrap {% if m.saldo_apos_lancamento < 0 %}caixa-negative{% endif %}">
+                                    R$ {{ m.saldo_apos_lancamento|moeda_br }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="caixa-empty">Nenhuma movimentacao detalhada encontrada neste período.</div>
+        {% endif %}
+    {% endif %}
+
+    {% if paginator.num_pages > 1 %}
+        <div class="p-3 border-top bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="small text-muted">
+                Pagina {{ page_obj.number }} de {{ paginator.num_pages }} - {{ paginator.count }} movimentacoes
+            </div>
+            <nav aria-label="Paginacao do extrato">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}
+                            <a class="page-link" href="?{{ page_query }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                        {% else %}
+                            <span class="page-link">Anterior</span>
+                        {% endif %}
+                    </li>
+                    {% for num in paginator.page_range %}
+                        {% if num == page_obj.number %}
+                            <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+                        {% elif num <= 2 or num > paginator.num_pages|add:"-2" or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                            <li class="page-item"><a class="page-link" href="?{{ page_query }}&page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}
+                            <a class="page-link" href="?{{ page_query }}&page={{ page_obj.next_page_number }}">Proxima</a>
+                        {% else %}
+                            <span class="page-link">Proxima</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </nav>
+        </div>
     {% endif %}
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const scrollAreas = Array.from(document.querySelectorAll('[data-scroll-sync="caixa-extrato"]'));
+    const table = document.querySelector('.caixa-table');
+    const topInner = document.querySelector('.caixa-scroll-top-inner');
+    const yearInput = document.querySelector('[data-year-input]');
+    if (table && topInner) topInner.style.width = `${table.scrollWidth}px`;
+
+    function cleanYearValue(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 4);
+    }
+
+    if (yearInput) {
+        yearInput.value = cleanYearValue(yearInput.value);
+        yearInput.addEventListener('input', function () {
+            yearInput.value = cleanYearValue(yearInput.value);
+        });
+        yearInput.form?.addEventListener('submit', function () {
+            yearInput.value = cleanYearValue(yearInput.value);
+        });
+        document.querySelectorAll('[data-year-step]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const currentYear = new Date().getFullYear();
+                const current = parseInt(cleanYearValue(yearInput.value), 10) || currentYear;
+                const step = parseInt(button.dataset.yearStep, 10) || 0;
+                yearInput.value = String(current + step);
+            });
+        });
+    }
+
+    let syncing = false;
+    scrollAreas.forEach(function (area) {
+        area.addEventListener('scroll', function () {
+            if (syncing) return;
+            syncing = true;
+            scrollAreas.forEach(function (other) {
+                if (other !== area) other.scrollLeft = area.scrollLeft;
+            });
+            syncing = false;
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        const row = event.target.closest('tr[data-row-href]');
+        if (!row || event.target.closest('a, button, input, select, textarea, label')) return;
+        window.location.href = row.dataset.rowHref;
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const row = event.target.closest('tr[data-row-href]');
+        if (!row || event.target.closest('a, button, input, select, textarea, label')) return;
+        event.preventDefault();
+        window.location.href = row.dataset.rowHref;
+    });
+});
+</script>
 {% endblock %}

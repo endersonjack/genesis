@@ -19,6 +19,11 @@ urlpatterns = [
     path('caixas/novo/', empresa_scoped(views.caixa_novo), name='caixa_novo'),
     path('caixas/<int:pk>/', empresa_scoped(views.caixa_detalhe), name='caixa_detalhe'),
     path(
+        'caixas/<int:pk>/extrato/pdf/',
+        empresa_scoped(views.caixa_extrato_pdf),
+        name='caixa_extrato_pdf',
+    ),
+    path(
         'caixas/<int:pk>/editar/',
         empresa_scoped(views.caixa_editar),
         name='caixa_editar',
