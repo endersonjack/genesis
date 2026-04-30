@@ -213,17 +213,19 @@
     <div>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <h2 class="fw-bold mb-0">{{ caixa.nome }}</h2>
-            {% if caixa.tipo == 'geral' %}
+            {% if unificado %}
+                <span class="badge text-bg-primary">Unificado</span>
+            {% elif caixa.tipo == 'geral' %}
                 <span class="badge text-bg-info">Padrao</span>
             {% endif %}
-            {% if caixa.ativo %}
+            {% if not unificado and caixa.ativo %}
                 <span class="badge text-bg-success rounded-pill">Ativo</span>
-            {% else %}
+            {% elif not unificado %}
                 <span class="badge text-bg-secondary rounded-pill">Inativo</span>
             {% endif %}
         </div>
         <p class="text-muted mb-0">
-            {{ caixa.get_tipo_display }}{% if caixa.obra %} - {{ caixa.obra.nome }}{% endif %}
+            {% if unificado %}Movimentações de todos os caixas ativos{% else %}{{ caixa.get_tipo_display }}{% if caixa.obra %} - {{ caixa.obra.nome }}{% endif %}{% endif %}
         </p>
     </div>
     <div class="financeiro-top-actions ms-auto">
@@ -242,6 +244,7 @@
                 <span>Extrato Consolidado</span>
             </a>
         {% endif %}
+        {% if not unificado %}
         <div class="dropdown financeiro-top-more-dropdown" data-bs-popper="static">
             <button type="button"
                     class="financeiro-top-btn financeiro-top-btn-light financeiro-top-btn-icon-only dropdown-toggle"
@@ -277,6 +280,7 @@
                 </li>
             </ul>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -359,6 +363,17 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if unificado %}
+            <div>
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-filtro">Caixa</label>
+                <select id="caixa-filtro" name="caixa" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                    <option value="">Todos</option>
+                    {% for caixa_filtro in caixas_filtro %}
+                        <option value="{{ caixa_filtro.pk }}" {% if caixa_filtro.pk == caixa_id %}selected{% endif %}>{{ caixa_filtro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div>
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-categoria">Categoria</label>
                 <select id="caixa-categoria" name="categoria" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
@@ -384,9 +399,9 @@
                         <tr>
                             <th>#</th>
                             <th>Data</th>
+                            {% if unificado %}<th>Caixa</th>{% endif %}
                             <th>Natureza</th>
                             <th>Origem</th>
-                            <th>Referência</th>
                             <th>Descrição</th>
                             <th class="text-end">Valor</th>
                             <th class="text-end">Saldo<br>Apos</th>
@@ -397,6 +412,7 @@
                             <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
                                 <td class="caixa-ref">{{ m.numero }}</td>
                                 <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
+                                {% if unificado %}<td class="text-nowrap">{{ m.caixa_nome }}</td>{% endif %}
                                 <td>
                                     {% if m.entrada %}
                                         <span class="badge rounded-pill text-bg-success">Entrada</span>
@@ -405,7 +421,6 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-nowrap">{{ m.origem }}</td>
-                                <td class="text-nowrap fw-semibold">{{ m.referencia }}</td>
                                 <td class="caixa-detail-desc">
                                     <span class="d-inline-block text-truncate w-100" title="{{ m.descricao }}">{{ m.descricao }}</span>
                                 </td>
@@ -432,6 +447,7 @@
                         <tr>
                             <th><a class="caixa-sort-link" href="{{ sort_links.numero.url }}"># {% if sort_links.numero.active %}<span class="caixa-sort-indicator">{{ sort_links.numero.indicator }}</span>{% endif %}</a></th>
                             <th><a class="caixa-sort-link" href="{{ sort_links.data.url }}">Data {% if sort_links.data.active %}<span class="caixa-sort-indicator">{{ sort_links.data.indicator }}</span>{% endif %}</a></th>
+                            {% if unificado %}<th><a class="caixa-sort-link" href="{{ sort_links.caixa.url }}">Caixa {% if sort_links.caixa.active %}<span class="caixa-sort-indicator">{{ sort_links.caixa.indicator }}</span>{% endif %}</a></th>{% endif %}
                             <th><a class="caixa-sort-link" href="{{ sort_links.natureza.url }}">Natureza {% if sort_links.natureza.active %}<span class="caixa-sort-indicator">{{ sort_links.natureza.indicator }}</span>{% endif %}</a></th>
                             <th><a class="caixa-sort-link" href="{{ sort_links.categoria.url }}">Categoria {% if sort_links.categoria.active %}<span class="caixa-sort-indicator">{{ sort_links.categoria.indicator }}</span>{% endif %}</a></th>
                             <th><a class="caixa-sort-link" href="{{ sort_links.nf.url }}">NF Saida /<br>NF Entrada {% if sort_links.nf.active %}<span class="caixa-sort-indicator">{{ sort_links.nf.indicator }}</span>{% endif %}</a></th>
@@ -448,6 +464,7 @@
                             <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
                                 <td class="caixa-ref">{{ m.numero }}</td>
                                 <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
+                                {% if unificado %}<td class="text-nowrap">{{ m.caixa_nome }}</td>{% endif %}
                                 <td>
                                     {% if m.entrada %}
                                         <span class="badge rounded-pill text-bg-success">Entrada</span>

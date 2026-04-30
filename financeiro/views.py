@@ -607,8 +607,15 @@ def _aplicar_filtros_extrato(
     *,
     fornecedor_id: int | None = None,
     categoria_id: int | None = None,
+    caixa_id: int | None = None,
 ) -> list[dict]:
     filtradas = linhas
+    if caixa_id:
+        filtradas = [
+            linha
+            for linha in filtradas
+            if linha.get('caixa_id') == caixa_id
+        ]
     if fornecedor_id:
         filtradas = [
             linha
@@ -650,6 +657,8 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'descricao': movimento.descricao,
                 'valor': movimento.valor,
                 'entrada': natureza == MovimentoCaixa.Natureza.ENTRADA,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'fornecedor_id': None,
                 'categoria_id': None,
                 'categoria_ids': set(),
@@ -678,6 +687,8 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'descricao': recebimento.descricao or f'Recebimento de {recebimento.cliente}',
                 'valor': recebimento.valor_liquido,
                 'entrada': True,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'fornecedor_id': None,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
@@ -713,6 +724,8 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'descricao': descricao,
                 'valor': recebimento.valor_liquido,
                 'entrada': True,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'fornecedor_id': None,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
@@ -751,6 +764,8 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'descricao': f'{nf.fornecedor} - NF {nf.numero_nf}',
                 'valor': pagamento.total_a_pagar(),
                 'entrada': False,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'fornecedor_id': nf.fornecedor_id,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
@@ -792,6 +807,8 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'descricao': f'{nf.fornecedor} - NF {nf.numero_nf} - {boleto.numero_doc}',
                 'valor': valor,
                 'entrada': False,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'fornecedor_id': nf.fornecedor_id,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
@@ -809,11 +826,22 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
     return _recalcular_saldo_linhas(linhas, 'valor')
 
 
-def _extrato_caixa_detalhado(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
+def _extrato_caixa_detalhado(
+    request,
+    caixa: Caixa,
+    inicio=None,
+    fim=None,
+    *,
+    incluir_recebimentos_abertos: bool = False,
+) -> list[dict]:
     linhas = []
 
+    status_recebimentos = [RecebimentoAvulso.Status.PAGO]
+    if incluir_recebimentos_abertos:
+        status_recebimentos.append(RecebimentoAvulso.Status.ABERTO)
+
     recebimentos_avulsos = (
-        RecebimentoAvulso.objects.filter(caixa=caixa, status=RecebimentoAvulso.Status.PAGO)
+        RecebimentoAvulso.objects.filter(caixa=caixa, status__in=status_recebimentos)
         .select_related('cliente', 'categoria')
         .order_by('data_pagamento', 'data', 'pk')
     )
@@ -826,12 +854,17 @@ def _extrato_caixa_detalhado(request, caixa: Caixa, inicio=None, fim=None) -> li
                 'entrada': True,
                 'natureza': 'Entrada',
                 'categoria': 'Avulso',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
                 'nf': '-',
                 'pessoa': recebimento.cliente,
                 'fornecedor_id': None,
-                'descricao': recebimento.descricao or 'Recebimento avulso',
+                'descricao': (
+                    f'{recebimento.descricao or "Recebimento avulso"}'
+                    f'{" - Em aberto" if recebimento.status == RecebimentoAvulso.Status.ABERTO else ""}'
+                ),
                 'valor_bruto': recebimento.valor,
                 'descontos': recebimento.impostos,
                 'valor_liquido': recebimento.valor_liquido,
@@ -843,14 +876,20 @@ def _extrato_caixa_detalhado(request, caixa: Caixa, inicio=None, fim=None) -> li
             }
         )
 
+    status_recebimentos = [RecebimentoMedicao.Status.PAGO]
+    if incluir_recebimentos_abertos:
+        status_recebimentos.append(RecebimentoMedicao.Status.ABERTO)
+
     recebimentos_medicao = (
-        RecebimentoMedicao.objects.filter(caixa=caixa, status=RecebimentoMedicao.Status.PAGO)
+        RecebimentoMedicao.objects.filter(caixa=caixa, status__in=status_recebimentos)
         .select_related('cliente', 'obra', 'categoria')
         .order_by('data_pagamento', 'data', 'pk')
     )
     for recebimento in recebimentos_medicao:
         data = recebimento.data_pagamento or recebimento.data or recebimento.criado_em.date()
         descricao = f'Medição {recebimento.medicao_numero} - {recebimento.obra.nome}'
+        if recebimento.status == RecebimentoMedicao.Status.ABERTO:
+            descricao = f'{descricao} - Em aberto'
         linhas.append(
             {
                 'data': data,
@@ -858,6 +897,8 @@ def _extrato_caixa_detalhado(request, caixa: Caixa, inicio=None, fim=None) -> li
                 'entrada': True,
                 'natureza': 'Entrada',
                 'categoria': 'Medição',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
                 'nf': recebimento.nota_fiscal_numero or '-',
@@ -893,6 +934,8 @@ def _extrato_caixa_detalhado(request, caixa: Caixa, inicio=None, fim=None) -> li
                 'entrada': False,
                 'natureza': 'Saída',
                 'categoria': item.categoria.nome if item.categoria_id else '-',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
                 'categoria_id': item.categoria_id,
                 'categoria_ids': {item.categoria_id} if item.categoria_id else set(),
                 'nf': nf.numero_nf,
@@ -922,6 +965,8 @@ def _sort_value_extrato_detalhado(linha: dict, campo: str):
         return linha.get('data')
     if campo == 'natureza':
         return linha.get('natureza') or ''
+    if campo == 'caixa':
+        return str(linha.get('caixa_nome') or '').lower()
     if campo == 'categoria':
         return str(linha.get('categoria') or '').lower()
     if campo == 'nf':
@@ -946,6 +991,7 @@ def _ordenar_extrato_detalhado(linhas: list[dict], campo: str, direcao: str) -> 
         'numero',
         'data',
         'natureza',
+        'caixa',
         'categoria',
         'nf',
         'pessoa',
@@ -976,6 +1022,7 @@ def _sort_links_extrato_detalhado(
         'numero',
         'data',
         'natureza',
+        'caixa',
         'categoria',
         'nf',
         'pessoa',
@@ -1587,8 +1634,49 @@ def caixa_lista(request):
         return redirect('selecionar_empresa')
 
     caixas = list(_caixas_com_saldo(empresa, somente_ativos=False))
+    hoje = timezone.localdate()
+    inicio_mes = date(hoje.year, hoje.month, 1)
+    fim_mes = date(hoje.year + 1, 1, 1) if hoje.month == 12 else date(hoje.year, hoje.month + 1, 1)
+    for caixa in caixas:
+        linhas_mes = _extrato_caixa_detalhado(
+            request,
+            caixa,
+            inicio_mes,
+            fim_mes,
+            incluir_recebimentos_abertos=True,
+        )
+        entradas_mes = sum(
+            (l['valor_liquido'] for l in linhas_mes if l['entrada']),
+            Decimal('0'),
+        )
+        saidas_mes = sum(
+            (l['valor_liquido'] for l in linhas_mes if not l['entrada']),
+            Decimal('0'),
+        )
+        caixa.saldo_exibicao = entradas_mes - saidas_mes
+        caixa.saldo_exibicao_label = 'Saldo Mês Corrente'
+        ultimo = next((linha for linha in _extrato_caixa(request, caixa) if linha.get('data')), None)
+        caixa.ultimo_lancamento = ultimo
     ativos = [c for c in caixas if c.ativo]
-    saldo_consolidado = sum((c.saldo for c in ativos), Decimal('0'))
+    saldo_unificado_mes = Decimal('0')
+    for caixa in ativos:
+        linhas_mes = _extrato_caixa_detalhado(
+            request,
+            caixa,
+            inicio_mes,
+            fim_mes,
+        )
+        entradas_mes = sum(
+            (l['valor_liquido'] for l in linhas_mes if l['entrada']),
+            Decimal('0'),
+        )
+        saidas_mes = sum(
+            (l['valor_liquido'] for l in linhas_mes if not l['entrada']),
+            Decimal('0'),
+        )
+        saldo_unificado_mes += entradas_mes - saidas_mes
+    saldo_consolidado = saldo_unificado_mes
+    saldo_consolidado_unificado = sum((c.saldo for c in ativos), Decimal('0'))
     caixa_padrao = next((c for c in caixas if c.tipo == Caixa.Tipo.GERAL), None)
 
     return render(
@@ -1598,6 +1686,7 @@ def caixa_lista(request):
             'page_title': 'Caixas',
             'caixas': caixas,
             'saldo_consolidado': saldo_consolidado,
+            'saldo_consolidado_unificado': saldo_consolidado_unificado,
             'caixa_padrao': caixa_padrao,
         },
     )
@@ -1654,6 +1743,7 @@ def caixa_detalhe(request, pk):
         caixa,
         periodo['inicio'],
         periodo['fim'],
+        incluir_recebimentos_abertos=True,
     )
     movimentacoes = _recalcular_saldo_linhas(
         _aplicar_filtros_extrato(
@@ -1678,6 +1768,7 @@ def caixa_detalhe(request, pk):
         'numero',
         'data',
         'natureza',
+        'caixa',
         'categoria',
         'nf',
         'pessoa',
@@ -1740,8 +1831,11 @@ def caixa_detalhe(request, pk):
                 'movimentacao_tipo',
                 'nome',
             ),
+            'caixas_filtro': Caixa.objects.filter(empresa=empresa, ativo=True).order_by('tipo', 'nome'),
             'fornecedor_id': fornecedor_id,
             'categoria_id': categoria_id,
+            'caixa_id': None,
+            'unificado': False,
             'sort_key': sort_key,
             'sort_dir': sort_dir,
             'sort_links': _sort_links_extrato_detalhado(sort_key, sort_dir, query_base),
@@ -1749,6 +1843,143 @@ def caixa_detalhe(request, pk):
             'entradas_total': entradas_total,
             'saidas_total': saidas_total,
             'saldo_atual': entradas_total - saidas_total,
+        },
+    )
+
+
+@login_required
+def caixa_unificado(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    caixas_ativos = list(_caixas_com_saldo(empresa, somente_ativos=True))
+    caixa_placeholder = Caixa(
+        empresa=empresa,
+        tipo=Caixa.Tipo.GERAL,
+        nome='Caixa Unificado',
+        ativo=True,
+    )
+    periodo = _periodo_caixa_params(request)
+    modo_extrato = (request.GET.get('modo') or 'detalhado').strip().lower()
+    if modo_extrato not in {'detalhado', 'consolidado'}:
+        modo_extrato = 'detalhado'
+    fornecedor_id = _int_param(request, 'fornecedor')
+    categoria_id = _int_param(request, 'categoria')
+    caixa_id = _int_param(request, 'caixa')
+    query_base = {
+        'modo': modo_extrato,
+        'mes': periodo['mes'],
+        'ano': periodo['ano'],
+        'fornecedor': fornecedor_id,
+        'categoria': categoria_id,
+        'caixa': caixa_id,
+    }
+
+    movimentacoes = []
+    movimentacoes_detalhadas = []
+    for caixa in caixas_ativos:
+        movimentacoes.extend(_extrato_caixa(request, caixa, periodo['inicio'], periodo['fim']))
+        movimentacoes_detalhadas.extend(
+            _extrato_caixa_detalhado(request, caixa, periodo['inicio'], periodo['fim'])
+        )
+
+    movimentacoes = _recalcular_saldo_linhas(
+        _aplicar_filtros_extrato(
+            movimentacoes,
+            fornecedor_id=fornecedor_id,
+            categoria_id=categoria_id,
+            caixa_id=caixa_id,
+        ),
+        'valor',
+    )
+    movimentacoes_detalhadas = _recalcular_saldo_linhas(
+        _aplicar_filtros_extrato(
+            movimentacoes_detalhadas,
+            fornecedor_id=fornecedor_id,
+            categoria_id=categoria_id,
+            caixa_id=caixa_id,
+        ),
+        'valor_liquido',
+    )
+
+    sort_key = (request.GET.get('sort') or 'data').strip()
+    sort_dir = (request.GET.get('dir') or 'desc').strip()
+    if sort_key not in {
+        'numero',
+        'data',
+        'natureza',
+        'caixa',
+        'categoria',
+        'nf',
+        'pessoa',
+        'descricao',
+        'valor_bruto',
+        'descontos',
+        'valor_liquido',
+        'saldo',
+    }:
+        sort_key = 'data'
+    if sort_dir not in {'asc', 'desc'}:
+        sort_dir = 'desc'
+    movimentacoes_detalhadas = _ordenar_extrato_detalhado(
+        movimentacoes_detalhadas,
+        sort_key,
+        sort_dir,
+    )
+
+    linhas_ativas = movimentacoes if modo_extrato == 'consolidado' else movimentacoes_detalhadas
+    paginator = Paginator(linhas_ativas, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
+    entradas_total = sum(
+        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if linha['entrada']),
+        Decimal('0'),
+    )
+    saidas_total = sum(
+        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if not linha['entrada']),
+        Decimal('0'),
+    )
+    page_query = dict(query_base)
+    if modo_extrato == 'detalhado':
+        page_query.update({'sort': sort_key, 'dir': sort_dir})
+
+    return render(
+        request,
+        'financeiro/caixa_detalhe.html',
+        {
+            'page_title': 'Caixa Unificado',
+            'caixa': caixa_placeholder,
+            'movimentacoes': page_obj.object_list if modo_extrato == 'consolidado' else movimentacoes,
+            'movimentacoes_detalhadas': (
+                page_obj.object_list if modo_extrato == 'detalhado' else movimentacoes_detalhadas
+            ),
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'total_movimentacoes_detalhadas': paginator.count,
+            'modo_extrato': modo_extrato,
+            'periodo': periodo,
+            'detalhado_url': f'?{_query_string({**query_base, "modo": "detalhado", "sort": sort_key, "dir": sort_dir})}',
+            'consolidado_url': f'?{_query_string({**query_base, "modo": "consolidado"})}',
+            'pdf_url': reverse_empresa(request, 'financeiro:caixa_unificado_pdf')
+            + f'?{_query_string(page_query)}',
+            'fornecedores_filtro': Fornecedor.objects.filter(empresa=empresa).order_by('nome'),
+            'categorias_filtro': CategoriaFinanceira.objects.filter(empresa=empresa).order_by(
+                'movimentacao_tipo',
+                'nome',
+            ),
+            'caixas_filtro': caixas_ativos,
+            'fornecedor_id': fornecedor_id,
+            'categoria_id': categoria_id,
+            'caixa_id': caixa_id,
+            'sort_key': sort_key,
+            'sort_dir': sort_dir,
+            'sort_links': _sort_links_extrato_detalhado(sort_key, sort_dir, query_base),
+            'page_query': _query_string(page_query),
+            'entradas_total': entradas_total,
+            'saidas_total': saidas_total,
+            'saldo_atual': entradas_total - saidas_total,
+            'unificado': True,
         },
     )
 
@@ -1982,7 +2213,13 @@ def caixa_extrato_pdf(request, pk):
         titulo = 'Extrato Consolidado'
         campo_total = 'valor'
     else:
-        linhas = _extrato_caixa_detalhado(request, caixa, periodo['inicio'], periodo['fim'])
+        linhas = _extrato_caixa_detalhado(
+            request,
+            caixa,
+            periodo['inicio'],
+            periodo['fim'],
+            incluir_recebimentos_abertos=True,
+        )
         linhas = _recalcular_saldo_linhas(
             _aplicar_filtros_extrato(
                 linhas,
@@ -2034,7 +2271,7 @@ def caixa_extrato_pdf(request, pk):
     story.append(Spacer(1, 4 * mm))
 
     if modo_extrato == 'consolidado':
-        data = [['#', 'Data', 'Natureza', 'Origem', 'Referência', 'Descrição', 'Valor', 'Saldo Após']]
+        data = [['#', 'Data', 'Natureza', 'Origem', 'Descrição', 'Valor', 'Saldo Após']]
         for linha in linhas:
             sinal = '+' if linha['entrada'] else '-'
             data.append([
@@ -2042,12 +2279,11 @@ def caixa_extrato_pdf(request, pk):
                 _format_data_pdf(linha['data']),
                 linha['natureza'],
                 linha['origem'],
-                linha['referencia'],
                 _pdf_cell(linha['descricao'], cell),
                 _pdf_cell(f'{sinal} {_format_moeda_pdf(linha["valor"])}', cell_right),
                 _pdf_cell(_format_moeda_pdf(linha['saldo_apos_lancamento']), cell_right),
             ])
-        widths = [8, 18, 18, 30, 22, 95, 32, 32]
+        widths = [8, 18, 18, 32, 115, 32, 32]
     else:
         data = [[
             '#',
@@ -2087,6 +2323,134 @@ def caixa_extrato_pdf(request, pk):
 
     ref = f'{periodo["ano"]}-{periodo["mes"]:02d}'
     filename = f'Caixa_{_safe_filename_part(caixa.nome)}_{modo_extrato}_{ref}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
+@login_required
+def caixa_unificado_pdf(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    caixas_ativos = list(_caixas_com_saldo(empresa, somente_ativos=True))
+    caixa_placeholder = Caixa(
+        empresa=empresa,
+        tipo=Caixa.Tipo.GERAL,
+        nome='Caixa Unificado',
+        ativo=True,
+    )
+    periodo = _periodo_caixa_params(request)
+    modo_extrato = (request.GET.get('modo') or 'detalhado').strip().lower()
+    if modo_extrato not in {'detalhado', 'consolidado'}:
+        modo_extrato = 'detalhado'
+    fornecedor_id = _int_param(request, 'fornecedor')
+    categoria_id = _int_param(request, 'categoria')
+    caixa_id = _int_param(request, 'caixa')
+
+    linhas = []
+    for caixa in caixas_ativos:
+        if modo_extrato == 'consolidado':
+            linhas.extend(_extrato_caixa(request, caixa, periodo['inicio'], periodo['fim']))
+        else:
+            linhas.extend(_extrato_caixa_detalhado(request, caixa, periodo['inicio'], periodo['fim']))
+
+    campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
+    linhas = _recalcular_saldo_linhas(
+        _aplicar_filtros_extrato(
+            linhas,
+            fornecedor_id=fornecedor_id,
+            categoria_id=categoria_id,
+            caixa_id=caixa_id,
+        ),
+        campo_total,
+    )
+    titulo = 'Extrato Consolidado' if modo_extrato == 'consolidado' else 'Extrato Detalhado'
+    if modo_extrato == 'detalhado':
+        linhas = _ordenar_extrato_detalhado(
+            linhas,
+            (request.GET.get('sort') or 'data').strip(),
+            (request.GET.get('dir') or 'desc').strip(),
+        )
+
+    periodo['modo_label'] = f'{titulo} Unificado'
+    entradas_total = sum(
+        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if linha['entrada']),
+        Decimal('0'),
+    )
+    saidas_total = sum(
+        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if not linha['entrada']),
+        Decimal('0'),
+    )
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+    )
+    styles = getSampleStyleSheet()
+    cell = ParagraphStyle(
+        'cx_pdf_cell_unificado',
+        parent=styles['Normal'],
+        fontSize=6.1,
+        leading=7.2,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    cell_right = ParagraphStyle('cx_pdf_cell_unificado_right', parent=cell, alignment=2)
+    story = []
+    story.extend(_flowables_header_compact(empresa, periodo, caixa_placeholder, styles))
+    story.extend(_flowables_titulo_pdf_centro(f'{titulo} - Caixa Unificado', styles))
+    story.append(_pdf_totais_table(entradas_total, saidas_total, entradas_total - saidas_total, len(linhas)))
+    story.append(Spacer(1, 4 * mm))
+
+    if modo_extrato == 'consolidado':
+        data = [['#', 'Data', 'Caixa', 'Natureza', 'Origem', 'Descrição', 'Valor', 'Saldo Após']]
+        for linha in linhas:
+            sinal = '+' if linha['entrada'] else '-'
+            data.append([
+                str(linha['numero']),
+                _format_data_pdf(linha['data']),
+                linha.get('caixa_nome') or '-',
+                linha['natureza'],
+                linha['origem'],
+                _pdf_cell(linha['descricao'], cell),
+                _pdf_cell(f'{sinal} {_format_moeda_pdf(linha["valor"])}', cell_right),
+                _pdf_cell(_format_moeda_pdf(linha['saldo_apos_lancamento']), cell_right),
+            ])
+        widths = [7, 16, 30, 16, 27, 96, 28, 28]
+    else:
+        data = [['#', 'Data', 'Caixa', 'Natureza', 'Categoria', 'NF', 'Fornecedor/Cliente', 'Descrição', 'Bruto', 'Desc.', 'Líquido', 'Saldo Após']]
+        for linha in linhas:
+            sinal = '+' if linha['entrada'] else '-'
+            data.append([
+                str(linha['numero']),
+                _format_data_pdf(linha['data']),
+                linha.get('caixa_nome') or '-',
+                linha['natureza'],
+                linha['categoria'],
+                linha['nf'],
+                _pdf_cell(linha['pessoa'], cell),
+                _pdf_cell(linha['descricao'], cell),
+                _pdf_cell(_format_moeda_pdf(linha['valor_bruto']), cell_right),
+                _pdf_cell(_format_moeda_pdf(linha['descontos']), cell_right),
+                _pdf_cell(f'{sinal} {_format_moeda_pdf(linha["valor_liquido"])}', cell_right),
+                _pdf_cell(_format_moeda_pdf(linha['saldo_apos_lancamento']), cell_right),
+            ])
+        widths = [7, 15, 24, 15, 22, 16, 34, 58, 20, 18, 22, 22]
+
+    table = Table(data, colWidths=[w * mm for w in widths], repeatRows=1)
+    table.setStyle(_pdf_table_style())
+    story.append(table)
+    story.extend(_flowables_rodape_impressao(request, styles, space_before_mm=3))
+    doc.build(story)
+
+    ref = f'{periodo["ano"]}-{periodo["mes"]:02d}'
+    filename = f'Caixa_Unificado_{modo_extrato}_{ref}.pdf'
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
