@@ -370,9 +370,23 @@
                         <div class="financeiro-summary-value {% if resumo_pagamento.valor_em_aberto %}text-danger{% endif %}">R$ {{ resumo_pagamento.valor_em_aberto|moeda_br }}</div>
                     </div>
                     {% if resumo_pagamento.valor_em_aberto %}
+                    {% if pode_pagar_boletos %}
+                    <button
+                        type="button"
+                        class="financeiro-top-btn financeiro-summary-pay-action"
+                        hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?multi=1"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-no-global-loading
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-cash-coin"></i> Pagar
+                    </button>
+                    {% else %}
                     <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento" class="financeiro-top-btn financeiro-summary-pay-action">
                         <i class="bi bi-cash-coin"></i> Pagar
                     </a>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>

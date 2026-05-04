@@ -1,0 +1,130 @@
+{% load moeda %}
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-boleto-pay-row {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Pagar boletos</h5>
+        <div class="text-muted small">Nota Fiscal nº {{ nf.numero_nf }} · {{ nf.fornecedor.nome }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading
+    class="d-flex flex-column"
+    style="max-height: calc(100vh - 9rem);"
+    id="boleto-pagamentos-multiplos-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="salvar_multiplos">
+
+    <div class="modal-body overflow-auto flex-grow-1 py-3">
+        {% if erros %}
+        <div class="alert alert-danger rounded-3 small">
+            {% for erro in erros %}
+                <div>{{ erro }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="d-grid gap-2">
+            {% for boleto in boletos %}
+            <div class="financeiro-boleto-pay-row p-3">
+                <div class="row g-3 align-items-center">
+                    <div class="col-12 col-lg-7">
+                        <label class="d-flex gap-3 align-items-start mb-0">
+                            <input
+                                class="form-check-input mt-1"
+                                type="checkbox"
+                                name="boletos"
+                                value="{{ boleto.pk }}"
+                                {% if boleto.is_selected %}checked{% endif %}>
+                            <span class="flex-grow-1">
+                                <span class="d-flex flex-wrap justify-content-between gap-2">
+                                    <strong>{{ boleto.numero_doc|default:"Sem número" }}</strong>
+                                    <span class="badge {{ boleto.situacao_badge_class }}">{{ boleto.situacao_label }}</span>
+                                </span>
+                                <span class="d-flex flex-wrap gap-3 small text-muted mt-1">
+                                    <span>Parcela {{ boleto.parcela }}</span>
+                                    <span>Vencimento {{ boleto.vencimento|date:"d/m/Y" }}</span>
+                                    <span class="fw-semibold text-body">R$ {{ boleto.valor|moeda_br }}</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="col-12 col-lg-5">
+                        <label class="form-label fw-semibold small mb-1" for="data_pagamento_{{ boleto.pk }}">Data de pagamento</label>
+                        <input
+                            type="date"
+                            id="data_pagamento_{{ boleto.pk }}"
+                            name="data_pagamento_{{ boleto.pk }}"
+                            class="form-control rounded-3"
+                            value="{{ boleto.data_pagamento_valor }}">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal-footer flex-shrink-0 bg-white justify-content-end">
+        <div class="d-flex gap-2">
+            <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary" id="btnConfirmarPagamentosMultiplos">
+                <i class="bi bi-check2-circle me-1"></i> Confirmar pagamentos
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    var form = document.getElementById('boleto-pagamentos-multiplos-form');
+    var button = document.getElementById('btnConfirmarPagamentosMultiplos');
+    if (!form || !button) return;
+
+    form.addEventListener('submit', function () {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Confirmando...';
+    });
+})();
+</script>

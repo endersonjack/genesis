@@ -30,7 +30,7 @@
                                         <th class="ps-4 text-muted">#</th>
                                         <th>Nº Doc</th>
                                         <th class="text-center">Parcela</th>
-                                        <th class="text-end">Valor</th>
+                                        <th class="text-center">Valor</th>
                                         <th>Fornecedor</th>
                                         <th class="text-end pe-4">Nº NF</th>
                                     </tr>
@@ -44,7 +44,7 @@
                                         <td class="ps-4 small text-muted">{{ row.index }}</td>
                                         <td class="small fw-semibold">{{ row.numero_doc }}</td>
                                         <td class="text-center small text-muted">{{ row.parcela_label }}</td>
-                                        <td class="text-end small fw-semibold text-primary">R$ {{ row.valor|moeda_br }}</td>
+                                        <td class="text-center small fw-semibold text-primary">R$ {{ row.valor|moeda_br }}</td>
                                         <td class="small">
                                             <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.fornecedor_nome }}</div>
                                             <div class="text-muted small">{{ row.fornecedor_doc }}</div>
@@ -83,9 +83,11 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th class="ps-4 text-muted">#</th>
+                                        <th>Data Vencimento</th>
+                                        <th class="text-center">Dias Atrasados</th>
                                         <th>Nº Doc</th>
                                         <th class="text-center">Parcela</th>
-                                        <th class="text-end">Valor</th>
+                                        <th class="text-center">Valor</th>
                                         <th>Fornecedor</th>
                                         <th class="text-end">Nº NF</th>
                                         <th class="text-end">Valor total</th>
@@ -99,9 +101,11 @@
                                         tabindex="0"
                                         role="link">
                                         <td class="ps-4 small text-muted">{{ row.index }}</td>
+                                        <td class="small">{{ row.vencimento|date:"d/m/Y" }}</td>
+                                        <td class="text-center small fw-semibold text-danger">{{ row.dias_atrasados }}</td>
                                         <td class="small fw-semibold">{{ row.numero_doc }}</td>
                                         <td class="text-center small text-muted">{{ row.parcela_label }}</td>
-                                        <td class="text-end small fw-semibold text-danger">R$ {{ row.valor|moeda_br }}</td>
+                                        <td class="text-center small fw-semibold text-danger">R$ {{ row.valor|moeda_br }}</td>
                                         <td class="small">
                                             <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.fornecedor_nome }}</div>
                                             <div class="text-muted small">{{ row.fornecedor_doc }}</div>
@@ -112,7 +116,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8" class="py-4 text-center text-muted small">Nenhum boleto vencido.</td>
+                                        <td colspan="10" class="py-4 text-center text-muted small">Nenhum boleto vencido.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

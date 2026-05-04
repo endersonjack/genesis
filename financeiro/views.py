@@ -26,6 +26,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -1459,6 +1460,8 @@ def partial_dashboard_cards(request):
         dashboard_boletos_vencidos_linhas.append(
             {
                 'index': len(dashboard_boletos_vencidos_linhas) + 1,
+                'vencimento': b.vencimento,
+                'dias_atrasados': (hoje - b.vencimento).days,
                 'numero_doc': b.numero_doc or 'â€”',
                 'parcela_label': _parcela_dashboard_boleto(b),
                 'valor': b.valor,
@@ -3074,7 +3077,11 @@ def pagamento_nf_novo(request):
                 _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF registrado.')
-            return redirect_empresa(request, 'financeiro:dashboard')
+            return redirect_empresa(
+                request,
+                'financeiro:pagamento_nf_detalhe',
+                kwargs={'pk': nf.pk},
+            )
 
     return render(
         request,
@@ -3309,6 +3316,96 @@ def pagamento_nf_pagar_boleto(request, pk: int):
     boletos_qs = nf.boletos.exclude(status=BoletoPagamento.Status.CANCELADO).order_by(
         'vencimento', 'parcela', 'pk'
     )
+    boletos_para_pagamento = boletos_qs.exclude(status=BoletoPagamento.Status.PAGO)
+    if request.GET.get('multi') == '1' and request.method == 'GET':
+        boletos_abertos = [
+            _aplicar_situacao_boleto(boleto)
+            for boleto in boletos_para_pagamento
+        ]
+        if not boletos_abertos:
+            messages.info(request, 'NÃ£o hÃ¡ boletos em aberto para pagamento.')
+            if _is_htmx(request):
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = detalhe_url
+                return response
+            return redirect(detalhe_url)
+        for boleto in boletos_abertos:
+            boleto.data_pagamento_valor = timezone.localdate().isoformat()
+        return render(
+            request,
+            'financeiro/partials/pagamento_nf_pagar_boletos_modal.html',
+            {
+                'nf': nf,
+                'boletos': boletos_abertos,
+                'hoje': timezone.localdate(),
+            },
+        )
+
+    if request.method == 'POST' and request.POST.get('action') == 'salvar_multiplos':
+        boleto_ids = request.POST.getlist('boletos')
+        boletos_selecionados = list(boletos_para_pagamento.filter(pk__in=boleto_ids))
+        erros = []
+        if not boletos_selecionados:
+            erros.append('Selecione pelo menos um boleto para pagar.')
+
+        datas_pagamento = {}
+        for boleto in boletos_selecionados:
+            data_raw = request.POST.get(f'data_pagamento_{boleto.pk}')
+            data_pagamento = parse_date(data_raw or '')
+            if not data_pagamento:
+                erros.append(f'Informe a data de pagamento do boleto {boleto.numero_doc or boleto.parcela}.')
+            else:
+                datas_pagamento[boleto.pk] = data_pagamento
+
+        if not erros:
+            with transaction.atomic():
+                for boleto in boletos_selecionados:
+                    boleto.data_pagamento = datas_pagamento[boleto.pk]
+                    boleto.acrescimos = Decimal('0')
+                    boleto.descontos = Decimal('0')
+                    boleto.valor_pago = boleto.valor
+                    boleto.observacao = ''
+                    boleto.status = BoletoPagamento.Status.PAGO
+                    boleto.full_clean()
+                    boleto.save(
+                        update_fields=[
+                            'data_pagamento',
+                            'acrescimos',
+                            'descontos',
+                            'valor_pago',
+                            'observacao',
+                            'status',
+                            'atualizado_em',
+                        ]
+                    )
+            messages.success(request, f'{len(boletos_selecionados)} boleto(s) pago(s) com sucesso.')
+            if _is_htmx(request):
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = detalhe_url
+                return response
+            return redirect(detalhe_url)
+
+        boletos_abertos = []
+        selected_ids = set(str(pk) for pk in boleto_ids)
+        for boleto in boletos_para_pagamento:
+            boleto = _aplicar_situacao_boleto(boleto)
+            boleto.is_selected = str(boleto.pk) in selected_ids
+            boleto.data_pagamento_valor = request.POST.get(
+                f'data_pagamento_{boleto.pk}',
+                timezone.localdate().isoformat(),
+            )
+            boletos_abertos.append(boleto)
+        return render(
+            request,
+            'financeiro/partials/pagamento_nf_pagar_boletos_modal.html',
+            {
+                'nf': nf,
+                'boletos': boletos_abertos,
+                'hoje': timezone.localdate(),
+                'erros': erros,
+            },
+        )
+
     selected_boleto = None
     selected_boleto_id = (
         request.POST.get('boleto')
