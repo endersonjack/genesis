@@ -1363,8 +1363,16 @@ def buscar_pagamentos(request):
         if tem_status_expresso
         else True
     )
-    status_aberto = status_aberto_raw in ('1', 'on', 'true')
-    status_pago = status_pago_raw in ('1', 'on', 'true')
+    status_aberto = (
+        status_aberto_raw in ('1', 'on', 'true')
+        if tem_status_expresso
+        else True
+    )
+    status_pago = (
+        status_pago_raw in ('1', 'on', 'true')
+        if tem_status_expresso
+        else True
+    )
     resultados = []
     erro_valor = ''
     filtros_ativos = any(
