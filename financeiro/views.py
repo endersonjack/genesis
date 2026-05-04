@@ -46,6 +46,8 @@ from .forms import (
     CaixaNovoForm,
     CategoriaFinanceiraForm,
     BoletoRascunhoFormSet,
+    PagamentoImpostoForm,
+    PagamentoImpostoItemFormSet,
     PagamentoPessoalForm,
     PagamentoPessoalItemFormSet,
     PagamentoNotaFiscalItemEditFormSet,
@@ -62,12 +64,15 @@ from .forms import (
 )
 from .models import (
     BoletoPagamento,
+    AutoridadeTributaria,
     Caixa,
     CategoriaFinanceira,
     MovimentoCaixa,
     PagamentoNotaFiscal,
     PagamentoNotaFiscalItem,
     PagamentoNotaFiscalPagamento,
+    PagamentoImposto,
+    PagamentoImpostoItem,
     PagamentoPessoal,
     PagamentoPessoalItem,
     RecebimentoAvulso,
@@ -610,6 +615,12 @@ def _saldos_caixas_por_id(empresa) -> dict[int, Decimal]:
         .annotate(total=Coalesce(Sum('valor_total'), zero, output_field=dec))
     )
     _subtrair_por_caixa(saldos, pagamentos_pessoal, campo_caixa='pagamento__caixa')
+    pagamentos_impostos = (
+        PagamentoImpostoItem.objects.filter(pagamento__empresa=empresa)
+        .values('pagamento__caixa')
+        .annotate(total=Coalesce(Sum('valor_total'), zero, output_field=dec))
+    )
+    _subtrair_por_caixa(saldos, pagamentos_impostos, campo_caixa='pagamento__caixa')
     return saldos
 
 
@@ -885,6 +896,38 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
             }
         )
 
+    pagamentos_impostos = (
+        PagamentoImposto.objects.filter(caixa=caixa)
+        .select_related('autoridade')
+        .prefetch_related('itens', 'itens__categoria')
+        .order_by('data_pagamento', 'data_emissao', 'pk')
+    )
+    for pagamento in pagamentos_impostos:
+        categoria_ids = {item.categoria_id for item in pagamento.itens.all() if item.categoria_id}
+        descricao_item = ', '.join(item.descricao for item in pagamento.itens.all() if item.descricao)
+        linhas.append(
+            {
+                'data': pagamento.data_pagamento or pagamento.data_emissao,
+                'sort_key': (pagamento.data_pagamento or pagamento.data_emissao, pagamento.pk, 70),
+                'natureza': MovimentoCaixa.Natureza.SAIDA,
+                'origem': 'À vista',
+                'descricao': f'{pagamento.autoridade.nome} - {descricao_item or "Pagamento de imposto"}',
+                'valor': pagamento.total_itens(),
+                'entrada': False,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'fornecedor_id': None,
+                'categoria_id': None,
+                'categoria_ids': categoria_ids,
+                'referencia': f'IMP #{pagamento.pk}',
+                'url': reverse_empresa(
+                    request,
+                    'financeiro:pagamento_imposto_detalhe',
+                    kwargs={'pk': pagamento.pk},
+                ),
+            }
+        )
+
     if inicio and fim:
         linhas = _filtrar_linhas_periodo(linhas, inicio, fim)
     return _recalcular_saldo_linhas(linhas, 'valor')
@@ -1046,6 +1089,40 @@ def _extrato_caixa_detalhado(
                 'url': reverse_empresa(
                     request,
                     'financeiro:pagamento_pessoal_detalhe',
+                    kwargs={'pk': pagamento.pk},
+                ),
+            }
+        )
+
+    itens_impostos = (
+        PagamentoImpostoItem.objects.filter(pagamento__caixa=caixa)
+        .select_related('categoria', 'pagamento', 'pagamento__autoridade')
+        .order_by('pagamento__data_pagamento', 'pagamento__data_emissao', 'pagamento_id', 'pk')
+    )
+    for item in itens_impostos:
+        pagamento = item.pagamento
+        data = pagamento.data_pagamento or pagamento.data_emissao
+        linhas.append(
+            {
+                'data': data,
+                'sort_key': (data, item.pk, 60),
+                'entrada': False,
+                'natureza': 'Saída',
+                'categoria': item.categoria.nome if item.categoria_id else '-',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'categoria_id': item.categoria_id,
+                'categoria_ids': {item.categoria_id} if item.categoria_id else set(),
+                'nf': '-',
+                'pessoa': pagamento.autoridade,
+                'fornecedor_id': None,
+                'descricao': item.descricao,
+                'valor_bruto': item.valor_total,
+                'descontos': Decimal('0'),
+                'valor_liquido': item.valor_total,
+                'url': reverse_empresa(
+                    request,
+                    'financeiro:pagamento_imposto_detalhe',
                     kwargs={'pk': pagamento.pk},
                 ),
             }
@@ -1658,6 +1735,12 @@ def partial_dashboard_cards(request):
         .prefetch_related('itens')
         .order_by('-criado_em', '-pk')[:25]
     )
+    impostos_qs = (
+        PagamentoImposto.objects.filter(empresa=empresa)
+        .select_related('autoridade', 'caixa')
+        .prefetch_related('itens')
+        .order_by('-criado_em', '-pk')[:25]
+    )
     eventos = []
     for m in MovimentoCaixa.objects.filter(empresa=empresa).select_related('caixa').order_by(
         '-criado_em', '-pk'
@@ -1732,6 +1815,22 @@ def partial_dashboard_cards(request):
                 'badge_text': 'À vista',
                 'badge_class': 'text-bg-danger',
                 'pessoal_pk': pagamento.pk,
+            }
+        )
+    for pagamento in impostos_qs:
+        descricao_item = ', '.join(item.descricao for item in pagamento.itens.all() if item.descricao)
+        eventos.append(
+            {
+                'kind': 'imposto',
+                'sort_dt': pagamento.criado_em,
+                'data': pagamento.data_pagamento or pagamento.data_emissao,
+                'caixa_nome': pagamento.caixa.nome if pagamento.caixa_id else '-',
+                'descricao': f'{pagamento.autoridade.nome} - {descricao_item or "Pagamento de imposto"}',
+                'valor': pagamento.total_itens(),
+                'valor_sinal': '-',
+                'badge_text': 'À vista',
+                'badge_class': 'text-bg-danger',
+                'imposto_pk': pagamento.pk,
             }
         )
     eventos.sort(key=lambda e: (e['sort_dt'] or hoje), reverse=True)
@@ -3474,6 +3573,182 @@ def pagamento_pessoal_excluir(request, pk: int):
         pagamento.itens.all().delete()
         pagamento.delete()
     messages.success(request, f'Pagamento pessoal de {funcionario_nome} excluído.')
+    if _is_htmx(request):
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:dashboard')
+        return response
+    return redirect_empresa(request, 'financeiro:dashboard')
+
+
+@login_required
+def pagamento_imposto_novo(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    form = PagamentoImpostoForm(request.POST or None, empresa=empresa)
+    itens_fs = PagamentoImpostoItemFormSet(
+        request.POST or None,
+        prefix='itens',
+        form_kwargs={'empresa': empresa},
+    )
+
+    if request.method == 'POST' and form.is_valid() and itens_fs.is_valid():
+        with transaction.atomic():
+            pagamento = form.save(commit=False)
+            item_form = None
+            for f in itens_fs:
+                if not getattr(f, 'cleaned_data', None):
+                    continue
+                if f.cleaned_data.get('DELETE') or f.cleaned_data.get('_skip_form'):
+                    continue
+                item_form = f
+                break
+            if item_form is None:
+                raise ValidationError('Informe a descrição do pagamento.')
+            pagamento.data_pagamento = item_form.cleaned_data.get('data_pagamento') or timezone.localdate()
+            pagamento.full_clean()
+            pagamento.save()
+            item = item_form.save(commit=False)
+            item.pagamento = pagamento
+            item.full_clean()
+            item.save()
+        messages.success(request, 'Pagamento de imposto registrado.')
+        return redirect_empresa(
+            request,
+            'financeiro:pagamento_imposto_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
+
+    return render(
+        request,
+        'financeiro/pagamento_imposto_form.html',
+        {
+            'page_title': 'Pagamento Impostos',
+            'form': form,
+            'itens_fs': itens_fs,
+        },
+    )
+
+
+@login_required
+def pagamento_imposto_detalhe(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoImposto.objects.filter(empresa=empresa).select_related('autoridade', 'caixa'),
+        pk=pk,
+    )
+    itens = list(pagamento.itens.select_related('categoria').order_by('pk'))
+    return render(
+        request,
+        'financeiro/pagamento_imposto_detalhe.html',
+        {
+            'page_title': 'Pagamento Impostos',
+            'pagamento': pagamento,
+            'itens': itens,
+            'total_itens': pagamento.total_itens(),
+        },
+    )
+
+
+@login_required
+def pagamento_imposto_editar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoImposto.objects.filter(empresa=empresa).select_related('autoridade', 'caixa'),
+        pk=pk,
+    )
+    item = pagamento.itens.order_by('pk').first()
+    initial_item = []
+    if item:
+        initial_item.append(
+            {
+                'descricao': item.descricao,
+                'categoria': item.categoria_id,
+                'data_pagamento': pagamento.data_pagamento.isoformat() if pagamento.data_pagamento else '',
+                'valor_total': format_decimal_br_moeda(item.valor_total),
+            }
+        )
+    form = PagamentoImpostoForm(request.POST or None, instance=pagamento, empresa=empresa)
+    itens_fs = PagamentoImpostoItemFormSet(
+        request.POST or None,
+        prefix='itens',
+        form_kwargs={'empresa': empresa},
+        initial=initial_item,
+    )
+    if request.method == 'POST' and form.is_valid() and itens_fs.is_valid():
+        with transaction.atomic():
+            pagamento = form.save(commit=False)
+            item_form = None
+            for f in itens_fs:
+                if not getattr(f, 'cleaned_data', None):
+                    continue
+                if f.cleaned_data.get('DELETE') or f.cleaned_data.get('_skip_form'):
+                    continue
+                item_form = f
+                break
+            if item_form is None:
+                raise ValidationError('Informe a descrição do pagamento.')
+            pagamento.data_pagamento = item_form.cleaned_data.get('data_pagamento') or timezone.localdate()
+            pagamento.full_clean()
+            pagamento.save()
+            pagamento.itens.all().delete()
+            novo_item = item_form.save(commit=False)
+            novo_item.pagamento = pagamento
+            novo_item.full_clean()
+            novo_item.save()
+        messages.success(request, 'Pagamento de imposto atualizado.')
+        return redirect_empresa(
+            request,
+            'financeiro:pagamento_imposto_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
+    return render(
+        request,
+        'financeiro/pagamento_imposto_form.html',
+        {
+            'page_title': 'Editar Pagamento Impostos',
+            'form': form,
+            'itens_fs': itens_fs,
+            'pagamento': pagamento,
+            'modo': 'editar',
+        },
+    )
+
+
+@login_required
+def pagamento_imposto_excluir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoImposto.objects.filter(empresa=empresa).select_related('autoridade'),
+        pk=pk,
+    )
+    if request.method != 'POST':
+        if not _is_htmx(request):
+            return redirect_empresa(
+                request,
+                'financeiro:pagamento_imposto_detalhe',
+                kwargs={'pk': pagamento.pk},
+            )
+        return render(
+            request,
+            'financeiro/partials/pagamento_imposto_excluir_modal.html',
+            {
+                'pagamento': pagamento,
+                'total_itens': pagamento.total_itens(),
+            },
+        )
+    autoridade_nome = pagamento.autoridade.nome
+    with transaction.atomic():
+        pagamento.itens.all().delete()
+        pagamento.delete()
+    messages.success(request, f'Pagamento de imposto de {autoridade_nome} excluído.')
     if _is_htmx(request):
         response = HttpResponse(status=200)
         response['HX-Redirect'] = reverse_empresa(request, 'financeiro:dashboard')

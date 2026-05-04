@@ -248,7 +248,10 @@
         background: rgba(22, 163, 74, 0.12);
         color: #15803d;
     }
-    .financeiro-payment-type-card__icon--impostos,
+    .financeiro-payment-type-card__icon--impostos {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+    }
     .financeiro-payment-type-card__icon--bancario,
     .financeiro-payment-type-card__icon--aluguels,
     .financeiro-payment-type-card__icon--veiculos,
@@ -403,7 +406,8 @@
                         </a>
                     </div>
                     <div class="col-12 col-md-6 col-lg-4">
-                        <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
+                        <a href="{% url 'financeiro:pagamento_imposto_novo' empresa_id=request.empresa_ativa.pk %}"
+                           class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--impostos">
                                     <i class="bi bi-bank2"></i>
@@ -411,8 +415,8 @@
                                 <div class="fw-bold">Impostos</div>
                                 <div class="small text-muted mt-1">Tributos e encargos fiscais.</div>
                             </div>
-                            <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
-                        </div>
+                            <div class="small fw-semibold text-primary mt-3">Abrir</div>
+                        </a>
                     </div>
                     <div class="col-12 col-md-6 col-lg-4">
                         <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">

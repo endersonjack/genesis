@@ -1,0 +1,41 @@
+{% load moeda %}
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir Pagamento de Imposto</h5>
+        <div class="text-muted small">{{ pagamento.autoridade.nome }} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form method="post" hx-post="{% url 'financeiro:pagamento_imposto_excluir' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}" hx-target="#modal-content" hx-swap="innerHTML" data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-danger rounded-4 mb-3">
+            <div class="fw-bold">Confirme a exclusão definitiva.</div>
+            <div class="small">Esta ação removerá o pagamento de imposto e sua descrição vinculada.</div>
+        </div>
+        <div class="border rounded-4 p-3 small">
+            <div class="row g-2">
+                <div class="col-12 col-md-6">
+                    <span class="text-muted">Autoridade</span>
+                    <div class="fw-semibold">{{ pagamento.autoridade.nome }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Pagamento</span>
+                    <div class="fw-semibold">{{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Total</span>
+                    <div class="fw-semibold">R$ {{ total_itens|moeda_br }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer bg-white justify-content-between">
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger rounded-pill fw-semibold">
+            <i class="bi bi-trash me-1"></i> Excluir definitivamente
+        </button>
+    </div>
+</form>

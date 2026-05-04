@@ -16,10 +16,13 @@ from obras.models import Obra
 
 from .models import (
     BoletoPagamento,
+    AutoridadeTributaria,
     Caixa,
     CategoriaFinanceira,
     PagamentoPessoal,
     PagamentoPessoalItem,
+    PagamentoImposto,
+    PagamentoImpostoItem,
     PagamentoNotaFiscal,
     PagamentoNotaFiscalItem,
     PagamentoNotaFiscalPagamento,
@@ -1376,6 +1379,150 @@ class PagamentoPessoalItemForm(forms.ModelForm):
 
 PagamentoPessoalItemFormSet = formset_factory(
     PagamentoPessoalItemForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+class PagamentoImpostoForm(forms.ModelForm):
+    class Meta:
+        model = PagamentoImposto
+        fields = ('autoridade', 'data_emissao', 'caixa')
+        widgets = {
+            'autoridade': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'data_emissao': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control rounded-3'},
+            ),
+            'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.initial.setdefault('data_emissao', timezone.localdate().isoformat())
+        if empresa:
+            self.fields['autoridade'].queryset = AutoridadeTributaria.objects.filter(
+                empresa=empresa
+            ).order_by('esfera', 'nome')
+            self.fields['caixa'].queryset = Caixa.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('tipo', 'nome')
+            if not self.is_bound and not self.initial.get('caixa'):
+                caixa_geral = Caixa.objects.filter(
+                    empresa=empresa,
+                    ativo=True,
+                    tipo=Caixa.Tipo.GERAL,
+                ).first()
+                if caixa_geral:
+                    self.initial['caixa'] = caixa_geral.pk
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.empresa:
+            obj.empresa = self.empresa
+        if commit:
+            obj.full_clean()
+            obj.save()
+        return obj
+
+
+class PagamentoImpostoItemForm(forms.ModelForm):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento',
+        required=False,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    valor_total = forms.CharField(
+        label='Valor total (R$)',
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            }
+        ),
+    )
+
+    class Meta:
+        model = PagamentoImpostoItem
+        fields = ('descricao', 'categoria', 'data_pagamento', 'valor_total')
+        widgets = {
+            'descricao': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'categoria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        for field_name in ('descricao', 'categoria', 'data_pagamento', 'valor_total'):
+            self.fields[field_name].required = False
+        if not self.is_bound:
+            self.initial.setdefault('data_pagamento', timezone.localdate().isoformat())
+        if empresa:
+            self.fields['categoria'].queryset = CategoriaFinanceira.objects.filter(
+                empresa=empresa,
+                movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS,
+                ativo=True,
+            ).order_by('nome')
+
+    def _raw_value(self, field_name: str) -> str:
+        if not self.is_bound:
+            return ''
+        return str(self.data.get(self.add_prefix(field_name), '')).strip()
+
+    def _linha_vazia(self) -> bool:
+        return (
+            self._raw_value('descricao') == ''
+            and self._raw_value('categoria') == ''
+            and self._raw_value('data_pagamento') == ''
+            and self._raw_value('valor_total') in ('', '0', '0,0', '0,00')
+        )
+
+    def clean_valor_total(self):
+        raw = self.cleaned_data.get('valor_total')
+        if self._linha_vazia():
+            return Decimal('0')
+        return parse_valor_moeda_obrigatorio(raw)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self._linha_vazia():
+            cleaned_data['_skip_form'] = True
+            return cleaned_data
+        if not cleaned_data.get('descricao'):
+            categoria = cleaned_data.get('categoria')
+            if categoria:
+                cleaned_data['descricao'] = categoria.nome
+        if not cleaned_data.get('categoria'):
+            self.add_error('categoria', 'Este campo é obrigatório.')
+        if not cleaned_data.get('data_pagamento'):
+            self.add_error('data_pagamento', 'Este campo é obrigatório.')
+        if cleaned_data.get('valor_total') in (None, Decimal('0')):
+            self.add_error('valor_total', 'Informe um valor maior que zero.')
+        return cleaned_data
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.valor_total = self.cleaned_data['valor_total']
+        if commit:
+            obj.full_clean()
+            obj.save()
+        return obj
+
+
+PagamentoImpostoItemFormSet = formset_factory(
+    PagamentoImpostoItemForm,
     extra=1,
     can_delete=True,
 )

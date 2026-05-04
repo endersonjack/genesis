@@ -2,7 +2,13 @@ from django.contrib import admin
 
 from core.moeda_fmt import format_decimal_br_moeda
 
-from .models import Caixa, MovimentoCaixa, RecebimentoAvulso, RecebimentoMedicao
+from .models import (
+    AutoridadeTributaria,
+    Caixa,
+    MovimentoCaixa,
+    RecebimentoAvulso,
+    RecebimentoMedicao,
+)
 
 
 @admin.register(Caixa)
@@ -35,6 +41,18 @@ class CaixaAdmin(admin.ModelAdmin):
         if not obj.pk:
             return '—'
         return self.saldo_formatado(obj)
+
+    def save_model(self, request, obj, form, change):
+        obj.full_clean()
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(AutoridadeTributaria)
+class AutoridadeTributariaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'esfera', 'cnpj', 'empresa')
+    list_filter = ('esfera', 'empresa')
+    search_fields = ('nome', 'cnpj')
+    ordering = ('esfera', 'nome')
 
     def save_model(self, request, obj, form, change):
         obj.full_clean()

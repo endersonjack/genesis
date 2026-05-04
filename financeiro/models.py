@@ -802,3 +802,120 @@ class PagamentoPessoalItem(TimeStampedModel):
                 raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
         if self.valor_total is not None and self.valor_total <= 0:
             raise ValidationError({'valor_total': 'Informe um valor maior que zero.'})
+
+
+class AutoridadeTributaria(TimeStampedModel):
+    class Esfera(models.TextChoices):
+        FEDERAL = 'federal', 'Federal'
+        ESTADUAL = 'estadual', 'Estadual'
+        MUNICIPAL = 'municipal', 'Municipal'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='autoridades_tributarias',
+    )
+    nome = models.CharField(max_length=200)
+    esfera = models.CharField(max_length=12, choices=Esfera.choices, db_index=True)
+    cnpj = models.CharField(max_length=18, blank=True)
+
+    class Meta:
+        verbose_name = 'Autoridade tributária'
+        verbose_name_plural = 'Autoridades tributárias'
+        ordering = ['esfera', 'nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'nome'),
+                name='financeiro_autoridade_tributaria_unica_por_empresa_nome',
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.nome} ({self.get_esfera_display()})'
+
+    def clean(self) -> None:
+        if self.nome:
+            self.nome = self.nome.strip()
+        if self.cnpj:
+            self.cnpj = self.cnpj.strip()
+
+
+class PagamentoImposto(TimeStampedModel):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='pagamentos_impostos',
+    )
+    autoridade = models.ForeignKey(
+        AutoridadeTributaria,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_impostos',
+        verbose_name='Autoridade tributária',
+    )
+    data_emissao = models.DateField('Data de emissão', default=timezone.localdate, db_index=True)
+    caixa = models.ForeignKey(
+        Caixa,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_impostos',
+        verbose_name='Caixa',
+    )
+    data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+
+    class Meta:
+        verbose_name = 'Pagamento de imposto'
+        verbose_name_plural = 'Pagamentos de impostos'
+        ordering = ['-data_emissao', '-pk']
+        indexes = [
+            models.Index(fields=('empresa', 'data_emissao')),
+            models.Index(fields=('empresa', 'autoridade', 'data_emissao')),
+        ]
+
+    def __str__(self) -> str:
+        return f'Imposto {self.autoridade} — {self.data_emissao}'
+
+    def clean(self) -> None:
+        if self.caixa_id and self.empresa_id:
+            if self.caixa.empresa_id != self.empresa_id:
+                raise ValidationError({'caixa': 'O caixa deve pertencer à mesma empresa.'})
+        if self.autoridade_id and self.empresa_id:
+            if self.autoridade.empresa_id != self.empresa_id:
+                raise ValidationError(
+                    {'autoridade': 'A autoridade tributária deve pertencer à mesma empresa.'}
+                )
+
+    def total_itens(self) -> Decimal:
+        agg = self.itens.aggregate(total=Sum('valor_total'))
+        return (agg['total'] or Decimal('0')).quantize(Decimal('0.01'))
+
+
+class PagamentoImpostoItem(TimeStampedModel):
+    pagamento = models.ForeignKey(
+        PagamentoImposto,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    descricao = models.CharField(max_length=500)
+    categoria = models.ForeignKey(
+        CategoriaFinanceira,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_impostos_itens',
+        help_text='Categoria de saída (pagamento de impostos).',
+    )
+    valor_total = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+
+    class Meta:
+        verbose_name = 'Item de pagamento de imposto'
+        verbose_name_plural = 'Itens de pagamento de imposto'
+        ordering = ['pk']
+
+    def clean(self) -> None:
+        if self.categoria_id:
+            if (
+                self.categoria.movimentacao_tipo
+                != CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS
+            ):
+                raise ValidationError({'categoria': 'Selecione uma categoria de pagamento de impostos.'})
+            if self.pagamento_id and self.categoria.empresa_id != self.pagamento.empresa_id:
+                raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
+        if self.valor_total is not None and self.valor_total <= 0:
+            raise ValidationError({'valor_total': 'Informe um valor maior que zero.'})

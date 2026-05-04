@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}Pagamento Impostos | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
+            <h2 class="fw-bold mb-0">Pagamento Impostos</h2>
+        </div>
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+
+    <form method="post" class="d-grid gap-3" id="pagamento-imposto-form">
+        {% csrf_token %}
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-5">
+                        <label class="form-label fw-semibold" for="{{ form.autoridade.id_for_label }}">Autoridade tributária</label>
+                        {{ form.autoridade }}
+                        {% if form.autoridade.errors %}<div class="text-danger small mt-1">{{ form.autoridade.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label fw-semibold" for="{{ form.data_emissao.id_for_label }}">Data de Emissão</label>
+                        {{ form.data_emissao }}
+                        {% if form.data_emissao.errors %}<div class="text-danger small mt-1">{{ form.data_emissao.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold" for="{{ form.caixa.id_for_label }}">Caixa</label>
+                        {{ form.caixa }}
+                        {% if form.caixa.errors %}<div class="text-danger small mt-1">{{ form.caixa.errors }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-0 pt-3 px-3">
+                <div class="fw-bold">Descrição do pagamento</div>
+            </div>
+            <div class="card-body">
+                {{ itens_fs.management_form }}
+                {% with item_form=itens_fs.0 %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Data de pagamento</th>
+                                <th class="text-end">Valor total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    {{ item_form.descricao }}
+                                    {% if item_form.descricao.errors %}<div class="text-danger small">{{ item_form.descricao.errors }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {{ item_form.categoria }}
+                                    {% if item_form.categoria.errors %}<div class="text-danger small">{{ item_form.categoria.errors }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {{ item_form.data_pagamento }}
+                                    {% if item_form.data_pagamento.errors %}<div class="text-danger small">{{ item_form.data_pagamento.errors }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {{ item_form.valor_total }}
+                                    {% if item_form.valor_total.errors %}<div class="text-danger small">{{ item_form.valor_total.errors }}</div>{% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endwith %}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">Cancelar</a>
+            <button type="submit" class="btn btn-primary rounded-pill fw-semibold" id="btnSalvarPagamentoImposto">
+                <i class="bi bi-check2-circle me-1"></i> Salvar pagamento
+            </button>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    var dataEmissao = document.getElementById('{{ form.data_emissao.id_for_label }}');
+    var dataPagamento = document.getElementById('{{ itens_fs.0.data_pagamento.id_for_label }}');
+    if (dataEmissao && dataPagamento) {
+        dataEmissao.addEventListener('change', function () {
+            dataPagamento.value = dataEmissao.value;
+        });
+    }
+
+    var form = document.getElementById('pagamento-imposto-form');
+    var salvarBtn = document.getElementById('btnSalvarPagamentoImposto');
+    if (form && salvarBtn) {
+        form.addEventListener('submit', function () {
+            salvarBtn.disabled = true;
+            salvarBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+        });
+    }
+})();
+</script>
+{% endblock %}

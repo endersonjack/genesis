@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}Pagamento Impostos | Genesis ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
+            <h2 class="fw-bold mb-1">Pagamento Impostos</h2>
+            <div class="text-muted small">{{ pagamento.autoridade.nome }} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <a href="{% url 'financeiro:pagamento_imposto_novo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary rounded-pill fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i> Novo Imposto
+            </a>
+            <div class="dropdown" data-bs-popper="static">
+                <button type="button" class="btn btn-outline-secondary rounded-circle" id="imposto-dropdown-acoes" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do pagamento de imposto" title="Ações">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="imposto-dropdown-acoes">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'financeiro:pagamento_imposto_editar' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}">
+                            <i class="bi bi-pencil-square me-2 text-primary"></i> Editar
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item text-danger" hx-get="{% url 'financeiro:pagamento_imposto_excluir' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}" hx-target="#modal-content" hx-swap="innerHTML" data-no-global-loading data-bs-toggle="modal" data-bs-target="#modalPadrao">
+                            <i class="bi bi-trash me-2"></i> Excluir
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="small text-muted fw-bold text-uppercase">Autoridade tributária</div>
+                    <div class="fw-bold">{{ pagamento.autoridade.nome }}</div>
+                    <div class="text-muted small">{{ pagamento.autoridade.get_esfera_display }}{% if pagamento.autoridade.cnpj %} · {{ pagamento.autoridade.cnpj }}{% endif %}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="small text-muted fw-bold text-uppercase">Pagamento</div>
+                    <div class="fw-bold">À vista</div>
+                    <div class="text-muted small">Pago em {{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="small text-muted fw-bold text-uppercase">Total</div>
+                    <div class="h4 fw-bold mb-0">R$ {{ total_itens|moeda_br }}</div>
+                    <div class="text-muted small">{{ pagamento.caixa.nome }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-3 px-3">
+            <div class="fw-bold">Descrição do pagamento</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th class="text-end pe-4">Valor total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td class="ps-4 small text-muted">{{ forloop.counter }}</td>
+                        <td class="small fw-semibold">{{ item.descricao }}</td>
+                        <td class="small text-muted">{{ item.categoria.nome }}</td>
+                        <td class="text-end pe-4 small fw-bold">R$ {{ item.valor_total|moeda_br }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-muted small">Sem descrição.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

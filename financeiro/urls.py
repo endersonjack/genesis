@@ -65,6 +65,26 @@ urlpatterns = [
         name='pagamento_pessoal_novo',
     ),
     path(
+        'pagamentos/impostos/novo/',
+        empresa_scoped(views.pagamento_imposto_novo),
+        name='pagamento_imposto_novo',
+    ),
+    path(
+        'pagamentos/impostos/<int:pk>/',
+        empresa_scoped(views.pagamento_imposto_detalhe),
+        name='pagamento_imposto_detalhe',
+    ),
+    path(
+        'pagamentos/impostos/<int:pk>/editar/',
+        empresa_scoped(views.pagamento_imposto_editar),
+        name='pagamento_imposto_editar',
+    ),
+    path(
+        'pagamentos/impostos/<int:pk>/excluir/',
+        empresa_scoped(views.pagamento_imposto_excluir),
+        name='pagamento_imposto_excluir',
+    ),
+    path(
         'pagamentos/pessoal/<int:pk>/',
         empresa_scoped(views.pagamento_pessoal_detalhe),
         name='pagamento_pessoal_detalhe',

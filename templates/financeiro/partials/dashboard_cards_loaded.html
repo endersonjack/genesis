@@ -208,13 +208,17 @@
                                 </thead>
                                 <tbody>
                                     {% for e in ultimos_eventos %}
-                                    <tr class="{% if e.kind == 'nf' and e.nf_pk or e.kind == 'pessoal' and e.pessoal_pk %}financeiro-clickable-row{% endif %}"
+                                    <tr class="{% if e.kind == 'nf' and e.nf_pk or e.kind == 'pessoal' and e.pessoal_pk or e.kind == 'imposto' and e.imposto_pk %}financeiro-clickable-row{% endif %}"
                                         {% if e.kind == 'nf' and e.nf_pk %}
                                         data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=e.nf_pk %}"
                                         tabindex="0"
                                         role="link"
                                         {% elif e.kind == 'pessoal' and e.pessoal_pk %}
                                         data-row-href="{% url 'financeiro:pagamento_pessoal_detalhe' empresa_id=request.empresa_ativa.pk pk=e.pessoal_pk %}"
+                                        tabindex="0"
+                                        role="link"
+                                        {% elif e.kind == 'imposto' and e.imposto_pk %}
+                                        data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=e.imposto_pk %}"
                                         tabindex="0"
                                         role="link"
                                         {% endif %}
