@@ -20,6 +20,18 @@
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body">
                 <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold d-block">Tipo de pagamento</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            {% for radio in form.tipo_destino %}
+                            <label class="form-check d-flex align-items-center gap-2 mb-0">
+                                {{ radio.tag }}
+                                <span class="form-check-label">{{ radio.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.tipo_destino.errors %}<div class="text-danger small mt-1">{{ form.tipo_destino.errors }}</div>{% endif %}
+                    </div>
                     <div class="col-12 col-lg-5">
                         <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">Funcionário</label>
                         {{ form.funcionario }}
@@ -122,10 +134,29 @@
         lotacaoText.textContent = lotacao ? 'Lotação: ' + lotacao : '';
     }
 
+    function tipoSelecionado() {
+        var checked = document.querySelector('[name="{{ form.tipo_destino.html_name }}"]:checked');
+        return checked ? checked.value : 'funcionario';
+    }
+
+    function aplicarModoPagamento() {
+        var isGeral = tipoSelecionado() === 'geral';
+        funcionarioSelect.disabled = isGeral;
+        if (isGeral) {
+            funcionarioSelect.value = '';
+            if (lotacaoText) lotacaoText.textContent = '';
+        } else {
+            aplicarCaixaDoFuncionario();
+            aplicarLotacaoDoFuncionario();
+        }
+    }
+
     funcionarioSelect.addEventListener('change', aplicarCaixaDoFuncionario);
     funcionarioSelect.addEventListener('change', aplicarLotacaoDoFuncionario);
-    aplicarCaixaDoFuncionario();
-    aplicarLotacaoDoFuncionario();
+    document.querySelectorAll('[name="{{ form.tipo_destino.html_name }}"]').forEach(function (radio) {
+        radio.addEventListener('change', aplicarModoPagamento);
+    });
+    aplicarModoPagamento();
 
     if (dataEmissao && dataPagamento) {
         dataEmissao.addEventListener('change', function () {

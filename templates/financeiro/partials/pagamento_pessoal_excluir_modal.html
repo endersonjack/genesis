@@ -32,7 +32,7 @@
 <div class="modal-header">
     <div>
         <h5 class="modal-title fw-bold mb-1 text-danger">Excluir Pagamento Pessoal</h5>
-        <div class="text-muted small">{{ pagamento.funcionario.nome }} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+        <div class="text-muted small">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
@@ -53,8 +53,8 @@
         <div class="financeiro-modal-summary p-3">
             <div class="row g-2 small">
                 <div class="col-12 col-md-6">
-                    <span class="text-muted">Funcionário</span>
-                    <div class="fw-semibold">{{ pagamento.funcionario.nome }}</div>
+                    <span class="text-muted">{% if pagamento.funcionario_id %}Funcionário{% else %}Pagamento{% endif %}</span>
+                    <div class="fw-semibold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
                 </div>
                 <div class="col-12 col-md-3">
                     <span class="text-muted">Pagamento</span>

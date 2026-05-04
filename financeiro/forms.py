@@ -1236,8 +1236,9 @@ class BoletoPagamentoForm(forms.Form):
 class PagamentoPessoalForm(forms.ModelForm):
     class Meta:
         model = PagamentoPessoal
-        fields = ('funcionario', 'data_emissao', 'caixa')
+        fields = ('tipo_destino', 'funcionario', 'data_emissao', 'caixa')
         widgets = {
+            'tipo_destino': forms.RadioSelect(attrs={'class': 'form-check-input'}),
             'funcionario': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'data_emissao': forms.DateInput(
                 format='%Y-%m-%d',
@@ -1249,6 +1250,7 @@ class PagamentoPessoalForm(forms.ModelForm):
     def __init__(self, *args, empresa=None, **kwargs):
         self.empresa = empresa
         super().__init__(*args, **kwargs)
+        self.fields['funcionario'].required = False
         if not self.is_bound:
             hoje = timezone.localdate().isoformat()
             self.initial.setdefault('data_emissao', hoje)
@@ -1260,6 +1262,15 @@ class PagamentoPessoalForm(forms.ModelForm):
                 empresa=empresa,
                 ativo=True,
             ).order_by('tipo', 'nome')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo_destino = cleaned_data.get('tipo_destino') or PagamentoPessoal.TipoDestino.FUNCIONARIO
+        if tipo_destino == PagamentoPessoal.TipoDestino.FUNCIONARIO and not cleaned_data.get('funcionario'):
+            self.add_error('funcionario', 'Informe o funcionário.')
+        if tipo_destino == PagamentoPessoal.TipoDestino.GERAL:
+            cleaned_data['funcionario'] = None
+        return cleaned_data
 
     def save(self, commit=True):
         obj = super().save(commit=False)

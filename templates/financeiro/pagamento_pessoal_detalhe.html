@@ -9,7 +9,7 @@
         <div>
             <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
             <h2 class="fw-bold mb-1">Pagamento Pessoal</h2>
-            <div class="text-muted small">{{ pagamento.funcionario.nome }} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+            <div class="text-muted small">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
@@ -58,9 +58,9 @@
         <div class="col-12 col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body">
-                    <div class="small text-muted fw-bold text-uppercase">Funcionário</div>
-                    <div class="fw-bold">{{ pagamento.funcionario.nome }}</div>
-                    <div class="text-muted small">{{ pagamento.funcionario.cpf }}</div>
+                    <div class="small text-muted fw-bold text-uppercase">{% if pagamento.funcionario_id %}Funcionário{% else %}Pagamento{% endif %}</div>
+                    <div class="fw-bold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
+                    <div class="text-muted small">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.cpf }}{% else %}Pagamento geral{% endif %}</div>
                 </div>
             </div>
         </div>

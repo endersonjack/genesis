@@ -705,14 +705,26 @@ class BoletoPagamento(TimeStampedModel):
 class PagamentoPessoal(TimeStampedModel):
     """Pagamento pessoal para funcionários (saída à vista)."""
 
+    class TipoDestino(models.TextChoices):
+        FUNCIONARIO = 'funcionario', 'Funcionário'
+        GERAL = 'geral', 'Geral'
+
     empresa = models.ForeignKey(
         Empresa,
         on_delete=models.CASCADE,
         related_name='pagamentos_pessoal',
     )
+    tipo_destino = models.CharField(
+        max_length=12,
+        choices=TipoDestino.choices,
+        default=TipoDestino.FUNCIONARIO,
+        db_index=True,
+    )
     funcionario = models.ForeignKey(
         'rh.Funcionario',
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name='pagamentos_pessoal',
         verbose_name='Funcionário',
     )
@@ -736,9 +748,13 @@ class PagamentoPessoal(TimeStampedModel):
         ]
 
     def __str__(self) -> str:
-        return f'Pessoal {self.funcionario} — {self.data_emissao}'
+        return f'Pessoal {self.funcionario or "Geral"} — {self.data_emissao}'
 
     def clean(self) -> None:
+        if self.tipo_destino == self.TipoDestino.FUNCIONARIO and not self.funcionario_id:
+            raise ValidationError({'funcionario': 'Informe o funcionário.'})
+        if self.tipo_destino == self.TipoDestino.GERAL:
+            self.funcionario = None
         if self.caixa_id and self.empresa_id:
             if self.caixa.empresa_id != self.empresa_id:
                 raise ValidationError({'caixa': 'O caixa deve pertencer à mesma empresa.'})

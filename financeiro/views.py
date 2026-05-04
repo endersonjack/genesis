@@ -864,7 +864,11 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'sort_key': (pagamento.data_pagamento or pagamento.data_emissao, pagamento.pk, 60),
                 'natureza': MovimentoCaixa.Natureza.SAIDA,
                 'origem': 'À vista',
-                'descricao': f'{pagamento.funcionario.nome} - {descricao_item or "Pagamento pessoal"}',
+                'descricao': (
+                    f'{pagamento.funcionario.nome} - {descricao_item or "Pagamento pessoal"}'
+                    if pagamento.funcionario_id
+                    else descricao_item or 'Pagamento pessoal geral'
+                ),
                 'valor': pagamento.total_itens(),
                 'entrada': False,
                 'caixa_id': caixa.pk,
@@ -1033,7 +1037,7 @@ def _extrato_caixa_detalhado(
                 'categoria_id': item.categoria_id,
                 'categoria_ids': {item.categoria_id} if item.categoria_id else set(),
                 'nf': '-',
-                'pessoa': pagamento.funcionario,
+                'pessoa': pagamento.funcionario or 'Geral',
                 'fornecedor_id': None,
                 'descricao': item.descricao,
                 'valor_bruto': item.valor_total,
@@ -1718,7 +1722,11 @@ def partial_dashboard_cards(request):
                 'sort_dt': pagamento.criado_em,
                 'data': pagamento.data_pagamento or pagamento.data_emissao,
                 'caixa_nome': pagamento.caixa.nome if pagamento.caixa_id else '-',
-                'descricao': f'{pagamento.funcionario.nome} - {descricao_item or "Pagamento pessoal"}',
+                'descricao': (
+                    f'{pagamento.funcionario.nome} - {descricao_item or "Pagamento pessoal"}'
+                    if pagamento.funcionario_id
+                    else descricao_item or 'Pagamento pessoal geral'
+                ),
                 'valor': pagamento.total_itens(),
                 'valor_sinal': '-',
                 'badge_text': 'À vista',
@@ -3461,7 +3469,7 @@ def pagamento_pessoal_excluir(request, pk: int):
             },
         )
 
-    funcionario_nome = pagamento.funcionario.nome
+    funcionario_nome = pagamento.funcionario.nome if pagamento.funcionario_id else 'Geral'
     with transaction.atomic():
         pagamento.itens.all().delete()
         pagamento.delete()
