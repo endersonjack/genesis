@@ -1405,6 +1405,7 @@ def partial_dashboard_cards(request):
             empresa=empresa,
             pagamentos__isnull=False,
         )
+        .exclude(pagamentos__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS)
         .select_related('fornecedor', 'caixa')
         .prefetch_related('pagamentos', 'boletos')
         .annotate(
@@ -1447,35 +1448,35 @@ def partial_dashboard_cards(request):
         items = nf.itens.all()
         return sum((i.valor_total for i in items), Decimal('0')).quantize(Decimal('0.01'))
 
-    dashboard_em_aberto_linhas = []
-    idx_linha = 0
+    dashboard_boletos_vencidos_linhas = []
     for b in boletos_vencidos:
-        idx_linha += 1
         nf = b.pagamento_nf
         boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
         pags_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
         total_nf = nf_total_dashboard(nf)
         resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
-        ultimo = _data_ultimo_pagamento_nf(pags_nf, boletos_nf)
-        dashboard_em_aberto_linhas.append(
+        fornecedor = nf.fornecedor
+        dashboard_boletos_vencidos_linhas.append(
             {
-                'index': idx_linha,
-                'nf_pk': nf.pk,
-                'situacao': 'Boleto vencido',
-                'badge_class': 'text-bg-danger',
-                'ref_principal': nf.fornecedor.nome,
-                'data_emissao': nf.data_emissao,
+                'index': len(dashboard_boletos_vencidos_linhas) + 1,
+                'numero_doc': b.numero_doc or 'â€”',
+                'parcela_label': _parcela_dashboard_boleto(b),
+                'valor': b.valor,
+                'fornecedor_nome': fornecedor.nome,
+                'fornecedor_doc': fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
                 'valor_total': total_nf,
                 'valor_pago': resumo['valor_pago'],
-                'ultimo_pagamento': ultimo,
-                'valor_a_pagar': b.valor,
+                'pagamento_nf_pk': nf.pk,
             }
         )
 
+    dashboard_pagamentos_aberto_linhas = []
+    idx_linha = 0
     for nf in notas_sem_pagamento:
         idx_linha += 1
         vt = nf.total_itens_calc
-        dashboard_em_aberto_linhas.append(
+        dashboard_pagamentos_aberto_linhas.append(
             {
                 'index': idx_linha,
                 'nf_pk': nf.pk,
@@ -1497,7 +1498,7 @@ def partial_dashboard_cards(request):
         total_nf = nf.total_itens_calc
         resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
         ultimo = _data_ultimo_pagamento_nf(pags_nf, boletos_nf)
-        dashboard_em_aberto_linhas.append(
+        dashboard_pagamentos_aberto_linhas.append(
             {
                 'index': idx_linha,
                 'nf_pk': nf.pk,
@@ -1536,11 +1537,7 @@ def partial_dashboard_cards(request):
         (nf.valor_em_aberto_dashboard for nf in notas_pagamento_parcial),
         Decimal('0'),
     )
-    total_em_aberto_sem_pagamento = (
-        total_boletos_vencidos
-        + total_notas_sem_pagamento
-        + total_notas_pagamento_parcial
-    )
+    total_pagamentos_em_aberto = total_notas_sem_pagamento + total_notas_pagamento_parcial
     ultimos_lancamentos = list(
         MovimentoCaixa.objects.filter(empresa=empresa)
         .select_related('caixa')
@@ -1628,8 +1625,10 @@ def partial_dashboard_cards(request):
             'hoje': hoje,
             'dashboard_boletos_venc_hoje_linhas': dashboard_boletos_venc_hoje_linhas,
             'total_boletos_venc_hoje': total_boletos_venc_hoje,
-            'dashboard_em_aberto_linhas': dashboard_em_aberto_linhas,
-            'total_em_aberto_sem_pagamento': total_em_aberto_sem_pagamento,
+            'dashboard_boletos_vencidos_linhas': dashboard_boletos_vencidos_linhas,
+            'total_boletos_vencidos': total_boletos_vencidos,
+            'dashboard_pagamentos_aberto_linhas': dashboard_pagamentos_aberto_linhas,
+            'total_pagamentos_em_aberto': total_pagamentos_em_aberto,
             'ultimos_lancamentos': ultimos_lancamentos,
             'ultimos_eventos': eventos,
         },

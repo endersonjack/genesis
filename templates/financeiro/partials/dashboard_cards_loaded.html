@@ -8,8 +8,8 @@
     </div>
     <div class="financeiro-board-body">
         <div class="row g-3">
-            <div class="col-12 col-xl-6">
-                <div class="mini-card h-100">
+            <div class="col-12">
+                <div class="mini-card">
                     <div class="card-header bg-white border-bottom py-3 px-4">
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                             <div>
@@ -23,12 +23,12 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive financeiro-dashboard-table-scroll">
                             <table class="table table-sm table-hover mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
                                         <th class="ps-4 text-muted">#</th>
-                                        <th>Nº doc</th>
+                                        <th>Nº Doc</th>
                                         <th class="text-center">Parcela</th>
                                         <th class="text-end">Valor</th>
                                         <th>Fornecedor</th>
@@ -63,22 +63,81 @@
                 </div>
             </div>
 
-            <div class="col-12 col-xl-6">
-                <div class="mini-card h-100">
+            <div class="col-12">
+                <div class="mini-card">
                     <div class="card-header bg-white border-bottom py-3 px-4">
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                             <div>
-                                <div class="fw-bold">Em aberto/Sem pagamento</div>
-                                <div class="small text-muted">Boletos vencidos + notas sem pagamento/parciais.</div>
+                                <div class="fw-bold">Boletos Vencidos</div>
+                                <div class="small text-muted">Somente boletos vencidos em aberto.</div>
                             </div>
                             <div class="text-end">
                                 <div class="small text-muted text-uppercase fw-semibold">Total</div>
-                                <div class="fw-bold">R$ {{ total_em_aberto_sem_pagamento|moeda_br }}</div>
+                                <div class="fw-bold">R$ {{ total_boletos_vencidos|moeda_br }}</div>
                             </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive financeiro-dashboard-table-scroll">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4 text-muted">#</th>
+                                        <th>Nº Doc</th>
+                                        <th class="text-center">Parcela</th>
+                                        <th class="text-end">Valor</th>
+                                        <th>Fornecedor</th>
+                                        <th class="text-end">Nº NF</th>
+                                        <th class="text-end">Valor total</th>
+                                        <th class="text-end">Valor pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in dashboard_boletos_vencidos_linhas %}
+                                    <tr class="financeiro-clickable-row"
+                                        data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=row.pagamento_nf_pk %}"
+                                        tabindex="0"
+                                        role="link">
+                                        <td class="ps-4 small text-muted">{{ row.index }}</td>
+                                        <td class="small fw-semibold">{{ row.numero_doc }}</td>
+                                        <td class="text-center small text-muted">{{ row.parcela_label }}</td>
+                                        <td class="text-end small fw-semibold text-danger">R$ {{ row.valor|moeda_br }}</td>
+                                        <td class="small">
+                                            <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.fornecedor_nome }}</div>
+                                            <div class="text-muted small">{{ row.fornecedor_doc }}</div>
+                                        </td>
+                                        <td class="text-end small fw-semibold">{{ row.numero_nf }}</td>
+                                        <td class="text-end small">R$ {{ row.valor_total|moeda_br }}</td>
+                                        <td class="text-end pe-4 small">R$ {{ row.valor_pago|moeda_br }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="py-4 text-center text-muted small">Nenhum boleto vencido.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="mini-card">
+                    <div class="card-header bg-white border-bottom py-3 px-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold">Pagamentos em Aberto</div>
+                                <div class="small text-muted">Demais pagamentos em aberto, exceto boletos.</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-muted text-uppercase fw-semibold">Total</div>
+                                <div class="fw-bold">R$ {{ total_pagamentos_em_aberto|moeda_br }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive financeiro-dashboard-table-scroll">
                             <table class="table table-sm table-hover mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
@@ -91,7 +150,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for linha in dashboard_em_aberto_linhas %}
+                                    {% for linha in dashboard_pagamentos_aberto_linhas %}
                                     <tr class="financeiro-clickable-row"
                                         data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=linha.nf_pk %}"
                                         tabindex="0"
@@ -115,7 +174,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="py-4 text-center text-muted small">Nenhum registro em aberto para hoje.</td>
+                                        <td colspan="6" class="py-4 text-center text-muted small">Nenhum pagamento em aberto.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
