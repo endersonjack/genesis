@@ -700,3 +700,89 @@ class BoletoPagamento(TimeStampedModel):
                 raise ValidationError({fld: 'Valor não pode ser negativo.'})
         if self.valor_pago is not None and self.valor_pago < 0:
             raise ValidationError({'valor_pago': 'Valor pago não pode ser negativo.'})
+
+
+class PagamentoPessoal(TimeStampedModel):
+    """Pagamento pessoal para funcionários (saída à vista)."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='pagamentos_pessoal',
+    )
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.PROTECT,
+        related_name='pagamentos_pessoal',
+        verbose_name='Funcionário',
+    )
+    data_emissao = models.DateField('Data de emissão', default=timezone.localdate, db_index=True)
+    caixa = models.ForeignKey(
+        Caixa,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_pessoal',
+        verbose_name='Caixa',
+    )
+    descricao = models.CharField('Descrição', max_length=500, blank=True)
+    data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+
+    class Meta:
+        verbose_name = 'Pagamento pessoal'
+        verbose_name_plural = 'Pagamentos pessoais'
+        ordering = ['-data_emissao', '-pk']
+        indexes = [
+            models.Index(fields=('empresa', 'data_emissao')),
+            models.Index(fields=('empresa', 'funcionario', 'data_emissao')),
+        ]
+
+    def __str__(self) -> str:
+        return f'Pessoal {self.funcionario} — {self.data_emissao}'
+
+    def clean(self) -> None:
+        if self.caixa_id and self.empresa_id:
+            if self.caixa.empresa_id != self.empresa_id:
+                raise ValidationError({'caixa': 'O caixa deve pertencer à mesma empresa.'})
+        if self.funcionario_id and self.empresa_id:
+            if self.funcionario.empresa_id != self.empresa_id:
+                raise ValidationError(
+                    {'funcionario': 'O funcionário deve pertencer à mesma empresa.'}
+                )
+
+    def total_itens(self) -> Decimal:
+        agg = self.itens.aggregate(total=Sum('valor_total'))
+        return (agg['total'] or Decimal('0')).quantize(Decimal('0.01'))
+
+
+class PagamentoPessoalItem(TimeStampedModel):
+    pagamento = models.ForeignKey(
+        PagamentoPessoal,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    descricao = models.CharField(max_length=500)
+    categoria = models.ForeignKey(
+        CategoriaFinanceira,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_pessoal_itens',
+        help_text='Categoria de saída (pagamento pessoal).',
+    )
+    valor_total = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+
+    class Meta:
+        verbose_name = 'Item de pagamento pessoal'
+        verbose_name_plural = 'Itens de pagamento pessoal'
+        ordering = ['pk']
+
+    def clean(self) -> None:
+        if self.categoria_id:
+            if (
+                self.categoria.movimentacao_tipo
+                != CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_PESSOAL
+            ):
+                raise ValidationError(
+                    {'categoria': 'Selecione uma categoria de pagamento pessoal.'}
+                )
+            if self.pagamento_id and self.categoria.empresa_id != self.pagamento.empresa_id:
+                raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
+        if self.valor_total is not None and self.valor_total <= 0:
+            raise ValidationError({'valor_total': 'Informe um valor maior que zero.'})

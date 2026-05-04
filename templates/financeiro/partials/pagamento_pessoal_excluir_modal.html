@@ -1,0 +1,76 @@
+{% load moeda %}
+
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-summary {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir Pagamento Pessoal</h5>
+        <div class="text-muted small">{{ pagamento.funcionario.nome }} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'financeiro:pagamento_pessoal_excluir' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-danger rounded-4 mb-3">
+            <div class="fw-bold">Confirme a exclusão definitiva.</div>
+            <div class="small">Esta ação removerá o pagamento pessoal e sua descrição vinculada.</div>
+        </div>
+
+        <div class="financeiro-modal-summary p-3">
+            <div class="row g-2 small">
+                <div class="col-12 col-md-6">
+                    <span class="text-muted">Funcionário</span>
+                    <div class="fw-semibold">{{ pagamento.funcionario.nome }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Pagamento</span>
+                    <div class="fw-semibold">{{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Total</span>
+                    <div class="fw-semibold">R$ {{ total_itens|moeda_br }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer bg-white justify-content-between">
+        <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="financeiro-modal-btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir definitivamente
+        </button>
+    </div>
+</form>
