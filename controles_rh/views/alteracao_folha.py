@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -111,12 +112,42 @@ def _month_bounds(ano: int, mes: int) -> tuple[date, date]:
     return inicio, fim
 
 
-def _fmt_celula_faltas(dias_no_mes: set[int]) -> str:
-    dias = sorted(dias_no_mes)
-    if not dias:
+def _horas_falta_parcial(descricao: str) -> Decimal | None:
+    match = re.search(r'(\d+(?:[,.]\d+)?)', descricao or '')
+    if not match:
+        return None
+    try:
+        return Decimal(match.group(1).replace(',', '.'))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _fmt_horas_falta_parcial(horas: Decimal) -> str:
+    texto = format(horas.quantize(Decimal('0.01')), 'f').rstrip('0').rstrip('.')
+    return f'{texto}h'
+
+
+def _fmt_celula_faltas(info: dict[str, object]) -> str:
+    dias = sorted(info.get('dias', set()))
+    parciais = list(info.get('parciais', []))
+    if not dias and not parciais:
         return '—'
-    inner = ','.join(str(d) for d in dias)
-    return f'{len(dias)} ({inner})'
+    partes: list[str] = []
+    if dias:
+        inner = ','.join(str(d) for d in dias)
+        partes.append(f'{len(dias)} ({inner})')
+    if parciais:
+        horas = sum(
+            (p['horas'] for p in parciais if p.get('horas') is not None),
+            Decimal('0'),
+        )
+        dias_parciais = sorted({p['dia'] for p in parciais})
+        inner_parcial = ','.join(str(d) for d in dias_parciais)
+        if horas > 0:
+            partes.append(f'{_fmt_horas_falta_parcial(horas)} parcial ({inner_parcial})')
+        else:
+            partes.append(f'parcial ({inner_parcial})')
+    return ' + '.join(partes)
 
 
 def _mapa_faltas_texto_por_funcionario(
@@ -129,10 +160,20 @@ def _mapa_faltas_texto_por_funcionario(
     qs = (
         FaltaFuncionario.objects.filter(funcionario_id__in=funcionario_ids)
         .filter(Q(data_inicio__lte=fim_m) & Q(data_fim__gte=inicio_m))
-        .only('funcionario_id', 'tipo', 'data_inicio', 'data_fim')
+        .only(
+            'funcionario_id',
+            'tipo',
+            'data_inicio',
+            'data_fim',
+            'ausencia_parcial',
+            'ausencia_parcial_descricao',
+        )
     )
-    buckets: dict[int, dict[str, set[int]]] = defaultdict(
-        lambda: {'nj': set(), 'j': set()}
+    buckets = defaultdict(
+        lambda: {
+            'nj': {'dias': set(), 'parciais': []},
+            'j': {'dias': set(), 'parciais': []},
+        }
     )
     for f in qs:
         if f.tipo == 'nao_justificada':
@@ -145,7 +186,15 @@ def _mapa_faltas_texto_por_funcionario(
         d1 = min(f.data_fim, fim_m)
         cur = d0
         while cur <= d1:
-            buckets[f.funcionario_id][chave].add(cur.day)
+            if f.ausencia_parcial:
+                buckets[f.funcionario_id][chave]['parciais'].append(
+                    {
+                        'dia': cur.day,
+                        'horas': _horas_falta_parcial(f.ausencia_parcial_descricao),
+                    }
+                )
+            else:
+                buckets[f.funcionario_id][chave]['dias'].add(cur.day)
             cur += timedelta(days=1)
 
     out: dict[int, tuple[str, str]] = {}
