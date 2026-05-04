@@ -23,6 +23,7 @@
                     <div class="col-12 col-lg-5">
                         <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">Funcionário</label>
                         {{ form.funcionario }}
+                        <div class="text-muted small mt-1" id="funcionario-lotacao-text"></div>
                         {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors }}</div>{% endif %}
                     </div>
                     <div class="col-12 col-lg-3">
@@ -92,16 +93,20 @@
     </form>
 </div>
 {{ funcionarios_caixa|json_script:"funcionarios-caixa-data" }}
+{{ funcionarios_lotacao|json_script:"funcionarios-lotacao-data" }}
 <script>
 (function () {
     var funcionarioSelect = document.getElementById('{{ form.funcionario.id_for_label }}');
     var caixaSelect = document.getElementById('{{ form.caixa.id_for_label }}');
     var dataEmissao = document.getElementById('{{ form.data_emissao.id_for_label }}');
     var dataPagamento = document.getElementById('{{ itens_fs.0.data_pagamento.id_for_label }}');
+    var lotacaoText = document.getElementById('funcionario-lotacao-text');
     var dataEl = document.getElementById('funcionarios-caixa-data');
-    if (!funcionarioSelect || !caixaSelect || !dataEl) return;
+    var lotacaoEl = document.getElementById('funcionarios-lotacao-data');
+    if (!funcionarioSelect || !caixaSelect || !dataEl || !lotacaoEl) return;
 
     var funcionariosCaixa = JSON.parse(dataEl.textContent || '{}');
+    var funcionariosLotacao = JSON.parse(lotacaoEl.textContent || '{}');
 
     function aplicarCaixaDoFuncionario() {
         var caixaId = funcionariosCaixa[funcionarioSelect.value];
@@ -111,8 +116,16 @@
         }
     }
 
+    function aplicarLotacaoDoFuncionario() {
+        if (!lotacaoText) return;
+        var lotacao = funcionariosLotacao[funcionarioSelect.value] || '';
+        lotacaoText.textContent = lotacao ? 'Lotação: ' + lotacao : '';
+    }
+
     funcionarioSelect.addEventListener('change', aplicarCaixaDoFuncionario);
+    funcionarioSelect.addEventListener('change', aplicarLotacaoDoFuncionario);
     aplicarCaixaDoFuncionario();
+    aplicarLotacaoDoFuncionario();
 
     if (dataEmissao && dataPagamento) {
         dataEmissao.addEventListener('change', function () {

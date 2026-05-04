@@ -3253,6 +3253,13 @@ def pagamento_pessoal_novo(request):
         for caixa in [_caixa_padrao_funcionario(empresa, funcionario)]
         if caixa
     }
+    funcionarios_lotacao = {
+        str(funcionario.pk): funcionario.lotacao.nome
+        for funcionario in Funcionario.objects.filter(empresa=empresa)
+        .select_related('lotacao')
+        .order_by('nome')
+        if funcionario.lotacao_id
+    }
 
     if request.method == 'POST':
         form = PagamentoPessoalForm(request.POST, empresa=empresa)
@@ -3300,6 +3307,7 @@ def pagamento_pessoal_novo(request):
             'form': form,
             'itens_fs': itens_fs,
             'funcionarios_caixa': funcionarios_caixa,
+            'funcionarios_lotacao': funcionarios_lotacao,
         },
     )
 
@@ -3369,6 +3377,13 @@ def pagamento_pessoal_editar(request, pk: int):
         for caixa in [_caixa_padrao_funcionario(empresa, funcionario)]
         if caixa
     }
+    funcionarios_lotacao = {
+        str(funcionario.pk): funcionario.lotacao.nome
+        for funcionario in Funcionario.objects.filter(empresa=empresa)
+        .select_related('lotacao')
+        .order_by('nome')
+        if funcionario.lotacao_id
+    }
 
     if request.method == 'POST':
         form = PagamentoPessoalForm(request.POST, instance=pagamento, empresa=empresa)
@@ -3411,6 +3426,7 @@ def pagamento_pessoal_editar(request, pk: int):
             'form': form,
             'itens_fs': itens_fs,
             'funcionarios_caixa': funcionarios_caixa,
+            'funcionarios_lotacao': funcionarios_lotacao,
             'pagamento': pagamento,
             'modo': 'editar',
         },
