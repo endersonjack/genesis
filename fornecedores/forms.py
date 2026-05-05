@@ -7,6 +7,10 @@ from .models import CategoriaFornecedor, Fornecedor
 from .utils_doc import display_cpf, display_cnpj
 
 
+def cpf_cnpj_provisorio(digits: str) -> bool:
+    return bool(digits) and set(digits) == {'0'}
+
+
 class CpfCnpjDisplayInput(forms.TextInput):
     """Exibe CPF/CNPJ mascarado a partir dos dígitos gravados no modelo."""
 
@@ -108,7 +112,7 @@ class FornecedorForm(forms.ModelForm):
             if len(digits) != 14:
                 raise ValidationError('CNPJ deve ter 14 dígitos.')
         empresa = self.empresa
-        if empresa:
+        if empresa and not cpf_cnpj_provisorio(digits):
             qs = Fornecedor.objects.filter(empresa=empresa, cpf_cnpj=digits)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
@@ -176,7 +180,7 @@ class FornecedorQuickCreateForm(forms.ModelForm):
         else:
             if len(digits) != 14:
                 raise ValidationError('CNPJ deve ter 14 dígitos.')
-        if self.empresa:
+        if self.empresa and not cpf_cnpj_provisorio(digits):
             qs = Fornecedor.objects.filter(empresa=self.empresa, cpf_cnpj=digits)
             if qs.exists():
                 raise ValidationError('Já existe um fornecedor com este CPF/CNPJ nesta empresa.')

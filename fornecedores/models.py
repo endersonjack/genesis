@@ -104,7 +104,13 @@ class Fornecedor(TimeStampedModel):
         verbose_name = 'Fornecedor'
         verbose_name_plural = 'Fornecedores'
         ordering = ['nome']
-        unique_together = ('empresa', 'cpf_cnpj')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'cpf_cnpj'],
+                condition=~models.Q(cpf_cnpj__in=['00000000000', '00000000000000']),
+                name='fornecedor_doc_unico_exceto_zeros',
+            ),
+        ]
 
     @property
     def cpf_cnpj_formatado(self) -> str:
