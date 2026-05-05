@@ -754,12 +754,15 @@
         </div>
     </div>
 
-    <div class="fin-card d-flex justify-content-end gap-2" id="bottomTabActions">
-        <a href="{% if modo == 'editar' and nf %}{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}{% else %}{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-arrow-left"></i> Voltar
+    <div class="fin-card d-flex justify-content-between flex-wrap gap-2" id="bottomTabActions">
+        <a href="{% if modo == 'editar' and nf %}{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=nf.pk %}{% else %}{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}{% endif %}" class="financeiro-top-btn financeiro-top-btn-light" id="btnCancelRodape">
+            <i class="bi bi-arrow-left"></i> Voltar/Cancelar
         </a>
+        <button type="button" class="financeiro-top-btn financeiro-top-btn-light" id="btnPrevTab" hidden>
+            <i class="bi bi-arrow-left"></i> Descrição
+        </button>
         <button type="button" class="financeiro-top-btn financeiro-top-btn-primary" id="btnNextTab">
-            Próxima aba
+            Itens <i class="bi bi-arrow-right"></i>
         </button>
         <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary" id="btnSalvarRodape" hidden>
             <i class="bi bi-check2-circle"></i> Salvar
@@ -773,7 +776,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="pagamentoModal" tabindex="-1" aria-labelledby="pagamentoModalLabel" aria-hidden="true">
+<div class="modal fade" id="pagamentoModal" tabindex="-1" aria-labelledby="pagamentoModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -781,7 +784,6 @@
                     <h5 class="modal-title fw-bold" id="pagamentoModalLabel">Adicionar pagamento</h5>
                     <p class="text-muted small mb-0">Escolha o tipo e informe os dados deste pagamento.</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3 mb-3">
@@ -1042,6 +1044,8 @@
         const btnConfirmarPagamentoModal = document.getElementById('btnConfirmarPagamentoModal');
         const btnSalvarTopo = document.getElementById('btnSalvarTopo');
         const bottomTabActions = document.getElementById('bottomTabActions');
+        const btnCancelRodape = document.getElementById('btnCancelRodape');
+        const btnPrevTab = document.getElementById('btnPrevTab');
         const btnNextTab = document.getElementById('btnNextTab');
         const btnSalvarRodape = document.getElementById('btnSalvarRodape');
         const tabButtons = [
@@ -1063,6 +1067,9 @@
             if (btnNextTab) {
                 btnNextTab.disabled = true;
             }
+            if (btnPrevTab) {
+                btnPrevTab.disabled = true;
+            }
         }
 
         function toggleBoletos() {
@@ -1079,9 +1086,19 @@
 
         function updateTabActions() {
             const activeIndex = getActiveTabIndex();
+            const isDescricao = activeIndex <= 0;
             const isPagamento = activeIndex === tabButtons.length - 1;
             if (btnSalvarTopo) {
                 btnSalvarTopo.hidden = !isPagamento;
+            }
+            if (btnCancelRodape) {
+                btnCancelRodape.hidden = !isDescricao;
+            }
+            if (btnPrevTab) {
+                btnPrevTab.hidden = isDescricao;
+                const prevBtn = tabButtons[activeIndex - 1];
+                const prevLabel = prevBtn ? prevBtn.textContent.trim() : 'Descrição';
+                btnPrevTab.innerHTML = `<i class="bi bi-arrow-left"></i> ${prevLabel}`;
             }
             if (btnNextTab) {
                 btnNextTab.hidden = isPagamento;
@@ -1091,7 +1108,17 @@
             }
             if (btnNextTab && !isPagamento) {
                 const nextBtn = tabButtons[activeIndex + 1];
-                btnNextTab.textContent = nextBtn ? `Ir para ${nextBtn.textContent.trim()}` : 'Próxima aba';
+                const nextLabel = nextBtn ? nextBtn.textContent.trim() : 'Próxima aba';
+                btnNextTab.innerHTML = `${nextLabel} <i class="bi bi-arrow-right"></i>`;
+            }
+        }
+
+        function showTabButton(tabButton) {
+            if (!tabButton) return;
+            if (window.bootstrap && bootstrap.Tab) {
+                bootstrap.Tab.getOrCreateInstance(tabButton).show();
+            } else {
+                tabButton.click();
             }
         }
 
@@ -1099,12 +1126,15 @@
             btnNextTab.addEventListener('click', () => {
                 const activeIndex = getActiveTabIndex();
                 const nextBtn = tabButtons[activeIndex + 1];
-                if (!nextBtn) return;
-                if (window.bootstrap && bootstrap.Tab) {
-                    bootstrap.Tab.getOrCreateInstance(nextBtn).show();
-                } else {
-                    nextBtn.click();
-                }
+                showTabButton(nextBtn);
+            });
+        }
+
+        if (btnPrevTab) {
+            btnPrevTab.addEventListener('click', () => {
+                const activeIndex = getActiveTabIndex();
+                const prevBtn = tabButtons[activeIndex - 1];
+                showTabButton(prevBtn);
             });
         }
 
