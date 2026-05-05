@@ -99,12 +99,12 @@
     .fin-desc-compact .form-control,
     .fin-desc-compact .form-select,
     .fin-desc-compact button.form-select {
-        min-height: 2.2rem;
-        padding: .32rem .6rem;
+        min-height: 2.65rem;
+        padding: .48rem .75rem;
         font-size: .92rem;
         background-color: #fff;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     }
     .fin-desc-compact .form-control:hover:not(:disabled):not([readonly]),
     .fin-desc-compact .form-select:hover:not(:disabled),
@@ -141,10 +141,10 @@
     .fin-desc-compact .fin-fornecedor-input-group .fin-fornecedor-select-btn,
     .fin-desc-compact .fin-fornecedor-input-group > .fin-fornecedor-add-btn {
         box-sizing: border-box;
-        min-height: 2.2rem;
-        height: 2.2rem;
-        padding-top: .32rem;
-        padding-bottom: .32rem;
+        min-height: 2.65rem;
+        height: 2.65rem;
+        padding-top: .48rem;
+        padding-bottom: .48rem;
         font-size: .92rem;
         line-height: 1.2;
     }
@@ -162,10 +162,10 @@
         --bs-btn-padding-y: .32rem;
         --bs-btn-padding-x: .6rem;
         --bs-btn-line-height: 1.2;
-        /* Mesma borda/neutro dos .form-select deste bloco (#e2e8f0, hover/focus iguais) */
-        border-color: #e2e8f0 !important;
+        /* Mesma borda/neutro dos .form-select deste bloco (#cbd5e1, hover/focus iguais) */
+        border-color: #cbd5e1 !important;
         background-color: #fff !important;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     }
     .fin-desc-compact .fin-fornecedor-input-group > .fin-fornecedor-add-btn:hover:not(:disabled):not(.disabled) {
         border-color: #cbd5e1 !important;
@@ -385,7 +385,7 @@
                 <div class="row g-3 align-items-stretch">
                     <div class="col-12 col-xl-7">
                         <div class="row g-2 align-items-end fin-desc-compact h-100">
-                            <div class="col-12 col-lg-7">
+                            <div class="col-12">
                                 <label class="form-label fw-semibold mb-1">{{ form.fornecedor.label }}</label>
                                 <div class="input-group fin-fornecedor-input-group flex-nowrap">
                                     <div class="dropdown flex-grow-1 min-w-0" data-bs-popper="static">
@@ -427,7 +427,7 @@
                                 </div>
                                 {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors }}</div>{% endif %}
                             </div>
-                            <div class="col-12 col-lg-5">
+                            <div class="col-12 col-lg-4 mt-2 mt-lg-3">
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-1 lh-sm gap-md-3">
                                     <label class="form-label fw-semibold mb-0 flex-shrink-0" for="{{ form.numero_nf.id_for_label }}">{{ form.numero_nf.label }}</label>
                                     <div class="d-inline-flex flex-wrap align-items-center gap-2 gap-sm-3 js-numero-nf-modos" role="radiogroup" aria-label="Modo do número da nota fiscal">
@@ -453,17 +453,17 @@
                                 {{ form.numero_nf }}
                                 {% if form.numero_nf.errors %}<div class="text-danger small">{{ form.numero_nf.errors }}</div>{% endif %}
                             </div>
-                            <div class="col-12 col-lg-5 mt-2 mt-lg-3">
+                            <div class="col-12 col-lg-4 mt-2 mt-lg-3">
                                 <label class="form-label fw-semibold mb-1" for="{{ form.data_emissao.id_for_label }}">{{ form.data_emissao.label }}</label>
                                 {{ form.data_emissao }}
                                 {% if form.data_emissao.errors %}<div class="text-danger small">{{ form.data_emissao.errors }}</div>{% endif %}
                             </div>
-                            <div class="col-12 col-lg-5 mt-2 mt-lg-3">
+                            <div class="col-12 col-lg-4 mt-2 mt-lg-3">
                                 <label class="form-label fw-semibold mb-1" for="{{ form.caixa.id_for_label }}">{{ form.caixa.label }}</label>
                                 {{ form.caixa }}
                                 {% if form.caixa.errors %}<div class="text-danger small">{{ form.caixa.errors }}</div>{% endif %}
                             </div>
-                            <div class="col-12 col-lg-7 mt-2 mt-lg-3">
+                            <div class="col-12 mt-2 mt-lg-3">
                                 <label class="form-label fw-semibold mb-1" for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
                                 {{ form.descricao }}
                                 {% if form.descricao.errors %}<div class="text-danger small">{{ form.descricao.errors }}</div>{% endif %}
