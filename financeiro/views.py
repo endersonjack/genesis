@@ -1458,12 +1458,24 @@ def buscar_pagamentos(request):
 
     query = str(request.GET.get('q', '')).strip()
     fornecedor = str(request.GET.get('fornecedor', '')).strip()
+    categoria_id = _int_param(request, 'categoria')
     valor_raw = str(request.GET.get('valor', '')).strip()
     data_inicio = str(request.GET.get('data_inicio', '')).strip()
     data_fim = str(request.GET.get('data_fim', '')).strip()
     status_vencido_raw = str(request.GET.get('status_vencido', '')).strip()
     status_aberto_raw = str(request.GET.get('status_aberto', '')).strip()
     status_pago_raw = str(request.GET.get('status_pago', '')).strip()
+    origem = str(request.GET.get('origem', '')).strip()
+    tem_filtro_principal = any(
+        [
+            query,
+            fornecedor,
+            valor_raw,
+            data_inicio,
+            data_fim,
+            categoria_id,
+        ]
+    )
     tem_status_expresso = (
         'status_vencido' in request.GET
         or 'status_aberto' in request.GET
@@ -1472,27 +1484,26 @@ def buscar_pagamentos(request):
     status_vencido = (
         status_vencido_raw in ('1', 'on', 'true')
         if tem_status_expresso
-        else True
+        else False
     )
     status_aberto = (
         status_aberto_raw in ('1', 'on', 'true')
         if tem_status_expresso
-        else True
+        else False
     )
     status_pago = (
         status_pago_raw in ('1', 'on', 'true')
         if tem_status_expresso
-        else True
+        else False
     )
+    if origem == 'dashboard' and not tem_filtro_principal:
+        status_vencido = False
+        status_aberto = False
+        status_pago = False
     resultados = []
     erro_valor = ''
-    filtros_ativos = any(
+    filtros_ativos = tem_filtro_principal or any(
         [
-            query,
-            fornecedor,
-            valor_raw,
-            data_inicio,
-            data_fim,
             status_vencido,
             status_aberto,
             status_pago,
@@ -1511,7 +1522,7 @@ def buscar_pagamentos(request):
         nfs_qs = (
             PagamentoNotaFiscal.objects.filter(empresa=empresa)
             .select_related('fornecedor', 'caixa')
-            .prefetch_related('boletos', 'pagamentos')
+            .prefetch_related('boletos', 'pagamentos', 'itens__categoria')
             .annotate(
                 total_itens_calc=Coalesce(
                     Subquery(
@@ -1526,6 +1537,8 @@ def buscar_pagamentos(request):
         )
         if fornecedor:
             nfs_qs = nfs_qs.filter(fornecedor__nome__icontains=fornecedor)
+        if categoria_id:
+            nfs_qs = nfs_qs.filter(itens__categoria_id=categoria_id)
         if data_inicio:
             nfs_qs = nfs_qs.filter(data_emissao__gte=data_inicio)
         if data_fim:
@@ -1596,6 +1609,25 @@ def buscar_pagamentos(request):
                         boletos_relacionados = boletos_por_valor
             resultados.append(
                 {
+                    'kind': 'nf',
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:pagamento_nf_detalhe',
+                        kwargs={'pk': nf.pk},
+                    ),
+                    'entidade': nf.fornecedor.nome,
+                    'documento': nf.numero_nf,
+                    'data': nf.data_emissao,
+                    'categoria_label': ', '.join(
+                        sorted(
+                            {
+                                item.categoria.nome
+                                for item in nf.itens.all()
+                                if item.categoria_id
+                            }
+                        )
+                    )
+                    or '-',
                     'nf': nf,
                     'tipo_pagamento_label': resumo['pagamento_label'],
                     'origens': origens,
@@ -1609,9 +1641,145 @@ def buscar_pagamentos(request):
                         Decimal('0'),
                     ),
                     'total_itens': nf.total_itens_calc,
+                    'valor_total': nf.total_itens_calc,
                     'status_labels': status_labels,
                 }
             )
+
+        pessoal_qs = (
+            PagamentoPessoal.objects.filter(empresa=empresa)
+            .select_related('funcionario', 'caixa')
+            .prefetch_related('itens__categoria')
+            .order_by('-criado_em', '-pk')
+        )
+        if fornecedor:
+            pessoal_qs = pessoal_qs.filter(
+                Q(funcionario__nome__icontains=fornecedor)
+                | Q(descricao__icontains=fornecedor)
+                | (
+                    Q(tipo_destino=PagamentoPessoal.TipoDestino.GERAL)
+                    if 'geral'.startswith(fornecedor.lower()) or fornecedor.lower() in 'geral'
+                    else Q(pk__isnull=True)
+                )
+            )
+        if categoria_id:
+            pessoal_qs = pessoal_qs.filter(itens__categoria_id=categoria_id)
+        if data_inicio:
+            pessoal_qs = pessoal_qs.filter(data_pagamento__gte=data_inicio)
+        if data_fim:
+            pessoal_qs = pessoal_qs.filter(data_pagamento__lte=data_fim)
+        if query:
+            pessoal_qs = pessoal_qs.filter(
+                Q(funcionario__nome__icontains=query)
+                | Q(descricao__icontains=query)
+                | Q(itens__descricao__icontains=query)
+                | Q(itens__categoria__nome__icontains=query)
+            )
+        if valor_raw and not erro_valor:
+            if valor is None:
+                pessoal_qs = PagamentoPessoal.objects.none()
+
+        for pagamento in pessoal_qs.distinct():
+            total = pagamento.total_itens()
+            if valor_raw and not erro_valor and valor is not None and total != valor:
+                continue
+            if not status_pago:
+                continue
+            categorias = sorted(
+                {item.categoria.nome for item in pagamento.itens.all() if item.categoria_id}
+            )
+            entidade = (
+                pagamento.funcionario.nome
+                if pagamento.funcionario_id
+                else 'Geral (Pessoal)'
+            )
+            resultados.append(
+                {
+                    'kind': 'pessoal',
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:pagamento_pessoal_detalhe',
+                        kwargs={'pk': pagamento.pk},
+                    ),
+                    'entidade': entidade,
+                    'documento': pagamento.descricao or 'Pagamento pessoal',
+                    'data': pagamento.data_pagamento,
+                    'categoria_label': ', '.join(categorias) or '-',
+                    'tipo_pagamento_label': 'Pessoal',
+                    'boletos_relacionados': [],
+                    'boletos_vencidos': [],
+                    'total_boletos_relacionados': Decimal('0'),
+                    'total_itens': total,
+                    'valor_total': total,
+                    'status_labels': ['Pago'],
+                }
+            )
+
+        impostos_qs = (
+            PagamentoImposto.objects.filter(empresa=empresa)
+            .select_related('autoridade', 'caixa')
+            .prefetch_related('itens__categoria')
+            .order_by('-criado_em', '-pk')
+        )
+        if fornecedor:
+            impostos_qs = impostos_qs.filter(autoridade__nome__icontains=fornecedor)
+        if categoria_id:
+            impostos_qs = impostos_qs.filter(itens__categoria_id=categoria_id)
+        if data_inicio:
+            impostos_qs = impostos_qs.filter(data_pagamento__gte=data_inicio)
+        if data_fim:
+            impostos_qs = impostos_qs.filter(data_pagamento__lte=data_fim)
+        if query:
+            impostos_qs = impostos_qs.filter(
+                Q(autoridade__nome__icontains=query)
+                | Q(itens__descricao__icontains=query)
+                | Q(itens__categoria__nome__icontains=query)
+            )
+        if valor_raw and not erro_valor:
+            if valor is None:
+                impostos_qs = PagamentoImposto.objects.none()
+
+        for pagamento in impostos_qs.distinct():
+            total = pagamento.total_itens()
+            if valor_raw and not erro_valor and valor is not None and total != valor:
+                continue
+            if not status_pago:
+                continue
+            categorias = sorted(
+                {item.categoria.nome for item in pagamento.itens.all() if item.categoria_id}
+            )
+            resultados.append(
+                {
+                    'kind': 'imposto',
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:pagamento_imposto_detalhe',
+                        kwargs={'pk': pagamento.pk},
+                    ),
+                    'entidade': pagamento.autoridade.nome,
+                    'documento': 'Pagamento de imposto',
+                    'data': pagamento.data_pagamento,
+                    'categoria_label': ', '.join(categorias) or '-',
+                    'tipo_pagamento_label': 'Imposto',
+                    'boletos_relacionados': [],
+                    'boletos_vencidos': [],
+                    'total_boletos_relacionados': Decimal('0'),
+                    'total_itens': total,
+                    'valor_total': total,
+                    'status_labels': ['Pago'],
+                }
+            )
+
+        resultados.sort(key=lambda item: (item.get('data') or hoje, item.get('documento') or ''), reverse=True)
+
+    totais_busca = {
+        'quantidade': len(resultados),
+        'valor_total': sum((item.get('valor_total') or Decimal('0') for item in resultados), Decimal('0')),
+        'valor_parcelas': sum((item.get('total_boletos_relacionados') or Decimal('0') for item in resultados), Decimal('0')),
+        'valor_nf': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'nf'), Decimal('0')),
+        'valor_pessoal': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'pessoal'), Decimal('0')),
+        'valor_impostos': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'imposto'), Decimal('0')),
+    }
 
     return render(
         request,
@@ -1620,6 +1788,7 @@ def buscar_pagamentos(request):
             'page_title': 'Buscar Pagamentos',
             'query': query,
             'fornecedor': fornecedor,
+            'categoria_id': categoria_id,
             'valor': valor_raw,
             'data_inicio': data_inicio,
             'data_fim': data_fim,
@@ -1629,6 +1798,12 @@ def buscar_pagamentos(request):
             'erro_valor': erro_valor,
             'filtros_ativos': filtros_ativos,
             'resultados': resultados,
+            'totais_busca': totais_busca,
+            'categorias_filtro': CategoriaFinanceira.objects.filter(
+                empresa=empresa,
+                ativo=True,
+                tipo=CategoriaFinanceira.Tipo.SAIDA,
+            ).order_by('movimentacao_tipo', 'nome'),
         },
     )
 

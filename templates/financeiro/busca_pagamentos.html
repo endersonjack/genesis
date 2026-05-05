@@ -84,12 +84,39 @@
         font-weight: 800;
         margin-bottom: .25rem;
     }
-    .fin-search-form .form-control {
+    .fin-search-form .form-control,
+    .fin-search-form .form-select {
         border-radius: .8rem;
         min-height: 38px;
         padding-top: .42rem;
         padding-bottom: .42rem;
         font-size: .92rem;
+    }
+    .financeiro-search-grid {
+        display: grid;
+        grid-template-columns:
+            minmax(150px, 1.05fr)
+            minmax(260px, 1.75fr)
+            minmax(170px, 1.2fr)
+            minmax(95px, .7fr)
+            minmax(140px, .85fr)
+            minmax(140px, .85fr)
+            auto;
+        gap: .5rem;
+        align-items: end;
+    }
+    .financeiro-search-actions {
+        display: flex;
+        gap: .45rem;
+        justify-content: flex-end;
+        white-space: nowrap;
+    }
+    .financeiro-search-actions .financeiro-top-btn {
+        width: 42px;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        flex: 0 0 42px;
     }
     .fin-status-filters {
         gap: .5rem;
@@ -154,10 +181,52 @@
         outline: 3px solid rgba(37, 99, 235, 0.35);
         outline-offset: -3px;
     }
+    .financeiro-search-totals {
+        border-top: 1px solid #e5edf5;
+        background: #f8fafc;
+        padding: 1rem 1.25rem;
+    }
+    .financeiro-total-chip {
+        border: 1px solid #dbe4ee;
+        border-radius: 1rem;
+        background: #fff;
+        padding: .75rem .9rem;
+        min-width: 10rem;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+    .financeiro-total-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .financeiro-total-value {
+        font-weight: 800;
+        color: #0f172a;
+    }
     @media (max-width: 767.98px) {
+        .financeiro-search-grid {
+            grid-template-columns: 1fr;
+        }
+        .financeiro-search-actions {
+            justify-content: stretch;
+        }
+        .financeiro-search-actions .financeiro-top-btn {
+            flex: 1 1 0;
+            width: auto;
+        }
         .financeiro-top-actions,
         .financeiro-top-btn {
             width: 100%;
+        }
+    }
+    @media (min-width: 768px) and (max-width: 1199.98px) {
+        .financeiro-search-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .financeiro-search-actions {
+            justify-content: flex-start;
         }
     }
 </style>
@@ -186,7 +255,7 @@
                     </div>
                 </div>
             </div>
-            <p class="text-muted mb-0">Pesquise pagamentos por documento, nota fiscal, valor, período, fornecedor e situação.</p>
+            <p class="text-muted mb-0">Pesquise pagamentos por documento, nota fiscal, valor, período, pessoa/entidade, categoria e situação.</p>
         </div>
     </div>
     <div class="financeiro-top-actions d-flex flex-wrap align-items-center gap-2">
@@ -198,8 +267,8 @@
 
 <div class="fin-card">
     <form method="get" class="fin-search-form" id="buscarLancamentosForm">
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6 col-xl-2">
+        <div class="financeiro-search-grid">
+            <div>
                 <label class="form-label">Nº doc ou NF</label>
                 <input type="text"
                        name="q"
@@ -207,15 +276,26 @@
                        value="{{ query }}"
                        aria-label="Buscar por número do documento ou nota fiscal">
             </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <label class="form-label">Fornecedor</label>
+            <div>
+                <label class="form-label">Pessoa / Entidade</label>
                 <input type="text"
                        name="fornecedor"
                        class="form-control"
                        value="{{ fornecedor }}"
-                       placeholder="Nome do fornecedor">
+                       placeholder="Fornecedor, funcionário, Geral ou autoridade">
             </div>
-            <div class="col-6 col-md-3 col-xl-2">
+            <div>
+                <label class="form-label">Categoria</label>
+                <select name="categoria" class="form-select">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias_filtro %}
+                    <option value="{{ categoria.pk }}" {% if categoria_id == categoria.pk %}selected{% endif %}>
+                        {{ categoria.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
                 <label class="form-label">Valor</label>
                 <input type="text"
                        name="valor"
@@ -225,22 +305,21 @@
                        placeholder="0,00">
                 {% if erro_valor %}<div class="text-danger small mt-1">{{ erro_valor }}</div>{% endif %}
             </div>
-            <div class="col-6 col-md-3 col-xl-2">
+            <div>
                 <label class="form-label">Início</label>
                 <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
             </div>
-            <div class="col-6 col-md-3 col-xl-2">
+            <div>
                 <label class="form-label">Fim</label>
                 <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
             </div>
-            <div class="col-6 col-md-3 col-xl-1">
-                <div class="d-flex gap-2 justify-content-end">
-                    <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary px-3" style="min-height:38px;" aria-label="Buscar">
+            <div>
+                <div class="financeiro-search-actions">
+                    <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary" aria-label="Buscar">
                         <i class="bi bi-search"></i>
                     </button>
                     <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
-                       class="financeiro-top-btn financeiro-top-btn-light px-3"
-                       style="min-height:38px;"
+                       class="financeiro-top-btn financeiro-top-btn-light"
                        aria-label="Limpar filtros"
                        title="Limpar filtros">
                         <i class="bi bi-x-lg"></i>
@@ -265,26 +344,28 @@
                 <tr>
                     <th>#</th>
                     <th>Tipo</th>
-                    <th>Fornecedor</th>
-                    <th class="text-nowrap">NF</th>
+                    <th>Pessoa / Entidade</th>
+                    <th>Categoria</th>
+                    <th class="text-nowrap">Documento</th>
                     <th>Docs</th>
                     <th class="text-nowrap">Nº Parcela</th>
                     <th class="text-end text-nowrap">Valor Parcela</th>
                     <th class="text-nowrap">Vencimento</th>
                     <th>Status</th>
-                    <th class="text-end">Valor NF</th>
+                    <th class="text-end">Valor</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in resultados %}
                 <tr class="financeiro-clickable-row"
-                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=item.nf.pk %}"
+                    data-row-href="{{ item.url }}"
                     tabindex="0"
                     role="link">
                     <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
                     <td class="small text-muted text-nowrap">{{ item.tipo_pagamento_label }}</td>
-                    <td class="small fw-semibold">{{ item.nf.fornecedor.nome }}</td>
-                    <td class="small text-muted text-nowrap">{{ item.nf.numero_nf }}</td>
+                    <td class="small fw-semibold">{{ item.entidade }}</td>
+                    <td class="small text-muted">{{ item.categoria_label }}</td>
+                    <td class="small text-muted text-nowrap">{{ item.documento }}</td>
                     <td class="small text-muted" style="max-width: 16rem;">
                         {% if item.boletos_relacionados %}
                             <span class="d-inline-block text-truncate w-100"
@@ -334,7 +415,7 @@
                             {% endfor %}
                         </div>
                     </td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ item.total_itens|moeda_br }}</td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ item.valor_total|moeda_br }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -345,6 +426,34 @@
         Nenhum pagamento encontrado com os filtros informados.
     </div>
     {% endif %}
+    <div class="financeiro-search-totals">
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Resultados</div>
+                <div class="financeiro-total-value">{{ totais_busca.quantidade }}</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Total geral</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_total|moeda_br }}</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Parcelas</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_parcelas|moeda_br }}</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Notas fiscais</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_nf|moeda_br }}</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Pessoal</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_pessoal|moeda_br }}</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Impostos</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_impostos|moeda_br }}</div>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
 document.addEventListener('click', (event) => {
