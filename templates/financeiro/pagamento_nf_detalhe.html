@@ -208,6 +208,34 @@
         font-weight: 800;
         color: #0f172a;
     }
+    .financeiro-registros-list {
+        display: grid;
+        gap: .75rem;
+    }
+    .financeiro-registro-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #f8fafc;
+        padding: .9rem 1rem;
+    }
+    .financeiro-registro-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border: 1px solid #dbe4ee;
+        color: #0f172a;
+        flex: 0 0 auto;
+    }
+    .financeiro-registro-changes {
+        margin: .55rem 0 0;
+        padding-left: 1rem;
+        color: #475569;
+        font-size: .86rem;
+    }
     @media (max-width: 767.98px) {
         .financeiro-info-grid,
         .financeiro-summary-grid {
@@ -576,6 +604,62 @@
     </div>
 </div>
 {% endif %}
+
+<div class="fin-card">
+    <div class="fin-card-header mb-3">
+        <div class="financeiro-card-title">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-clock-history"></i>
+            </span>
+            <div>
+                <div>Registros</div>
+                <div class="small text-muted fw-semibold">Histórico de criação, edições e pagamentos da nota</div>
+            </div>
+        </div>
+    </div>
+    {% if registros %}
+    <div class="financeiro-registros-list">
+        {% for registro in registros %}
+        <div class="financeiro-registro-item">
+            <div class="d-flex gap-3 align-items-start">
+                <span class="financeiro-registro-icon" aria-hidden="true">
+                    {% if registro.acao == 'create' %}
+                        <i class="bi bi-plus-circle text-success"></i>
+                    {% elif registro.acao == 'delete' %}
+                        <i class="bi bi-trash text-danger"></i>
+                    {% else %}
+                        <i class="bi bi-pencil-square text-primary"></i>
+                    {% endif %}
+                </span>
+                <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex flex-wrap justify-content-between gap-2">
+                        <div class="fw-bold">{{ registro.resumo }}</div>
+                        <div class="text-muted small">{{ registro.criado_em|date:"d/m/Y H:i" }}</div>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        {{ registro.acao_label }} por
+                        {% if registro.usuario %}
+                            {{ registro.usuario.nome_completo|default:registro.usuario.username }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    {% if registro.alteracoes %}
+                    <ul class="financeiro-registro-changes">
+                        {% for alteracao in registro.alteracoes %}
+                        <li>{{ alteracao }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted small">Ainda não há registros de auditoria para esta nota.</div>
+    {% endif %}
+</div>
 
 <div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">

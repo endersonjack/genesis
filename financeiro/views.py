@@ -34,6 +34,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from auditoria.models import RegistroAuditoria
+from auditoria.registry import registrar_auditoria
 from core.moeda_fmt import parse_valor_moeda_br
 from core.moeda_fmt import format_decimal_br_moeda
 from core.urlutils import redirect_empresa, reverse_empresa
@@ -391,6 +393,115 @@ def _subquery_total_itens_nf():
         .values('pagamento_nf')
         .annotate(total=Sum('valor_total'))
         .values('total')[:1]
+    )
+
+
+def _decimal_audit(valor) -> str:
+    return format_decimal_br_moeda(valor or Decimal('0'))
+
+
+def _date_audit(valor) -> str:
+    return valor.isoformat() if valor else ''
+
+
+def _snapshot_pagamento_nf(nf: PagamentoNotaFiscal) -> dict:
+    nf = (
+        PagamentoNotaFiscal.objects.filter(pk=nf.pk)
+        .select_related('fornecedor', 'caixa')
+        .prefetch_related('itens__categoria', 'pagamentos', 'boletos')
+        .first()
+    )
+    if not nf:
+        return {}
+    return {
+        'fornecedor': nf.fornecedor.nome if nf.fornecedor_id else '',
+        'numero_nf': nf.numero_nf,
+        'data_emissao': _date_audit(nf.data_emissao),
+        'caixa': nf.caixa.nome if nf.caixa_id else '',
+        'descricao': nf.descricao or '',
+        'total_itens': _decimal_audit(nf.total_itens()),
+        'itens': [
+            {
+                'descricao': item.descricao,
+                'categoria': item.categoria.nome if item.categoria_id else '',
+                'quantidade': _decimal_audit(item.quantidade),
+                'unidade': item.unidade or '',
+                'valor_total': _decimal_audit(item.valor_total),
+            }
+            for item in nf.itens.all().order_by('pk')
+        ],
+        'pagamentos': [
+            {
+                'tipo': pagamento.get_tipo_display(),
+                'data': _date_audit(pagamento.data),
+                'valor': _decimal_audit(pagamento.valor),
+                'acrescimos': _decimal_audit(pagamento.acrescimos),
+                'descontos': _decimal_audit(pagamento.descontos),
+            }
+            for pagamento in nf.pagamentos.all().order_by('data', 'pk')
+        ],
+        'boletos': [
+            {
+                'numero_doc': boleto.numero_doc,
+                'parcela': boleto.parcela,
+                'vencimento': _date_audit(boleto.vencimento),
+                'status': boleto.get_status_display(),
+                'valor': _decimal_audit(boleto.valor),
+                'valor_pago': _decimal_audit(boleto.valor_pago or Decimal('0')),
+                'data_pagamento': _date_audit(boleto.data_pagamento),
+            }
+            for boleto in nf.boletos.all().order_by('vencimento', 'parcela', 'pk')
+        ],
+    }
+
+
+def _diff_snapshot_nf(antes: dict, depois: dict) -> list[str]:
+    labels = {
+        'fornecedor': 'Fornecedor',
+        'numero_nf': 'Nº NF',
+        'data_emissao': 'Data de emissão',
+        'caixa': 'Caixa',
+        'descricao': 'Descrição',
+        'total_itens': 'Total dos itens',
+    }
+    alteracoes = []
+    for key, label in labels.items():
+        if antes.get(key) != depois.get(key):
+            alteracoes.append(f'{label}: {antes.get(key) or "—"} → {depois.get(key) or "—"}')
+    for key, label in (
+        ('itens', 'Itens'),
+        ('pagamentos', 'Pagamentos'),
+        ('boletos', 'Boletos'),
+    ):
+        if antes.get(key) != depois.get(key):
+            alteracoes.append(f'{label} atualizados')
+    return alteracoes
+
+
+def _audit_nf(
+    request,
+    nf: PagamentoNotaFiscal,
+    *,
+    acao: str,
+    resumo: str,
+    alteracoes: list[str] | None = None,
+    extra: dict | None = None,
+) -> None:
+    detalhes = {
+        'nf_pk': nf.pk,
+        'numero_nf': nf.numero_nf,
+        'fornecedor': nf.fornecedor.nome if nf.fornecedor_id else '',
+        'alteracoes': alteracoes or [],
+    }
+    if extra:
+        detalhes.update(extra)
+    registrar_auditoria(
+        request,
+        acao=acao,
+        modulo='financeiro',
+        resumo=resumo,
+        detalhes=detalhes,
+        empresa=nf.empresa,
     )
 
 
@@ -3300,6 +3411,16 @@ def pagamento_nf_novo(request):
                 _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF registrado.')
+            _audit_nf(
+                request,
+                nf,
+                acao='create',
+                resumo=f'Criou Nota Fiscal {nf.numero_nf}',
+                alteracoes=[
+                    f'Fornecedor: {nf.fornecedor.nome}',
+                    f'Valor total: {_decimal_audit(nf.total_itens())}',
+                ],
+            )
             return redirect_empresa(
                 request,
                 'financeiro:pagamento_nf_detalhe',
@@ -3817,6 +3938,7 @@ def pagamento_nf_editar(request, pk: int):
     force_save = str(request.POST.get('force_save', '')).strip() == '1'
 
     if request.method == 'POST':
+        snapshot_antes = _snapshot_pagamento_nf(nf)
         form_ok = form.is_valid()
         itens_ok = itens_fs.is_valid()
         pagamentos_ok = pagamentos_fs.is_valid()
@@ -3865,6 +3987,15 @@ def pagamento_nf_editar(request, pk: int):
                 _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF atualizado.')
+            snapshot_depois = _snapshot_pagamento_nf(nf)
+            alteracoes = _diff_snapshot_nf(snapshot_antes, snapshot_depois)
+            _audit_nf(
+                request,
+                nf,
+                acao='update',
+                resumo=f'Editou Nota Fiscal {nf.numero_nf}',
+                alteracoes=alteracoes or ['Registro salvo sem alteração detectada'],
+            )
             return redirect_empresa(
                 request,
                 'financeiro:pagamento_nf_detalhe',
@@ -3935,6 +4066,28 @@ def pagamento_nf_detalhe(request, pk: int):
     total_itens = nf.total_itens()
     total_boletos = sum((b.valor for b in boletos), Decimal('0'))
     resumo_pagamento = _resumo_pagamento_nf(pagamentos, boletos, total_itens, hoje)
+    registros = []
+    registros_qs = (
+        RegistroAuditoria.objects.filter(
+            empresa=empresa,
+            modulo='financeiro',
+            detalhes__nf_pk=nf.pk,
+        )
+        .select_related('usuario')
+        .order_by('-criado_em', '-pk')[:30]
+    )
+    for registro in registros_qs:
+        detalhes = registro.detalhes or {}
+        registros.append(
+            {
+                'criado_em': registro.criado_em,
+                'usuario': registro.usuario,
+                'acao': registro.acao,
+                'acao_label': registro.get_acao_display(),
+                'resumo': registro.resumo,
+                'alteracoes': detalhes.get('alteracoes') or [],
+            }
+        )
 
     return render(
         request,
@@ -3949,6 +4102,7 @@ def pagamento_nf_detalhe(request, pk: int):
             'total_itens': total_itens,
             'total_boletos': total_boletos,
             'resumo_pagamento': resumo_pagamento,
+            'registros': registros,
         },
     )
 
@@ -3983,7 +4137,7 @@ def pagamento_nf_fornecedor_info(request):
                     output_field=DecimalField(max_digits=16, decimal_places=2),
                 )
             )
-            .order_by('-data_emissao', '-pk')
+            .order_by('-criado_em', '-pk')
         )
         ultimos_qs = nfs_qs
         if exclude_pk:
@@ -4105,6 +4259,16 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                         ]
                     )
             messages.success(request, f'{len(boletos_selecionados)} boleto(s) pago(s) com sucesso.')
+            _audit_nf(
+                request,
+                nf,
+                acao='update',
+                resumo=f'Registrou pagamento de {len(boletos_selecionados)} boleto(s) da NF {nf.numero_nf}',
+                alteracoes=[
+                    f'Boleto {boleto.numero_doc or boleto.parcela}: pago em {datas_pagamento[boleto.pk].strftime("%d/%m/%Y")}'
+                    for boleto in boletos_selecionados
+                ],
+            )
             if _is_htmx(request):
                 response = HttpResponse(status=200)
                 response['HX-Redirect'] = detalhe_url
@@ -4173,6 +4337,15 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                     ]
                 )
             messages.success(request, f'Pagamento do boleto {boleto.numero_doc} excluído.')
+            _audit_nf(
+                request,
+                nf,
+                acao='update',
+                resumo=f'Excluiu pagamento do boleto {boleto.numero_doc} da NF {nf.numero_nf}',
+                alteracoes=[
+                    f'Boleto {boleto.numero_doc or boleto.parcela}: voltou para não pago',
+                ],
+            )
             if _is_htmx(request):
                 response = HttpResponse(status=200)
                 response['HX-Redirect'] = detalhe_url
@@ -4200,6 +4373,18 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                     ]
                 )
             messages.success(request, f'Boleto {boleto.numero_doc} pago com sucesso.')
+            _audit_nf(
+                request,
+                nf,
+                acao='update',
+                resumo=f'Registrou pagamento do boleto {boleto.numero_doc} da NF {nf.numero_nf}',
+                alteracoes=[
+                    f'Data de pagamento: {boleto.data_pagamento.strftime("%d/%m/%Y") if boleto.data_pagamento else "—"}',
+                    f'Valor pago: {_decimal_audit(boleto.valor_pago or Decimal("0"))}',
+                    f'Acréscimos: {_decimal_audit(boleto.acrescimos)}',
+                    f'Descontos: {_decimal_audit(boleto.descontos)}',
+                ],
+            )
             if _is_htmx(request):
                 response = HttpResponse(status=200)
                 response['HX-Redirect'] = detalhe_url
@@ -4281,7 +4466,19 @@ def pagamento_nf_excluir(request, pk: int):
             },
         )
 
+    fornecedor_nome = nf.fornecedor.nome
+    total_itens = nf.total_itens()
     with transaction.atomic():
+        _audit_nf(
+            request,
+            nf,
+            acao='delete',
+            resumo=f'Excluiu Nota Fiscal {numero_nf}',
+            alteracoes=[
+                f'Fornecedor: {fornecedor_nome}',
+                f'Valor total: {_decimal_audit(total_itens)}',
+            ],
+        )
         nf.boletos.all().delete()
         PagamentoNotaFiscalPagamento.objects.filter(pagamento_nf=nf).delete()
         nf.delete()
