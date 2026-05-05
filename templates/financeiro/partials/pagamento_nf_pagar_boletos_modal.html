@@ -23,11 +23,16 @@
     .financeiro-modal-btn-primary {
         color: #fff;
         border: 1px solid transparent;
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: {{ request.empresa_ativa.cor_tema }};
-        {% else %}
-            background: #2563eb;
-        {% endif %}
+        background: #008000;
+    }
+    .financeiro-modal-btn-primary:disabled,
+    .financeiro-modal-btn-primary.disabled {
+        color: #fff;
+        background: #94a3b8;
+        border-color: #94a3b8;
+        box-shadow: none;
+        cursor: not-allowed;
+        opacity: 1;
     }
     .financeiro-boleto-pay-row {
         border: 1px solid #e2e8f0;
