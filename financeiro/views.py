@@ -23,7 +23,7 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -1411,7 +1411,7 @@ def buscar_pagamentos(request):
                     output_field=DecimalField(max_digits=16, decimal_places=2),
                 )
             )
-            .order_by('-data_emissao', '-pk')
+            .order_by('-criado_em', '-pk')
         )
         if fornecedor:
             nfs_qs = nfs_qs.filter(fornecedor__nome__icontains=fornecedor)
@@ -3865,7 +3865,11 @@ def pagamento_nf_editar(request, pk: int):
                 _salvar_pagamentos_nf(nf, pagamentos_fs, boletos_fs, nf.total_itens())
 
             messages.success(request, 'Pagamento por NF atualizado.')
-            return redirect_empresa(request, 'financeiro:dashboard')
+            return redirect_empresa(
+                request,
+                'financeiro:pagamento_nf_detalhe',
+                kwargs={'pk': nf.pk},
+            )
 
     return render(
         request,
@@ -3947,6 +3951,77 @@ def pagamento_nf_detalhe(request, pk: int):
             'resumo_pagamento': resumo_pagamento,
         },
     )
+
+
+@login_required
+def pagamento_nf_fornecedor_info(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return JsonResponse({'ok': False, 'error': 'Empresa não selecionada.'}, status=400)
+
+    fornecedor_id = _int_param(request, 'fornecedor')
+    numero_nf = (request.GET.get('numero_nf') or '').strip()
+    exclude_pk = _int_param(request, 'exclude')
+
+    ultimos = []
+    duplicate = None
+
+    if fornecedor_id:
+        nfs_qs = (
+            PagamentoNotaFiscal.objects.filter(
+                empresa=empresa,
+                fornecedor_id=fornecedor_id,
+            )
+            .select_related('fornecedor')
+            .annotate(
+                total_itens_info=Coalesce(
+                    Subquery(
+                        _subquery_total_itens_nf(),
+                        output_field=DecimalField(max_digits=16, decimal_places=2),
+                    ),
+                    Value(Decimal('0')),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                )
+            )
+            .order_by('-data_emissao', '-pk')
+        )
+        ultimos_qs = nfs_qs
+        if exclude_pk:
+            ultimos_qs = ultimos_qs.exclude(pk=exclude_pk)
+        for nf in ultimos_qs[:5]:
+            ultimos.append(
+                {
+                    'pk': nf.pk,
+                    'data': nf.data_emissao.strftime('%d/%m/%Y') if nf.data_emissao else '-',
+                    'numero_nf': nf.numero_nf or '-',
+                    'valor': format_decimal_br_moeda(nf.total_itens_info or Decimal('0')),
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:pagamento_nf_detalhe',
+                        kwargs={'pk': nf.pk},
+                    ),
+                }
+            )
+
+        if numero_nf and nf_numero_exige_unicidade_para_fornecedor(numero_nf):
+            dup_qs = nfs_qs.filter(numero_nf=numero_nf)
+            if exclude_pk:
+                dup_qs = dup_qs.exclude(pk=exclude_pk)
+            dup_nf = dup_qs.first()
+            if dup_nf:
+                duplicate = {
+                    'pk': dup_nf.pk,
+                    'fornecedor': dup_nf.fornecedor.nome,
+                    'numero_nf': dup_nf.numero_nf,
+                    'data': dup_nf.data_emissao.strftime('%d/%m/%Y') if dup_nf.data_emissao else '-',
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:pagamento_nf_detalhe',
+                        kwargs={'pk': dup_nf.pk},
+                    ),
+                }
+
+    return JsonResponse({'ok': True, 'ultimos': ultimos, 'duplicate': duplicate})
 
 
 @login_required

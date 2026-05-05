@@ -105,6 +105,11 @@ urlpatterns = [
         name='pagamento_nf_detalhe',
     ),
     path(
+        'pagamentos/nf/fornecedor-info/',
+        empresa_scoped(views.pagamento_nf_fornecedor_info),
+        name='pagamento_nf_fornecedor_info',
+    ),
+    path(
         'pagamentos/nf/<int:pk>/editar/',
         empresa_scoped(views.pagamento_nf_editar),
         name='pagamento_nf_editar',
