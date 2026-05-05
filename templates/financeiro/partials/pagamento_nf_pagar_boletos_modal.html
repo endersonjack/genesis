@@ -34,6 +34,28 @@
         border-radius: 1rem;
         background: #fff;
         box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+        transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .financeiro-boleto-pay-row.is-selected {
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        background: #f0fdf4;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+    }
+    .financeiro-boleto-pay-check {
+        width: 1.15rem;
+        height: 1.15rem;
+        border-width: 2px;
+        cursor: pointer;
+    }
+    .financeiro-boleto-pay-check:checked {
+        background-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        box-shadow: 0 0 0 .22rem rgba(34, 197, 94, 0.18);
+    }
+    .financeiro-boleto-pay-check:focus {
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        box-shadow: 0 0 0 .22rem rgba(34, 197, 94, 0.22);
     }
 </style>
 
@@ -68,12 +90,12 @@
 
         <div class="d-grid gap-2">
             {% for boleto in boletos %}
-            <div class="financeiro-boleto-pay-row p-3">
+            <div class="financeiro-boleto-pay-row p-3{% if boleto.is_selected %} is-selected{% endif %}">
                 <div class="row g-3 align-items-center">
                     <div class="col-12 col-lg-7">
                         <label class="d-flex gap-3 align-items-start mb-0">
                             <input
-                                class="form-check-input mt-1"
+                                class="form-check-input financeiro-boleto-pay-check mt-1 js-boleto-pay-check"
                                 type="checkbox"
                                 name="boletos"
                                 value="{{ boleto.pk }}"
@@ -121,6 +143,22 @@
     var form = document.getElementById('boleto-pagamentos-multiplos-form');
     var button = document.getElementById('btnConfirmarPagamentosMultiplos');
     if (!form || !button) return;
+
+    function syncBoletoRows() {
+        var hasSelected = false;
+        form.querySelectorAll('.financeiro-boleto-pay-row').forEach(function (row) {
+            var checkbox = row.querySelector('.js-boleto-pay-check');
+            var isSelected = !!checkbox && checkbox.checked;
+            if (isSelected) hasSelected = true;
+            row.classList.toggle('is-selected', isSelected);
+        });
+        button.disabled = !hasSelected;
+    }
+
+    form.querySelectorAll('.js-boleto-pay-check').forEach(function (checkbox) {
+        checkbox.addEventListener('change', syncBoletoRows);
+    });
+    syncBoletoRows();
 
     form.addEventListener('submit', function () {
         button.disabled = true;
