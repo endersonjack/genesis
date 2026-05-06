@@ -652,6 +652,12 @@
                                     {% if pf.descontos.errors %}<div class="text-danger small">{{ pf.descontos.errors }}</div>{% endif %}
                                 </div>
                                 <div>
+                                    <div class="fin-payment-summary-card__label">Pagamento realizado em</div>
+                                    <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="conta_bancaria"></div>
+                                    <div class="d-none js-pagamento-fields">{{ pf.conta_bancaria }}</div>
+                                    {% if pf.conta_bancaria.errors %}<div class="text-danger small">{{ pf.conta_bancaria.errors }}</div>{% endif %}
+                                </div>
+                                <div>
                                     <div class="fin-payment-summary-card__label">Observações</div>
                                     <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="observacao"></div>
                                     <div class="d-none js-pagamento-fields">{{ pf.tipo }}{{ pf.observacao }}</div>
@@ -678,6 +684,7 @@
                                     {{ pagamentos_fs.empty_form.valor }}
                                     {{ pagamentos_fs.empty_form.acrescimos }}
                                     {{ pagamentos_fs.empty_form.descontos }}
+                                    {{ pagamentos_fs.empty_form.conta_bancaria }}
                                     {{ pagamentos_fs.empty_form.observacao }}
                                 </div>
                             <input type="checkbox" class="d-none" name="pagamentos-__prefix__-DELETE" id="id_pagamentos-__prefix__-DELETE">
@@ -705,6 +712,10 @@
                             <div>
                                 <div class="fin-payment-summary-card__label">Descontos</div>
                                 <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="descontos"></div>
+                            </div>
+                            <div>
+                                <div class="fin-payment-summary-card__label">Pagamento realizado em</div>
+                                <div class="fin-payment-summary-card__value js-pagamento-summary" data-field="conta_bancaria"></div>
                             </div>
                             <div>
                                 <div class="fin-payment-summary-card__label">Observações</div>
@@ -934,6 +945,15 @@
                             <label class="form-label fw-semibold" for="pagamentoModalDescontos">Descontos (R$)</label>
                             <input type="text" class="form-control rounded-3 text-end" id="pagamentoModalDescontos" data-mask="br-moeda" inputmode="decimal" placeholder="0,00">
                         </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold" for="pagamentoModalConta">Pagamento realizado em</label>
+                            <select class="form-select rounded-3" id="pagamentoModalConta">
+                                <option value="">DINHEIRO</option>
+                                {% for conta in contas_bancarias_pagamento %}
+                                <option value="{{ conta.pk }}">{{ conta.nome }} — {{ conta.banco }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         <div class="col-12 col-md-8">
                             <label class="form-label fw-semibold" for="pagamentoModalObs">Observação</label>
                             <input type="text" class="form-control rounded-3" id="pagamentoModalObs" placeholder="Observação deste pagamento">
@@ -1126,6 +1146,7 @@
         const pagamentoModalValor = document.getElementById('pagamentoModalValor');
         const pagamentoModalAcrescimos = document.getElementById('pagamentoModalAcrescimos');
         const pagamentoModalDescontos = document.getElementById('pagamentoModalDescontos');
+        const pagamentoModalConta = document.getElementById('pagamentoModalConta');
         const pagamentoModalObs = document.getElementById('pagamentoModalObs');
         const pagamentoTypeOptions = Array.from(document.querySelectorAll('.js-payment-type-option'));
         const pagamentoCreditFields = Array.from(document.querySelectorAll('.js-payment-credit-field'));
@@ -1446,6 +1467,8 @@
                 valor: getPagamentoField(row, 'valor')?.value || '0,00',
                 acrescimos: getPagamentoField(row, 'acrescimos')?.value || '0,00',
                 descontos: getPagamentoField(row, 'descontos')?.value || '0,00',
+                conta_bancaria: getPagamentoField(row, 'conta_bancaria')?.value || '',
+                conta_bancaria_label: getPagamentoField(row, 'conta_bancaria')?.selectedOptions?.[0]?.textContent?.trim() || 'DINHEIRO',
                 observacao: getPagamentoField(row, 'observacao')?.value || '',
             };
         }
@@ -1456,6 +1479,7 @@
             const valorEl = getPagamentoField(row, 'valor');
             const acrescimosEl = getPagamentoField(row, 'acrescimos');
             const descontosEl = getPagamentoField(row, 'descontos');
+            const contaEl = getPagamentoField(row, 'conta_bancaria');
             const observacaoEl = getPagamentoField(row, 'observacao');
             if (tipoEl && data.tipo) tipoEl.value = data.tipo;
             if (dataEl) dataEl.value = data.data || '';
@@ -1465,6 +1489,7 @@
             }
             if (acrescimosEl) acrescimosEl.value = data.acrescimos || '0,00';
             if (descontosEl) descontosEl.value = data.descontos || '0,00';
+            if (contaEl) contaEl.value = data.conta_bancaria || '';
             if (observacaoEl) observacaoEl.value = data.observacao || '';
         }
 
@@ -1488,6 +1513,7 @@
                 if (field === 'valor') summary.textContent = 'R$ ' + (data.valor || '0,00');
                 if (field === 'acrescimos') summary.textContent = 'R$ ' + (data.acrescimos || '0,00');
                 if (field === 'descontos') summary.textContent = 'R$ ' + (data.descontos || '0,00');
+                if (field === 'conta_bancaria') summary.textContent = data.conta_bancaria_label || 'DINHEIRO';
                 if (field === 'observacao') summary.textContent = data.observacao || '-';
             });
             renderBoletosNoCard(row, data);
@@ -1510,7 +1536,7 @@
                     renderPagamentoRow(row);
                 });
             }
-            row.querySelectorAll('input[name$="-data"], input[name$="-acrescimos"], input[name$="-descontos"], input[name$="-observacao"]').forEach(input => {
+            row.querySelectorAll('input[name$="-data"], input[name$="-acrescimos"], input[name$="-descontos"], input[name$="-observacao"], select[name$="-conta_bancaria"]').forEach(input => {
                 input.addEventListener('input', () => renderPagamentoRow(row));
                 input.addEventListener('change', () => renderPagamentoRow(row));
             });
@@ -1557,6 +1583,7 @@
                     valor: pagamentoData.valor || formatNumberToBrMoney(getPagamentoSugerido() || computeNfTotal()),
                     acrescimos: pagamentoData.acrescimos || '0,00',
                     descontos: pagamentoData.descontos || '0,00',
+                    conta_bancaria: pagamentoData.conta_bancaria || '',
                     observacao: pagamentoData.observacao || '',
                 });
                 renderPagamentoRow(reusableRow);
@@ -1577,6 +1604,7 @@
                 valor: pagamentoData.valor || formatNumberToBrMoney(getPagamentoSugerido() || computeNfTotal()),
                 acrescimos: pagamentoData.acrescimos || '0,00',
                 descontos: pagamentoData.descontos || '0,00',
+                conta_bancaria: pagamentoData.conta_bancaria || '',
                 observacao: pagamentoData.observacao || '',
             });
             if (window.genesisInputMaskScan) {
@@ -1644,6 +1672,9 @@
             }
             if (pagamentoModalDescontos) {
                 pagamentoModalDescontos.value = rowData?.descontos || '0,00';
+            }
+            if (pagamentoModalConta) {
+                pagamentoModalConta.value = rowData?.conta_bancaria || '';
             }
             if (pagamentoModalObs) {
                 pagamentoModalObs.value = rowData?.observacao || '';
@@ -1832,6 +1863,7 @@
                     valor: pagamentoModalTipo === '{{ pagamento_tipo_boletos }}' ? formatNumberToBrMoney(computeNfTotal()) : (pagamentoModalValor ? pagamentoModalValor.value : ''),
                     acrescimos: pagamentoModalAcrescimos && pagamentoModalTipo !== '{{ pagamento_tipo_boletos }}' ? pagamentoModalAcrescimos.value : '0,00',
                     descontos: pagamentoModalDescontos && pagamentoModalTipo !== '{{ pagamento_tipo_boletos }}' ? pagamentoModalDescontos.value : '0,00',
+                    conta_bancaria: pagamentoModalConta ? pagamentoModalConta.value : '',
                     observacao: pagamentoModalTipo === '{{ pagamento_tipo_boletos }}' ? '' : (pagamentoModalObs ? pagamentoModalObs.value : ''),
                 };
                 if (pagamentoModalEditingRow) {

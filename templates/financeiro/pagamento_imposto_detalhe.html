@@ -55,6 +55,13 @@
                     <div class="small text-muted fw-bold text-uppercase">Pagamento</div>
                     <div class="fw-bold">À vista</div>
                     <div class="text-muted small">Pago em {{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
+                    <div class="text-muted small">
+                        {% if pagamento.conta_bancaria_id %}
+                            {{ pagamento.conta_bancaria.nome }} — {{ pagamento.conta_bancaria.banco }}
+                        {% else %}
+                            DINHEIRO
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

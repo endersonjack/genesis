@@ -93,6 +93,16 @@
         </div>
         {% endif %}
 
+        <div class="rounded-4 border bg-light p-3 mb-3">
+            <label class="form-label fw-semibold small mb-1" for="conta_bancaria_multiplos">Pagamento realizado em</label>
+            <select class="form-select rounded-3" id="conta_bancaria_multiplos" name="conta_bancaria">
+                <option value="">DINHEIRO</option>
+                {% for conta in contas_bancarias_pagamento %}
+                <option value="{{ conta.pk }}">{{ conta.nome }} — {{ conta.banco }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <div class="d-grid gap-2">
             {% for boleto in boletos %}
             <div class="financeiro-boleto-pay-row p-3{% if boleto.is_selected %} is-selected{% endif %}">

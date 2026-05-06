@@ -155,6 +155,18 @@ urlpatterns = [
         name='recebimento_editar',
     ),
     path('categorias/', empresa_scoped(views.categoria_lista), name='categoria_lista'),
+    path('contas-bancarias/', empresa_scoped(views.conta_bancaria_lista), name='conta_bancaria_lista'),
+    path('contas-bancarias/nova/', empresa_scoped(views.conta_bancaria_novo), name='conta_bancaria_novo'),
+    path(
+        'contas-bancarias/<int:pk>/editar/',
+        empresa_scoped(views.conta_bancaria_editar),
+        name='conta_bancaria_editar',
+    ),
+    path(
+        'contas-bancarias/<int:pk>/excluir/',
+        empresa_scoped(views.conta_bancaria_excluir),
+        name='conta_bancaria_excluir',
+    ),
     path('categorias/novo/', empresa_scoped(views.categoria_novo), name='categoria_novo'),
     path(
         'categorias/<int:pk>/editar/',

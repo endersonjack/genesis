@@ -220,6 +220,64 @@ class MovimentoCaixa(TimeStampedModel):
                 )
 
 
+class ContaBancaria(TimeStampedModel):
+    class TipoConta(models.TextChoices):
+        CORRENTE = 'corrente', 'Conta Corrente'
+        POUPANCA = 'poupanca', 'Conta Poupança'
+        SALARIO = 'salario', 'Conta Salário'
+        PAGAMENTO = 'pagamento', 'Conta Pagamento'
+        OUTRA = 'outra', 'Outra'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='contas_bancarias',
+    )
+    nome = models.CharField(
+        max_length=160,
+        help_text='Apelido para identificar a conta, ex.: Banco do Brasil principal.',
+    )
+    banco = models.CharField(max_length=120)
+    agencia = models.CharField(max_length=30, blank=True)
+    conta = models.CharField(max_length=40)
+    tipo_conta = models.CharField(
+        max_length=20,
+        choices=TipoConta.choices,
+        default=TipoConta.CORRENTE,
+    )
+    titular = models.CharField(max_length=180, blank=True)
+    documento = models.CharField('CPF/CNPJ do titular', max_length=18, blank=True)
+    pix = models.CharField('Chave Pix', max_length=180, blank=True)
+    observacao = models.TextField('Observação', blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Conta bancária'
+        verbose_name_plural = 'Contas bancárias'
+        ordering = ['-ativo', 'banco', 'nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'banco', 'agencia', 'conta'),
+                name='financeiro_conta_bancaria_unica_por_empresa',
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.nome} — {self.banco}'
+
+    def clean(self) -> None:
+        if self.nome:
+            self.nome = self.nome.strip()
+        if self.banco:
+            self.banco = self.banco.strip()
+        if self.agencia:
+            self.agencia = self.agencia.strip()
+        if self.conta:
+            self.conta = self.conta.strip()
+        if self.nome and self.banco and self.nome.lower() == self.banco.lower():
+            self.nome = self.banco
+
+
 class CategoriaFinanceira(TimeStampedModel):
     class MovimentacaoTipo(models.TextChoices):
         RECEBIMENTO_AVULSO = 'rec_avulso', 'Recebimento'
@@ -349,6 +407,15 @@ class RecebimentoAvulso(TimeStampedModel):
         blank=True,
         db_index=True,
     )
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='recebimentos_avulsos',
+        verbose_name='Recebimento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
     valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     impostos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     valor_liquido = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
@@ -375,6 +442,9 @@ class RecebimentoAvulso(TimeStampedModel):
             raise ValidationError({'valor': 'Valor não pode ser negativo.'})
         if self.valor is not None and self.impostos is not None and self.impostos >= self.valor:
             raise ValidationError({'impostos': 'Impostos devem ser menores que o valor bruto.'})
+        if self.conta_bancaria_id and self.empresa_id:
+            if self.conta_bancaria.empresa_id != self.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
     def calcular_valor_liquido(self) -> Decimal:
         return (self.valor or Decimal('0')) - (self.impostos or Decimal('0'))
@@ -445,6 +515,15 @@ class RecebimentoMedicao(TimeStampedModel):
         blank=True,
         db_index=True,
     )
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='recebimentos_medicao',
+        verbose_name='Recebimento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
     valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     impostos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     valor_liquido = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
@@ -481,6 +560,9 @@ class RecebimentoMedicao(TimeStampedModel):
             raise ValidationError({'valor': 'Valor não pode ser negativo.'})
         if self.valor is not None and self.impostos is not None and self.impostos >= self.valor:
             raise ValidationError({'impostos': 'Impostos devem ser menores que o valor bruto.'})
+        if self.conta_bancaria_id and self.empresa_id:
+            if self.conta_bancaria.empresa_id != self.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
     def calcular_valor_liquido(self) -> Decimal:
         return (self.valor or Decimal('0')) - (self.impostos or Decimal('0'))
@@ -615,6 +697,15 @@ class PagamentoNotaFiscalPagamento(TimeStampedModel):
     valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     acrescimos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     descontos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='pagamentos_nf_diretos',
+        verbose_name='Pagamento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
     observacao = models.TextField(blank=True)
 
     class Meta:
@@ -631,6 +722,9 @@ class PagamentoNotaFiscalPagamento(TimeStampedModel):
             v = getattr(self, fld)
             if v is not None and v < 0:
                 raise ValidationError({fld: 'Valor não pode ser negativo.'})
+        if self.conta_bancaria_id and self.pagamento_nf_id:
+            if self.conta_bancaria.empresa_id != self.pagamento_nf.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
     def total_a_pagar(self) -> Decimal:
         return (self.valor + self.acrescimos - self.descontos).quantize(Decimal('0.01'))
@@ -673,6 +767,15 @@ class BoletoPagamento(TimeStampedModel):
     acrescimos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     descontos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
     valor_pago = models.DecimalField(max_digits=16, decimal_places=2, null=True, blank=True)
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='boletos_pagos',
+        verbose_name='Pagamento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
     observacao = models.TextField(blank=True)
 
     class Meta:
@@ -700,6 +803,9 @@ class BoletoPagamento(TimeStampedModel):
                 raise ValidationError({fld: 'Valor não pode ser negativo.'})
         if self.valor_pago is not None and self.valor_pago < 0:
             raise ValidationError({'valor_pago': 'Valor pago não pode ser negativo.'})
+        if self.conta_bancaria_id and self.pagamento_nf_id:
+            if self.conta_bancaria.empresa_id != self.pagamento_nf.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
 
 class PagamentoPessoal(TimeStampedModel):
@@ -737,6 +843,15 @@ class PagamentoPessoal(TimeStampedModel):
     )
     descricao = models.CharField('Descrição', max_length=500, blank=True)
     data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='pagamentos_pessoal',
+        verbose_name='Pagamento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
 
     class Meta:
         verbose_name = 'Pagamento pessoal'
@@ -763,6 +878,9 @@ class PagamentoPessoal(TimeStampedModel):
                 raise ValidationError(
                     {'funcionario': 'O funcionário deve pertencer à mesma empresa.'}
                 )
+        if self.conta_bancaria_id and self.empresa_id:
+            if self.conta_bancaria.empresa_id != self.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
     def total_itens(self) -> Decimal:
         agg = self.itens.aggregate(total=Sum('valor_total'))
@@ -860,6 +978,15 @@ class PagamentoImposto(TimeStampedModel):
         verbose_name='Caixa',
     )
     data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='pagamentos_impostos',
+        verbose_name='Pagamento realizado em',
+        help_text='Em branco representa DINHEIRO.',
+    )
 
     class Meta:
         verbose_name = 'Pagamento de imposto'
@@ -882,6 +1009,9 @@ class PagamentoImposto(TimeStampedModel):
                 raise ValidationError(
                     {'autoridade': 'A autoridade tributária deve pertencer à mesma empresa.'}
                 )
+        if self.conta_bancaria_id and self.empresa_id:
+            if self.conta_bancaria.empresa_id != self.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
 
     def total_itens(self) -> Decimal:
         agg = self.itens.aggregate(total=Sum('valor_total'))

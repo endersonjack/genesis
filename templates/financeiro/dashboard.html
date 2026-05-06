@@ -319,6 +319,11 @@
                         <i class="bi bi-tags me-2"></i> Categoria
                     </a>
                 </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:conta_bancaria_lista' empresa_id=request.empresa_ativa.pk %}">
+                        <i class="bi bi-bank me-2"></i> Contas Bancárias
+                    </a>
+                </li>
             </ul>
         </div>
     </div>

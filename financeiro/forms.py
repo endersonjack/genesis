@@ -18,6 +18,7 @@ from .models import (
     BoletoPagamento,
     AutoridadeTributaria,
     Caixa,
+    ContaBancaria,
     CategoriaFinanceira,
     PagamentoPessoal,
     PagamentoPessoalItem,
@@ -81,6 +82,82 @@ class FornecedorSearchSelect(forms.Select):
                 )
             )
         return option
+
+
+class ContaBancariaForm(forms.ModelForm):
+    class Meta:
+        model = ContaBancaria
+        fields = (
+            'nome',
+            'banco',
+            'agencia',
+            'conta',
+            'tipo_conta',
+            'titular',
+            'documento',
+            'pix',
+            'observacao',
+            'ativo',
+        )
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'banco': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'agencia': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'conta': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'tipo_conta': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'titular': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'documento': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'pix': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control rounded-3', 'rows': 3}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'nome': 'Nome / apelido',
+            'banco': 'Banco',
+            'agencia': 'Agência',
+            'conta': 'Conta',
+            'tipo_conta': 'Tipo de conta',
+            'titular': 'Titular',
+            'documento': 'CPF/CNPJ do titular',
+            'pix': 'Chave Pix',
+            'observacao': 'Observação',
+            'ativo': 'Ativa',
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        self.fields['nome'].widget.attrs.setdefault('placeholder', 'Ex.: Conta principal')
+        self.fields['banco'].widget.attrs.setdefault('placeholder', 'Ex.: Banco do Brasil')
+        self.fields['agencia'].widget.attrs.setdefault('placeholder', 'Ex.: 0001')
+        self.fields['conta'].widget.attrs.setdefault('placeholder', 'Ex.: 12345-6')
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.empresa:
+            banco = (cleaned.get('banco') or '').strip()
+            agencia = (cleaned.get('agencia') or '').strip()
+            conta = (cleaned.get('conta') or '').strip()
+            qs = ContaBancaria.objects.filter(
+                empresa=self.empresa,
+                banco__iexact=banco,
+                agencia__iexact=agencia,
+                conta__iexact=conta,
+            )
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if banco and conta and qs.exists():
+                self.add_error('conta', 'Esta conta bancária já está cadastrada para a empresa.')
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.empresa:
+            obj.empresa = self.empresa
+        obj.full_clean()
+        if commit:
+            obj.save()
+        return obj
 
 
 class RecebimentoAvulsoForm(forms.Form):
@@ -352,14 +429,27 @@ class RecebimentoLiquidacaoForm(forms.Form):
             },
         ),
     )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Recebimento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=False,
+        empty_label='DINHEIRO',
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
 
-    def __init__(self, *args, recebimento=None, **kwargs):
+    def __init__(self, *args, recebimento=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
         if recebimento and not self.is_bound:
             self.initial['data_pagamento'] = timezone.localdate().isoformat()
             self.initial['valor'] = format_decimal_br_moeda(recebimento.valor)
             self.initial['impostos'] = format_decimal_br_moeda(recebimento.impostos)
             self.initial['valor_liquido'] = format_decimal_br_moeda(recebimento.valor_liquido)
+            self.initial['conta_bancaria'] = recebimento.conta_bancaria_id
 
     def clean_valor(self):
         return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor'))
@@ -998,16 +1088,19 @@ class PagamentoNotaFiscalPagamentoForm(forms.ModelForm):
 
     class Meta:
         model = PagamentoNotaFiscalPagamento
-        fields = ('tipo', 'data', 'valor', 'acrescimos', 'descontos', 'observacao')
+        fields = ('tipo', 'data', 'valor', 'acrescimos', 'descontos', 'conta_bancaria', 'observacao')
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control rounded-3'}),
+            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'observacao': forms.TextInput(
                 attrs={'class': 'form-control rounded-3', 'placeholder': 'Observação'}
             ),
         }
+        labels = {'conta_bancaria': 'Pagamento realizado em'}
 
     def __init__(self, *args, **kwargs):
+        self.empresa = kwargs.pop('empresa', None)
         default_data = kwargs.pop('default_data', None)
         super().__init__(*args, **kwargs)
         # Pagamento é opcional: pode salvar NF + itens e preencher depois.
@@ -1017,6 +1110,14 @@ class PagamentoNotaFiscalPagamentoForm(forms.ModelForm):
             self.fields['data'].required = False
         if 'observacao' in self.fields:
             self.fields['observacao'].required = False
+        if 'conta_bancaria' in self.fields:
+            self.fields['conta_bancaria'].required = False
+            self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
+            if self.empresa:
+                self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                    empresa=self.empresa,
+                    ativo=True,
+                ).order_by('banco', 'nome')
         for field_name in ('valor', 'acrescimos', 'descontos'):
             self.fields[field_name].required = False
         if default_data and not self.is_bound and not self.initial.get('data'):
@@ -1191,14 +1292,26 @@ class BoletoPagamentoForm(forms.Form):
             }
         ),
     )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Pagamento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=False,
+        empty_label='DINHEIRO',
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
     observacao = forms.CharField(
         label='Observações',
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control rounded-3', 'rows': 3}),
     )
 
-    def __init__(self, *args, boletos=None, selected_boleto=None, **kwargs):
+    def __init__(self, *args, boletos=None, selected_boleto=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
         boletos_qs = boletos or BoletoPagamento.objects.none()
         self.fields['boleto'].queryset = boletos_qs
         boleto_base = selected_boleto or boletos_qs.first()
@@ -1211,6 +1324,7 @@ class BoletoPagamentoForm(forms.Form):
             )
             self.initial.setdefault('acrescimos', format_decimal_br_moeda(boleto_base.acrescimos))
             self.initial.setdefault('descontos', format_decimal_br_moeda(boleto_base.descontos))
+            self.initial.setdefault('conta_bancaria', boleto_base.conta_bancaria_id)
             self.initial.setdefault('observacao', boleto_base.observacao)
 
     def clean_acrescimos(self):
@@ -1239,7 +1353,7 @@ class BoletoPagamentoForm(forms.Form):
 class PagamentoPessoalForm(forms.ModelForm):
     class Meta:
         model = PagamentoPessoal
-        fields = ('tipo_destino', 'funcionario', 'data_emissao', 'caixa')
+        fields = ('tipo_destino', 'funcionario', 'data_emissao', 'caixa', 'conta_bancaria')
         widgets = {
             'tipo_destino': forms.RadioSelect(attrs={'class': 'form-check-input'}),
             'funcionario': forms.Select(attrs={'class': 'form-select rounded-3'}),
@@ -1248,7 +1362,9 @@ class PagamentoPessoalForm(forms.ModelForm):
                 attrs={'type': 'date', 'class': 'form-control rounded-3'},
             ),
             'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
         }
+        labels = {'conta_bancaria': 'Pagamento realizado em'}
 
     def __init__(self, *args, empresa=None, **kwargs):
         self.empresa = empresa
@@ -1265,6 +1381,12 @@ class PagamentoPessoalForm(forms.ModelForm):
                 empresa=empresa,
                 ativo=True,
             ).order_by('tipo', 'nome')
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+        self.fields['conta_bancaria'].required = False
+        self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1387,7 +1509,7 @@ PagamentoPessoalItemFormSet = formset_factory(
 class PagamentoImpostoForm(forms.ModelForm):
     class Meta:
         model = PagamentoImposto
-        fields = ('autoridade', 'data_emissao', 'caixa')
+        fields = ('autoridade', 'data_emissao', 'caixa', 'conta_bancaria')
         widgets = {
             'autoridade': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'data_emissao': forms.DateInput(
@@ -1395,7 +1517,9 @@ class PagamentoImpostoForm(forms.ModelForm):
                 attrs={'type': 'date', 'class': 'form-control rounded-3'},
             ),
             'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
         }
+        labels = {'conta_bancaria': 'Pagamento realizado em'}
 
     def __init__(self, *args, empresa=None, **kwargs):
         self.empresa = empresa
@@ -1410,6 +1534,10 @@ class PagamentoImpostoForm(forms.ModelForm):
                 empresa=empresa,
                 ativo=True,
             ).order_by('tipo', 'nome')
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
             if not self.is_bound and not self.initial.get('caixa'):
                 caixa_geral = Caixa.objects.filter(
                     empresa=empresa,
@@ -1418,6 +1546,8 @@ class PagamentoImpostoForm(forms.ModelForm):
                 ).first()
                 if caixa_geral:
                     self.initial['caixa'] = caixa_geral.pk
+        self.fields['conta_bancaria'].required = False
+        self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
 
     def save(self, commit=True):
         obj = super().save(commit=False)

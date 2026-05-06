@@ -117,6 +117,11 @@
                 </div>
             </div>
             <div class="col-12">
+                <label class="form-label fw-semibold small mb-1" for="{{ form.conta_bancaria.id_for_label }}">{{ form.conta_bancaria.label }}</label>
+                {{ form.conta_bancaria }}
+                {% if form.conta_bancaria.errors %}<div class="text-danger small mt-1">{{ form.conta_bancaria.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
                 <label class="form-label fw-semibold small mb-1" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
                 {{ form.observacao }}
                 {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors }}</div>{% endif %}

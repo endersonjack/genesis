@@ -5,6 +5,7 @@ from core.moeda_fmt import format_decimal_br_moeda
 from .models import (
     AutoridadeTributaria,
     Caixa,
+    ContaBancaria,
     MovimentoCaixa,
     RecebimentoAvulso,
     RecebimentoMedicao,
@@ -41,6 +42,18 @@ class CaixaAdmin(admin.ModelAdmin):
         if not obj.pk:
             return '—'
         return self.saldo_formatado(obj)
+
+    def save_model(self, request, obj, form, change):
+        obj.full_clean()
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ContaBancaria)
+class ContaBancariaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'banco', 'agencia', 'conta', 'tipo_conta', 'empresa', 'ativo')
+    list_filter = ('tipo_conta', 'ativo', 'empresa')
+    search_fields = ('nome', 'banco', 'agencia', 'conta', 'titular', 'documento', 'pix')
+    ordering = ('empresa', '-ativo', 'banco', 'nome')
 
     def save_model(self, request, obj, form, change):
         obj.full_clean()

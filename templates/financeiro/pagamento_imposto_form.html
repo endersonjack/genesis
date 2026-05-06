@@ -35,6 +35,11 @@
                         {{ form.caixa }}
                         {% if form.caixa.errors %}<div class="text-danger small mt-1">{{ form.caixa.errors }}</div>{% endif %}
                     </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold" for="{{ form.conta_bancaria.id_for_label }}">{{ form.conta_bancaria.label }}</label>
+                        {{ form.conta_bancaria }}
+                        {% if form.conta_bancaria.errors %}<div class="text-danger small mt-1">{{ form.conta_bancaria.errors }}</div>{% endif %}
+                    </div>
                 </div>
             </div>
         </div>

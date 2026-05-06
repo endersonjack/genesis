@@ -504,6 +504,7 @@
                             <th class="text-end">Valor</th>
                             <th class="text-end">Acréscimos</th>
                             <th class="text-end">Descontos</th>
+                            <th>Pagamento realizado em</th>
                             <th>Observação</th>
                         </tr>
                     </thead>
@@ -515,6 +516,7 @@
                             <td class="text-end fw-semibold small">R$ {{ p.valor|moeda_br }}</td>
                             <td class="text-end small">R$ {{ p.acrescimos|moeda_br }}</td>
                             <td class="text-end small">R$ {{ p.descontos|moeda_br }}</td>
+                            <td class="small">{% if p.conta_bancaria_id %}{{ p.conta_bancaria.nome }} — {{ p.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}</td>
                             <td class="small">{{ p.observacao|default:"—" }}</td>
                         </tr>
                         {% endfor %}
@@ -541,6 +543,7 @@
                             <th>Situação</th>
                             <th class="text-end">Valor</th>
                             <th class="text-end">Valor pago</th>
+                            <th>Pagamento realizado em</th>
                             <th class="text-end pe-4">Ações</th>
                         </tr>
                     </thead>
@@ -561,6 +564,7 @@
                                     —
                                 {% endif %}
                             </td>
+                            <td class="small">{% if b.valor_pago %}{% if b.conta_bancaria_id %}{{ b.conta_bancaria.nome }} — {{ b.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}{% else %}—{% endif %}</td>
                             <td class="text-end pe-4 small">
                                 {% if b.status == 'pago' %}
                                 <button

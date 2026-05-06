@@ -46,6 +46,7 @@ from .forms import (
     BoletoPagamentoForm,
     CaixaEditForm,
     CaixaNovoForm,
+    ContaBancariaForm,
     CategoriaFinanceiraForm,
     BoletoRascunhoFormSet,
     PagamentoImpostoForm,
@@ -68,6 +69,7 @@ from .models import (
     BoletoPagamento,
     AutoridadeTributaria,
     Caixa,
+    ContaBancaria,
     CategoriaFinanceira,
     MovimentoCaixa,
     PagamentoNotaFiscal,
@@ -260,6 +262,7 @@ def _criar_movimento_recebimento(recebimento, categoria_origem, data_liquidacao=
             'movimento',
             'status',
             'data_pagamento',
+            'conta_bancaria',
             'valor',
             'impostos',
             'valor_liquido',
@@ -562,6 +565,7 @@ def _initial_pagamentos_nf(nf):
             'valor': format_decimal_br_moeda(pagamento.valor),
             'acrescimos': format_decimal_br_moeda(pagamento.acrescimos),
             'descontos': format_decimal_br_moeda(pagamento.descontos),
+            'conta_bancaria': pagamento.conta_bancaria_id or '',
             'observacao': pagamento.observacao,
         }
         for pagamento in nf.pagamentos.all().order_by('data', 'pk')
@@ -3541,12 +3545,14 @@ def recebimento_liquidar(request, tipo: str, pk: int):
     form = RecebimentoLiquidacaoForm(
         request.POST or None,
         recebimento=recebimento,
+        empresa=empresa,
     )
     if request.method == 'POST' and form.is_valid():
         cd = form.cleaned_data
         recebimento.valor = cd['valor']
         recebimento.impostos = cd['impostos']
         recebimento.valor_liquido = cd['valor_liquido']
+        recebimento.conta_bancaria = cd.get('conta_bancaria')
         with transaction.atomic():
             _criar_movimento_recebimento(
                 recebimento,
@@ -3847,6 +3853,114 @@ def categoria_lista(request):
 
 
 @login_required
+def conta_bancaria_lista(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    contas = list(ContaBancaria.objects.filter(empresa=empresa).order_by('-ativo', 'banco', 'nome'))
+    return render(
+        request,
+        'financeiro/conta_bancaria_lista.html',
+        {
+            'page_title': 'Contas Bancárias',
+            'contas': contas,
+            'total_contas': len(contas),
+            'total_ativas': sum(1 for conta in contas if conta.ativo),
+            'total_inativas': sum(1 for conta in contas if not conta.ativo),
+        },
+    )
+
+
+def _conta_bancaria_modal_response(request, template, context):
+    return render(request, template, context)
+
+
+def _conta_bancaria_redirect_response(request):
+    url = reverse_empresa(request, 'financeiro:conta_bancaria_lista')
+    if _is_htmx(request):
+        response = HttpResponse(status=204)
+        response['HX-Redirect'] = url
+        return response
+    return redirect(url)
+
+
+@login_required
+def conta_bancaria_novo(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    form = ContaBancariaForm(request.POST or None, empresa=empresa)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Conta bancária criada.')
+        return _conta_bancaria_redirect_response(request)
+
+    return _conta_bancaria_modal_response(
+        request,
+        'financeiro/partials/conta_bancaria_form_modal.html',
+        {
+            'form': form,
+            'modal_title': 'Nova conta bancária',
+            'modal_subtitle': 'Cadastre uma conta bancária da empresa.',
+            'post_url': reverse_empresa(request, 'financeiro:conta_bancaria_novo'),
+            'submit_label': 'Salvar conta',
+        },
+    )
+
+
+@login_required
+def conta_bancaria_editar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    conta = get_object_or_404(ContaBancaria.objects.filter(empresa=empresa), pk=pk)
+    form = ContaBancariaForm(request.POST or None, instance=conta, empresa=empresa)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Conta bancária atualizada.')
+        return _conta_bancaria_redirect_response(request)
+
+    return _conta_bancaria_modal_response(
+        request,
+        'financeiro/partials/conta_bancaria_form_modal.html',
+        {
+            'form': form,
+            'conta': conta,
+            'modal_title': f'Editar — {conta.nome}',
+            'modal_subtitle': 'Atualize os dados bancários cadastrados.',
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:conta_bancaria_editar',
+                kwargs={'pk': conta.pk},
+            ),
+            'submit_label': 'Salvar alterações',
+        },
+    )
+
+
+@login_required
+def conta_bancaria_excluir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    conta = get_object_or_404(ContaBancaria.objects.filter(empresa=empresa), pk=pk)
+    if request.method == 'POST':
+        conta.delete()
+        messages.success(request, 'Conta bancária excluída.')
+        return _conta_bancaria_redirect_response(request)
+
+    return _conta_bancaria_modal_response(
+        request,
+        'financeiro/partials/conta_bancaria_excluir_modal.html',
+        {'conta': conta},
+    )
+
+
+@login_required
 def categoria_novo(request):
     empresa = _empresa(request)
     if not empresa:
@@ -3949,7 +4063,7 @@ def pagamento_nf_novo(request):
     pagamentos_fs = PagamentoNotaFiscalPagamentoFormSet(
         request.POST or None,
         prefix='pagamentos',
-        form_kwargs={'default_data': timezone.localdate()},
+        form_kwargs={'default_data': timezone.localdate(), 'empresa': empresa},
     )
     boletos_fs = BoletoRascunhoFormSet(request.POST or None, prefix='boletos')
     dup_nf = None
@@ -4046,6 +4160,10 @@ def pagamento_nf_novo(request):
                 boletos_fs,
             ),
             'pagamento_tipo_boletos': PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
+            'contas_bancarias_pagamento': ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome'),
         },
     )
 
@@ -4512,7 +4630,7 @@ def pagamento_nf_editar(request, pk: int):
         request.POST or None,
         prefix='pagamentos',
         initial=_initial_pagamentos_nf(nf),
-        form_kwargs={'default_data': nf.data_emissao},
+        form_kwargs={'default_data': nf.data_emissao, 'empresa': empresa},
     )
     boletos_fs = BoletoRascunhoFormSet(
         request.POST or None,
@@ -4622,6 +4740,10 @@ def pagamento_nf_editar(request, pk: int):
                 boletos_fs,
             ),
             'pagamento_tipo_boletos': PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
+            'contas_bancarias_pagamento': ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome'),
         },
     )
 
@@ -4811,6 +4933,10 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 'nf': nf,
                 'boletos': boletos_abertos,
                 'hoje': timezone.localdate(),
+                'contas_bancarias_pagamento': ContaBancaria.objects.filter(
+                    empresa=empresa,
+                    ativo=True,
+                ).order_by('banco', 'nome'),
             },
         )
 
@@ -4822,6 +4948,19 @@ def pagamento_nf_pagar_boleto(request, pk: int):
             erros.append('Selecione pelo menos um boleto para pagar.')
 
         datas_pagamento = {}
+        conta_bancaria = None
+        try:
+            conta_bancaria_id = int(request.POST.get('conta_bancaria') or '')
+        except (TypeError, ValueError):
+            conta_bancaria_id = None
+        if conta_bancaria_id:
+            conta_bancaria = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+                pk=conta_bancaria_id,
+            ).first()
+            if not conta_bancaria:
+                erros.append('Conta bancária inválida para esta empresa.')
         for boleto in boletos_selecionados:
             data_raw = request.POST.get(f'data_pagamento_{boleto.pk}')
             data_pagamento = parse_date(data_raw or '')
@@ -4837,6 +4976,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                     boleto.acrescimos = Decimal('0')
                     boleto.descontos = Decimal('0')
                     boleto.valor_pago = boleto.valor
+                    boleto.conta_bancaria = conta_bancaria
                     boleto.observacao = ''
                     boleto.status = BoletoPagamento.Status.PAGO
                     boleto.full_clean()
@@ -4846,6 +4986,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                             'acrescimos',
                             'descontos',
                             'valor_pago',
+                            'conta_bancaria',
                             'observacao',
                             'status',
                             'atualizado_em',
@@ -4886,6 +5027,10 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 'boletos': boletos_abertos,
                 'hoje': timezone.localdate(),
                 'erros': erros,
+                'contas_bancarias_pagamento': ContaBancaria.objects.filter(
+                    empresa=empresa,
+                    ativo=True,
+                ).order_by('banco', 'nome'),
             },
         )
 
@@ -4907,7 +5052,12 @@ def pagamento_nf_pagar_boleto(request, pk: int):
 
     if request.method == 'POST':
         action = request.POST.get('action') or 'salvar'
-        form = BoletoPagamentoForm(request.POST, boletos=boletos_qs, selected_boleto=selected_boleto)
+        form = BoletoPagamentoForm(
+            request.POST,
+            boletos=boletos_qs,
+            selected_boleto=selected_boleto,
+            empresa=empresa,
+        )
         if action == 'excluir_pagamento':
             boleto = get_object_or_404(boletos_qs, pk=request.POST.get('boleto'))
             with transaction.atomic():
@@ -4916,6 +5066,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 boleto.acrescimos = Decimal('0')
                 boleto.descontos = Decimal('0')
                 boleto.valor_pago = None
+                boleto.conta_bancaria = None
                 boleto.observacao = ''
                 boleto.full_clean()
                 boleto.save(
@@ -4925,6 +5076,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                         'acrescimos',
                         'descontos',
                         'valor_pago',
+                        'conta_bancaria',
                         'observacao',
                         'atualizado_em',
                     ]
@@ -4951,6 +5103,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 boleto.acrescimos = form.cleaned_data['acrescimos']
                 boleto.descontos = form.cleaned_data['descontos']
                 boleto.valor_pago = form.cleaned_data['valor_pago']
+                boleto.conta_bancaria = form.cleaned_data.get('conta_bancaria')
                 boleto.observacao = form.cleaned_data['observacao']
                 boleto.status = BoletoPagamento.Status.PAGO
                 boleto.full_clean()
@@ -4960,6 +5113,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                         'acrescimos',
                         'descontos',
                         'valor_pago',
+                        'conta_bancaria',
                         'observacao',
                         'status',
                         'atualizado_em',
@@ -4984,7 +5138,11 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 return response
             return redirect(detalhe_url)
     else:
-        form = BoletoPagamentoForm(boletos=boletos_qs, selected_boleto=selected_boleto)
+        form = BoletoPagamentoForm(
+            boletos=boletos_qs,
+            selected_boleto=selected_boleto,
+            empresa=empresa,
+        )
         if not _is_htmx(request):
             return redirect(detalhe_url)
 

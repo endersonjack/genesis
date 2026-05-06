@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .fin-metric {
+        border: 1px solid #dbe4ee;
+        border-radius: 1rem;
+        background: #fff;
+        padding: 1rem;
+        min-width: 10rem;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+    .fin-metric-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-metric-value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .fin-table th {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; }
+    tr.fin-row-inactive td { opacity: .65; }
+</style>
+
+<div class="fin-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+        <p class="text-muted mb-0">Cadastre as contas bancárias usadas pela empresa.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Dashboard</a>
+        <button type="button"
+                class="btn btn-outline-primary rounded-pill"
+                hx-get="{% url 'financeiro:conta_bancaria_novo' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+            <i class="bi bi-plus-lg"></i> Nova conta
+        </button>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-3 mb-3">
+    <div class="fin-metric">
+        <div class="fin-metric-label">Contas</div>
+        <div class="fin-metric-value">{{ total_contas }}</div>
+    </div>
+    <div class="fin-metric">
+        <div class="fin-metric-label">Ativas</div>
+        <div class="fin-metric-value text-success">{{ total_ativas }}</div>
+    </div>
+    <div class="fin-metric">
+        <div class="fin-metric-label">Inativas</div>
+        <div class="fin-metric-value text-muted">{{ total_inativas }}</div>
+    </div>
+</div>
+
+<div class="fin-card p-0 overflow-hidden">
+    <div class="p-3 border-bottom bg-white">
+        <h3 class="h6 fw-bold mb-0">Contas bancárias</h3>
+    </div>
+    {% if contas %}
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Banco</th>
+                    <th>Agência</th>
+                    <th>Conta</th>
+                    <th>Tipo</th>
+                    <th>Titular</th>
+                    <th>Pix</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conta in contas %}
+                <tr class="{% if not conta.ativo %}fin-row-inactive{% endif %}">
+                    <td class="fw-semibold">{{ conta.nome }}</td>
+                    <td>{{ conta.banco }}</td>
+                    <td>{{ conta.agencia|default:"—" }}</td>
+                    <td>{{ conta.conta }}</td>
+                    <td>{{ conta.get_tipo_conta_display }}</td>
+                    <td>
+                        {% if conta.titular %}
+                            <div class="fw-semibold">{{ conta.titular }}</div>
+                            {% if conta.documento %}<div class="small text-muted">{{ conta.documento }}</div>{% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ conta.pix|default:"—" }}</td>
+                    <td>
+                        {% if conta.ativo %}
+                        <span class="badge text-bg-success rounded-pill">Ativa</span>
+                        {% else %}
+                        <span class="badge text-bg-secondary rounded-pill">Inativa</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary rounded-pill"
+                                hx-get="{% url 'financeiro:conta_bancaria_editar' empresa_id=request.empresa_ativa.pk pk=conta.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            Editar
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger rounded-pill"
+                                hx-get="{% url 'financeiro:conta_bancaria_excluir' empresa_id=request.empresa_ativa.pk pk=conta.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            Excluir
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">Nenhuma conta bancária cadastrada.</div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}

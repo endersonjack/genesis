@@ -86,6 +86,11 @@
                 {{ form.valor_liquido }}
                 {% if form.valor_liquido.errors %}<div class="text-danger small mt-1">{{ form.valor_liquido.errors }}</div>{% endif %}
             </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.conta_bancaria.id_for_label }}">{{ form.conta_bancaria.label }}</label>
+                {{ form.conta_bancaria }}
+                {% if form.conta_bancaria.errors %}<div class="text-danger small mt-1">{{ form.conta_bancaria.errors }}</div>{% endif %}
+            </div>
         </div>
 
         <div class="alert alert-info rounded-4 small mt-3 mb-0">

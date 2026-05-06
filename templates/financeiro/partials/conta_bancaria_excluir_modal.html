@@ -1,0 +1,43 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir conta bancária</h5>
+        <div class="text-muted small">{{ conta.nome }} · {{ conta.banco }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form method="post"
+      hx-post="{% url 'financeiro:conta_bancaria_excluir' empresa_id=request.empresa_ativa.pk pk=conta.pk %}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-danger rounded-4 mb-3">
+            <div class="fw-bold">Confirme a exclusão definitiva.</div>
+            <div class="small">Esta ação removerá o cadastro da conta bancária da empresa.</div>
+        </div>
+        <div class="border rounded-4 p-3 small">
+            <div class="row g-2">
+                <div class="col-12 col-md-6">
+                    <span class="text-muted">Conta</span>
+                    <div class="fw-semibold">{{ conta.nome }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Banco</span>
+                    <div class="fw-semibold">{{ conta.banco }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <span class="text-muted">Agência / Conta</span>
+                    <div class="fw-semibold">{{ conta.agencia|default:"—" }} / {{ conta.conta }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer bg-white justify-content-between">
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger rounded-pill fw-semibold">
+            <i class="bi bi-trash me-1"></i> Excluir definitivamente
+        </button>
+    </div>
+</form>
