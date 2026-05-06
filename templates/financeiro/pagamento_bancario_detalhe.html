@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-section-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; font-size: .95rem; }
+    .financeiro-total-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #f8fafc;
+        padding: .85rem 1rem;
+        min-width: 12rem;
+    }
+    .financeiro-total-card strong {
+        display: block;
+        font-size: 1.1rem;
+        line-height: 1.2;
+    }
+</style>
+
+<div class="fin-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-section-icon"><i class="bi bi-credit-card-2-front"></i></span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Pagamento Bancário</div>
+            <h2 class="fw-bold mb-1">{{ recorrencia.descricao }}</h2>
+            <p class="text-muted mb-0">
+                {{ recorrencia.conta_bancaria.nome }} · Dia {{ recorrencia.dia_pagamento }} ·
+                R$ {{ recorrencia.valor_parcela|moeda_br }}
+            </p>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:pagamento_bancario_lista' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'financeiro:pagamento_bancario_editar' empresa_id=request.empresa_ativa.pk pk=recorrencia.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-pencil-square"></i> Editar
+        </a>
+    </div>
+</div>
+
+<div class="fin-card overflow-hidden">
+    <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h3 class="h6 fw-bold mb-0 text-uppercase">Pagamentos</h3>
+            <div class="small text-muted">Todas as parcelas geradas para esta recorrência.</div>
+        </div>
+        {% if recorrencia.qtd_parcelas %}
+            <span class="badge rounded-pill text-bg-secondary">{{ recorrencia.qtd_parcelas }} parcela{{ recorrencia.qtd_parcelas|pluralize }}</span>
+        {% else %}
+            <span class="badge rounded-pill text-bg-secondary">Indefinido</span>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Data</th>
+                    <th class="text-end">Valor</th>
+                    <th>Situação</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for parcela in parcelas %}
+                <tr>
+                    <td>
+                        {% if recorrencia.qtd_parcelas %}
+                            {{ parcela.numero_parcela }}/{{ recorrencia.qtd_parcelas }}
+                        {% else %}
+                            {{ parcela.numero_parcela }}
+                        {% endif %}
+                    </td>
+                    <td class="text-nowrap">{{ parcela.data_vencimento|date:"d/m/Y" }}</td>
+                    <td class="text-end fw-bold text-nowrap">R$ {{ parcela.valor|moeda_br }}</td>
+                    <td>
+                        {% if parcela.status == 'pago' %}
+                            <span class="badge rounded-pill text-bg-success">Pago</span>
+                            <div class="small text-muted">{{ parcela.data_pagamento|date:"d/m/Y" }}</div>
+                        {% elif parcela.status == 'cancelado' %}
+                            <span class="badge rounded-pill text-bg-secondary">Cancelado</span>
+                        {% else %}
+                            <span class="badge rounded-pill text-bg-warning">Em aberto</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                        {% if parcela.status == 'aberto' %}
+                        <div class="d-inline-flex align-items-center justify-content-end gap-1">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary rounded-3 lh-1 p-2"
+                                    title="Alterar valor da parcela"
+                                    aria-label="Alterar valor da parcela"
+                                    hx-get="{% url 'financeiro:pagamento_bancario_parcela_valor' empresa_id=request.empresa_ativa.pk pk=parcela.pk %}?next=detalhe"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                <i class="bi bi-currency-dollar fs-6"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-success rounded-3 lh-1 p-2"
+                                    title="Pagar parcela"
+                                    aria-label="Pagar parcela"
+                                    hx-get="{% url 'financeiro:pagamento_bancario_pagar' empresa_id=request.empresa_ativa.pk pk=parcela.pk %}?next=detalhe"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                <i class="bi bi-check2-circle fs-6"></i>
+                            </button>
+                        </div>
+                        {% elif parcela.status == 'pago' %}
+                        <div class="d-inline-flex align-items-center justify-content-end gap-1">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary rounded-3 lh-1 p-2"
+                                    title="Editar pagamento"
+                                    aria-label="Editar pagamento"
+                                    hx-get="{% url 'financeiro:pagamento_bancario_pagar' empresa_id=request.empresa_ativa.pk pk=parcela.pk %}?next=detalhe"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                <i class="bi bi-pencil-square fs-6"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger rounded-3 lh-1 p-2"
+                                    title="Excluir pagamento"
+                                    aria-label="Excluir pagamento"
+                                    hx-get="{% url 'financeiro:pagamento_bancario_parcela_estornar' empresa_id=request.empresa_ativa.pk pk=parcela.pk %}?next=detalhe"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                <i class="bi bi-trash fs-6"></i>
+                            </button>
+                        </div>
+                        {% else %}
+                            <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma parcela gerada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="p-3 border-top bg-white d-flex flex-wrap justify-content-end gap-2">
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Total Geral</div>
+            <strong>R$ {{ total_geral|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card">
+            <div class="small text-success fw-semibold">Total Pago</div>
+            <strong class="text-success">R$ {{ total_pago|moeda_br }}</strong>
+        </div>
+        <div class="financeiro-total-card">
+            <div class="small text-warning fw-semibold">Total em Aberto</div>
+            <strong class="text-warning">R$ {{ total_aberto|moeda_br }}</strong>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}

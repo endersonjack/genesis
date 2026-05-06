@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-form-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        padding: 1.5rem;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
+        <h2 class="fw-bold mb-1">{{ page_title }}</h2>
+        <div class="text-muted small">Pagamentos recorrentes em contas bancárias cadastradas.</div>
+    </div>
+    <a href="{% url 'financeiro:pagamento_bancario_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+    </a>
+</div>
+
+<div class="fin-form-card">
+    <form method="post" id="pagamento-bancario-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            {% for field in form %}
+            <div class="col-12 {% if field.name == 'descricao' %}col-lg-12{% elif field.name == 'ativo' %}col-lg-12{% else %}col-lg-6{% endif %}">
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    <div class="form-check mt-2">
+                        {{ field }}
+                        <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    </div>
+                {% else %}
+                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                {% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="alert alert-info rounded-4 small mt-3 mb-0">
+            Ao informar dia, data início e quantidade de parcelas, a data fim é calculada automaticamente ao salvar.
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'financeiro:pagamento_bancario_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">Cancelar</a>
+            <button type="submit" class="btn btn-primary rounded-pill fw-semibold" id="btnSalvarPagamentoBancario">
+                <i class="bi bi-check2-circle me-1"></i> Salvar pagamento
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById('pagamento-bancario-form');
+    const salvarBtn = document.getElementById('btnSalvarPagamentoBancario');
+    const diaPagamento = document.getElementById('{{ form.dia_pagamento.id_for_label }}');
+    const dataInicio = document.getElementById('{{ form.data_inicio.id_for_label }}');
+    const qtdParcelas = document.getElementById('{{ form.qtd_parcelas.id_for_label }}');
+    const dataFim = document.getElementById('{{ form.data_fim.id_for_label }}');
+
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function calcularDataFim() {
+        if (!diaPagamento || !dataInicio || !qtdParcelas || !dataFim) return;
+        const qtd = Number.parseInt(qtdParcelas.value || '', 10);
+        const dia = Number.parseInt(diaPagamento.value || '', 10);
+        if (!dataInicio.value || !Number.isFinite(qtd) || qtd <= 0 || !Number.isFinite(dia)) {
+            return;
+        }
+
+        const partes = dataInicio.value.split('-').map(Number);
+        const base = new Date(partes[0], partes[1] - 1, 1);
+        base.setMonth(base.getMonth() + qtd - 1);
+        const ultimoDia = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        dataFim.value = formatDate(new Date(base.getFullYear(), base.getMonth(), Math.min(dia, ultimoDia)));
+    }
+
+    [diaPagamento, dataInicio, qtdParcelas].forEach(function (field) {
+        if (field) {
+            field.addEventListener('change', calcularDataFim);
+            field.addEventListener('input', calcularDataFim);
+        }
+    });
+    if (form && salvarBtn) {
+        form.addEventListener('submit', function () {
+            salvarBtn.disabled = true;
+            salvarBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+        });
+    }
+})();
+</script>
+{% endblock %}

@@ -1,6 +1,7 @@
 """Views do módulo financeiro."""
 from __future__ import annotations
 
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
@@ -14,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import (
+    Count,
     DecimalField,
     ExpressionWrapper,
     F,
@@ -60,6 +62,9 @@ from .forms import (
     PagamentoNotaFiscalItemFormSet,
     PagamentoNotaFiscalPagamentoEditFormSet,
     PagamentoNotaFiscalPagamentoFormSet,
+    PagamentoBancarioPagarForm,
+    PagamentoBancarioParcelaValorForm,
+    PagamentoBancarioRecorrenteForm,
     nf_numero_exige_unicidade_para_fornecedor,
     RecebimentoAvulsoEditForm,
     RecebimentoAvulsoForm,
@@ -79,6 +84,8 @@ from .models import (
     PagamentoNotaFiscalPagamento,
     PagamentoImposto,
     PagamentoImpostoItem,
+    PagamentoBancarioParcela,
+    PagamentoBancarioRecorrente,
     PagamentoPessoal,
     PagamentoPessoalItem,
     RecebimentoAvulso,
@@ -181,6 +188,31 @@ def _int_param(request, nome: str) -> int | None:
     except (TypeError, ValueError):
         return None
     return valor if valor > 0 else None
+
+
+def _somar_meses(data_ref: date, quantidade: int) -> date:
+    mes = data_ref.month - 1 + quantidade
+    ano = data_ref.year + mes // 12
+    mes = mes % 12 + 1
+    dia = min(data_ref.day, calendar.monthrange(ano, mes)[1])
+    return date(ano, mes, dia)
+
+
+def _data_pagamento_bancario(data_inicio: date, dia_pagamento: int, indice_zero: int) -> date:
+    mes_ref = _somar_meses(data_inicio.replace(day=1), indice_zero)
+    dia = min(dia_pagamento, calendar.monthrange(mes_ref.year, mes_ref.month)[1])
+    return date(mes_ref.year, mes_ref.month, dia)
+
+
+def _meses_entre(inicio: date, fim: date) -> int:
+    return (fim.year - inicio.year) * 12 + (fim.month - inicio.month)
+
+
+def _periodo_mensal_atual():
+    hoje = timezone.localdate()
+    inicio = hoje.replace(day=1)
+    fim = date(hoje.year + 1, 1, 1) if hoje.month == 12 else date(hoje.year, hoje.month + 1, 1)
+    return inicio, fim
 
 
 def _formset_tem_erros(formset) -> bool:
@@ -788,6 +820,15 @@ def _saldos_caixas_por_id(empresa) -> dict[int, Decimal]:
         .annotate(total=Coalesce(Sum('valor_total'), zero, output_field=dec))
     )
     _subtrair_por_caixa(saldos, pagamentos_impostos, campo_caixa='pagamento__caixa')
+    pagamentos_bancarios = (
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.PAGO,
+        )
+        .values('recorrencia__caixa')
+        .annotate(total=Coalesce(Sum('valor'), zero, output_field=dec))
+    )
+    _subtrair_por_caixa(saldos, pagamentos_bancarios, campo_caixa='recorrencia__caixa')
     return saldos
 
 
@@ -1095,6 +1136,37 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
             }
         )
 
+    pagamentos_bancarios = (
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__caixa=caixa,
+            status=PagamentoBancarioParcela.Status.PAGO,
+        )
+        .select_related('recorrencia', 'recorrencia__categoria')
+        .order_by('data_pagamento', 'data_vencimento', 'pk')
+    )
+    for parcela in pagamentos_bancarios:
+        recorrencia = parcela.recorrencia
+        data = parcela.data_pagamento or parcela.data_vencimento
+        categoria_ids = {recorrencia.categoria_id} if recorrencia.categoria_id else set()
+        linhas.append(
+            {
+                'data': data,
+                'sort_key': (data, parcela.pk, 80),
+                'natureza': MovimentoCaixa.Natureza.SAIDA,
+                'origem': 'Bancário',
+                'descricao': f'{recorrencia.descricao} - Parcela {parcela.numero_parcela}',
+                'valor': parcela.valor,
+                'entrada': False,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'fornecedor_id': None,
+                'categoria_id': recorrencia.categoria_id,
+                'categoria_ids': categoria_ids,
+                'referencia': f'BAN #{parcela.pk}',
+                'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
+            }
+        )
+
     if inicio and fim:
         linhas = _filtrar_linhas_periodo(linhas, inicio, fim)
     return _recalcular_saldo_linhas(linhas, 'valor')
@@ -1292,6 +1364,39 @@ def _extrato_caixa_detalhado(
                     'financeiro:pagamento_imposto_detalhe',
                     kwargs={'pk': pagamento.pk},
                 ),
+            }
+        )
+
+    parcelas_bancarias = (
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__caixa=caixa,
+            status=PagamentoBancarioParcela.Status.PAGO,
+        )
+        .select_related('recorrencia', 'recorrencia__categoria')
+        .order_by('data_pagamento', 'data_vencimento', 'pk')
+    )
+    for parcela in parcelas_bancarias:
+        recorrencia = parcela.recorrencia
+        data = parcela.data_pagamento or parcela.data_vencimento
+        linhas.append(
+            {
+                'data': data,
+                'sort_key': (data, parcela.pk, 70),
+                'entrada': False,
+                'natureza': 'Saída',
+                'categoria': recorrencia.categoria.nome if recorrencia.categoria_id else '-',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'categoria_id': recorrencia.categoria_id,
+                'categoria_ids': {recorrencia.categoria_id} if recorrencia.categoria_id else set(),
+                'nf': '-',
+                'pessoa': recorrencia.conta_bancaria,
+                'fornecedor_id': None,
+                'descricao': f'{recorrencia.descricao} - Parcela {parcela.numero_parcela}',
+                'valor_bruto': parcela.valor,
+                'descontos': Decimal('0'),
+                'valor_liquido': parcela.valor,
+                'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
             }
         )
 
@@ -4033,6 +4138,507 @@ def movimentar_pagamento(request):
         request,
         'financeiro/movimentar_pagamento.html',
         {'page_title': 'Pagamentos'},
+    )
+
+
+def _periodo_pagamento_bancario_params(request):
+    inicio_mes, fim_mes = _periodo_mensal_atual()
+    inicio_raw = (request.GET.get('data_inicio') or '').strip()
+    fim_raw = (request.GET.get('data_fim') or '').strip()
+    inicio = parse_date(inicio_raw) or inicio_mes
+    fim_inclusive = parse_date(fim_raw) or (fim_mes - timedelta(days=1))
+    if fim_inclusive < inicio:
+        fim_inclusive = inicio
+    return {
+        'data_inicio_raw': inicio.isoformat(),
+        'data_fim_raw': fim_inclusive.isoformat(),
+        'inicio': inicio,
+        'fim_inclusive': fim_inclusive,
+        'fim_exclusive': fim_inclusive + timedelta(days=1),
+    }
+
+
+def _contar_parcelas_previstas_sem_qtd(recorrencia: PagamentoBancarioRecorrente) -> int:
+    """Quantidade prevista quando só há data_fim (sem qtd_parcelas)."""
+    dia = recorrencia.dia_pagamento
+    ini = recorrencia.data_inicio
+    limite = recorrencia.data_fim
+    if not limite:
+        return 0
+    resultado = 0
+    for indice in range(2400):
+        vencimento = _data_pagamento_bancario(ini, dia, indice)
+        if vencimento < ini:
+            continue
+        if vencimento > limite:
+            break
+        resultado += 1
+    return resultado
+
+
+def _parcelas_previstas_count(recorrencia: PagamentoBancarioRecorrente) -> int | None:
+    """Número de parcelas quando o contrato tem término definido (qtd ou data fim)."""
+    if recorrencia.qtd_parcelas:
+        return int(recorrencia.qtd_parcelas)
+    if recorrencia.data_fim:
+        return _contar_parcelas_previstas_sem_qtd(recorrencia)
+    return None
+
+
+def _valor_total_exibicao_recorrencia(
+    recorrencia: PagamentoBancarioRecorrente, soma_todas_parcelas_db: Decimal
+) -> Decimal:
+    parcelas_prev = _parcelas_previstas_count(recorrencia)
+    if parcelas_prev:
+        vp = recorrencia.valor_parcela or Decimal('0')
+        return vp * Decimal(parcelas_prev)
+    base = soma_todas_parcelas_db or Decimal('0')
+    return base
+
+
+def _garantir_parcelas_bancarias(empresa, inicio: date, fim_exclusive: date):
+    recorrencias = (
+        PagamentoBancarioRecorrente.objects.filter(
+            empresa=empresa,
+            ativo=True,
+            data_inicio__lt=fim_exclusive,
+        )
+        .select_related('caixa', 'conta_bancaria', 'categoria')
+        .order_by('data_inicio', 'pk')
+    )
+    for recorrencia in recorrencias:
+        if recorrencia.data_fim and recorrencia.data_fim < inicio:
+            continue
+        inicio_meses = max(
+            0,
+            _meses_entre(recorrencia.data_inicio.replace(day=1), inicio.replace(day=1)),
+        )
+        fim_meses = max(
+            inicio_meses,
+            _meses_entre(recorrencia.data_inicio.replace(day=1), (fim_exclusive - timedelta(days=1)).replace(day=1)),
+        )
+        if recorrencia.qtd_parcelas:
+            fim_meses = min(fim_meses, recorrencia.qtd_parcelas - 1)
+        for indice in range(inicio_meses, fim_meses + 1):
+            vencimento = _data_pagamento_bancario(
+                recorrencia.data_inicio,
+                recorrencia.dia_pagamento,
+                indice,
+            )
+            if vencimento < recorrencia.data_inicio:
+                continue
+            if recorrencia.data_fim and vencimento > recorrencia.data_fim:
+                continue
+            if not (inicio <= vencimento < fim_exclusive):
+                continue
+            PagamentoBancarioParcela.objects.get_or_create(
+                recorrencia=recorrencia,
+                numero_parcela=indice + 1,
+                defaults={
+                    'data_vencimento': vencimento,
+                    'valor': recorrencia.valor_parcela,
+                    'conta_bancaria': recorrencia.conta_bancaria,
+                },
+            )
+
+
+def _gerar_parcelas_iniciais_bancarias(recorrencia):
+    if recorrencia.qtd_parcelas:
+        fim = _data_pagamento_bancario(
+            recorrencia.data_inicio,
+            recorrencia.dia_pagamento,
+            recorrencia.qtd_parcelas - 1,
+        ) + timedelta(days=1)
+    elif recorrencia.data_fim:
+        fim = recorrencia.data_fim + timedelta(days=1)
+    else:
+        fim = _somar_meses(timezone.localdate(), 12)
+    _garantir_parcelas_bancarias(recorrencia.empresa, recorrencia.data_inicio, fim)
+
+
+@login_required
+def pagamento_bancario_lista(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    periodo = _periodo_pagamento_bancario_params(request)
+    filtro_conta_id = _int_param(request, 'conta_bancaria')
+    filtro_categoria_id = _int_param(request, 'categoria')
+    _garantir_parcelas_bancarias(empresa, periodo['inicio'], periodo['fim_exclusive'])
+    parcelas_abertas = (
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.ABERTO,
+            data_vencimento__gte=periodo['inicio'],
+            data_vencimento__lt=periodo['fim_exclusive'],
+        )
+        .select_related('recorrencia', 'recorrencia__caixa', 'recorrencia__conta_bancaria', 'recorrencia__categoria')
+        .order_by('data_vencimento', 'pk')
+    )
+    recorrencias_qs = (
+        PagamentoBancarioRecorrente.objects.filter(empresa=empresa)
+        .select_related('caixa', 'conta_bancaria', 'categoria')
+    )
+    if filtro_conta_id:
+        recorrencias_qs = recorrencias_qs.filter(conta_bancaria_id=filtro_conta_id)
+    if filtro_categoria_id:
+        recorrencias_qs = recorrencias_qs.filter(categoria_id=filtro_categoria_id)
+    decimal_out = DecimalField(max_digits=16, decimal_places=2)
+    recorrencias_qs = recorrencias_qs.annotate(
+        valor_pago_parcelas=Coalesce(
+            Sum(
+                'parcelas__valor',
+                filter=Q(parcelas__status=PagamentoBancarioParcela.Status.PAGO),
+            ),
+            Value(Decimal('0')),
+            output_field=decimal_out,
+        ),
+        soma_valor_parcelas=Coalesce(
+            Sum('parcelas__valor'),
+            Value(Decimal('0')),
+            output_field=decimal_out,
+        ),
+    ).order_by('-ativo', 'descricao')
+
+    recorrencias_lista = list(recorrencias_qs)
+    ids_rec = [r.pk for r in recorrencias_lista]
+    qtd_pagas_por_rec: dict[int, int] = {rid: 0 for rid in ids_rec}
+    if ids_rec:
+        for rid, n in (
+            PagamentoBancarioParcela.objects.filter(
+                recorrencia_id__in=ids_rec,
+                status=PagamentoBancarioParcela.Status.PAGO,
+            )
+            .values('recorrencia_id')
+            .annotate(n=Count('pk'))
+            .values_list('recorrencia_id', 'n')
+        ):
+            qtd_pagas_por_rec[int(rid)] = int(n)
+
+    for indice_linha, rec in enumerate(recorrencias_lista, start=1):
+        setattr(rec, 'linha_indice_recorrencia', indice_linha)
+        setattr(rec, 'qtd_parcelas_pagas', qtd_pagas_por_rec.get(rec.pk, 0))
+        soma_parcelas_db = getattr(rec, 'soma_valor_parcelas', Decimal('0'))
+        setattr(rec, 'valor_total_calculado', _valor_total_exibicao_recorrencia(rec, soma_parcelas_db))
+
+    contas_banco_filtro = ContaBancaria.objects.filter(empresa=empresa, ativo=True).order_by('banco', 'nome')
+    categorias_filtro = CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
+    ).order_by('nome')
+    return render(
+        request,
+        'financeiro/pagamento_bancario_lista.html',
+        {
+            'page_title': 'Pagamentos Bancários',
+            'periodo': periodo,
+            'parcelas_abertas': parcelas_abertas,
+            'recorrencias': recorrencias_lista,
+            'contas_banco_filtro': contas_banco_filtro,
+            'categorias_filtro': categorias_filtro,
+            'filtro_rec_conta_pk': filtro_conta_id,
+            'filtro_rec_categoria_pk': filtro_categoria_id,
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_detalhe(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    recorrencia = get_object_or_404(
+        PagamentoBancarioRecorrente.objects.filter(empresa=empresa)
+        .select_related('caixa', 'conta_bancaria', 'categoria'),
+        pk=pk,
+    )
+    if recorrencia.qtd_parcelas:
+        fim = _data_pagamento_bancario(
+            recorrencia.data_inicio,
+            recorrencia.dia_pagamento,
+            recorrencia.qtd_parcelas - 1,
+        ) + timedelta(days=1)
+    elif recorrencia.data_fim:
+        fim = recorrencia.data_fim + timedelta(days=1)
+    else:
+        fim = _somar_meses(timezone.localdate(), 12)
+    _garantir_parcelas_bancarias(empresa, recorrencia.data_inicio, fim)
+    parcelas = (
+        recorrencia.parcelas.select_related('conta_bancaria')
+        .order_by('data_vencimento', 'numero_parcela', 'pk')
+    )
+    parcelas_lista = list(parcelas)
+    total_geral = sum((parcela.valor for parcela in parcelas_lista), Decimal('0'))
+    total_pago = sum(
+        (
+            parcela.valor
+            for parcela in parcelas_lista
+            if parcela.status == PagamentoBancarioParcela.Status.PAGO
+        ),
+        Decimal('0'),
+    )
+    total_aberto = sum(
+        (
+            parcela.valor
+            for parcela in parcelas_lista
+            if parcela.status == PagamentoBancarioParcela.Status.ABERTO
+        ),
+        Decimal('0'),
+    )
+    return render(
+        request,
+        'financeiro/pagamento_bancario_detalhe.html',
+        {
+            'page_title': recorrencia.descricao,
+            'recorrencia': recorrencia,
+            'parcelas': parcelas_lista,
+            'total_geral': total_geral,
+            'total_pago': total_pago,
+            'total_aberto': total_aberto,
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_novo(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    form = PagamentoBancarioRecorrenteForm(request.POST or None, empresa=empresa)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            recorrencia = form.save()
+            _gerar_parcelas_iniciais_bancarias(recorrencia)
+        messages.success(request, 'Pagamento bancário recorrente cadastrado.')
+        return redirect_empresa(request, 'financeiro:pagamento_bancario_lista')
+    return render(
+        request,
+        'financeiro/pagamento_bancario_form.html',
+        {
+            'page_title': 'Novo pagamento bancário',
+            'form': form,
+            'modo': 'novo',
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_editar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    recorrencia = get_object_or_404(
+        PagamentoBancarioRecorrente.objects.filter(empresa=empresa),
+        pk=pk,
+    )
+    form = PagamentoBancarioRecorrenteForm(
+        request.POST or None,
+        empresa=empresa,
+        instance=recorrencia,
+    )
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            recorrencia = form.save()
+            _gerar_parcelas_iniciais_bancarias(recorrencia)
+        messages.success(request, 'Pagamento bancário atualizado.')
+        return redirect_empresa(request, 'financeiro:pagamento_bancario_lista')
+    return render(
+        request,
+        'financeiro/pagamento_bancario_form.html',
+        {
+            'page_title': 'Editar pagamento bancário',
+            'form': form,
+            'recorrencia': recorrencia,
+            'modo': 'editar',
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_excluir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    recorrencia = get_object_or_404(
+        PagamentoBancarioRecorrente.objects.filter(empresa=empresa),
+        pk=pk,
+    )
+    if request.method == 'POST':
+        if recorrencia.parcelas.filter(status=PagamentoBancarioParcela.Status.PAGO).exists():
+            recorrencia.ativo = False
+            recorrencia.save(update_fields=['ativo', 'atualizado_em'])
+            messages.success(request, 'Pagamento bancário inativado; parcelas pagas foram preservadas.')
+        else:
+            recorrencia.delete()
+            messages.success(request, 'Pagamento bancário excluído.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_excluir_modal.html',
+        {
+            'recorrencia': recorrencia,
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_excluir',
+                kwargs={'pk': recorrencia.pk},
+            ),
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_pagar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    parcela = get_object_or_404(
+        PagamentoBancarioParcela.objects.filter(recorrencia__empresa=empresa)
+        .select_related('recorrencia', 'recorrencia__conta_bancaria'),
+        pk=pk,
+    )
+    form = PagamentoBancarioPagarForm(
+        request.POST or None,
+        empresa=empresa,
+        parcela=parcela,
+    )
+    if request.method == 'POST' and form.is_valid():
+        cd = form.cleaned_data
+        ja_pago = parcela.status == PagamentoBancarioParcela.Status.PAGO
+        parcela.status = PagamentoBancarioParcela.Status.PAGO
+        parcela.data_pagamento = cd['data_pagamento']
+        parcela.valor = cd['valor']
+        parcela.conta_bancaria = cd['conta_bancaria']
+        parcela.observacao = cd.get('observacao') or ''
+        parcela.full_clean()
+        parcela.save()
+        messages.success(
+            request,
+            'Pagamento da parcela atualizado.' if ja_pago else 'Pagamento bancário realizado.',
+        )
+        response = HttpResponse(status=200)
+        next_view = (request.POST.get('next') or request.GET.get('next') or '').strip()
+        if next_view == 'detalhe':
+            redirect_url = reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_detalhe',
+                kwargs={'pk': parcela.recorrencia_id},
+            )
+        else:
+            redirect_url = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        response['HX-Redirect'] = redirect_url
+        return response
+    editando_parcela = parcela.status == PagamentoBancarioParcela.Status.PAGO
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_pagar_modal.html',
+        {
+            'parcela': parcela,
+            'form': form,
+            'editando_parcela': editando_parcela,
+            'next_view': (request.GET.get('next') or '').strip(),
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_pagar',
+                kwargs={'pk': parcela.pk},
+            ),
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_parcela_estornar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    parcela = get_object_or_404(
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.PAGO,
+        ).select_related('recorrencia'),
+        pk=pk,
+    )
+    if request.method == 'POST':
+        with transaction.atomic():
+            parcela.status = PagamentoBancarioParcela.Status.ABERTO
+            parcela.data_pagamento = None
+            parcela.conta_bancaria = None
+            parcela.observacao = ''
+            parcela.valor = parcela.recorrencia.valor_parcela
+            parcela.full_clean()
+            parcela.save()
+        messages.success(request, 'Pagamento da parcela excluído; a parcela voltou para em aberto.')
+        response = HttpResponse(status=200)
+        next_view = (request.POST.get('next') or '').strip()
+        if next_view == 'detalhe':
+            redirect_url = reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_detalhe',
+                kwargs={'pk': parcela.recorrencia_id},
+            )
+        else:
+            redirect_url = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        response['HX-Redirect'] = redirect_url
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_parcela_estornar_modal.html',
+        {
+            'parcela': parcela,
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_parcela_estornar',
+                kwargs={'pk': parcela.pk},
+            ),
+            'next_view': (request.GET.get('next') or '').strip(),
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_parcela_valor(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    parcela = get_object_or_404(
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.ABERTO,
+        ).select_related('recorrencia'),
+        pk=pk,
+    )
+    form = PagamentoBancarioParcelaValorForm(request.POST or None, parcela=parcela)
+    if request.method == 'POST' and form.is_valid():
+        parcela.valor = form.cleaned_data['valor']
+        parcela.full_clean()
+        parcela.save()
+        messages.success(request, 'Valor da parcela atualizado.')
+        response = HttpResponse(status=200)
+        next_view = (request.POST.get('next') or '').strip()
+        if next_view == 'detalhe':
+            redirect_url = reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_detalhe',
+                kwargs={'pk': parcela.recorrencia_id},
+            )
+        else:
+            redirect_url = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        response['HX-Redirect'] = redirect_url
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_parcela_valor_modal.html',
+        {
+            'parcela': parcela,
+            'form': form,
+            'next_view': (request.GET.get('next') or '').strip(),
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_parcela_valor',
+                kwargs={'pk': parcela.pk},
+            ),
+        },
     )
 
 

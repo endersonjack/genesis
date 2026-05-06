@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-section-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td { vertical-align: middle; font-size: .95rem; }
+    .financeiro-filter {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: .5rem;
+        padding: .85rem 1.25rem;
+        border-top: 1px solid #e5edf5;
+    }
+    .financeiro-filter label {
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        font-weight: 800;
+        color: #64748b;
+        margin-bottom: .2rem;
+    }
+    .financeiro-filter .form-control {
+        min-height: 38px;
+        border-radius: .85rem;
+        font-weight: 600;
+    }
+</style>
+
+<div class="fin-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-section-icon"><i class="bi bi-credit-card-2-front"></i></span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <h2 class="fw-bold mb-1">Pagamentos Bancários</h2>
+            <p class="text-muted mb-0">Pagamentos recorrentes realizados diretamente em contas cadastradas.</p>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'financeiro:pagamento_bancario_novo' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-plus-lg"></i> Novo bancário
+        </a>
+    </div>
+</div>
+
+<div class="fin-card mb-3 overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-hourglass-split"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Em aberto</h3>
+                <div class="small text-muted">Parcelas do período selecionado.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ parcelas_abertas|length }} em aberto</span>
+    </div>
+    <form method="get" class="financeiro-filter">
+        <input type="hidden" name="conta_bancaria" value="{{ filtro_rec_conta_pk|default:'' }}">
+        <input type="hidden" name="categoria" value="{{ filtro_rec_categoria_pk|default:'' }}">
+        <div>
+            <label for="data_inicio">Inicial</label>
+            <input type="date" id="data_inicio" name="data_inicio" value="{{ periodo.data_inicio_raw }}" class="form-control">
+        </div>
+        <div>
+            <label for="data_fim">Final</label>
+            <input type="date" id="data_fim" name="data_fim" value="{{ periodo.data_fim_raw }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary rounded-3 fw-semibold">
+            <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th>Nº Parcela</th>
+                    <th>Banco</th>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for parcela in parcelas_abertas %}
+                <tr>
+                    <td class="text-nowrap">{{ parcela.data_vencimento|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if parcela.recorrencia.qtd_parcelas %}
+                            {{ parcela.numero_parcela }}/{{ parcela.recorrencia.qtd_parcelas }}
+                        {% else %}
+                            {{ parcela.numero_parcela }}
+                        {% endif %}
+                    </td>
+                    <td>{{ parcela.recorrencia.conta_bancaria.nome }}</td>
+                    <td class="small text-muted">{{ parcela.recorrencia.categoria.nome }}</td>
+                    <td>{{ parcela.recorrencia.descricao }}</td>
+                    <td class="text-end fw-bold text-nowrap">R$ {{ parcela.valor|moeda_br }}</td>
+                    <td class="text-end text-nowrap">
+                        <button type="button"
+                                class="btn btn-sm btn-success rounded-3 fw-semibold"
+                                hx-get="{% url 'financeiro:pagamento_bancario_pagar' empresa_id=request.empresa_ativa.pk pk=parcela.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-check2-circle me-1"></i> Pagar
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum pagamento bancário em aberto no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="fin-card overflow-hidden">
+    <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+            <h3 class="h6 fw-bold mb-0 text-uppercase">Recorrências</h3>
+            <div class="small text-muted">Cadastros bancários recorrentes. Clique em uma linha para abrir os detalhes.</div>
+        </div>
+    </div>
+    <form method="get" class="financeiro-filter">
+        <input type="hidden" name="data_inicio" value="{{ periodo.data_inicio_raw }}">
+        <input type="hidden" name="data_fim" value="{{ periodo.data_fim_raw }}">
+        <div>
+            <label for="rec_filtro_banco">Banco</label>
+            <select id="rec_filtro_banco" name="conta_bancaria" class="form-select form-select-sm fw-semibold" style="border-radius:.85rem; min-height:38px;">
+                <option value="">Todos os bancos</option>
+                {% for conta in contas_banco_filtro %}
+                    <option value="{{ conta.pk }}" {% if filtro_rec_conta_pk == conta.pk %}selected{% endif %}>{{ conta.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="rec_filtro_categoria">Categoria</label>
+            <select id="rec_filtro_categoria" name="categoria" class="form-select form-select-sm fw-semibold" style="border-radius:.85rem; min-height:38px;">
+                <option value="">Todas</option>
+                {% for cat in categorias_filtro %}
+                    <option value="{{ cat.pk }}" {% if filtro_rec_categoria_pk == cat.pk %}selected{% endif %}>{{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary rounded-3 fw-semibold">
+            <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-nowrap">#</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th class="text-nowrap text-center">Dia pagamento</th>
+                    <th class="text-nowrap">Data início</th>
+                    <th class="text-nowrap text-center">Qtd parcelas</th>
+                    <th class="text-nowrap">Data fim</th>
+                    <th class="text-end text-nowrap">Valor parcela</th>
+                    <th class="text-end text-nowrap">Valor total</th>
+                    <th class="text-end text-nowrap">Valor pago</th>
+                    <th class="text-nowrap">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recorrencia in recorrencias %}
+                <tr data-row-href="{% url 'financeiro:pagamento_bancario_detalhe' empresa_id=request.empresa_ativa.pk pk=recorrencia.pk %}"
+                    tabindex="0"
+                    role="link"
+                    style="cursor:pointer;">
+                    <td class="fw-bold text-muted">{{ recorrencia.linha_indice_recorrencia }}</td>
+                    <td>{{ recorrencia.descricao }}</td>
+                    <td class="small">{{ recorrencia.categoria.nome }}</td>
+                    <td class="text-center">{{ recorrencia.dia_pagamento }}</td>
+                    <td class="text-nowrap">{{ recorrencia.data_inicio|date:"d/m/Y" }}</td>
+                    <td class="text-center text-nowrap">
+                        {% if recorrencia.qtd_parcelas %}
+                            {{ recorrencia.qtd_parcelas }} ({{ recorrencia.qtd_parcelas_pagas }} pagas)
+                        {% else %}
+                            —{% if recorrencia.qtd_parcelas_pagas %} ({{ recorrencia.qtd_parcelas_pagas }} pagas){% endif %}
+                        {% endif %}
+                    </td>
+                    <td class="text-nowrap">{% if recorrencia.data_fim %}{{ recorrencia.data_fim|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ recorrencia.valor_parcela|moeda_br }}</td>
+                    <td class="text-end fw-bold text-nowrap">R$ {{ recorrencia.valor_total_calculado|moeda_br }}</td>
+                    <td class="text-end text-nowrap">R$ {{ recorrencia.valor_pago_parcelas|moeda_br }}</td>
+                    <td>
+                        {% if recorrencia.ativo %}
+                            <span class="badge rounded-pill text-bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge rounded-pill text-bg-secondary">Inativo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="11" class="text-center text-muted py-4">Nenhuma recorrência cadastrada{% if filtro_rec_conta_pk or filtro_rec_categoria_pk %} neste critério{% endif %}.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+<script>
+document.addEventListener('click', function (event) {
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    window.location.href = row.dataset.rowHref;
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    event.preventDefault();
+    window.location.href = row.dataset.rowHref;
+});
+</script>
+{% endblock %}

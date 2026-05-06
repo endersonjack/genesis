@@ -1,6 +1,8 @@
 """Formulários do módulo financeiro."""
 from __future__ import annotations
 
+import calendar
+from datetime import date
 from decimal import Decimal
 
 from django import forms
@@ -24,6 +26,8 @@ from .models import (
     PagamentoPessoalItem,
     PagamentoImposto,
     PagamentoImpostoItem,
+    PagamentoBancarioParcela,
+    PagamentoBancarioRecorrente,
     PagamentoNotaFiscal,
     PagamentoNotaFiscalItem,
     PagamentoNotaFiscalPagamento,
@@ -1657,3 +1661,237 @@ PagamentoImpostoItemFormSet = formset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+def _somar_meses(data_ref: date, quantidade: int) -> date:
+    mes = data_ref.month - 1 + quantidade
+    ano = data_ref.year + mes // 12
+    mes = mes % 12 + 1
+    dia = min(data_ref.day, calendar.monthrange(ano, mes)[1])
+    return date(ano, mes, dia)
+
+
+def data_pagamento_bancario(data_inicio: date, dia_pagamento: int, indice_zero: int) -> date:
+    mes_base = _somar_meses(data_inicio.replace(day=1), indice_zero)
+    dia = min(dia_pagamento, calendar.monthrange(mes_base.year, mes_base.month)[1])
+    return date(mes_base.year, mes_base.month, dia)
+
+
+class PagamentoBancarioRecorrenteForm(forms.ModelForm):
+    valor_parcela = forms.CharField(
+        label='Valor parcela (R$)',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            }
+        ),
+    )
+
+    class Meta:
+        model = PagamentoBancarioRecorrente
+        fields = (
+            'caixa',
+            'conta_bancaria',
+            'categoria',
+            'descricao',
+            'dia_pagamento',
+            'data_inicio',
+            'qtd_parcelas',
+            'data_fim',
+            'valor_parcela',
+            'ativo',
+        )
+        widgets = {
+            'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'categoria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'dia_pagamento': forms.NumberInput(
+                attrs={'class': 'form-control rounded-3', 'min': 1, 'max': 31}
+            ),
+            'data_inicio': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control rounded-3'},
+            ),
+            'qtd_parcelas': forms.NumberInput(
+                attrs={'class': 'form-control rounded-3', 'min': 1, 'placeholder': 'Indefinido'}
+            ),
+            'data_fim': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control rounded-3'},
+            ),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'conta_bancaria': 'Banco',
+            'qtd_parcelas': 'Qtd parcelas',
+            'ativo': 'Ativo',
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            hoje = timezone.localdate()
+            self.initial.setdefault('data_inicio', hoje.isoformat())
+            self.initial.setdefault('dia_pagamento', hoje.day)
+            if self.instance and self.instance.pk:
+                self.initial['valor_parcela'] = format_decimal_br_moeda(
+                    self.instance.valor_parcela
+                )
+        if empresa:
+            self.fields['caixa'].queryset = Caixa.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('tipo', 'nome')
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+            self.fields['categoria'].queryset = CategoriaFinanceira.objects.filter(
+                empresa=empresa,
+                movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
+                ativo=True,
+            ).order_by('nome')
+            if not self.is_bound and not self.initial.get('caixa'):
+                caixa_geral = Caixa.objects.filter(
+                    empresa=empresa,
+                    ativo=True,
+                    tipo=Caixa.Tipo.GERAL,
+                ).first()
+                if caixa_geral:
+                    self.initial['caixa'] = caixa_geral.pk
+
+    def clean_valor_parcela(self):
+        return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor_parcela'))
+
+    def clean(self):
+        cleaned = super().clean()
+        dia_pagamento = cleaned.get('dia_pagamento')
+        data_inicio = cleaned.get('data_inicio')
+        qtd_parcelas = cleaned.get('qtd_parcelas')
+        data_fim = cleaned.get('data_fim')
+
+        if dia_pagamento and not 1 <= dia_pagamento <= 31:
+            self.add_error('dia_pagamento', 'Informe um dia entre 1 e 31.')
+        if qtd_parcelas and data_inicio and not data_fim:
+            cleaned['data_fim'] = data_pagamento_bancario(
+                data_inicio,
+                dia_pagamento or data_inicio.day,
+                qtd_parcelas - 1,
+            )
+        if data_inicio and cleaned.get('data_fim') and cleaned['data_fim'] < data_inicio:
+            self.add_error('data_fim', 'A data fim deve ser igual ou posterior à data início.')
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.valor_parcela = self.cleaned_data['valor_parcela']
+        obj.data_fim = self.cleaned_data.get('data_fim')
+        if self.empresa:
+            obj.empresa = self.empresa
+        if commit:
+            obj.full_clean()
+            obj.save()
+        return obj
+
+
+class PagamentoBancarioPagarForm(forms.Form):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento',
+        initial=timezone.localdate,
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Pagamento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
+    valor = forms.CharField(
+        label='Valor pago (R$)',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            }
+        ),
+    )
+    observacao = forms.CharField(
+        label='Observação',
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control rounded-3', 'rows': 3}),
+    )
+
+    def __init__(self, *args, empresa=None, parcela=None, **kwargs):
+        self.empresa = empresa
+        self.parcela = parcela
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+        if parcela and not self.is_bound:
+            if parcela.status == PagamentoBancarioParcela.Status.PAGO and parcela.data_pagamento:
+                self.initial['data_pagamento'] = parcela.data_pagamento.isoformat()
+            else:
+                self.initial['data_pagamento'] = parcela.data_vencimento.isoformat()
+            self.initial['valor'] = format_decimal_br_moeda(parcela.valor)
+            self.initial['conta_bancaria'] = (
+                parcela.conta_bancaria_id or parcela.recorrencia.conta_bancaria_id
+            )
+            self.initial['observacao'] = parcela.observacao or ''
+
+    def clean_valor(self):
+        valor = parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor'))
+        if valor <= 0:
+            raise forms.ValidationError('Informe um valor maior que zero.')
+        return valor
+
+    def clean_conta_bancaria(self):
+        conta = self.cleaned_data['conta_bancaria']
+        if self.empresa and conta.empresa_id != self.empresa.pk:
+            raise forms.ValidationError('Conta bancária inválida para esta empresa.')
+        return conta
+
+
+class PagamentoBancarioParcelaValorForm(forms.Form):
+    valor = forms.CharField(
+        label='Valor da parcela (R$)',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            }
+        ),
+    )
+
+    def __init__(self, *args, parcela=None, **kwargs):
+        self.parcela = parcela
+        super().__init__(*args, **kwargs)
+        if parcela and not self.is_bound:
+            self.initial['valor'] = format_decimal_br_moeda(parcela.valor)
+
+    def clean_valor(self):
+        valor = parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor'))
+        if valor <= 0:
+            raise forms.ValidationError('Informe um valor maior que zero.')
+        return valor
+

@@ -1,0 +1,25 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir pagamento bancário</h5>
+        <div class="text-muted small">{{ recorrencia.descricao }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<form method="post"
+      hx-post="{{ post_url }}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-warning rounded-4 mb-0">
+            Se já houver parcelas pagas, o cadastro será apenas inativado para preservar o histórico.
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger rounded-3 fw-semibold">
+            <i class="bi bi-trash me-1"></i> Confirmar
+        </button>
+    </div>
+</form>

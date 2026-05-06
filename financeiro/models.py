@@ -1049,3 +1049,138 @@ class PagamentoImpostoItem(TimeStampedModel):
                 raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
         if self.valor_total is not None and self.valor_total <= 0:
             raise ValidationError({'valor_total': 'Informe um valor maior que zero.'})
+
+
+class PagamentoBancarioRecorrente(TimeStampedModel):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='pagamentos_bancarios_recorrentes',
+    )
+    caixa = models.ForeignKey(
+        Caixa,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_recorrentes',
+        verbose_name='Caixa',
+    )
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_recorrentes',
+        verbose_name='Banco',
+    )
+    categoria = models.ForeignKey(
+        CategoriaFinanceira,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_recorrentes',
+        help_text='Categoria de saída (pagamento bancário).',
+    )
+    dia_pagamento = models.PositiveSmallIntegerField('Dia do pagamento')
+    data_inicio = models.DateField('Data início', db_index=True)
+    qtd_parcelas = models.PositiveIntegerField('Qtd parcelas', null=True, blank=True)
+    data_fim = models.DateField('Data fim', null=True, blank=True, db_index=True)
+    valor_parcela = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    descricao = models.CharField(max_length=500)
+    ativo = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Pagamento bancário recorrente'
+        verbose_name_plural = 'Pagamentos bancários recorrentes'
+        ordering = ['-data_inicio', '-pk']
+        indexes = [
+            models.Index(fields=('empresa', 'data_inicio')),
+            models.Index(fields=('empresa', 'ativo')),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.descricao} — dia {self.dia_pagamento}'
+
+    def clean(self) -> None:
+        if self.dia_pagamento is not None and not 1 <= self.dia_pagamento <= 31:
+            raise ValidationError({'dia_pagamento': 'Informe um dia entre 1 e 31.'})
+        if self.valor_parcela is not None and self.valor_parcela <= 0:
+            raise ValidationError({'valor_parcela': 'Informe um valor maior que zero.'})
+        if self.qtd_parcelas is not None and self.qtd_parcelas <= 0:
+            raise ValidationError({'qtd_parcelas': 'Informe uma quantidade maior que zero.'})
+        if self.data_inicio and self.data_fim and self.data_fim < self.data_inicio:
+            raise ValidationError({'data_fim': 'A data fim deve ser igual ou posterior à data início.'})
+        if self.caixa_id and self.empresa_id and self.caixa.empresa_id != self.empresa_id:
+            raise ValidationError({'caixa': 'O caixa deve pertencer à mesma empresa.'})
+        if (
+            self.conta_bancaria_id
+            and self.empresa_id
+            and self.conta_bancaria.empresa_id != self.empresa_id
+        ):
+            raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
+        if self.categoria_id:
+            if self.categoria.movimentacao_tipo != CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO:
+                raise ValidationError({'categoria': 'Selecione uma categoria de pagamento bancário.'})
+            if self.empresa_id and self.categoria.empresa_id != self.empresa_id:
+                raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
+
+
+class PagamentoBancarioParcela(TimeStampedModel):
+    class Status(models.TextChoices):
+        ABERTO = 'aberto', 'Em aberto'
+        PAGO = 'pago', 'Pago'
+        CANCELADO = 'cancelado', 'Cancelado'
+
+    recorrencia = models.ForeignKey(
+        PagamentoBancarioRecorrente,
+        on_delete=models.CASCADE,
+        related_name='parcelas',
+    )
+    numero_parcela = models.PositiveIntegerField('Nº parcela')
+    data_vencimento = models.DateField('Data do pagamento', db_index=True)
+    valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.ABERTO,
+        db_index=True,
+    )
+    data_pagamento = models.DateField('Data de pagamento', null=True, blank=True, db_index=True)
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='pagamentos_bancarios_parcelas',
+        verbose_name='Pagamento realizado em',
+    )
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Parcela de pagamento bancário'
+        verbose_name_plural = 'Parcelas de pagamentos bancários'
+        ordering = ['data_vencimento', 'numero_parcela', 'pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('recorrencia', 'numero_parcela'),
+                name='financeiro_pag_bancario_parcela_unica',
+            )
+        ]
+        indexes = [
+            models.Index(fields=('status', 'data_vencimento')),
+            models.Index(fields=('data_pagamento',)),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.recorrencia} — parcela {self.numero_parcela}'
+
+    @property
+    def caixa(self):
+        return self.recorrencia.caixa
+
+    def clean(self) -> None:
+        if self.numero_parcela <= 0:
+            raise ValidationError({'numero_parcela': 'Informe uma parcela maior que zero.'})
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({'valor': 'Informe um valor maior que zero.'})
+        if self.status == self.Status.PAGO and not self.data_pagamento:
+            raise ValidationError({'data_pagamento': 'Informe a data de pagamento.'})
+        if self.status != self.Status.PAGO:
+            self.data_pagamento = None
+        if self.conta_bancaria_id and self.recorrencia_id:
+            if self.conta_bancaria.empresa_id != self.recorrencia.empresa_id:
+                raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})

@@ -1,0 +1,40 @@
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1 text-danger">Excluir pagamento da parcela</h5>
+        <div class="text-muted small">{{ parcela.recorrencia.descricao }} · Parcela {{ parcela.numero_parcela }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<form method="post"
+      hx-post="{{ post_url }}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading
+      class="js-pagamento-bancario-estornar-form">
+    {% csrf_token %}
+    {% if next_view %}<input type="hidden" name="next" value="{{ next_view }}">{% endif %}
+    <div class="modal-body">
+        <div class="alert alert-warning rounded-4 mb-0">
+            O registro deste pagamento será removido e a parcela voltará para <strong>em aberto</strong>.
+            Saldos e extratos que considerarem esta parcela serão atualizados.
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger rounded-3 fw-semibold js-pagamento-bancario-estornar-submit">
+            <i class="bi bi-trash me-1"></i> Excluir pagamento
+        </button>
+    </div>
+</form>
+<script>
+(function () {
+    const form = document.querySelector('.js-pagamento-bancario-estornar-form');
+    const btn = document.querySelector('.js-pagamento-bancario-estornar-submit');
+    if (form && btn) {
+        form.addEventListener('submit', function () {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Excluindo...';
+        });
+    }
+})();
+</script>

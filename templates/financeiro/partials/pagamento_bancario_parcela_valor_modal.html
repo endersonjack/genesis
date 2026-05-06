@@ -1,0 +1,77 @@
+{% load moeda %}
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-btn-primary {
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Valor da parcela</h5>
+        <div class="text-muted small">{{ parcela.recorrencia.descricao }} · Parcela {{ parcela.numero_parcela }} · Venc. {{ parcela.data_vencimento|date:"d/m/Y" }}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form method="post"
+      hx-post="{{ post_url }}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading
+      class="js-parcela-valor-form">
+    {% csrf_token %}
+    {% if next_view %}<input type="hidden" name="next" value="{{ next_view }}">{% endif %}
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-4">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="mb-2">
+            <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+            {{ form.valor }}
+            {% if form.valor.errors %}<div class="text-danger small mt-1">{{ form.valor.errors }}</div>{% endif %}
+            <div class="form-text small">Valor atual: R$ {{ parcela.valor|moeda_br }}</div>
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between">
+        <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary js-parcela-valor-submit">
+            <i class="bi bi-check2-lg"></i> Salvar
+        </button>
+    </div>
+</form>
+<script>
+(function () {
+    const form = document.querySelector('.js-parcela-valor-form');
+    const btn = document.querySelector('.js-parcela-valor-submit');
+    if (form && btn) {
+        form.addEventListener('submit', function () {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        });
+    }
+})();
+</script>

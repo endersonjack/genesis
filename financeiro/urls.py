@@ -70,6 +70,46 @@ urlpatterns = [
         name='movimentar_pagamento',
     ),
     path(
+        'pagamentos/bancario/',
+        empresa_scoped(views.pagamento_bancario_lista),
+        name='pagamento_bancario_lista',
+    ),
+    path(
+        'pagamentos/bancario/novo/',
+        empresa_scoped(views.pagamento_bancario_novo),
+        name='pagamento_bancario_novo',
+    ),
+    path(
+        'pagamentos/bancario/<int:pk>/',
+        empresa_scoped(views.pagamento_bancario_detalhe),
+        name='pagamento_bancario_detalhe',
+    ),
+    path(
+        'pagamentos/bancario/<int:pk>/editar/',
+        empresa_scoped(views.pagamento_bancario_editar),
+        name='pagamento_bancario_editar',
+    ),
+    path(
+        'pagamentos/bancario/<int:pk>/excluir/',
+        empresa_scoped(views.pagamento_bancario_excluir),
+        name='pagamento_bancario_excluir',
+    ),
+    path(
+        'pagamentos/bancario/parcelas/<int:pk>/pagar/',
+        empresa_scoped(views.pagamento_bancario_pagar),
+        name='pagamento_bancario_pagar',
+    ),
+    path(
+        'pagamentos/bancario/parcelas/<int:pk>/estornar/',
+        empresa_scoped(views.pagamento_bancario_parcela_estornar),
+        name='pagamento_bancario_parcela_estornar',
+    ),
+    path(
+        'pagamentos/bancario/parcelas/<int:pk>/valor/',
+        empresa_scoped(views.pagamento_bancario_parcela_valor),
+        name='pagamento_bancario_parcela_valor',
+    ),
+    path(
         'pagamentos/nf/novo/',
         empresa_scoped(views.pagamento_nf_novo),
         name='pagamento_nf_novo',
