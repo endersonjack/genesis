@@ -105,6 +105,29 @@
         color: #0f172a;
         line-height: 1.15;
     }
+    .financeiro-chart-shell {
+        position: relative;
+        min-height: 360px;
+        padding: 1.25rem;
+    }
+    .financeiro-chart-total {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        padding: .85rem 1rem;
+        min-width: 220px;
+    }
+    .financeiro-chart-filter {
+        min-width: 240px;
+    }
+    .financeiro-chart-filter .form-select {
+        border-color: #dbe4ee;
+        border-radius: 999px;
+        color: #0f172a;
+        font-weight: 700;
+        min-height: 46px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
     .financeiro-board-card {
         border: 1px solid #d9e2ec;
         border-radius: 1.25rem;
@@ -123,6 +146,18 @@
         gap: 1rem;
         flex-wrap: wrap;
     }
+    @media (max-width: 767.98px) {
+        .financeiro-chart-shell {
+            min-height: 300px;
+            padding: 1rem;
+        }
+        .financeiro-chart-total {
+            width: 100%;
+        }
+        .financeiro-chart-filter {
+            width: 100%;
+        }
+    }
 </style>
 
 <div class="fin-card financeiro-report-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -133,43 +168,12 @@
         <div>
             <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
             <h2 class="fw-bold mb-1">Relatórios Financeiros</h2>
-            <p class="text-muted mb-0">Indicadores e estatísticas das finanças da empresa.</p>
+            <p class="text-muted mb-0">Indicadores visuais para acompanhar a evolução financeira.</p>
         </div>
     </div>
     <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
         <i class="bi bi-arrow-left"></i> Voltar
     </a>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="financeiro-metric-card">
-            <div class="financeiro-metric-label">Saldo consolidado</div>
-            <div class="financeiro-metric-value">R$ {{ saldo_consolidado|moeda_br }}</div>
-            <div class="small text-muted mt-2">{{ total_caixas_ativos }} caixa{{ total_caixas_ativos|pluralize }} ativo{{ total_caixas_ativos|pluralize }}</div>
-        </div>
-    </div>
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="financeiro-metric-card financeiro-metric-card--success">
-            <div class="financeiro-metric-label">Recebido líquido</div>
-            <div class="financeiro-metric-value text-success">R$ {{ recebimentos_pagos.liquido|moeda_br }}</div>
-            <div class="small text-muted mt-2">Bruto R$ {{ recebimentos_pagos.valor|moeda_br }} • Impostos R$ {{ recebimentos_pagos.impostos|moeda_br }}</div>
-        </div>
-    </div>
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="financeiro-metric-card financeiro-metric-card--warning">
-            <div class="financeiro-metric-label">Recebimentos em aberto</div>
-            <div class="financeiro-metric-value">R$ {{ recebimentos_abertos.liquido|moeda_br }}</div>
-            <div class="small text-muted mt-2">Bruto R$ {{ recebimentos_abertos.valor|moeda_br }} • Impostos R$ {{ recebimentos_abertos.impostos|moeda_br }}</div>
-        </div>
-    </div>
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="financeiro-metric-card financeiro-metric-card--danger">
-            <div class="financeiro-metric-label">Pagamentos vencidos</div>
-            <div class="financeiro-metric-value text-danger">R$ {{ boletos_vencidos_total|moeda_br }}</div>
-            <div class="small text-muted mt-2">Boletos em aberto com vencimento anterior a hoje.</div>
-        </div>
-    </div>
 </div>
 
 <div class="financeiro-board-card">
@@ -179,34 +183,136 @@
                 <i class="bi bi-bar-chart-line"></i>
             </span>
             <div>
-                <h3 class="h6 fw-bold mb-0 text-uppercase">Estatísticas rápidas</h3>
-                <div class="small text-muted">Base para os próximos relatórios detalhados do Financeiro.</div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Faturamento</h3>
+                <div class="small text-muted">Recebimentos liquidados por mês nos últimos 12 meses.</div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-stretch gap-2 ms-auto">
+            <div class="financeiro-chart-filter">
+                <label for="faturamentoCaixaFiltro" class="financeiro-metric-label">Caixa</label>
+                <select id="faturamentoCaixaFiltro" class="form-select" aria-label="Filtrar faturamento por caixa">
+                    <option value="todos" selected>Todos</option>
+                    {% for caixa in faturamento_chart.caixas %}
+                        <option value="{{ caixa.id }}">{{ caixa.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="financeiro-chart-total">
+                <div class="financeiro-metric-label">Total no período</div>
+                <div class="financeiro-metric-value" id="faturamentoTotalPeriodo">
+                    R$ {{ faturamento_total_periodo|moeda_br }}
+                </div>
             </div>
         </div>
     </div>
-    <div class="p-3">
-        <div class="row g-3">
-            <div class="col-12 col-lg-4">
-                <div class="financeiro-metric-card">
-                    <div class="financeiro-metric-label">Boletos a vencer</div>
-                    <div class="financeiro-metric-value">R$ {{ boletos_a_vencer_total|moeda_br }}</div>
-                </div>
-            </div>
-            <div class="col-12 col-lg-4">
-                <div class="financeiro-metric-card">
-                    <div class="financeiro-metric-label">Notas sem pagamento</div>
-                    <div class="financeiro-metric-value">R$ {{ notas_sem_pagamento_total|moeda_br }}</div>
-                    <div class="small text-muted mt-2">{{ notas_sem_pagamento_qtd }} nota{{ notas_sem_pagamento_qtd|pluralize }}</div>
-                </div>
-            </div>
-            <div class="col-12 col-lg-4">
-                <div class="financeiro-metric-card">
-                    <div class="financeiro-metric-label">Previsão líquida</div>
-                    <div class="financeiro-metric-value">R$ {{ recebimentos_abertos.liquido|moeda_br }}</div>
-                    <div class="small text-muted mt-2">Recebimentos ainda não liquidados.</div>
-                </div>
-            </div>
-        </div>
+    <div class="financeiro-chart-shell">
+        <canvas id="financeiroFaturamentoChart" aria-label="Gráfico de faturamento mensal" role="img"></canvas>
     </div>
 </div>
+
+{{ faturamento_chart|json_script:"faturamento-chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        const chartElement = document.getElementById('financeiroFaturamentoChart');
+        const dataElement = document.getElementById('faturamento-chart-data');
+        const filtroCaixa = document.getElementById('faturamentoCaixaFiltro');
+        const totalPeriodo = document.getElementById('faturamentoTotalPeriodo');
+
+        if (!chartElement || !dataElement || typeof Chart === 'undefined') {
+            return;
+        }
+
+        const chartData = JSON.parse(dataElement.textContent);
+        const themeColor = '{% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %}';
+        const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+        });
+        const serieInicial = chartData.series.todos || {
+            label: 'Todos',
+            values: [],
+            total: 0,
+        };
+
+        const chart = new Chart(chartElement, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: serieInicial.label,
+                    data: serieInicial.values,
+                    backgroundColor: themeColor,
+                    borderColor: themeColor,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    borderSkipped: false,
+                    maxBarThickness: 48,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return 'Faturamento: ' + currencyFormatter.format(context.parsed.y || 0);
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            font: {
+                                weight: 700,
+                            },
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#e2e8f0',
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            callback: function (value) {
+                                return currencyFormatter.format(value);
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        function atualizarFaturamento(caixaId) {
+            const serie = chartData.series[caixaId] || serieInicial;
+            chart.data.datasets[0].label = serie.label;
+            chart.data.datasets[0].data = serie.values;
+            chart.update();
+
+            if (totalPeriodo) {
+                totalPeriodo.textContent = currencyFormatter.format(serie.total || 0);
+            }
+        }
+
+        if (filtroCaixa) {
+            filtroCaixa.addEventListener('change', function () {
+                atualizarFaturamento(filtroCaixa.value);
+            });
+        }
+    })();
+</script>
 {% endblock %}

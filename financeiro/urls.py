@@ -60,6 +60,11 @@ urlpatterns = [
         name='movimentar_caixa',
     ),
     path(
+        'movimentar/recebimentos/<str:status>/pdf/',
+        empresa_scoped(views.recebimentos_pdf),
+        name='recebimentos_pdf',
+    ),
+    path(
         'movimentar/pagamento/',
         empresa_scoped(views.movimentar_pagamento),
         name='movimentar_pagamento',

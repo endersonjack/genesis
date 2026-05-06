@@ -145,8 +145,42 @@
         font-weight: 800;
     }
     .fin-table td { vertical-align: middle; font-size: .95rem; }
+    .financeiro-filter-card {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+        gap: .85rem;
+        align-items: end;
+    }
+    .financeiro-filter-card label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: .35rem;
+    }
+    .financeiro-filter-card .form-control,
+    .financeiro-filter-card .form-select {
+        min-height: 46px;
+        border-color: #dbe4ee;
+        border-radius: 1rem;
+        font-weight: 600;
+    }
+    .financeiro-filter-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-filter-card .grid-column-span-2 {
+        grid-column: span 2;
+    }
     .financeiro-top-actions .dropdown-toggle::after {
         margin-left: .35rem;
+    }
+    @media (max-width: 1199.98px) {
+        .financeiro-filter-card {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
     @media (max-width: 767.98px) {
         .financeiro-top-actions {
@@ -157,6 +191,15 @@
         .financeiro-top-actions .dropdown {
             flex: 1 1 100%;
             width: 100%;
+        }
+        .financeiro-filter-card {
+            grid-template-columns: 1fr;
+        }
+        .financeiro-filter-card .grid-column-span-2 {
+            grid-column: auto;
+        }
+        .financeiro-filter-actions .btn {
+            flex: 1 1 100%;
         }
     }
 </style>
@@ -216,6 +259,45 @@
     </div>
 </div>
 
+<form method="get" class="fin-card financeiro-filter-card">
+    <div>
+        <label for="data_inicio">Data inicial</label>
+        <input type="date"
+               id="data_inicio"
+               name="data_inicio"
+               class="form-control"
+               value="{{ filtros_recebimentos.data_inicio_raw }}">
+    </div>
+    <div>
+        <label for="data_fim">Data final</label>
+        <input type="date"
+               id="data_fim"
+               name="data_fim"
+               class="form-control"
+               value="{{ filtros_recebimentos.data_fim_raw }}">
+    </div>
+    <div class="grid-column-span-2">
+        <label for="obra">Obra</label>
+        <select id="obra" name="obra" class="form-select">
+            <option value="">Todas as obras</option>
+            {% for obra in filtros_recebimentos.obras %}
+                <option value="{{ obra.pk }}"{% if filtros_recebimentos.obra_id == obra.pk %} selected{% endif %}>
+                    {{ obra.nome }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="financeiro-filter-actions">
+        <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+            <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+        <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}"
+           class="btn btn-outline-secondary rounded-3 fw-semibold">
+            Limpar
+        </a>
+    </div>
+</form>
+
 <div class="financeiro-board-card">
     <div class="financeiro-board-header">
         <div class="d-flex align-items-center gap-3">
@@ -227,7 +309,15 @@
                 <div class="small text-muted">Ainda não entraram no caixa. Use Liquidar para registrar o pagamento efetivo.</div>
             </div>
         </div>
-        <span class="badge rounded-pill text-bg-secondary">{{ recebimentos_abertos|length }} em aberto</span>
+        <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <a href="{% url 'financeiro:recebimentos_pdf' empresa_id=request.empresa_ativa.pk status='abertos' %}{% if recebimentos_pdf_query %}?{{ recebimentos_pdf_query }}{% endif %}"
+               class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+            <span class="badge rounded-pill text-bg-secondary">{{ recebimentos_abertos|length }} em aberto</span>
+        </div>
     </div>
     {% if recebimentos_abertos %}
     <div class="financeiro-board-body table-responsive">
@@ -240,11 +330,10 @@
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
                     <th>Cliente</th>
+                    <th>Obra</th>
                     <th class="text-end">Valor bruto</th>
                     <th class="text-end">Impostos</th>
                     <th class="text-end">Valor líquido</th>
-                    <th>Obra</th>
-                    <th>Descrição</th>
                     <th class="text-end">Ações</th>
                 </tr>
             </thead>
@@ -263,15 +352,12 @@
                     <td class="small">
                         {{ r.cliente.nome }}
                     </td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
-                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
-                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
                     <td class="small text-muted" style="max-width: 10rem;">
                         <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
                     </td>
-                    <td class="small" style="max-width: 12rem;">
-                        <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
-                    </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
+                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
+                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
                     <td class="text-end text-nowrap">
                         <button type="button"
                                 class="btn btn-sm btn-success rounded-circle"
@@ -333,7 +419,15 @@
                 <div class="small text-muted">Recebimentos que já foram efetivamente lançados no caixa.</div>
             </div>
         </div>
-        <span class="badge rounded-pill text-bg-success">{{ recebimentos_pagos|length }} liquidados</span>
+        <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <a href="{% url 'financeiro:recebimentos_pdf' empresa_id=request.empresa_ativa.pk status='pagos' %}{% if recebimentos_pdf_query %}?{{ recebimentos_pdf_query }}{% endif %}"
+               class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+            <span class="badge rounded-pill text-bg-success">{{ recebimentos_pagos|length }} liquidados</span>
+        </div>
     </div>
     {% if recebimentos_pagos %}
     <div class="financeiro-board-body table-responsive">
@@ -347,11 +441,11 @@
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
                     <th>Cliente</th>
+                    <th>Obra</th>
                     <th class="text-end">Valor bruto</th>
                     <th class="text-end">Impostos</th>
                     <th class="text-end">Valor líquido</th>
-                    <th>Obra</th>
-                    <th>Descrição</th>
+                    <th>Recebido em</th>
                     <th class="text-end">Ações</th>
                 </tr>
             </thead>
@@ -365,15 +459,13 @@
                     <td class="small text-muted text-nowrap">{{ r.medicao|default:"—" }}</td>
                     <td class="small text-muted text-nowrap">{{ r.nf|default:"—" }}</td>
                     <td class="small">{{ r.cliente.nome }}</td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
-                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
-                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
                     <td class="small text-muted" style="max-width: 10rem;">
                         <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
                     </td>
-                    <td class="small" style="max-width: 12rem;">
-                        <span class="d-inline-block text-truncate w-100" title="{{ r.descricao }}">{{ r.descricao }}</span>
-                    </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
+                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
+                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="small text-muted text-nowrap">{{ r.conta_bancaria.nome|default:"Dinheiro" }}</td>
                     <td class="text-end text-nowrap">
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary rounded-circle"

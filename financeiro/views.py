@@ -22,7 +22,7 @@ from django.db.models import (
     Subquery,
     Value,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -40,6 +40,7 @@ from core.moeda_fmt import parse_valor_moeda_br
 from core.moeda_fmt import format_decimal_br_moeda
 from core.urlutils import redirect_empresa, reverse_empresa
 from fornecedores.models import Fornecedor
+from obras.models import Obra
 from rh.models import Funcionario
 
 from .forms import (
@@ -219,6 +220,7 @@ def _recebimento_para_linha(recebimento, tipo: str) -> dict:
         'data': recebimento.data,
         'data_pagamento': recebimento.data_pagamento,
         'caixa': recebimento.caixa,
+        'conta_bancaria': recebimento.conta_bancaria,
         'cliente': recebimento.cliente,
         'medicao': getattr(recebimento, 'medicao_numero', ''),
         'nf': getattr(recebimento, 'nota_fiscal_numero', ''),
@@ -1406,99 +1408,108 @@ def relatorios(request):
 
     hoje = timezone.localdate()
     dec = DecimalField(max_digits=16, decimal_places=2)
-    caixas = list(_caixas_com_saldo(empresa, somente_ativos=True))
-    saldo_consolidado = sum((caixa.saldo for caixa in caixas), Decimal('0'))
 
-    recebimentos_abertos_av = RecebimentoAvulso.objects.filter(
-        empresa=empresa,
-        status=RecebimentoAvulso.Status.ABERTO,
-    ).aggregate(
-        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
-        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
-    )
-    recebimentos_abertos_med = RecebimentoMedicao.objects.filter(
-        empresa=empresa,
-        status=RecebimentoMedicao.Status.ABERTO,
-    ).aggregate(
-        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
-        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
-    )
-    recebimentos_pagos_av = RecebimentoAvulso.objects.filter(
-        empresa=empresa,
-        status=RecebimentoAvulso.Status.PAGO,
-    ).aggregate(
-        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
-        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
-    )
-    recebimentos_pagos_med = RecebimentoMedicao.objects.filter(
-        empresa=empresa,
-        status=RecebimentoMedicao.Status.PAGO,
-    ).aggregate(
-        valor=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-        impostos=Coalesce(Sum('impostos'), Value(Decimal('0')), output_field=dec),
-        liquido=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec),
-    )
+    def inicio_mes(data_ref):
+        return data_ref.replace(day=1)
 
-    boletos_abertos_status = (
-        BoletoPagamento.Status.RASCUNHO,
-        BoletoPagamento.Status.EMITIDO,
-    )
-    boletos_vencidos = BoletoPagamento.objects.filter(
-        pagamento_nf__empresa=empresa,
-        vencimento__lt=hoje,
-        status__in=boletos_abertos_status,
-    ).aggregate(
-        total=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-    )
-    boletos_a_vencer = BoletoPagamento.objects.filter(
-        pagamento_nf__empresa=empresa,
-        vencimento__gte=hoje,
-        status__in=boletos_abertos_status,
-    ).aggregate(
-        total=Coalesce(Sum('valor'), Value(Decimal('0')), output_field=dec),
-    )
-    notas_sem_pagamento = list(
-        PagamentoNotaFiscal.objects.filter(
-            empresa=empresa,
-            pagamentos__isnull=True,
+    def somar_meses(data_ref, quantidade):
+        mes = data_ref.month - 1 + quantidade
+        ano = data_ref.year + mes // 12
+        mes = mes % 12 + 1
+        return date(ano, mes, 1)
+
+    mes_atual = inicio_mes(hoje)
+    meses_faturamento = [somar_meses(mes_atual, deslocamento) for deslocamento in range(-11, 1)]
+    inicio_periodo = meses_faturamento[0]
+    fim_periodo = somar_meses(mes_atual, 1)
+
+    def faturamento_por_mes(modelo, status_pago):
+        return (
+            modelo.objects.filter(
+                empresa=empresa,
+                status=status_pago,
+                data_pagamento__isnull=False,
+                data_pagamento__gte=inicio_periodo,
+                data_pagamento__lt=fim_periodo,
+            )
+            .annotate(mes=TruncMonth('data_pagamento'))
+            .values('mes', 'caixa_id')
+            .annotate(total=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec))
+            .order_by('mes')
         )
-        .select_related('fornecedor')
-        .prefetch_related('itens')
-    )
-    total_notas_sem_pagamento = sum(
-        (nf.total_itens() for nf in notas_sem_pagamento),
+
+    caixas = list(Caixa.objects.filter(empresa=empresa).order_by('tipo', 'nome'))
+    faturamento_mensal = {mes: Decimal('0') for mes in meses_faturamento}
+    faturamento_por_caixa = {
+        str(caixa.pk): {mes: Decimal('0') for mes in meses_faturamento}
+        for caixa in caixas
+    }
+
+    def aplicar_faturamento(item):
+        mes = item['mes'].date() if hasattr(item['mes'], 'date') else item['mes']
+        caixa_id = str(item['caixa_id']) if item['caixa_id'] else ''
+        faturamento_mensal[mes] += item['total']
+        if caixa_id in faturamento_por_caixa:
+            faturamento_por_caixa[caixa_id][mes] += item['total']
+
+    for item in faturamento_por_mes(RecebimentoAvulso, RecebimentoAvulso.Status.PAGO):
+        aplicar_faturamento(item)
+    for item in faturamento_por_mes(RecebimentoMedicao, RecebimentoMedicao.Status.PAGO):
+        aplicar_faturamento(item)
+
+    nomes_meses = {
+        1: 'Jan',
+        2: 'Fev',
+        3: 'Mar',
+        4: 'Abr',
+        5: 'Mai',
+        6: 'Jun',
+        7: 'Jul',
+        8: 'Ago',
+        9: 'Set',
+        10: 'Out',
+        11: 'Nov',
+        12: 'Dez',
+    }
+    faturamento_chart = {
+        'labels': [f'{nomes_meses[mes.month]}/{str(mes.year)[-2:]}' for mes in meses_faturamento],
+        'series': {
+            'todos': {
+                'label': 'Todos',
+                'values': [float(faturamento_mensal[mes]) for mes in meses_faturamento],
+                'total': float(sum(faturamento_mensal.values(), Decimal('0'))),
+            },
+            **{
+                str(caixa.pk): {
+                    'label': caixa.nome,
+                    'values': [float(faturamento_por_caixa[str(caixa.pk)][mes]) for mes in meses_faturamento],
+                    'total': float(
+                        sum(faturamento_por_caixa[str(caixa.pk)].values(), Decimal('0'))
+                    ),
+                }
+                for caixa in caixas
+            },
+        },
+        'caixas': [
+            {
+                'id': str(caixa.pk),
+                'nome': caixa.nome,
+            }
+            for caixa in caixas
+        ],
+    }
+    faturamento_total_periodo = sum(
+        faturamento_mensal.values(),
         Decimal('0'),
     )
-
-    def somar_agregados(a, b):
-        return {
-            'valor': a['valor'] + b['valor'],
-            'impostos': a['impostos'] + b['impostos'],
-            'liquido': a['liquido'] + b['liquido'],
-        }
 
     return render(
         request,
         'financeiro/relatorios.html',
         {
             'page_title': 'Relatórios Financeiros',
-            'saldo_consolidado': saldo_consolidado,
-            'total_caixas_ativos': len(caixas),
-            'recebimentos_abertos': somar_agregados(
-                recebimentos_abertos_av,
-                recebimentos_abertos_med,
-            ),
-            'recebimentos_pagos': somar_agregados(
-                recebimentos_pagos_av,
-                recebimentos_pagos_med,
-            ),
-            'boletos_vencidos_total': boletos_vencidos['total'],
-            'boletos_a_vencer_total': boletos_a_vencer['total'],
-            'notas_sem_pagamento_total': total_notas_sem_pagamento,
-            'notas_sem_pagamento_qtd': len(notas_sem_pagamento),
+            'faturamento_chart': faturamento_chart,
+            'faturamento_total_periodo': faturamento_total_periodo,
         },
     )
 
@@ -3477,14 +3488,76 @@ def movimentar_caixa(request):
     empresa = _empresa(request)
     if not empresa:
         return redirect('selecionar_empresa')
+    filtros = _recebimentos_filtros(request, empresa)
+    recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(empresa, filtros)
+    return render(
+        request,
+        'financeiro/movimentar_caixa.html',
+        {
+            'page_title': 'Recebimentos',
+            'filtros_recebimentos': filtros,
+            'recebimentos_abertos': recebimentos_abertos,
+            'recebimentos_pagos': recebimentos_pagos,
+            'totais_abertos': _totais_recebimentos(recebimentos_abertos),
+            'totais_pagos': _totais_recebimentos(recebimentos_pagos),
+            'recebimentos_pdf_query': request.GET.urlencode(),
+        },
+    )
+
+
+def _recebimentos_filtros(request, empresa):
+    obra_id = _int_param(request, 'obra')
+    obra_selecionada = None
+    obras = list(Obra.objects.filter(empresa=empresa).order_by('nome'))
+    if obra_id:
+        obra_selecionada = next((obra for obra in obras if obra.pk == obra_id), None)
+
+    return {
+        'data_inicio_raw': (request.GET.get('data_inicio') or '').strip(),
+        'data_fim_raw': (request.GET.get('data_fim') or '').strip(),
+        'data_inicio': parse_date((request.GET.get('data_inicio') or '').strip()),
+        'data_fim': parse_date((request.GET.get('data_fim') or '').strip()),
+        'obra_id': obra_selecionada.pk if obra_selecionada else None,
+        'obra': obra_selecionada,
+        'obras': obras,
+    }
+
+
+def _data_referencia_recebimento(recebimento):
+    if recebimento['status'] in (RecebimentoAvulso.Status.PAGO, RecebimentoMedicao.Status.PAGO):
+        return recebimento.get('data_pagamento') or recebimento.get('data')
+    return recebimento.get('data')
+
+
+def _aplicar_filtros_recebimentos(recebimentos, filtros):
+    data_inicio = filtros.get('data_inicio')
+    data_fim = filtros.get('data_fim')
+    obra_id = filtros.get('obra_id')
+
+    filtrados = []
+    for recebimento in recebimentos:
+        data_ref = _data_referencia_recebimento(recebimento)
+        if data_inicio and (not data_ref or data_ref < data_inicio):
+            continue
+        if data_fim and (not data_ref or data_ref > data_fim):
+            continue
+        if obra_id:
+            obra = recebimento.get('obra')
+            if not obra or obra.pk != obra_id:
+                continue
+        filtrados.append(recebimento)
+    return filtrados
+
+
+def _recebimentos_movimentar_listas(empresa, filtros=None):
     recebimentos_avulsos = (
         RecebimentoAvulso.objects.filter(empresa=empresa)
-        .select_related('caixa', 'cliente', 'movimento')
+        .select_related('caixa', 'cliente', 'conta_bancaria', 'movimento')
         .order_by('-data', '-pk')
     )
     recebimentos_medicao = (
         RecebimentoMedicao.objects.filter(empresa=empresa)
-        .select_related('caixa', 'cliente', 'obra', 'movimento')
+        .select_related('caixa', 'cliente', 'obra', 'conta_bancaria', 'movimento')
         .order_by('-data', '-pk')
     )
     recebimentos = [
@@ -3492,6 +3565,8 @@ def movimentar_caixa(request):
         *(_recebimento_para_linha(r, 'medicao') for r in recebimentos_medicao),
     ]
     recebimentos.sort(key=lambda r: (r['data'] or timezone.localdate(), r['pk']), reverse=True)
+    if filtros:
+        recebimentos = _aplicar_filtros_recebimentos(recebimentos, filtros)
     recebimentos_abertos = [
         r for r in recebimentos
         if r['status'] in (RecebimentoAvulso.Status.ABERTO, RecebimentoMedicao.Status.ABERTO)
@@ -3500,17 +3575,202 @@ def movimentar_caixa(request):
         r for r in recebimentos
         if r['status'] in (RecebimentoAvulso.Status.PAGO, RecebimentoMedicao.Status.PAGO)
     ][:ULTIMOS_RECEBIMENTOS_LISTA_LIMITE]
-    return render(
-        request,
-        'financeiro/movimentar_caixa.html',
-        {
-            'page_title': 'Recebimentos',
-            'recebimentos_abertos': recebimentos_abertos,
-            'recebimentos_pagos': recebimentos_pagos,
-            'totais_abertos': _totais_recebimentos(recebimentos_abertos),
-            'totais_pagos': _totais_recebimentos(recebimentos_pagos),
-        },
+    return recebimentos_abertos, recebimentos_pagos
+
+
+def _flowables_header_recebimentos(empresa, subtitulo, styles):
+    hdr_style = ParagraphStyle(
+        'rec_hdr_compact',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=11,
+        alignment=0,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=0,
+        spaceBefore=0,
     )
+    nome = _nome_empresa_pdf(empresa)
+    bits = [f'<b>{xml_escape(nome)}</b>']
+    razao = (getattr(empresa, 'razao_social', '') or '').strip()
+    if razao and razao.upper() != (nome or '').upper():
+        bits.append(f'<font size="8" color="#64748b">{xml_escape(razao)}</font>')
+    bits.append(xml_escape(subtitulo))
+    extra = _linha_extra_cabecalho_recibo(empresa)
+    if extra:
+        bits.append(xml_escape(extra))
+    email = (getattr(empresa, 'email', None) or '').strip()
+    if email:
+        bits.append(xml_escape(f'E-mail: {email}'))
+
+    logo_w = 34 * mm
+    content_w = 273 * mm
+    logo = _empresa_logo_flowable(empresa) or ''
+    texto = Paragraph('<br/>'.join(bits), hdr_style)
+    table = Table([[logo, texto]], colWidths=[logo_w, content_w - logo_w])
+    table.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('LEFTPADDING', (1, 0), (1, 0), 3 * mm),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    return [table, Spacer(1, 2 * mm)]
+
+
+@login_required
+def recebimentos_pdf(request, status: str):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    filtros = _recebimentos_filtros(request, empresa)
+    recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(empresa, filtros)
+    if status == 'abertos':
+        recebimentos = recebimentos_abertos
+        titulo = 'Recebimentos em Aberto'
+        subtitulo = 'Recebimentos em aberto · Ainda não lançados no caixa'
+        filename_status = 'Abertos'
+    elif status == 'pagos':
+        recebimentos = recebimentos_pagos
+        titulo = 'Recebimentos Pagos/Liquidados'
+        subtitulo = f'Pagos/Liquidados · Últimos {ULTIMOS_RECEBIMENTOS_LISTA_LIMITE} lançados no caixa'
+        filename_status = 'Liquidados'
+    else:
+        messages.error(request, 'Tipo de relatório de recebimentos inválido.')
+        return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    filtro_partes = []
+    if filtros.get('data_inicio'):
+        filtro_partes.append(f'A partir de {_format_data_pdf(filtros["data_inicio"])}')
+    if filtros.get('data_fim'):
+        filtro_partes.append(f'Até {_format_data_pdf(filtros["data_fim"])}')
+    if filtros.get('obra'):
+        filtro_partes.append(f'Obra: {filtros["obra"].nome}')
+    if filtro_partes:
+        subtitulo = f'{subtitulo} · {" · ".join(filtro_partes)}'
+
+    totais = _totais_recebimentos(recebimentos)
+    styles = getSampleStyleSheet()
+    cell = ParagraphStyle(
+        'rec_pdf_cell',
+        parent=styles['Normal'],
+        fontSize=5.8,
+        leading=7,
+        spaceBefore=0,
+        spaceAfter=0,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    cell_right = ParagraphStyle('rec_pdf_cell_right', parent=cell, alignment=2)
+
+    if status == 'pagos':
+        data = [[
+            '#',
+            'Data',
+            'Data Pgto.',
+            'Tipo',
+            'Medição',
+            'NF',
+            'Cliente',
+            'Obra',
+            'Bruto',
+            'Impostos',
+            'Líquido',
+            'Recebido em',
+        ]]
+        col_widths = [7, 15, 16, 14, 18, 16, 40, 32, 22, 20, 22, 28]
+    else:
+        data = [[
+            '#',
+            'Data',
+            'Tipo',
+            'Medição',
+            'NF',
+            'Cliente',
+            'Obra',
+            'Bruto',
+            'Impostos',
+            'Líquido',
+        ]]
+        col_widths = [8, 18, 18, 22, 18, 56, 42, 28, 25, 28]
+
+    for idx, recebimento in enumerate(recebimentos, start=1):
+        obra = getattr(recebimento.get('obra'), 'nome', '') or '-'
+        row = [
+            str(idx),
+            _format_data_pdf(recebimento.get('data')),
+        ]
+        if status == 'pagos':
+            row.append(_format_data_pdf(recebimento.get('data_pagamento')))
+        row.extend(
+            [
+                recebimento.get('tipo_label') or '-',
+                recebimento.get('medicao') or '-',
+                recebimento.get('nf') or '-',
+                _pdf_cell(getattr(recebimento.get('cliente'), 'nome', '') or '-', cell),
+                _pdf_cell(obra, cell),
+                _pdf_cell(_format_moeda_pdf(recebimento.get('valor')), cell_right),
+                _pdf_cell(_format_moeda_pdf(recebimento.get('impostos')), cell_right),
+                _pdf_cell(_format_moeda_pdf(recebimento.get('valor_liquido')), cell_right),
+            ]
+        )
+        if status == 'pagos':
+            recebido_em = getattr(recebimento.get('conta_bancaria'), 'nome', '') or 'Dinheiro'
+            row.append(_pdf_cell(recebido_em, cell))
+        data.append(row)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+        title=titulo,
+    )
+    story = []
+    story.extend(_flowables_header_recebimentos(empresa, subtitulo, styles))
+    story.extend(_flowables_titulo_pdf_centro(titulo, styles))
+
+    table = Table(
+        data,
+        colWidths=[w * mm for w in col_widths],
+        repeatRows=1,
+    )
+    table.setStyle(_pdf_table_style())
+    story.append(table)
+    story.append(Spacer(1, 3 * mm))
+
+    totais_table = Table(
+        [[
+            'Quantidade',
+            'Valor Bruto',
+            'Impostos',
+            'Valor Líquido',
+        ], [
+            str(len(recebimentos)),
+            _format_moeda_pdf(totais['valor']),
+            _format_moeda_pdf(totais['impostos']),
+            _format_moeda_pdf(totais['valor_liquido']),
+        ]],
+        colWidths=[34 * mm, 48 * mm, 48 * mm, 48 * mm],
+    )
+    totais_table.setStyle(_pdf_table_style())
+    story.append(totais_table)
+    story.extend(_flowables_rodape_impressao(request, styles, space_before_mm=3))
+    doc.build(story)
+
+    ref = timezone.localdate().strftime('%Y%m%d')
+    filename = f'Recebimentos_{filename_status}_{_safe_filename_part(_nome_empresa_pdf(empresa))}_{ref}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 
 @login_required
