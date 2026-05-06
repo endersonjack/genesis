@@ -179,6 +179,7 @@ class RecebimentoAvulsoForm(forms.Form):
     descricao = forms.CharField(
         label='Descrição',
         max_length=500,
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control rounded-3'}),
     )
     data = forms.DateField(

@@ -46,7 +46,7 @@
     hx-target="#modal-content"
     hx-swap="innerHTML"
     data-no-global-loading
-    class="d-flex flex-column"
+    class="d-flex flex-column js-recebimento-form"
     style="max-height: calc(100vh - 9rem);"
     novalidate>
     {% csrf_token %}
@@ -69,7 +69,7 @@
     </div>
     <div class="modal-footer justify-content-between flex-shrink-0 bg-white">
         <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary">
+        <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary js-recebimento-submit">
             <i class="bi bi-check2-circle me-1"></i> Salvar em aberto
         </button>
     </div>
@@ -105,5 +105,14 @@
         input.addEventListener('blur', () => window.setTimeout(recalcular, 0));
     });
     recalcular();
+
+    const form = container.querySelector('.js-recebimento-form');
+    const salvarBtn = container.querySelector('.js-recebimento-submit');
+    if (form && salvarBtn) {
+        form.addEventListener('submit', () => {
+            salvarBtn.disabled = true;
+            salvarBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+        });
+    }
 })();
 </script>

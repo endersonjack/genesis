@@ -1,7 +1,7 @@
 """Views do módulo financeiro."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 import re
@@ -3512,11 +3512,24 @@ def _recebimentos_filtros(request, empresa):
     if obra_id:
         obra_selecionada = next((obra for obra in obras if obra.pk == obra_id), None)
 
+    hoje = timezone.localdate()
+    primeiro_dia_mes = hoje.replace(day=1)
+    proximo_mes = (
+        primeiro_dia_mes.replace(year=primeiro_dia_mes.year + 1, month=1)
+        if primeiro_dia_mes.month == 12
+        else primeiro_dia_mes.replace(month=primeiro_dia_mes.month + 1)
+    )
+    ultimo_dia_mes = proximo_mes - timedelta(days=1)
+    data_inicio_raw = (request.GET.get('data_inicio') or '').strip()
+    data_fim_raw = (request.GET.get('data_fim') or '').strip()
+    data_inicio = parse_date(data_inicio_raw) or primeiro_dia_mes
+    data_fim = parse_date(data_fim_raw) or ultimo_dia_mes
+
     return {
-        'data_inicio_raw': (request.GET.get('data_inicio') or '').strip(),
-        'data_fim_raw': (request.GET.get('data_fim') or '').strip(),
-        'data_inicio': parse_date((request.GET.get('data_inicio') or '').strip()),
-        'data_fim': parse_date((request.GET.get('data_fim') or '').strip()),
+        'data_inicio_raw': data_inicio.isoformat(),
+        'data_fim_raw': data_fim.isoformat(),
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
         'obra_id': obra_selecionada.pk if obra_selecionada else None,
         'obra': obra_selecionada,
         'obras': obras,

@@ -23,7 +23,7 @@
 </div>
 
 <div class="fin-form-card">
-    <form method="post" enctype="multipart/form-data" novalidate>
+    <form method="post" enctype="multipart/form-data" class="js-recebimento-page-form" novalidate>
         {% csrf_token %}
         {% if form.non_field_errors %}
         <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
@@ -36,7 +36,7 @@
         </div>
         {% endfor %}
         <div class="d-flex flex-wrap gap-2 mt-4">
-            <button type="submit" class="btn btn-primary rounded-pill px-4">Salvar</button>
+            <button type="submit" class="btn btn-primary rounded-pill fw-semibold px-4 js-recebimento-page-submit">Salvar</button>
             <a href="{% url 'financeiro:movimentar_caixa' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill">Cancelar</a>
         </div>
     </form>
@@ -62,6 +62,15 @@
         input.addEventListener('blur', () => window.setTimeout(recalcular, 0));
     });
     recalcular();
+
+    const form = document.querySelector('.js-recebimento-page-form');
+    const salvarBtn = document.querySelector('.js-recebimento-page-submit');
+    if (form && salvarBtn) {
+        form.addEventListener('submit', () => {
+            salvarBtn.disabled = true;
+            salvarBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+        });
+    }
 })();
 </script>
 {% endblock %}
