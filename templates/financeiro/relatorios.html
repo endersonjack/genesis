@@ -238,6 +238,30 @@
             values: [],
             total: 0,
         };
+        const valueLabelsPlugin = {
+            id: 'financeiroValueLabels',
+            afterDatasetsDraw: function (chart) {
+                const ctx = chart.ctx;
+                const dataset = chart.data.datasets[0];
+                const meta = chart.getDatasetMeta(0);
+
+                ctx.save();
+                ctx.font = '700 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillStyle = '#0f172a';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                meta.data.forEach(function (bar, index) {
+                    const value = Number(dataset.data[index] || 0);
+                    if (!value) {
+                        return;
+                    }
+
+                    ctx.fillText(currencyFormatter.format(value), bar.x, bar.y - 6);
+                });
+                ctx.restore();
+            },
+        };
 
         const chart = new Chart(chartElement, {
             type: 'bar',
@@ -257,6 +281,11 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 24,
+                    },
+                },
                 plugins: {
                     legend: {
                         display: false,
@@ -295,6 +324,7 @@
                     },
                 },
             },
+            plugins: [valueLabelsPlugin],
         });
 
         function atualizarFaturamento(caixaId) {
