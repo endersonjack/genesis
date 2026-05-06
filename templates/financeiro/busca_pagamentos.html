@@ -238,6 +238,44 @@
         text-align: right;
         margin-top: .25rem;
     }
+    .financeiro-summary-footer {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-status-legend {
+        max-width: 32rem;
+        flex: 1 1 24rem;
+    }
+    .financeiro-status-legend-title {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+        margin-bottom: .45rem;
+    }
+    .financeiro-status-legend-items {
+        display: flex;
+        flex-direction: column;
+        gap: .38rem;
+    }
+    .financeiro-status-legend-item {
+        display: flex;
+        align-items: flex-start;
+        gap: .45rem;
+        font-size: .78rem;
+        color: #475569;
+        line-height: 1.25;
+    }
+    .financeiro-status-legend-item .badge {
+        flex: 0 0 auto;
+        margin-top: .05rem;
+        white-space: nowrap;
+        min-width: 6.7rem;
+    }
     @media (max-width: 767.98px) {
         .financeiro-search-grid {
             grid-template-columns: 1fr;
@@ -382,8 +420,9 @@
                     <th>Categoria</th>
                     <th class="text-nowrap">Nº Doc</th>
                     <th class="text-nowrap">Tipo Pagamento</th>
-                    <th class="text-end text-nowrap">Valor</th>
                     <th class="text-nowrap">Vencimento</th>
+                    <th class="text-end text-nowrap">Valor</th>
+                    <th class="text-nowrap">Data de Pagamento</th>
                 </tr>
             </thead>
             <tbody>
@@ -408,13 +447,20 @@
                             <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
                         {% endif %}
                     </td>
+                    <td class="small text-nowrap">{{ item.vencimento|date:"d/m/Y" }}</td>
                     <td class="text-end small fw-semibold text-nowrap">
                         R$ {{ item.valor_linha|moeda_br }}
                         {% if item.parcela_label %}
                             <span class="financeiro-cell-note">Parcela nº: {{ item.parcela_label }}</span>
                         {% endif %}
                     </td>
-                    <td class="small text-nowrap">{{ item.vencimento|date:"d/m/Y" }}</td>
+                    <td class="small text-nowrap">
+                        {% if item.data_pagamento %}
+                            {{ item.data_pagamento|date:"d/m/Y" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -426,27 +472,58 @@
     </div>
     {% endif %}
     <div class="financeiro-search-totals">
-        <div class="financeiro-totals-group mb-3">
-            <div class="financeiro-totals-title">Totais por forma de pagamento</div>
-            <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Boletos</div>
-                <div class="financeiro-total-value">R$ {{ totais_busca.boletos_total|moeda_br }}</div>
-                <div class="financeiro-cell-note">{{ totais_busca.boletos_qtd }} resultado(s)</div>
+        <div class="financeiro-summary-footer mb-3">
+            <div class="financeiro-status-legend">
+                <div class="financeiro-status-legend-title">Legenda dos status</div>
+                <div class="financeiro-status-legend-items">
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-success">Pago Completo</span>
+                        <span>valor total da saída já foi pago.</span>
+                    </div>
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-primary">Pago Parcial</span>
+                        <span>já houve pagamento, mas ainda existe saldo em aberto.</span>
+                    </div>
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-danger">Vencido</span>
+                        <span>há boleto em aberto com vencimento anterior a hoje.</span>
+                    </div>
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-warning">Vence Hoje</span>
+                        <span>há boleto em aberto com vencimento hoje.</span>
+                    </div>
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-secondary">Em Aberto</span>
+                        <span>pagamento por boleto ainda não vencido e sem quitação.</span>
+                    </div>
+                    <div class="financeiro-status-legend-item">
+                        <span class="badge text-bg-light text-dark border">Sem Pagamento</span>
+                        <span>não há boleto nem pagamento direto registrado.</span>
+                    </div>
+                </div>
             </div>
-            <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">À Vista</div>
-                <div class="financeiro-total-value">R$ {{ totais_busca.avista_total|moeda_br }}</div>
-                <div class="financeiro-cell-note">{{ totais_busca.avista_qtd }} resultado(s)</div>
-            </div>
-            <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Crédito</div>
-                <div class="financeiro-total-value">R$ {{ totais_busca.credito_total|moeda_br }}</div>
-                <div class="financeiro-cell-note">{{ totais_busca.credito_qtd }} resultado(s)</div>
-            </div>
-            <div class="financeiro-total-chip financeiro-total-chip-highlight">
-                <div class="financeiro-total-label">Total Geral</div>
-                <div class="financeiro-total-value">R$ {{ totais_busca.valor_total|moeda_br }}</div>
-                <div class="financeiro-cell-note">{{ totais_busca.quantidade }} resultado(s)</div>
+            <div class="financeiro-totals-group">
+                <div class="financeiro-totals-title">Totais por forma de pagamento</div>
+                <div class="financeiro-total-chip">
+                    <div class="financeiro-total-label">Boletos</div>
+                    <div class="financeiro-total-value">R$ {{ totais_busca.boletos_total|moeda_br }}</div>
+                    <div class="financeiro-cell-note">{{ totais_busca.boletos_qtd }} resultado(s)</div>
+                </div>
+                <div class="financeiro-total-chip">
+                    <div class="financeiro-total-label">À Vista</div>
+                    <div class="financeiro-total-value">R$ {{ totais_busca.avista_total|moeda_br }}</div>
+                    <div class="financeiro-cell-note">{{ totais_busca.avista_qtd }} resultado(s)</div>
+                </div>
+                <div class="financeiro-total-chip">
+                    <div class="financeiro-total-label">Crédito</div>
+                    <div class="financeiro-total-value">R$ {{ totais_busca.credito_total|moeda_br }}</div>
+                    <div class="financeiro-cell-note">{{ totais_busca.credito_qtd }} resultado(s)</div>
+                </div>
+                <div class="financeiro-total-chip financeiro-total-chip-highlight">
+                    <div class="financeiro-total-label">Total Geral</div>
+                    <div class="financeiro-total-value">R$ {{ totais_busca.valor_total|moeda_br }}</div>
+                    <div class="financeiro-cell-note">{{ totais_busca.quantidade }} resultado(s)</div>
+                </div>
             </div>
         </div>
         <div class="financeiro-totals-group">

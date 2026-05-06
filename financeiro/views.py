@@ -1567,6 +1567,34 @@ def buscar_pagamentos(request):
                 valor = parse_valor_moeda_br(valor_raw)
             except Exception:
                 erro_valor = 'Informe um valor válido no padrão 0,00.'
+        data_inicio_dt = parse_date(data_inicio) if data_inicio else None
+        data_fim_dt = parse_date(data_fim) if data_fim else None
+
+        def data_no_periodo(data_ref) -> bool:
+            if not data_ref:
+                return False
+            if data_inicio_dt and data_ref < data_inicio_dt:
+                return False
+            if data_fim_dt and data_ref > data_fim_dt:
+                return False
+            return True
+
+        def boleto_corresponde_status(boleto) -> bool:
+            if not (status_vencido or status_aberto or status_pago):
+                return True
+            boleto_pago = (
+                boleto.status == BoletoPagamento.Status.PAGO
+                or (boleto.valor_pago or Decimal('0')) > 0
+            )
+            boleto_aberto = boleto.status not in (
+                BoletoPagamento.Status.PAGO,
+                BoletoPagamento.Status.CANCELADO,
+            )
+            return (
+                (status_pago and boleto_pago)
+                or (status_vencido and boleto_aberto and boleto.vencimento < hoje)
+                or (status_aberto and boleto_aberto and boleto.vencimento >= hoje)
+            )
 
         nfs_qs = (
             PagamentoNotaFiscal.objects.filter(empresa=empresa)
@@ -1588,10 +1616,6 @@ def buscar_pagamentos(request):
             nfs_qs = nfs_qs.filter(fornecedor__nome__icontains=fornecedor)
         if categoria_id:
             nfs_qs = nfs_qs.filter(itens__categoria_id=categoria_id)
-        if data_inicio:
-            nfs_qs = nfs_qs.filter(data_emissao__gte=data_inicio)
-        if data_fim:
-            nfs_qs = nfs_qs.filter(data_emissao__lte=data_fim)
         if query:
             nfs_qs = nfs_qs.filter(
                 Q(numero_nf__icontains=query) | Q(boletos__numero_doc__icontains=query)
@@ -1691,6 +1715,11 @@ def buscar_pagamentos(request):
                 )
             ]
             for pagamento in pagamentos_diretos:
+                data_pagamento_linha = pagamento.data or nf.data_emissao
+                if (status_vencido or status_aberto or status_pago) and not status_pago:
+                    continue
+                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(data_pagamento_linha):
+                    continue
                 resultados.append(
                     {
                         'kind': 'nf',
@@ -1709,12 +1738,20 @@ def buscar_pagamentos(request):
                         'parcela_label': '',
                         'valor_linha': pagamento.total_a_pagar(),
                         'valor_total': pagamento.total_a_pagar(),
-                        'vencimento': pagamento.data or nf.data_emissao,
+                        'vencimento': data_pagamento_linha,
+                        'data_pagamento': data_pagamento_linha,
                         'status_label': status_linha,
                         'status_badge_class': _badge_status_busca_pagamento(status_linha),
                     }
                 )
             for boleto in boletos_relacionados:
+                if not boleto_corresponde_status(boleto):
+                    continue
+                data_filtro_boleto = boleto.data_pagamento if status_pago else boleto.vencimento
+                if not data_filtro_boleto:
+                    data_filtro_boleto = boleto.vencimento
+                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(data_filtro_boleto):
+                    continue
                 resultados.append(
                     {
                         'kind': 'nf',
@@ -1734,11 +1771,14 @@ def buscar_pagamentos(request):
                         'valor_linha': boleto.valor,
                         'valor_total': boleto.valor,
                         'vencimento': boleto.vencimento,
+                        'data_pagamento': boleto.data_pagamento,
                         'status_label': status_linha,
                         'status_badge_class': _badge_status_busca_pagamento(status_linha),
                     }
                 )
             if not pagamentos_diretos and not boletos_relacionados:
+                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(nf.data_emissao):
+                    continue
                 resultados.append(
                     {
                         'kind': 'nf',
@@ -1758,6 +1798,7 @@ def buscar_pagamentos(request):
                         'valor_linha': nf.total_itens_calc,
                         'valor_total': nf.total_itens_calc,
                         'vencimento': nf.data_emissao,
+                        'data_pagamento': None,
                         'status_label': status_linha,
                         'status_badge_class': _badge_status_busca_pagamento(status_linha),
                     }
@@ -1831,6 +1872,7 @@ def buscar_pagamentos(request):
                     'valor_linha': total,
                     'valor_total': total,
                     'vencimento': pagamento.data_pagamento,
+                    'data_pagamento': pagamento.data_pagamento,
                     'status_label': 'Pago Completo',
                     'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
                 }
@@ -1890,6 +1932,7 @@ def buscar_pagamentos(request):
                     'valor_linha': total,
                     'valor_total': total,
                     'vencimento': pagamento.data_pagamento,
+                    'data_pagamento': pagamento.data_pagamento,
                     'status_label': 'Pago Completo',
                     'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
                 }
