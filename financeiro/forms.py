@@ -27,6 +27,7 @@ from .models import (
     PagamentoImposto,
     PagamentoImpostoItem,
     PagamentoBancarioParcela,
+    PagamentoBancarioAvulso,
     PagamentoBancarioRecorrente,
     PagamentoNotaFiscal,
     PagamentoNotaFiscalItem,
@@ -1894,4 +1895,96 @@ class PagamentoBancarioParcelaValorForm(forms.Form):
         if valor <= 0:
             raise forms.ValidationError('Informe um valor maior que zero.')
         return valor
+
+
+class PagamentoBancarioAvulsoForm(forms.ModelForm):
+    valor = forms.CharField(
+        label='Valor pago (R$)',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            }
+        ),
+    )
+
+    class Meta:
+        model = PagamentoBancarioAvulso
+        fields = (
+            'caixa',
+            'conta_bancaria',
+            'categoria',
+            'descricao',
+            'data_pagamento',
+            'valor',
+            'observacao',
+        )
+        widgets = {
+            'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'categoria': forms.Select(attrs={'class': 'form-select rounded-3'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
+            'data_pagamento': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control rounded-3'},
+            ),
+            'observacao': forms.Textarea(attrs={'class': 'form-control rounded-3', 'rows': 3}),
+        }
+        labels = {
+            'conta_bancaria': 'Banco',
+            'descricao': 'Descrição',
+            'observacao': 'Observação',
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance and self.instance.pk:
+            self.initial['valor'] = format_decimal_br_moeda(self.instance.valor)
+        elif not self.is_bound and not getattr(self.instance, 'pk', None):
+            self.initial.setdefault('data_pagamento', timezone.localdate().isoformat())
+        if empresa:
+            self.fields['caixa'].queryset = Caixa.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('tipo', 'nome')
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+            self.fields['categoria'].queryset = CategoriaFinanceira.objects.filter(
+                empresa=empresa,
+                movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
+                ativo=True,
+            ).order_by('nome')
+            self.fields['descricao'].required = False
+            if not self.is_bound and not getattr(self.instance, 'pk', None):
+                if not self.initial.get('caixa'):
+                    caixa_geral = Caixa.objects.filter(
+                        empresa=empresa,
+                        ativo=True,
+                        tipo=Caixa.Tipo.GERAL,
+                    ).first()
+                    if caixa_geral:
+                        self.initial['caixa'] = caixa_geral.pk
+
+    def clean_valor(self):
+        valor = parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor'))
+        if valor <= 0:
+            raise forms.ValidationError('Informe um valor maior que zero.')
+        return valor
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.valor = self.cleaned_data['valor']
+        if self.empresa:
+            obj.empresa = self.empresa
+        if commit:
+            obj.full_clean()
+            obj.save()
+        return obj
 

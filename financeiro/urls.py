@@ -80,6 +80,16 @@ urlpatterns = [
         name='pagamento_bancario_novo',
     ),
     path(
+        'pagamentos/bancario/avulso/novo/',
+        empresa_scoped(views.pagamento_bancario_avulso_novo),
+        name='pagamento_bancario_avulso_novo',
+    ),
+    path(
+        'pagamentos/bancario/avulso/<int:pk>/editar/',
+        empresa_scoped(views.pagamento_bancario_avulso_editar),
+        name='pagamento_bancario_avulso_editar',
+    ),
+    path(
         'pagamentos/bancario/<int:pk>/',
         empresa_scoped(views.pagamento_bancario_detalhe),
         name='pagamento_bancario_detalhe',

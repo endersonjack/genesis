@@ -81,6 +81,38 @@
         border-radius: .85rem;
         font-weight: 600;
     }
+    .caixa-year-control {
+        display: flex;
+        align-items: stretch;
+        width: 7.5rem;
+    }
+    .caixa-year-control .form-control {
+        border-radius: 999px 0 0 999px;
+        border-right: 0;
+        text-align: center;
+        min-height: 31px;
+    }
+    .caixa-year-buttons {
+        display: grid;
+        width: 1.8rem;
+    }
+    .caixa-year-buttons button {
+        border: 1px solid #dbe4ee;
+        background: #fff;
+        color: #475569;
+        font-size: .58rem;
+        line-height: 1;
+        padding: 0;
+    }
+    .caixa-year-buttons button:first-child { border-radius: 0 999px 0 0; }
+    .caixa-year-buttons button:last-child {
+        border-top: 0;
+        border-radius: 0 0 999px 0;
+    }
+    .caixa-year-buttons button:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
 </style>
 
 <div class="fin-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -89,16 +121,26 @@
         <div>
             <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
             <h2 class="fw-bold mb-1">Pagamentos Bancários</h2>
-            <p class="text-muted mb-0">Pagamentos recorrentes realizados diretamente em contas cadastradas.</p>
+            <p class="text-muted mb-0">Recorrentes, parcelas em aberto e pagamentos avulsos já liquidados.</p>
         </div>
     </div>
-    <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
         <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
         <a href="{% url 'financeiro:pagamento_bancario_novo' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
-            <i class="bi bi-plus-lg"></i> Novo bancário
+            <i class="bi bi-plus-lg"></i> Pagamento Bancário Recorrente
         </a>
+        <button type="button"
+                class="financeiro-top-btn financeiro-top-btn-primary"
+                hx-get="{% url 'financeiro:pagamento_bancario_avulso_novo' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+            <i class="bi bi-plus-lg"></i> Pagamento Bancário Avulso
+        </button>
     </div>
 </div>
 
@@ -116,6 +158,10 @@
     <form method="get" class="financeiro-filter">
         <input type="hidden" name="conta_bancaria" value="{{ filtro_rec_conta_pk|default:'' }}">
         <input type="hidden" name="categoria" value="{{ filtro_rec_categoria_pk|default:'' }}">
+        <input type="hidden" name="av_mes" value="{{ av_periodo.mes }}">
+        <input type="hidden" name="av_ano" value="{{ av_periodo.ano }}">
+        <input type="hidden" name="av_conta_bancaria" value="{{ filtro_av_conta_pk|default:'' }}">
+        <input type="hidden" name="av_categoria" value="{{ filtro_av_categoria_pk|default:'' }}">
         <div>
             <label for="data_inicio">Inicial</label>
             <input type="date" id="data_inicio" name="data_inicio" value="{{ periodo.data_inicio_raw }}" class="form-control">
@@ -177,6 +223,111 @@
     </div>
 </div>
 
+<div class="fin-card mb-3 overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-cash-stack"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Pagamentos avulsos no período</h3>
+                <div class="small text-muted">Únicos; já liquidados na data informada (fora da recorrência).</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ pagamentos_avulsos_periodo|length }}</span>
+    </div>
+    <form method="get"
+          class="p-3 border-top bg-white d-flex flex-wrap align-items-end gap-2"
+          data-avulso-filtro-form>
+        <input type="hidden" name="data_inicio" value="{{ periodo.data_inicio_raw }}">
+        <input type="hidden" name="data_fim" value="{{ periodo.data_fim_raw }}">
+        <input type="hidden" name="conta_bancaria" value="{{ filtro_rec_conta_pk|default:'' }}">
+        <input type="hidden" name="categoria" value="{{ filtro_rec_categoria_pk|default:'' }}">
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1" for="av_mes">Mês</label>
+            <select id="av_mes" name="av_mes" class="form-select form-select-sm rounded-pill">
+                {% for num, nome_mes in meses_filtro_caixa %}
+                    <option value="{{ num }}" {% if av_periodo.mes == num %}selected{% endif %}>{{ nome_mes }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1" for="av_ano">Ano</label>
+            <div class="caixa-year-control">
+                <input id="av_ano"
+                       name="av_ano"
+                       type="text"
+                       inputmode="numeric"
+                       autocomplete="off"
+                       value="{{ av_periodo.ano }}"
+                       class="form-control form-control-sm"
+                       data-year-input>
+                <div class="caixa-year-buttons" aria-hidden="true">
+                    <button type="button" data-year-step="1">▲</button>
+                    <button type="button" data-year-step="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1" for="av_filtro_banco">Banco</label>
+            <select id="av_filtro_banco" name="av_conta_bancaria" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                <option value="">Todos os bancos</option>
+                {% for conta in contas_banco_filtro %}
+                    <option value="{{ conta.pk }}" {% if filtro_av_conta_pk == conta.pk %}selected{% endif %}>{{ conta.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1" for="av_filtro_categoria">Categoria</label>
+            <select id="av_filtro_categoria" name="av_categoria" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                <option value="">Todas</option>
+                {% for cat in categorias_filtro %}
+                    <option value="{{ cat.pk }}" {% if filtro_av_categoria_pk == cat.pk %}selected{% endif %}>{{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">
+            <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-nowrap">Data pagamento</th>
+                    <th>Caixa</th>
+                    <th>Banco</th>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
+                    <th class="text-end">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagamentos_avulsos_periodo %}
+                <tr class="pagamento-bancario-avulso-row"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Editar pagamento avulso"
+                    hx-get="{% url 'financeiro:pagamento_bancario_avulso_editar' empresa_id=request.empresa_ativa.pk pk=p.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    data-no-global-loading
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPadrao"
+                    style="cursor:pointer;">
+                    <td class="text-nowrap">{{ p.data_pagamento|date:"d/m/Y" }}</td>
+                    <td>{{ p.caixa.nome }}</td>
+                    <td>{{ p.conta_bancaria.nome }}</td>
+                    <td class="small text-muted">{{ p.categoria.nome }}</td>
+                    <td>{{ p.descricao|default:"—" }}</td>
+                    <td class="text-end fw-bold text-nowrap">R$ {{ p.valor|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum pagamento avulso no período{% if filtro_av_conta_pk or filtro_av_categoria_pk %} com estes filtros{% endif %}.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="fin-card overflow-hidden">
     <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
@@ -187,6 +338,10 @@
     <form method="get" class="financeiro-filter">
         <input type="hidden" name="data_inicio" value="{{ periodo.data_inicio_raw }}">
         <input type="hidden" name="data_fim" value="{{ periodo.data_fim_raw }}">
+        <input type="hidden" name="av_mes" value="{{ av_periodo.mes }}">
+        <input type="hidden" name="av_ano" value="{{ av_periodo.ano }}">
+        <input type="hidden" name="av_conta_bancaria" value="{{ filtro_av_conta_pk|default:'' }}">
+        <input type="hidden" name="av_categoria" value="{{ filtro_av_categoria_pk|default:'' }}">
         <div>
             <label for="rec_filtro_banco">Banco</label>
             <select id="rec_filtro_banco" name="conta_bancaria" class="form-select form-select-sm fw-semibold" style="border-radius:.85rem; min-height:38px;">
@@ -270,6 +425,40 @@
     </div>
 </div>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const avulsoForm = document.querySelector('[data-avulso-filtro-form]');
+    if (avulsoForm) {
+        const yearInput = avulsoForm.querySelector('[data-year-input]');
+        function cleanYearValue(value) {
+            return String(value || '').replace(/\D/g, '').slice(0, 4);
+        }
+        if (yearInput) {
+            yearInput.value = cleanYearValue(yearInput.value);
+            yearInput.addEventListener('input', function () {
+                yearInput.value = cleanYearValue(yearInput.value);
+            });
+            avulsoForm.addEventListener('submit', function () {
+                yearInput.value = cleanYearValue(yearInput.value);
+            });
+            avulsoForm.querySelectorAll('[data-year-step]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const currentYear = new Date().getFullYear();
+                    const current = parseInt(cleanYearValue(yearInput.value), 10) || currentYear;
+                    const step = parseInt(button.dataset.yearStep, 10) || 0;
+                    yearInput.value = String(current + step);
+                });
+            });
+        }
+    }
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('.pagamento-bancario-avulso-row');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    event.preventDefault();
+    row.click();
+});
 document.addEventListener('click', function (event) {
     const row = event.target.closest('[data-row-href]');
     if (!row) return;

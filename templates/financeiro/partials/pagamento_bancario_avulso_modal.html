@@ -1,0 +1,89 @@
+<style>
+    .financeiro-modal-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 42px;
+        padding: .68rem 1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-modal-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-modal-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-modal-btn-danger {
+        background: #dc2626;
+        color: #fff;
+        border: 1px solid #dc2626;
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">{{ modal_title }}</h5>
+        {% if modal_subtitle %}
+            <div class="text-muted small">{{ modal_subtitle }}</div>
+        {% endif %}
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{{ post_url }}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading
+    class="d-flex flex-column"
+    style="max-height: calc(100vh - 9rem);"
+    novalidate>
+    {% csrf_token %}
+    <div class="modal-body overflow-auto flex-grow-1">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-4">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            {% for field in form %}
+            <div class="col-12 {% if field.name == 'observacao' %}col-lg-12{% else %}col-lg-6{% endif %}">
+                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="modal-footer flex-shrink-0 bg-white {% if pagamento_avulso %}justify-content-between{% else %}justify-content-end{% endif %}">
+        {% if pagamento_avulso %}
+        <button type="submit"
+                name="action"
+                value="excluir"
+                class="financeiro-modal-btn financeiro-modal-btn-danger"
+                hx-confirm="Excluir este pagamento bancário avulso? O valor deixará de aparecer nos saldos e extratos ligados ao caixa.">
+            <i class="bi bi-trash me-1"></i> Excluir
+        </button>
+        {% endif %}
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary">
+                <i class="bi bi-check2-circle me-1"></i> Salvar
+            </button>
+        </div>
+    </div>
+</form>

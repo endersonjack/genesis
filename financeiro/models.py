@@ -1184,3 +1184,63 @@ class PagamentoBancarioParcela(TimeStampedModel):
         if self.conta_bancaria_id and self.recorrencia_id:
             if self.conta_bancaria.empresa_id != self.recorrencia.empresa_id:
                 raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
+
+
+class PagamentoBancarioAvulso(TimeStampedModel):
+    """Pagamento bancário único, registrado já liquidado na data informada."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='pagamentos_bancarios_avulsos',
+    )
+    caixa = models.ForeignKey(
+        Caixa,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_avulsos',
+        verbose_name='Caixa',
+    )
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_avulsos',
+        verbose_name='Banco',
+    )
+    categoria = models.ForeignKey(
+        CategoriaFinanceira,
+        on_delete=models.PROTECT,
+        related_name='pagamentos_bancarios_avulsos',
+        help_text='Categoria de saída (pagamento bancário).',
+    )
+    descricao = models.CharField('Descrição', max_length=500, blank=True)
+    data_pagamento = models.DateField('Data de pagamento', db_index=True)
+    valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    observacao = models.TextField('Observação', blank=True)
+
+    class Meta:
+        verbose_name = 'Pagamento bancário avulso'
+        verbose_name_plural = 'Pagamentos bancários avulsos'
+        ordering = ['-data_pagamento', '-pk']
+        indexes = [
+            models.Index(fields=('empresa', 'data_pagamento')),
+        ]
+
+    def __str__(self) -> str:
+        return self.descricao or f'Avulso ({self.data_pagamento.strftime("%d/%m/%Y")})'
+
+    def clean(self) -> None:
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({'valor': 'Informe um valor maior que zero.'})
+        if self.caixa_id and self.empresa_id and self.caixa.empresa_id != self.empresa_id:
+            raise ValidationError({'caixa': 'O caixa deve pertencer à mesma empresa.'})
+        if (
+            self.conta_bancaria_id
+            and self.empresa_id
+            and self.conta_bancaria.empresa_id != self.empresa_id
+        ):
+            raise ValidationError({'conta_bancaria': 'Conta bancária inválida para esta empresa.'})
+        if self.categoria_id:
+            if self.categoria.movimentacao_tipo != CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO:
+                raise ValidationError({'categoria': 'Selecione uma categoria de pagamento bancário.'})
+            if self.empresa_id and self.categoria.empresa_id != self.empresa_id:
+                raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})

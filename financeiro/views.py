@@ -64,6 +64,7 @@ from .forms import (
     PagamentoNotaFiscalPagamentoFormSet,
     PagamentoBancarioPagarForm,
     PagamentoBancarioParcelaValorForm,
+    PagamentoBancarioAvulsoForm,
     PagamentoBancarioRecorrenteForm,
     nf_numero_exige_unicidade_para_fornecedor,
     RecebimentoAvulsoEditForm,
@@ -85,6 +86,7 @@ from .models import (
     PagamentoImposto,
     PagamentoImpostoItem,
     PagamentoBancarioParcela,
+    PagamentoBancarioAvulso,
     PagamentoBancarioRecorrente,
     PagamentoPessoal,
     PagamentoPessoalItem,
@@ -161,10 +163,23 @@ def _filtrar_linhas_periodo(linhas: list[dict], inicio, fim) -> list[dict]:
     ]
 
 
+def _linha_extrato_movimento_efetivo(linha: dict) -> bool:
+    """Inclui o lançamento em totais do período e no saldo após cada linha.
+
+    Parcelas de pagamento bancário **em aberto** aparecem no extrato detalhado apenas
+    como compromisso; o efeito no caixa conta quando estiver **paga** (consolidado).
+    """
+
+    return not linha.get('extrato_apenas_comprometido')
+
+
 def _recalcular_saldo_linhas(linhas: list[dict], campo_valor: str) -> list[dict]:
     linhas.sort(key=lambda item: item['sort_key'])
     saldo = Decimal('0')
     for linha in linhas:
+        if not _linha_extrato_movimento_efetivo(linha):
+            linha['saldo_apos_lancamento'] = saldo
+            continue
         valor = linha.get(campo_valor) or Decimal('0')
         saldo = saldo + valor if linha['entrada'] else saldo - valor
         linha['saldo_apos_lancamento'] = saldo
@@ -829,6 +844,12 @@ def _saldos_caixas_por_id(empresa) -> dict[int, Decimal]:
         .annotate(total=Coalesce(Sum('valor'), zero, output_field=dec))
     )
     _subtrair_por_caixa(saldos, pagamentos_bancarios, campo_caixa='recorrencia__caixa')
+    pagamentos_bancarios_avulsos = (
+        PagamentoBancarioAvulso.objects.filter(empresa=empresa)
+        .values('caixa')
+        .annotate(total=Coalesce(Sum('valor'), zero, output_field=dec))
+    )
+    _subtrair_por_caixa(saldos, pagamentos_bancarios_avulsos, campo_caixa='caixa')
     return saldos
 
 
@@ -1163,6 +1184,37 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'categoria_id': recorrencia.categoria_id,
                 'categoria_ids': categoria_ids,
                 'referencia': f'BAN #{parcela.pk}',
+                'url': reverse_empresa(
+                    request,
+                    'financeiro:pagamento_bancario_detalhe',
+                    kwargs={'pk': recorrencia.pk},
+                ),
+            }
+        )
+
+    pagamentos_avulsos = (
+        PagamentoBancarioAvulso.objects.filter(caixa=caixa)
+        .select_related('categoria', 'conta_bancaria')
+        .order_by('data_pagamento', 'pk')
+    )
+    for avulso in pagamentos_avulsos:
+        data = avulso.data_pagamento
+        categoria_ids = {avulso.categoria_id} if avulso.categoria_id else set()
+        linhas.append(
+            {
+                'data': data,
+                'sort_key': (data, avulso.pk, 81),
+                'natureza': MovimentoCaixa.Natureza.SAIDA,
+                'origem': 'Bancário avulso',
+                'descricao': avulso.descricao or 'Pagamento bancário avulso',
+                'valor': avulso.valor,
+                'entrada': False,
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'fornecedor_id': None,
+                'categoria_id': avulso.categoria_id,
+                'categoria_ids': categoria_ids,
+                'referencia': f'BVA #{avulso.pk}',
                 'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
             }
         )
@@ -1370,14 +1422,30 @@ def _extrato_caixa_detalhado(
     parcelas_bancarias = (
         PagamentoBancarioParcela.objects.filter(
             recorrencia__caixa=caixa,
-            status=PagamentoBancarioParcela.Status.PAGO,
+            status__in=(
+                PagamentoBancarioParcela.Status.ABERTO,
+                PagamentoBancarioParcela.Status.PAGO,
+            ),
         )
-        .select_related('recorrencia', 'recorrencia__categoria')
-        .order_by('data_pagamento', 'data_vencimento', 'pk')
+        .select_related(
+            'recorrencia',
+            'recorrencia__categoria',
+            'recorrencia__conta_bancaria',
+            'conta_bancaria',
+        )
+        .order_by('data_vencimento', 'data_pagamento', 'pk')
     )
     for parcela in parcelas_bancarias:
         recorrencia = parcela.recorrencia
-        data = parcela.data_pagamento or parcela.data_vencimento
+        if parcela.status == PagamentoBancarioParcela.Status.PAGO:
+            data = parcela.data_pagamento or parcela.data_vencimento
+            extrato_apenas_comprometido = False
+            sufixo = ''
+        else:
+            data = parcela.data_vencimento
+            extrato_apenas_comprometido = True
+            sufixo = ' - Em aberto'
+        conta = parcela.conta_bancaria or recorrencia.conta_bancaria
         linhas.append(
             {
                 'data': data,
@@ -1390,12 +1458,47 @@ def _extrato_caixa_detalhado(
                 'categoria_id': recorrencia.categoria_id,
                 'categoria_ids': {recorrencia.categoria_id} if recorrencia.categoria_id else set(),
                 'nf': '-',
-                'pessoa': recorrencia.conta_bancaria,
+                'pessoa': conta,
                 'fornecedor_id': None,
-                'descricao': f'{recorrencia.descricao} - Parcela {parcela.numero_parcela}',
+                'descricao': (
+                    f'{recorrencia.descricao} - Parcela {parcela.numero_parcela}{sufixo}'
+                ),
                 'valor_bruto': parcela.valor,
                 'descontos': Decimal('0'),
                 'valor_liquido': parcela.valor,
+                'extrato_apenas_comprometido': extrato_apenas_comprometido,
+                'url': reverse_empresa(
+                    request,
+                    'financeiro:pagamento_bancario_detalhe',
+                    kwargs={'pk': recorrencia.pk},
+                ),
+            }
+        )
+
+    pagamentos_avulsos = (
+        PagamentoBancarioAvulso.objects.filter(caixa=caixa)
+        .select_related('categoria', 'conta_bancaria')
+        .order_by('data_pagamento', 'pk')
+    )
+    for avulso in pagamentos_avulsos:
+        linhas.append(
+            {
+                'data': avulso.data_pagamento,
+                'sort_key': (avulso.data_pagamento, avulso.pk, 71),
+                'entrada': False,
+                'natureza': 'Saída',
+                'categoria': avulso.categoria.nome if avulso.categoria_id else '-',
+                'caixa_id': caixa.pk,
+                'caixa_nome': caixa.nome,
+                'categoria_id': avulso.categoria_id,
+                'categoria_ids': {avulso.categoria_id} if avulso.categoria_id else set(),
+                'nf': '-',
+                'pessoa': avulso.conta_bancaria,
+                'fornecedor_id': None,
+                'descricao': avulso.descricao or 'Pagamento bancário avulso',
+                'valor_bruto': avulso.valor,
+                'descontos': Decimal('0'),
+                'valor_liquido': avulso.valor,
                 'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
             }
         )
@@ -2705,11 +2808,19 @@ def caixa_lista(request):
             incluir_recebimentos_abertos=True,
         )
         entradas_mes = sum(
-            (l['valor_liquido'] for l in linhas_mes if l['entrada']),
+            (
+                l['valor_liquido']
+                for l in linhas_mes
+                if l['entrada'] and _linha_extrato_movimento_efetivo(l)
+            ),
             Decimal('0'),
         )
         saidas_mes = sum(
-            (l['valor_liquido'] for l in linhas_mes if not l['entrada']),
+            (
+                l['valor_liquido']
+                for l in linhas_mes
+                if not l['entrada'] and _linha_extrato_movimento_efetivo(l)
+            ),
             Decimal('0'),
         )
         caixa.saldo_exibicao = entradas_mes - saidas_mes
@@ -2727,11 +2838,19 @@ def caixa_lista(request):
             incluir_recebimentos_abertos=True,
         )
         entradas_mes = sum(
-            (l['valor_liquido'] for l in linhas_mes if l['entrada']),
+            (
+                l['valor_liquido']
+                for l in linhas_mes
+                if l['entrada'] and _linha_extrato_movimento_efetivo(l)
+            ),
             Decimal('0'),
         )
         saidas_mes = sum(
-            (l['valor_liquido'] for l in linhas_mes if not l['entrada']),
+            (
+                l['valor_liquido']
+                for l in linhas_mes
+                if not l['entrada'] and _linha_extrato_movimento_efetivo(l)
+            ),
             Decimal('0'),
         )
         saldo_unificado_mes += entradas_mes - saidas_mes
@@ -2852,11 +2971,19 @@ def caixa_detalhe(request, pk):
     page_obj = paginator.get_page(request.GET.get('page'))
     campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
     entradas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas_ativas
+            if linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     saidas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if not linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas_ativas
+            if not linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     page_query = dict(query_base)
@@ -2999,11 +3126,19 @@ def caixa_unificado(request):
     page_obj = paginator.get_page(request.GET.get('page'))
     campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
     entradas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas_ativas
+            if linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     saidas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas_ativas if not linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas_ativas
+            if not linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     page_query = dict(query_base)
@@ -3304,11 +3439,19 @@ def caixa_extrato_pdf(request, pk):
 
     periodo['modo_label'] = titulo
     entradas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas
+            if linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     saidas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if not linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas
+            if not linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     buf = BytesIO()
@@ -3450,11 +3593,19 @@ def caixa_unificado_pdf(request):
 
     periodo['modo_label'] = f'{titulo} Unificado'
     entradas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas
+            if linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     saidas_total = sum(
-        ((linha.get(campo_total) or Decimal('0')) for linha in linhas if not linha['entrada']),
+        (
+            (linha.get(campo_total) or Decimal('0'))
+            for linha in linhas
+            if not linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
+        ),
         Decimal('0'),
     )
     buf = BytesIO()
@@ -4158,6 +4309,34 @@ def _periodo_pagamento_bancario_params(request):
     }
 
 
+def _periodo_pagamentos_avulsos_mensais(request):
+    """Mês/ano para o card de pagamentos avulsos (padrão: mês corrente)."""
+    hoje = timezone.localdate()
+    mes_raw = (request.GET.get('av_mes') or '').strip()
+    ano_raw = (request.GET.get('av_ano') or '').strip()
+    try:
+        mes = int(mes_raw) if mes_raw else hoje.month
+    except (TypeError, ValueError):
+        mes = hoje.month
+    if mes < 1 or mes > 12:
+        mes = hoje.month
+    try:
+        ano = int(ano_raw) if ano_raw else hoje.year
+    except (TypeError, ValueError):
+        ano = hoje.year
+    if ano < 2000 or ano > hoje.year + 10:
+        ano = hoje.year
+    dia_ultimo = calendar.monthrange(ano, mes)[1]
+    inicio = date(ano, mes, 1)
+    fim_inclusive = date(ano, mes, dia_ultimo)
+    return {
+        'mes': mes,
+        'ano': ano,
+        'inicio': inicio,
+        'fim_inclusive': fim_inclusive,
+    }
+
+
 def _contar_parcelas_previstas_sem_qtd(recorrencia: PagamentoBancarioRecorrente) -> int:
     """Quantidade prevista quando só há data_fim (sem qtd_parcelas)."""
     dia = recorrencia.dia_pagamento
@@ -4262,8 +4441,11 @@ def pagamento_bancario_lista(request):
     if not empresa:
         return redirect('selecionar_empresa')
     periodo = _periodo_pagamento_bancario_params(request)
+    av_periodo = _periodo_pagamentos_avulsos_mensais(request)
     filtro_conta_id = _int_param(request, 'conta_bancaria')
     filtro_categoria_id = _int_param(request, 'categoria')
+    av_conta_id = _int_param(request, 'av_conta_bancaria')
+    av_categoria_id = _int_param(request, 'av_categoria')
     _garantir_parcelas_bancarias(empresa, periodo['inicio'], periodo['fim_exclusive'])
     parcelas_abertas = (
         PagamentoBancarioParcela.objects.filter(
@@ -4326,6 +4508,19 @@ def pagamento_bancario_lista(request):
         empresa=empresa,
         movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
     ).order_by('nome')
+    pagamentos_avulsos_qs = PagamentoBancarioAvulso.objects.filter(
+        empresa=empresa,
+        data_pagamento__gte=av_periodo['inicio'],
+        data_pagamento__lte=av_periodo['fim_inclusive'],
+    )
+    if av_conta_id:
+        pagamentos_avulsos_qs = pagamentos_avulsos_qs.filter(conta_bancaria_id=av_conta_id)
+    if av_categoria_id:
+        pagamentos_avulsos_qs = pagamentos_avulsos_qs.filter(categoria_id=av_categoria_id)
+    pagamentos_avulsos_periodo = (
+        pagamentos_avulsos_qs.select_related('caixa', 'conta_bancaria', 'categoria')
+        .order_by('-data_pagamento', '-pk')
+    )
     return render(
         request,
         'financeiro/pagamento_bancario_lista.html',
@@ -4333,11 +4528,82 @@ def pagamento_bancario_lista(request):
             'page_title': 'Pagamentos Bancários',
             'periodo': periodo,
             'parcelas_abertas': parcelas_abertas,
+            'pagamentos_avulsos_periodo': pagamentos_avulsos_periodo,
+            'av_periodo': av_periodo,
+            'filtro_av_conta_pk': av_conta_id,
+            'filtro_av_categoria_pk': av_categoria_id,
+            'meses_filtro_caixa': MESES_FILTRO_CAIXA,
             'recorrencias': recorrencias_lista,
             'contas_banco_filtro': contas_banco_filtro,
             'categorias_filtro': categorias_filtro,
             'filtro_rec_conta_pk': filtro_conta_id,
             'filtro_rec_categoria_pk': filtro_categoria_id,
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_avulso_novo(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    form = PagamentoBancarioAvulsoForm(request.POST or None, empresa=empresa)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            form.save()
+        messages.success(request, 'Pagamento bancário avulso registrado.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_avulso_modal.html',
+        {
+            'form': form,
+            'post_url': reverse_empresa(request, 'financeiro:pagamento_bancario_avulso_novo'),
+            'modal_title': 'Novo pagamento bancário avulso',
+            'modal_subtitle': 'Registre um pagamento já liquidado fora da recorrência.',
+        },
+    )
+
+
+@login_required
+def pagamento_bancario_avulso_editar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoBancarioAvulso.objects.filter(empresa=empresa),
+        pk=pk,
+    )
+    if request.method == 'POST' and request.POST.get('action') == 'excluir':
+        with transaction.atomic():
+            pagamento.delete()
+        messages.success(request, 'Pagamento bancário avulso excluído.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        return response
+    form = PagamentoBancarioAvulsoForm(request.POST or None, empresa=empresa, instance=pagamento)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            form.save()
+        messages.success(request, 'Pagamento bancário avulso atualizado.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_bancario_lista')
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_bancario_avulso_modal.html',
+        {
+            'form': form,
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_bancario_avulso_editar',
+                kwargs={'pk': pagamento.pk},
+            ),
+            'modal_title': 'Editar pagamento bancário avulso',
+            'modal_subtitle': 'Altere os dados ou exclua o registro.',
+            'pagamento_avulso': pagamento,
         },
     )
 
