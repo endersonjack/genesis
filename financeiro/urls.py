@@ -11,6 +11,16 @@ urlpatterns = [
     path('relatorios/', empresa_scoped(views.relatorios), name='relatorios'),
     path('buscar/', empresa_scoped(views.buscar_pagamentos), name='buscar_pagamentos'),
     path(
+        'buscar/exportar/pdf/',
+        empresa_scoped(views.buscar_pagamentos_pdf),
+        name='buscar_pagamentos_pdf',
+    ),
+    path(
+        'buscar/exportar/xlsx/',
+        empresa_scoped(views.buscar_pagamentos_xlsx),
+        name='buscar_pagamentos_xlsx',
+    ),
+    path(
         'partial/dashboard-cards/',
         empresa_scoped(views.partial_dashboard_cards),
         name='partial_dashboard_cards',

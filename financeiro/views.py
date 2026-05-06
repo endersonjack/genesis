@@ -1499,12 +1499,7 @@ def relatorios(request):
     )
 
 
-@login_required
-def buscar_pagamentos(request):
-    empresa = _empresa(request)
-    if not empresa:
-        return redirect('selecionar_empresa')
-
+def _buscar_pagamentos_context(request, empresa) -> dict:
     query = str(request.GET.get('q', '')).strip()
     fornecedor = str(request.GET.get('fornecedor', '')).strip()
     categoria_id = _int_param(request, 'categoria')
@@ -1960,31 +1955,275 @@ def buscar_pagamentos(request):
         'valor_impostos': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'imposto'), Decimal('0')),
     }
 
+    return {
+        'page_title': 'Buscar Pagamentos',
+        'query': query,
+        'fornecedor': fornecedor,
+        'categoria_id': categoria_id,
+        'valor': valor_raw,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'status_vencido': status_vencido,
+        'status_aberto': status_aberto,
+        'status_pago': status_pago,
+        'erro_valor': erro_valor,
+        'filtros_ativos': filtros_ativos,
+        'resultados': resultados,
+        'totais_busca': totais_busca,
+        'categorias_filtro': CategoriaFinanceira.objects.filter(
+            empresa=empresa,
+            ativo=True,
+            tipo=CategoriaFinanceira.Tipo.SAIDA,
+        ).order_by('movimentacao_tipo', 'nome'),
+    }
+
+
+@login_required
+def buscar_pagamentos(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
     return render(
         request,
         'financeiro/busca_pagamentos.html',
-        {
-            'page_title': 'Buscar Pagamentos',
-            'query': query,
-            'fornecedor': fornecedor,
-            'categoria_id': categoria_id,
-            'valor': valor_raw,
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'status_vencido': status_vencido,
-            'status_aberto': status_aberto,
-            'status_pago': status_pago,
-            'erro_valor': erro_valor,
-            'filtros_ativos': filtros_ativos,
-            'resultados': resultados,
-            'totais_busca': totais_busca,
-            'categorias_filtro': CategoriaFinanceira.objects.filter(
-                empresa=empresa,
-                ativo=True,
-                tipo=CategoriaFinanceira.Tipo.SAIDA,
-            ).order_by('movimentacao_tipo', 'nome'),
-        },
+        _buscar_pagamentos_context(request, empresa),
     )
+
+
+def _linhas_export_busca_pagamentos(context: dict) -> list[list]:
+    linhas = []
+    for item in context['resultados']:
+        linhas.append(
+            [
+                item.get('status_label') or '',
+                item.get('data'),
+                item.get('entidade') or '',
+                item.get('tipo_registro') or '',
+                item.get('categoria_label') or '',
+                item.get('numero_doc') or '',
+                item.get('forma_pagamento') or '',
+                item.get('forma_detalhe') or '',
+                item.get('vencimento'),
+                item.get('valor_linha') or Decimal('0'),
+                item.get('parcela_label') or '',
+                item.get('data_pagamento'),
+            ]
+        )
+    return linhas
+
+
+def _filtros_export_busca_pagamentos(context: dict) -> str:
+    filtros = []
+    if context.get('query'):
+        filtros.append(f'Doc/NF: {context["query"]}')
+    if context.get('fornecedor'):
+        filtros.append(f'Pessoa/Entidade: {context["fornecedor"]}')
+    if context.get('valor'):
+        filtros.append(f'Valor: R$ {context["valor"]}')
+    if context.get('data_inicio') or context.get('data_fim'):
+        inicio = context.get('data_inicio') or '...'
+        fim = context.get('data_fim') or '...'
+        filtros.append(f'Período: {inicio} a {fim}')
+    status = []
+    if context.get('status_vencido'):
+        status.append('Vencidos')
+    if context.get('status_aberto'):
+        status.append('Em aberto')
+    if context.get('status_pago'):
+        status.append('Pagos')
+    if status:
+        filtros.append(f'Status: {", ".join(status)}')
+    return ' | '.join(filtros) or 'Sem filtros'
+
+
+@login_required
+def buscar_pagamentos_xlsx(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font
+
+    context = _buscar_pagamentos_context(request, empresa)
+    headers = [
+        'Status',
+        'Data Emissão',
+        'Fornecedor / Funcionário / Entidade',
+        'Tipo de Saída',
+        'Categoria',
+        'Nº Doc',
+        'Tipo Pagamento',
+        'Detalhe Tipo',
+        'Vencimento',
+        'Valor',
+        'Parcela',
+        'Data de Pagamento',
+    ]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Buscar Pagamentos'
+
+    row = 1
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(headers))
+    title = ws.cell(row=row, column=1, value=f'Buscar Pagamentos - {_nome_empresa_pdf(empresa)}')
+    title.font = Font(bold=True, size=13)
+    row += 1
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=len(headers))
+    ws.cell(row=row, column=1, value=_filtros_export_busca_pagamentos(context))
+    row += 2
+
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=row, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    row += 1
+
+    for valores in _linhas_export_busca_pagamentos(context):
+        for col, valor in enumerate(valores, 1):
+            cell = ws.cell(row=row, column=col, value=valor)
+            cell.alignment = Alignment(vertical='top', wrap_text=True)
+            if col == 10:
+                cell.number_format = 'R$ #,##0.00'
+        row += 1
+
+    totais = context['totais_busca']
+    row += 1
+    ws.cell(row=row, column=1, value='Total geral').font = Font(bold=True)
+    ws.cell(row=row, column=2, value=float(totais['valor_total'])).font = Font(bold=True)
+    ws.cell(row=row, column=3, value=f'{totais["quantidade"]} resultado(s)')
+    row += 1
+    for label, qtd_key, total_key in (
+        ('Boletos', 'boletos_qtd', 'boletos_total'),
+        ('À Vista', 'avista_qtd', 'avista_total'),
+        ('Crédito', 'credito_qtd', 'credito_total'),
+    ):
+        ws.cell(row=row, column=1, value=label).font = Font(bold=True)
+        ws.cell(row=row, column=2, value=float(totais[total_key]))
+        ws.cell(row=row, column=3, value=f'{totais[qtd_key]} resultado(s)')
+        row += 1
+
+    widths = [16, 13, 34, 16, 22, 16, 18, 22, 13, 14, 12, 16]
+    for idx, width in enumerate(widths, 1):
+        ws.column_dimensions[chr(64 + idx)].width = width
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    ref = timezone.localdate().strftime('%Y%m%d')
+    filename = f'Buscar_Pagamentos_{ref}.xlsx'
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def buscar_pagamentos_pdf(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    context = _buscar_pagamentos_context(request, empresa)
+    styles = getSampleStyleSheet()
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        leftMargin=9 * mm,
+        rightMargin=9 * mm,
+        topMargin=9 * mm,
+        bottomMargin=9 * mm,
+    )
+    story = []
+    story.extend(_flowables_titulo_pdf_centro('Buscar Pagamentos', styles))
+    meta_style = ParagraphStyle(
+        'bp_meta_pdf',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#475569'),
+        alignment=1,
+    )
+    story.append(Paragraph(xml_escape(_nome_empresa_pdf(empresa)), meta_style))
+    story.append(Paragraph(xml_escape(_filtros_export_busca_pagamentos(context)), meta_style))
+    story.append(Spacer(1, 3 * mm))
+
+    cell = ParagraphStyle(
+        'bp_pdf_cell',
+        parent=styles['Normal'],
+        fontSize=5.7,
+        leading=7,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    cell_right = ParagraphStyle('bp_pdf_cell_right', parent=cell, alignment=2)
+    data = [[
+        'Status',
+        'Emissão',
+        'Entidade',
+        'Tipo Saída',
+        'Categoria',
+        'Nº Doc',
+        'Tipo Pgto',
+        'Venc.',
+        'Valor',
+        'Pgto',
+    ]]
+    for item in context['resultados']:
+        tipo_pgto = item.get('forma_pagamento') or ''
+        if item.get('forma_detalhe'):
+            tipo_pgto = f'{tipo_pgto}\n{item["forma_detalhe"]}'
+        if item.get('parcela_label'):
+            tipo_pgto = f'{tipo_pgto}\nParcela {item["parcela_label"]}'
+        data.append(
+            [
+                _pdf_cell(item.get('status_label') or '', cell),
+                _pdf_cell(_format_data_pdf(item.get('data')), cell),
+                _pdf_cell(item.get('entidade') or '', cell),
+                _pdf_cell(item.get('tipo_registro') or '', cell),
+                _pdf_cell(item.get('categoria_label') or '', cell),
+                _pdf_cell(item.get('numero_doc') or '', cell),
+                _pdf_cell(tipo_pgto, cell),
+                _pdf_cell(_format_data_pdf(item.get('vencimento')), cell),
+                _pdf_cell(_format_moeda_pdf(item.get('valor_linha')), cell_right),
+                _pdf_cell(_format_data_pdf(item.get('data_pagamento')), cell),
+            ]
+        )
+    table = Table(
+        data,
+        repeatRows=1,
+        colWidths=[18 * mm, 16 * mm, 48 * mm, 20 * mm, 27 * mm, 20 * mm, 27 * mm, 16 * mm, 21 * mm, 18 * mm],
+    )
+    table.setStyle(_pdf_table_style())
+    story.append(table)
+
+    totais = context['totais_busca']
+    story.append(Spacer(1, 3 * mm))
+    totais_table = Table(
+        [[
+            'Boletos',
+            'À Vista',
+            'Crédito',
+            'Total Geral',
+        ], [
+            f'{totais["boletos_qtd"]} | {_format_moeda_pdf(totais["boletos_total"])}',
+            f'{totais["avista_qtd"]} | {_format_moeda_pdf(totais["avista_total"])}',
+            f'{totais["credito_qtd"]} | {_format_moeda_pdf(totais["credito_total"])}',
+            f'{totais["quantidade"]} | {_format_moeda_pdf(totais["valor_total"])}',
+        ]],
+        colWidths=[43 * mm, 43 * mm, 43 * mm, 50 * mm],
+    )
+    totais_table.setStyle(_pdf_table_style())
+    story.append(totais_table)
+    story.extend(_flowables_rodape_impressao(request, styles))
+    doc.build(story)
+    ref = timezone.localdate().strftime('%Y%m%d')
+    filename = f'Buscar_Pagamentos_{ref}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required

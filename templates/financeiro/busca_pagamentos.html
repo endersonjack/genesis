@@ -250,12 +250,26 @@
         flex: 1 1 24rem;
     }
     .financeiro-status-legend-title {
+        border: 0;
+        background: transparent;
+        padding: 0;
         font-size: .72rem;
         text-transform: uppercase;
         letter-spacing: .04em;
         color: #64748b;
         font-weight: 800;
         margin-bottom: .45rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+    }
+    .financeiro-status-legend-title i {
+        color: #dc2626;
+        font-size: 1rem;
+        transition: transform .18s ease;
+    }
+    .financeiro-status-legend-title[aria-expanded="true"] i {
+        transform: rotate(180deg);
     }
     .financeiro-status-legend-items {
         display: flex;
@@ -330,6 +344,14 @@
         </div>
     </div>
     <div class="financeiro-top-actions d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+           class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+        </a>
+        <a href="{% url 'financeiro:buscar_pagamentos_xlsx' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+           class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+        </a>
         <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
@@ -474,8 +496,16 @@
     <div class="financeiro-search-totals">
         <div class="financeiro-summary-footer mb-3">
             <div class="financeiro-status-legend">
-                <div class="financeiro-status-legend-title">Legenda dos status</div>
-                <div class="financeiro-status-legend-items">
+                <button class="financeiro-status-legend-title"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#financeiroStatusLegend"
+                        aria-expanded="false"
+                        aria-controls="financeiroStatusLegend">
+                    Legenda dos status
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="financeiro-status-legend-items collapse" id="financeiroStatusLegend">
                     <div class="financeiro-status-legend-item">
                         <span class="badge text-bg-success">Pago Completo</span>
                         <span>valor total da saída já foi pago.</span>
@@ -547,7 +577,7 @@
 document.addEventListener('click', (event) => {
     const row = event.target.closest('[data-row-href]');
     if (!row) return;
-    window.location.href = row.dataset.rowHref;
+    window.open(row.dataset.rowHref, '_blank', 'noopener');
 });
 
 document.addEventListener('keydown', (event) => {
@@ -555,7 +585,7 @@ document.addEventListener('keydown', (event) => {
     const row = event.target.closest('[data-row-href]');
     if (!row) return;
     event.preventDefault();
-    window.location.href = row.dataset.rowHref;
+    window.open(row.dataset.rowHref, '_blank', 'noopener');
 });
 </script>
 {% endblock %}
