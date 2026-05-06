@@ -205,6 +205,39 @@
         font-weight: 800;
         color: #0f172a;
     }
+    .financeiro-total-chip-highlight {
+        border-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        background: #f8fbff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+        min-width: 11rem;
+    }
+    .financeiro-total-chip-highlight .financeiro-total-value {
+        font-size: 1.05rem;
+        color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+    }
+    .financeiro-cell-note {
+        display: block;
+        margin-top: .15rem;
+        font-size: .76rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .financeiro-totals-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        justify-content: flex-end;
+    }
+    .financeiro-totals-title {
+        flex: 1 0 100%;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+        text-align: right;
+        margin-top: .25rem;
+    }
     @media (max-width: 767.98px) {
         .financeiro-search-grid {
             grid-template-columns: 1fr;
@@ -342,17 +375,15 @@
         <table class="table table-hover fin-table mb-0 align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>#</th>
-                    <th>Tipo</th>
-                    <th>Pessoa / Entidade</th>
-                    <th>Categoria</th>
-                    <th class="text-nowrap">Documento</th>
-                    <th>Docs</th>
-                    <th class="text-nowrap">Nº Parcela</th>
-                    <th class="text-end text-nowrap">Valor Parcela</th>
-                    <th class="text-nowrap">Vencimento</th>
                     <th>Status</th>
-                    <th class="text-end">Valor</th>
+                    <th class="text-nowrap">Data Emissão</th>
+                    <th>Fornecedor / Funcionário / Entidade</th>
+                    <th class="text-nowrap">Tipo de Saída</th>
+                    <th>Categoria</th>
+                    <th class="text-nowrap">Nº Doc</th>
+                    <th class="text-nowrap">Tipo Pagamento</th>
+                    <th class="text-end text-nowrap">Valor</th>
+                    <th class="text-nowrap">Vencimento</th>
                 </tr>
             </thead>
             <tbody>
@@ -361,61 +392,29 @@
                     data-row-href="{{ item.url }}"
                     tabindex="0"
                     role="link">
-                    <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
-                    <td class="small text-muted text-nowrap">{{ item.tipo_pagamento_label }}</td>
+                    <td class="small">
+                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
+                    </td>
+                    <td class="small text-muted text-nowrap">{{ item.data|date:"d/m/Y" }}</td>
                     <td class="small fw-semibold">{{ item.entidade }}</td>
+                    <td class="small text-muted text-nowrap">{{ item.tipo_registro }}</td>
                     <td class="small text-muted">{{ item.categoria_label }}</td>
-                    <td class="small text-muted text-nowrap">{{ item.documento }}</td>
-                    <td class="small text-muted" style="max-width: 16rem;">
-                        {% if item.boletos_relacionados %}
-                            <span class="d-inline-block text-truncate w-100"
-                                  title="{% for boleto in item.boletos_relacionados %}{{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}{% endfor %}">
-                                {% for boleto in item.boletos_relacionados %}
-                                    {{ boleto.numero_doc }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                            </span>
-                        {% else %}
-                            —
-                        {% endif %}
+                    <td class="small text-muted text-nowrap">
+                        {{ item.numero_doc|default:"—" }}
                     </td>
                     <td class="small text-muted text-nowrap">
-                        {% if item.boletos_relacionados %}
-                            {% for boleto in item.boletos_relacionados %}
-                                {{ boleto.parcela }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            —
+                        {{ item.forma_pagamento }}
+                        {% if item.forma_detalhe %}
+                            <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
                         {% endif %}
                     </td>
                     <td class="text-end small fw-semibold text-nowrap">
-                        {% if item.boletos_relacionados %}
-                            {% for boleto in item.boletos_relacionados %}
-                                R$ {{ boleto.valor|moeda_br }}{% if not forloop.last %}<br>{% endif %}
-                            {% endfor %}
-                        {% else %}
-                            —
+                        R$ {{ item.valor_linha|moeda_br }}
+                        {% if item.parcela_label %}
+                            <span class="financeiro-cell-note">Parcela nº: {{ item.parcela_label }}</span>
                         {% endif %}
                     </td>
-                    <td class="small text-nowrap">
-                        {% if item.boletos_relacionados %}
-                            {% for boleto in item.boletos_relacionados %}
-                                {{ boleto.vencimento|date:"d/m/Y" }}{% if not forloop.last %}<br>{% endif %}
-                            {% endfor %}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td class="small">
-                        <div class="d-flex flex-wrap gap-1">
-                            {% if item.boletos_vencidos %}
-                            <span class="badge text-bg-danger">Vencido</span>
-                            {% endif %}
-                            {% for status_label in item.status_labels %}
-                            <span class="badge {% if status_label == 'Pago' %}text-bg-success{% elif status_label == 'Em aberto' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ status_label }}</span>
-                            {% endfor %}
-                        </div>
-                    </td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ item.valor_total|moeda_br }}</td>
+                    <td class="small text-nowrap">{{ item.vencimento|date:"d/m/Y" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -427,21 +426,33 @@
     </div>
     {% endif %}
     <div class="financeiro-search-totals">
-        <div class="d-flex flex-wrap gap-2 justify-content-end">
+        <div class="financeiro-totals-group mb-3">
+            <div class="financeiro-totals-title">Totais por forma de pagamento</div>
             <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Resultados</div>
-                <div class="financeiro-total-value">{{ totais_busca.quantidade }}</div>
+                <div class="financeiro-total-label">Boletos</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.boletos_total|moeda_br }}</div>
+                <div class="financeiro-cell-note">{{ totais_busca.boletos_qtd }} resultado(s)</div>
             </div>
             <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Total geral</div>
+                <div class="financeiro-total-label">À Vista</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.avista_total|moeda_br }}</div>
+                <div class="financeiro-cell-note">{{ totais_busca.avista_qtd }} resultado(s)</div>
+            </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Crédito</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.credito_total|moeda_br }}</div>
+                <div class="financeiro-cell-note">{{ totais_busca.credito_qtd }} resultado(s)</div>
+            </div>
+            <div class="financeiro-total-chip financeiro-total-chip-highlight">
+                <div class="financeiro-total-label">Total Geral</div>
                 <div class="financeiro-total-value">R$ {{ totais_busca.valor_total|moeda_br }}</div>
+                <div class="financeiro-cell-note">{{ totais_busca.quantidade }} resultado(s)</div>
             </div>
+        </div>
+        <div class="financeiro-totals-group">
+            <div class="financeiro-totals-title">Totais por Tipo de Pagamento</div>
             <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Parcelas</div>
-                <div class="financeiro-total-value">R$ {{ totais_busca.valor_parcelas|moeda_br }}</div>
-            </div>
-            <div class="financeiro-total-chip">
-                <div class="financeiro-total-label">Notas fiscais</div>
+                <div class="financeiro-total-label">Geral / Nota Fiscal</div>
                 <div class="financeiro-total-value">R$ {{ totais_busca.valor_nf|moeda_br }}</div>
             </div>
             <div class="financeiro-total-chip">
