@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 import re
+from urllib.parse import urlencode
 from xml.sax.saxutils import escape as xml_escape
 
 from django.contrib import messages
@@ -3488,25 +3489,47 @@ def movimentar_caixa(request):
     empresa = _empresa(request)
     if not empresa:
         return redirect('selecionar_empresa')
-    filtros = _recebimentos_filtros(request, empresa)
-    recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(empresa, filtros)
+    filtros_abertos = _recebimentos_filtros(
+        request,
+        empresa,
+        prefixo='abertos',
+        usar_mes_corrente_padrao=False,
+    )
+    filtros_pagos = _recebimentos_filtros(
+        request,
+        empresa,
+        prefixo='pagos',
+        usar_mes_corrente_padrao=True,
+    )
+    recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(
+        empresa,
+        filtros_abertos=filtros_abertos,
+        filtros_pagos=filtros_pagos,
+    )
     return render(
         request,
         'financeiro/movimentar_caixa.html',
         {
             'page_title': 'Recebimentos',
-            'filtros_recebimentos': filtros,
+            'filtros_abertos': filtros_abertos,
+            'filtros_pagos': filtros_pagos,
             'recebimentos_abertos': recebimentos_abertos,
             'recebimentos_pagos': recebimentos_pagos,
             'totais_abertos': _totais_recebimentos(recebimentos_abertos),
             'totais_pagos': _totais_recebimentos(recebimentos_pagos),
-            'recebimentos_pdf_query': request.GET.urlencode(),
+            'abertos_pdf_query': _recebimentos_query_string(filtros_abertos),
+            'pagos_pdf_query': _recebimentos_query_string(filtros_pagos),
+            'abertos_limpar_query': _recebimentos_query_string(filtros_pagos),
+            'pagos_limpar_query': _recebimentos_query_string(filtros_abertos),
         },
     )
 
 
-def _recebimentos_filtros(request, empresa):
-    obra_id = _int_param(request, 'obra')
+def _recebimentos_filtros(request, empresa, *, prefixo: str, usar_mes_corrente_padrao: bool):
+    campo_data_inicio = f'{prefixo}_data_inicio'
+    campo_data_fim = f'{prefixo}_data_fim'
+    campo_obra = f'{prefixo}_obra'
+    obra_id = _int_param(request, campo_obra)
     obra_selecionada = None
     obras = list(Obra.objects.filter(empresa=empresa).order_by('nome'))
     if obra_id:
@@ -3520,20 +3543,38 @@ def _recebimentos_filtros(request, empresa):
         else primeiro_dia_mes.replace(month=primeiro_dia_mes.month + 1)
     )
     ultimo_dia_mes = proximo_mes - timedelta(days=1)
-    data_inicio_raw = (request.GET.get('data_inicio') or '').strip()
-    data_fim_raw = (request.GET.get('data_fim') or '').strip()
-    data_inicio = parse_date(data_inicio_raw) or primeiro_dia_mes
-    data_fim = parse_date(data_fim_raw) or ultimo_dia_mes
+    data_inicio_raw = (request.GET.get(campo_data_inicio) or '').strip()
+    data_fim_raw = (request.GET.get(campo_data_fim) or '').strip()
+    data_inicio = parse_date(data_inicio_raw)
+    data_fim = parse_date(data_fim_raw)
+    if usar_mes_corrente_padrao:
+        data_inicio = data_inicio or primeiro_dia_mes
+        data_fim = data_fim or ultimo_dia_mes
 
     return {
-        'data_inicio_raw': data_inicio.isoformat(),
-        'data_fim_raw': data_fim.isoformat(),
+        'prefixo': prefixo,
+        'campo_data_inicio': campo_data_inicio,
+        'campo_data_fim': campo_data_fim,
+        'campo_obra': campo_obra,
+        'data_inicio_raw': data_inicio.isoformat() if data_inicio else data_inicio_raw,
+        'data_fim_raw': data_fim.isoformat() if data_fim else data_fim_raw,
         'data_inicio': data_inicio,
         'data_fim': data_fim,
         'obra_id': obra_selecionada.pk if obra_selecionada else None,
         'obra': obra_selecionada,
         'obras': obras,
     }
+
+
+def _recebimentos_query_string(filtros):
+    params = {}
+    if filtros.get('data_inicio_raw'):
+        params[filtros['campo_data_inicio']] = filtros['data_inicio_raw']
+    if filtros.get('data_fim_raw'):
+        params[filtros['campo_data_fim']] = filtros['data_fim_raw']
+    if filtros.get('obra_id'):
+        params[filtros['campo_obra']] = filtros['obra_id']
+    return urlencode(params)
 
 
 def _data_referencia_recebimento(recebimento):
@@ -3562,7 +3603,7 @@ def _aplicar_filtros_recebimentos(recebimentos, filtros):
     return filtrados
 
 
-def _recebimentos_movimentar_listas(empresa, filtros=None):
+def _recebimentos_movimentar_listas(empresa, *, filtros_abertos=None, filtros_pagos=None):
     recebimentos_avulsos = (
         RecebimentoAvulso.objects.filter(empresa=empresa)
         .select_related('caixa', 'cliente', 'conta_bancaria', 'movimento')
@@ -3578,8 +3619,6 @@ def _recebimentos_movimentar_listas(empresa, filtros=None):
         *(_recebimento_para_linha(r, 'medicao') for r in recebimentos_medicao),
     ]
     recebimentos.sort(key=lambda r: (r['data'] or timezone.localdate(), r['pk']), reverse=True)
-    if filtros:
-        recebimentos = _aplicar_filtros_recebimentos(recebimentos, filtros)
     recebimentos_abertos = [
         r for r in recebimentos
         if r['status'] in (RecebimentoAvulso.Status.ABERTO, RecebimentoMedicao.Status.ABERTO)
@@ -3587,7 +3626,12 @@ def _recebimentos_movimentar_listas(empresa, filtros=None):
     recebimentos_pagos = [
         r for r in recebimentos
         if r['status'] in (RecebimentoAvulso.Status.PAGO, RecebimentoMedicao.Status.PAGO)
-    ][:ULTIMOS_RECEBIMENTOS_LISTA_LIMITE]
+    ]
+    if filtros_abertos:
+        recebimentos_abertos = _aplicar_filtros_recebimentos(recebimentos_abertos, filtros_abertos)
+    if filtros_pagos:
+        recebimentos_pagos = _aplicar_filtros_recebimentos(recebimentos_pagos, filtros_pagos)
+    recebimentos_pagos = recebimentos_pagos[:ULTIMOS_RECEBIMENTOS_LISTA_LIMITE]
     return recebimentos_abertos, recebimentos_pagos
 
 
@@ -3642,14 +3686,32 @@ def recebimentos_pdf(request, status: str):
     if not empresa:
         return redirect('selecionar_empresa')
 
-    filtros = _recebimentos_filtros(request, empresa)
-    recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(empresa, filtros)
     if status == 'abertos':
+        filtros = _recebimentos_filtros(
+            request,
+            empresa,
+            prefixo='abertos',
+            usar_mes_corrente_padrao=False,
+        )
+        recebimentos_abertos, _recebimentos_pagos = _recebimentos_movimentar_listas(
+            empresa,
+            filtros_abertos=filtros,
+        )
         recebimentos = recebimentos_abertos
         titulo = 'Recebimentos em Aberto'
         subtitulo = 'Recebimentos em aberto · Ainda não lançados no caixa'
         filename_status = 'Abertos'
     elif status == 'pagos':
+        filtros = _recebimentos_filtros(
+            request,
+            empresa,
+            prefixo='pagos',
+            usar_mes_corrente_padrao=True,
+        )
+        _recebimentos_abertos, recebimentos_pagos = _recebimentos_movimentar_listas(
+            empresa,
+            filtros_pagos=filtros,
+        )
         recebimentos = recebimentos_pagos
         titulo = 'Recebimentos Pagos/Liquidados'
         subtitulo = f'Pagos/Liquidados · Últimos {ULTIMOS_RECEBIMENTOS_LISTA_LIMITE} lançados no caixa'
