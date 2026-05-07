@@ -971,13 +971,20 @@ class PagamentoImposto(TimeStampedModel):
         verbose_name='Autoridade tributária',
     )
     data_emissao = models.DateField('Data de emissão', default=timezone.localdate, db_index=True)
+    periodo_apuracao = models.CharField('Período de apuração', max_length=60, blank=True)
+    data_vencimento = models.DateField('Data de vencimento', null=True, blank=True, db_index=True)
     caixa = models.ForeignKey(
         Caixa,
         on_delete=models.PROTECT,
         related_name='pagamentos_impostos',
         verbose_name='Caixa',
     )
-    data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+    data_pagamento = models.DateField(
+        'Data de pagamento',
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     conta_bancaria = models.ForeignKey(
         ContaBancaria,
         on_delete=models.PROTECT,
@@ -999,6 +1006,26 @@ class PagamentoImposto(TimeStampedModel):
 
     def __str__(self) -> str:
         return f'Imposto {self.autoridade} — {self.data_emissao}'
+
+    @property
+    def status_label(self) -> str:
+        if self.data_pagamento:
+            return 'Pago'
+        if self.data_vencimento and self.data_vencimento < timezone.localdate():
+            return 'Vencido'
+        if self.data_vencimento and self.data_vencimento == timezone.localdate():
+            return 'Vence Hoje'
+        return 'Em Aberto'
+
+    @property
+    def status_badge_class(self) -> str:
+        if self.data_pagamento:
+            return 'text-bg-success'
+        if self.data_vencimento and self.data_vencimento < timezone.localdate():
+            return 'text-bg-danger'
+        if self.data_vencimento and self.data_vencimento == timezone.localdate():
+            return 'text-bg-primary'
+        return 'text-bg-warning'
 
     def clean(self) -> None:
         if self.caixa_id and self.empresa_id:

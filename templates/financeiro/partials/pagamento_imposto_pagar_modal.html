@@ -1,0 +1,51 @@
+{% load moeda %}
+<div class="modal-header border-0 pb-0 px-4 pt-4">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Pagar imposto</h5>
+        <div class="text-muted small">{{ pagamento.autoridade.nome }}{% if pagamento.periodo_apuracao %} · {{ pagamento.periodo_apuracao }}{% endif %}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<form method="post"
+      hx-post="{{ post_url }}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body px-4 py-3">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger rounded-4">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="border rounded-4 bg-light p-3 mb-3">
+            <div class="row g-2 small">
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Vencimento</span>
+                    <div class="fw-semibold">{{ pagamento.data_vencimento|date:"d/m/Y"|default:"—" }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Período</span>
+                    <div class="fw-semibold">{{ pagamento.periodo_apuracao|default:"—" }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Valor</span>
+                    <div class="fw-semibold">R$ {{ total_itens|moeda_br }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-3">
+            {% for field in form %}
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-success rounded-pill fw-semibold">
+            <i class="bi bi-check2-circle me-1"></i> Confirmar pagamento
+        </button>
+    </div>
+</form>

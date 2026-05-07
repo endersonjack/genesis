@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-section-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td {
+        vertical-align: middle;
+        font-size: .95rem;
+    }
+    .financeiro-clickable-row {
+        cursor: pointer;
+    }
+</style>
+
+<div class="fin-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-section-icon"><i class="bi bi-bank2"></i></span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <h2 class="fw-bold mb-1">Pagamento Impostos</h2>
+            <p class="text-muted mb-0">Impostos em aberto e histórico recente de pagamentos.</p>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <button type="button"
+                class="financeiro-top-btn financeiro-top-btn-primary"
+                hx-get="{% url 'financeiro:pagamento_imposto_novo' empresa_id=request.empresa_ativa.pk %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+            <i class="bi bi-plus-lg"></i> Novo Imposto
+        </button>
+    </div>
+</div>
+
+<div class="fin-card mb-3 overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-hourglass-split"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Impostos em aberto</h3>
+                <div class="small text-muted">Pagamentos programados para datas futuras.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ impostos_abertos|length }} em aberto</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Status</th>
+                    <th>Data emissão</th>
+                    <th>Vencimento</th>
+                    <th>Autoridade</th>
+                    <th>Período</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Caixa</th>
+                    <th>Pagamento realizado em</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-end pe-4">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for imposto in impostos_abertos %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=imposto.pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4"><span class="badge rounded-pill {{ imposto.status_badge_class }}">{{ imposto.status_label }}</span></td>
+                    <td class="text-nowrap">{{ imposto.data_emissao|date:"d/m/Y" }}</td>
+                    <td class="text-nowrap">{{ imposto.data_vencimento|date:"d/m/Y"|default:"—" }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ imposto.autoridade.nome }}</div>
+                        <div class="small text-muted">{{ imposto.autoridade.get_esfera_display }}</div>
+                    </td>
+                    <td class="small fw-semibold">{{ imposto.periodo_apuracao|default:"—" }}</td>
+                    <td>{{ imposto.descricao_item|default:"—" }}</td>
+                    <td class="small text-muted">{{ imposto.categoria_item|default:"—" }}</td>
+                    <td>{{ imposto.caixa.nome }}</td>
+                    <td>{% if imposto.data_pagamento %}{% if imposto.conta_bancaria_id %}{{ imposto.conta_bancaria.nome }} — {{ imposto.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}{% else %}—{% endif %}</td>
+                    <td class="text-end fw-bold text-nowrap">R$ {{ imposto.total_itens_calc|moeda_br }}</td>
+                    <td class="text-end pe-4 text-nowrap">
+                        <button type="button"
+                                class="btn btn-sm btn-success rounded-3 fw-semibold"
+                                hx-get="{% url 'financeiro:pagamento_imposto_pagar' empresa_id=request.empresa_ativa.pk pk=imposto.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-check2-circle me-1"></i> Pagar
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-4">Nenhum imposto em aberto.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="fin-card overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-cash-stack"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Últimos 20 pagamentos de impostos</h3>
+                <div class="small text-muted">Pagamentos mais recentes lançados no financeiro.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ ultimos_pagamentos|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Status</th>
+                    <th>Data pagamento</th>
+                    <th>Vencimento</th>
+                    <th>Autoridade</th>
+                    <th>Período</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Caixa</th>
+                    <th>Pagamento realizado em</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for imposto in ultimos_pagamentos %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=imposto.pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4"><span class="badge rounded-pill {{ imposto.status_badge_class }}">{{ imposto.status_label }}</span></td>
+                    <td class="text-nowrap">{{ imposto.data_pagamento|date:"d/m/Y" }}</td>
+                    <td class="text-nowrap">{{ imposto.data_vencimento|date:"d/m/Y"|default:"—" }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ imposto.autoridade.nome }}</div>
+                        <div class="small text-muted">{{ imposto.autoridade.get_esfera_display }}</div>
+                    </td>
+                    <td class="small fw-semibold">{{ imposto.periodo_apuracao|default:"—" }}</td>
+                    <td>{{ imposto.descricao_item|default:"—" }}</td>
+                    <td class="small text-muted">{{ imposto.categoria_item|default:"—" }}</td>
+                    <td>{{ imposto.caixa.nome }}</td>
+                    <td>{% if imposto.conta_bancaria_id %}{{ imposto.conta_bancaria.nome }} — {{ imposto.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}</td>
+                    <td class="text-end pe-4 fw-bold text-nowrap">R$ {{ imposto.total_itens_calc|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-4">Nenhum pagamento de imposto registrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow" id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('click', function (event) {
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    window.location.href = row.dataset.rowHref;
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    event.preventDefault();
+    window.location.href = row.dataset.rowHref;
+});
+</script>
+{% endblock %}

@@ -26,7 +26,7 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Coalesce, TruncMonth
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -55,6 +55,7 @@ from .forms import (
     BoletoRascunhoFormSet,
     PagamentoImpostoForm,
     PagamentoImpostoItemFormSet,
+    PagamentoImpostoPagarForm,
     PagamentoPessoalForm,
     PagamentoPessoalItemFormSet,
     PagamentoNotaFiscalItemEditFormSet,
@@ -428,16 +429,21 @@ def _data_ultimo_pagamento_nf(pagamentos, boletos) -> 'date | None':
 
 def _busca_pagamentos_nf_corresponde_status(
     resumo: dict,
+    status_linha: str | None = None,
     *,
     status_vencido: bool,
     status_aberto: bool,
+    status_pago_parcial: bool = False,
+    status_sem_pagamento: bool = False,
     status_pago: bool,
 ) -> bool:
-    situacao = resumo['situacao_label']
+    situacao = status_linha or resumo['situacao_label']
     valor_pago = resumo.get('valor_pago') or Decimal('0')
     return (
         (status_vencido and situacao == 'Vencido')
-        or (status_aberto and situacao in ('Não pago', 'Pago Parcial'))
+        or (status_aberto and situacao in ('Em Aberto', 'Vence Hoje'))
+        or (status_pago_parcial and situacao == 'Pago Parcial')
+        or (status_sem_pagamento and situacao == 'Sem Pagamento')
         or (status_pago and valor_pago > 0)
     )
 
@@ -830,7 +836,10 @@ def _saldos_caixas_por_id(empresa) -> dict[int, Decimal]:
     )
     _subtrair_por_caixa(saldos, pagamentos_pessoal, campo_caixa='pagamento__caixa')
     pagamentos_impostos = (
-        PagamentoImpostoItem.objects.filter(pagamento__empresa=empresa)
+        PagamentoImpostoItem.objects.filter(
+            pagamento__empresa=empresa,
+            pagamento__data_pagamento__isnull=False,
+        )
         .values('pagamento__caixa')
         .annotate(total=Coalesce(Sum('valor_total'), zero, output_field=dec))
     )
@@ -1126,7 +1135,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
         )
 
     pagamentos_impostos = (
-        PagamentoImposto.objects.filter(caixa=caixa)
+        PagamentoImposto.objects.filter(caixa=caixa, data_pagamento__isnull=False)
         .select_related('autoridade')
         .prefetch_related('itens', 'itens__categoria')
         .order_by('data_pagamento', 'data_emissao', 'pk')
@@ -1386,7 +1395,10 @@ def _extrato_caixa_detalhado(
         )
 
     itens_impostos = (
-        PagamentoImpostoItem.objects.filter(pagamento__caixa=caixa)
+        PagamentoImpostoItem.objects.filter(
+            pagamento__caixa=caixa,
+            pagamento__data_pagamento__isnull=False,
+        )
         .select_related('categoria', 'pagamento', 'pagamento__autoridade')
         .order_by('pagamento__data_pagamento', 'pagamento__data_emissao', 'pagamento_id', 'pk')
     )
@@ -1732,6 +1744,8 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
     data_fim = str(request.GET.get('data_fim', '')).strip()
     status_vencido_raw = str(request.GET.get('status_vencido', '')).strip()
     status_aberto_raw = str(request.GET.get('status_aberto', '')).strip()
+    status_pago_parcial_raw = str(request.GET.get('status_pago_parcial', '')).strip()
+    status_sem_pagamento_raw = str(request.GET.get('status_sem_pagamento', '')).strip()
     status_pago_raw = str(request.GET.get('status_pago', '')).strip()
     origem = str(request.GET.get('origem', '')).strip()
     tem_filtro_principal = any(
@@ -1747,6 +1761,8 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
     tem_status_expresso = (
         'status_vencido' in request.GET
         or 'status_aberto' in request.GET
+        or 'status_pago_parcial' in request.GET
+        or 'status_sem_pagamento' in request.GET
         or 'status_pago' in request.GET
     )
     status_vencido = (
@@ -1764,9 +1780,21 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         if tem_status_expresso
         else False
     )
+    status_pago_parcial = (
+        status_pago_parcial_raw in ('1', 'on', 'true')
+        if tem_status_expresso
+        else False
+    )
+    status_sem_pagamento = (
+        status_sem_pagamento_raw in ('1', 'on', 'true')
+        if tem_status_expresso
+        else False
+    )
     if origem == 'dashboard' and not tem_filtro_principal:
         status_vencido = False
         status_aberto = False
+        status_pago_parcial = False
+        status_sem_pagamento = False
         status_pago = False
     resultados = []
     erro_valor = ''
@@ -1774,6 +1802,8 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         [
             status_vencido,
             status_aberto,
+            status_pago_parcial,
+            status_sem_pagamento,
             status_pago,
         ]
     )
@@ -1799,7 +1829,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             return True
 
         def boleto_corresponde_status(boleto) -> bool:
-            if not (status_vencido or status_aberto or status_pago):
+            if not (
+                status_vencido
+                or status_aberto
+                or status_pago_parcial
+                or status_sem_pagamento
+                or status_pago
+            ):
                 return True
             boleto_pago = (
                 boleto.status == BoletoPagamento.Status.PAGO
@@ -1868,11 +1904,26 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 hoje,
             )
             status_labels = [resumo['situacao_label']]
-            if status_vencido or status_aberto or status_pago:
+            status_linha = _status_busca_pagamento_nf(
+                resumo,
+                boletos_all,
+                nf.total_itens_calc,
+                hoje,
+            )
+            if (
+                status_vencido
+                or status_aberto
+                or status_pago_parcial
+                or status_sem_pagamento
+                or status_pago
+            ):
                 corresponde_status = _busca_pagamentos_nf_corresponde_status(
                     resumo,
+                    status_linha,
                     status_vencido=status_vencido,
                     status_aberto=status_aberto,
+                    status_pago_parcial=status_pago_parcial,
+                    status_sem_pagamento=status_sem_pagamento,
                     status_pago=status_pago,
                 )
                 if not corresponde_status:
@@ -1886,7 +1937,7 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 ]
                 if boletos_relacionados:
                     origens.add('numero_doc')
-            elif status_vencido and not status_aberto and not status_pago:
+            elif status_vencido and not status_aberto and not status_pago_parcial and not status_sem_pagamento and not status_pago:
                 boletos_relacionados = boletos_vencidos
             if valor_raw and not erro_valor and valor is not None:
                 if nf.total_itens_calc == valor:
@@ -1914,12 +1965,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     }
                 )
             ) or '-'
-            status_linha = _status_busca_pagamento_nf(
-                resumo,
-                boletos_all,
-                nf.total_itens_calc,
-                hoje,
-            )
             boletos_validos = [
                 boleto for boleto in boletos_all
                 if boleto.status != BoletoPagamento.Status.CANCELADO
@@ -1935,7 +1980,16 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             ]
             for pagamento in pagamentos_diretos:
                 data_pagamento_linha = pagamento.data or nf.data_emissao
-                if (status_vencido or status_aberto or status_pago) and not status_pago:
+                if (
+                    status_vencido
+                    or status_aberto
+                    or status_pago_parcial
+                    or status_sem_pagamento
+                    or status_pago
+                ) and not (
+                    (status_pago_parcial and status_linha == 'Pago Parcial')
+                    or status_pago
+                ):
                     continue
                 if (data_inicio_dt or data_fim_dt) and not data_no_periodo(data_pagamento_linha):
                     continue
@@ -2189,6 +2243,8 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         'data_fim': data_fim,
         'status_vencido': status_vencido,
         'status_aberto': status_aberto,
+        'status_pago_parcial': status_pago_parcial,
+        'status_sem_pagamento': status_sem_pagamento,
         'status_pago': status_pago,
         'erro_valor': erro_valor,
         'filtros_ativos': filtros_ativos,
@@ -2253,6 +2309,10 @@ def _filtros_export_busca_pagamentos(context: dict) -> str:
         status.append('Vencidos')
     if context.get('status_aberto'):
         status.append('Em aberto')
+    if context.get('status_pago_parcial'):
+        status.append('Pago Parcial')
+    if context.get('status_sem_pagamento'):
+        status.append('Sem Pagamento')
     if context.get('status_pago'):
         status.append('Pagos')
     if status:
@@ -2476,6 +2536,72 @@ def _dashboard_alertas_financeiro_data(empresa):
         .prefetch_related('pagamento_nf__boletos', 'pagamento_nf__pagamentos', 'pagamento_nf__itens')
         .order_by('vencimento', 'parcela', 'pk')[:100]
     )
+    impostos_venc_hoje = list(
+        PagamentoImposto.objects.filter(
+            empresa=empresa,
+            data_pagamento__isnull=True,
+            data_vencimento=hoje,
+        )
+        .select_related('autoridade', 'caixa')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+            descricao_item=Coalesce(
+                Subquery(
+                    PagamentoImpostoItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('descricao')[:1]
+                ),
+                Value(''),
+            ),
+        )
+        .order_by('data_vencimento', 'pk')[:50]
+    )
+    impostos_vencidos = list(
+        PagamentoImposto.objects.filter(
+            empresa=empresa,
+            data_pagamento__isnull=True,
+            data_vencimento__lt=hoje,
+        )
+        .select_related('autoridade', 'caixa')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+            descricao_item=Coalesce(
+                Subquery(
+                    PagamentoImpostoItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('descricao')[:1]
+                ),
+                Value(''),
+            ),
+        )
+        .order_by('data_vencimento', 'pk')[:100]
+    )
+    bancarios_venc_hoje = list(
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.ABERTO,
+            data_vencimento=hoje,
+        )
+        .select_related('recorrencia', 'recorrencia__categoria', 'recorrencia__conta_bancaria')
+        .order_by('data_vencimento', 'pk')[:50]
+    )
+    bancarios_vencidos = list(
+        PagamentoBancarioParcela.objects.filter(
+            recorrencia__empresa=empresa,
+            status=PagamentoBancarioParcela.Status.ABERTO,
+            data_vencimento__lt=hoje,
+        )
+        .select_related('recorrencia', 'recorrencia__categoria', 'recorrencia__conta_bancaria')
+        .order_by('data_vencimento', 'pk')[:100]
+    )
     notas_sem_pagamento = list(
         PagamentoNotaFiscal.objects.filter(
             empresa=empresa,
@@ -2516,6 +2642,30 @@ def _dashboard_alertas_financeiro_data(empresa):
         .order_by('-data_emissao', '-pk')
         .distinct()
     )
+    impostos_abertos_qs = (
+        PagamentoImposto.objects.filter(
+            empresa=empresa,
+            data_pagamento__isnull=True,
+        )
+        .select_related('autoridade', 'caixa')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+            descricao_item=Coalesce(
+                Subquery(
+                    PagamentoImpostoItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('descricao')[:1]
+                ),
+                Value(''),
+            ),
+        )
+        .order_by('data_vencimento', 'data_emissao', 'pk')[:50]
+    )
+    impostos_abertos = list(impostos_abertos_qs)
     notas_pagamento_parcial = []
     for nf in notas_com_pagamento:
         boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
@@ -2565,6 +2715,65 @@ def _dashboard_alertas_financeiro_data(empresa):
                 'valor_total': total_nf,
                 'valor_pago': resumo['valor_pago'],
                 'pagamento_nf_pk': nf.pk,
+                'tipo_label': 'Boleto',
+                'entidade_nome': fornecedor.nome,
+                'entidade_doc': fornecedor.cpf_cnpj_formatado,
+            }
+        )
+    dashboard_notas_sem_pagamento_linhas = []
+    for nf in notas_sem_pagamento:
+        dashboard_notas_sem_pagamento_linhas.append(
+            {
+                'index': len(dashboard_notas_sem_pagamento_linhas) + 1,
+                'nf_pk': nf.pk,
+                'data_emissao': nf.data_emissao,
+                'dias_atrasados': max((hoje - nf.data_emissao).days, 0),
+                'entidade_nome': nf.fornecedor.nome,
+                'entidade_doc': nf.fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
+                'valor': nf.total_itens_calc,
+                'situacao': 'Sem pagamento',
+                'badge_class': 'text-bg-secondary',
+            }
+        )
+
+    dashboard_impostos_vencidos_linhas = []
+    for imposto in impostos_vencidos:
+        dashboard_impostos_vencidos_linhas.append(
+            {
+                'index': len(dashboard_impostos_vencidos_linhas) + 1,
+                'imposto_pk': imposto.pk,
+                'vencimento': imposto.data_vencimento,
+                'dias_atrasados': (hoje - imposto.data_vencimento).days if imposto.data_vencimento else 0,
+                'entidade_nome': imposto.autoridade.nome,
+                'entidade_doc': imposto.descricao_item or imposto.autoridade.get_esfera_display(),
+                'periodo_apuracao': imposto.periodo_apuracao or '—',
+                'valor': imposto.total_itens_calc,
+                'situacao': imposto.status_label,
+                'badge_class': imposto.status_badge_class,
+            }
+        )
+
+    dashboard_bancarios_vencidos_linhas = []
+    for parcela in bancarios_vencidos:
+        recorrencia = parcela.recorrencia
+        dashboard_bancarios_vencidos_linhas.append(
+            {
+                'index': len(dashboard_bancarios_vencidos_linhas) + 1,
+                'bancario_pk': recorrencia.pk,
+                'vencimento': parcela.data_vencimento,
+                'dias_atrasados': (hoje - parcela.data_vencimento).days,
+                'entidade_nome': recorrencia.conta_bancaria.nome,
+                'entidade_doc': recorrencia.categoria.nome if recorrencia.categoria_id else '',
+                'descricao': recorrencia.descricao,
+                'parcela_label': (
+                    f'{parcela.numero_parcela}/{recorrencia.qtd_parcelas}'
+                    if recorrencia.qtd_parcelas
+                    else str(parcela.numero_parcela)
+                ),
+                'valor': parcela.valor,
+                'situacao': 'Vencido',
+                'badge_class': 'text-bg-danger',
             }
         )
 
@@ -2585,6 +2794,7 @@ def _dashboard_alertas_financeiro_data(empresa):
                 'valor_pago': Decimal('0'),
                 'ultimo_pagamento': None,
                 'valor_a_pagar': vt,
+                'url_name': 'financeiro:pagamento_nf_detalhe',
             }
         )
 
@@ -2607,6 +2817,28 @@ def _dashboard_alertas_financeiro_data(empresa):
                 'valor_pago': resumo['valor_pago'],
                 'ultimo_pagamento': ultimo,
                 'valor_a_pagar': nf.valor_em_aberto_dashboard,
+                'url_name': 'financeiro:pagamento_nf_detalhe',
+            }
+        )
+
+    for imposto in impostos_abertos:
+        idx_linha += 1
+        dashboard_pagamentos_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'imposto_pk': imposto.pk,
+                'situacao': imposto.status_label,
+                'badge_class': imposto.status_badge_class,
+                'ref_principal': imposto.autoridade.nome,
+                'data_emissao': imposto.data_emissao,
+                'data_vencimento': imposto.data_vencimento,
+                'valor_total': imposto.total_itens_calc,
+                'valor_pago': Decimal('0'),
+                'ultimo_pagamento': None,
+                'valor_a_pagar': imposto.total_itens_calc,
+                'tipo_label': 'Imposto',
+                'descricao': imposto.descricao_item,
+                'url_name': 'financeiro:pagamento_imposto_detalhe',
             }
         )
 
@@ -2624,23 +2856,86 @@ def _dashboard_alertas_financeiro_data(empresa):
                 'fornecedor_doc': fornecedor.cpf_cnpj_formatado,
                 'numero_nf': nf.numero_nf,
                 'pagamento_nf_pk': nf.pk,
+                'tipo_label': 'Boleto',
+                'entidade_nome': fornecedor.nome,
+                'entidade_doc': fornecedor.cpf_cnpj_formatado,
+            }
+        )
+    for imposto in impostos_venc_hoje:
+        dashboard_boletos_venc_hoje_linhas.append(
+            {
+                'index': len(dashboard_boletos_venc_hoje_linhas) + 1,
+                'numero_doc': 'Imposto',
+                'parcela_label': imposto.periodo_apuracao or '—',
+                'valor': imposto.total_itens_calc,
+                'fornecedor_nome': imposto.autoridade.nome,
+                'fornecedor_doc': imposto.descricao_item or imposto.autoridade.get_esfera_display(),
+                'entidade_nome': imposto.autoridade.nome,
+                'entidade_doc': imposto.descricao_item or imposto.autoridade.get_esfera_display(),
+                'numero_nf': '—',
+                'imposto_pk': imposto.pk,
+                'tipo_label': 'Imposto',
+            }
+        )
+    for parcela in bancarios_venc_hoje:
+        recorrencia = parcela.recorrencia
+        dashboard_boletos_venc_hoje_linhas.append(
+            {
+                'index': len(dashboard_boletos_venc_hoje_linhas) + 1,
+                'numero_doc': 'Bancário',
+                'parcela_label': (
+                    f'{parcela.numero_parcela}/{recorrencia.qtd_parcelas}'
+                    if recorrencia.qtd_parcelas
+                    else str(parcela.numero_parcela)
+                ),
+                'valor': parcela.valor,
+                'fornecedor_nome': recorrencia.conta_bancaria.nome,
+                'fornecedor_doc': recorrencia.categoria.nome if recorrencia.categoria_id else '',
+                'entidade_nome': recorrencia.conta_bancaria.nome,
+                'entidade_doc': recorrencia.descricao,
+                'numero_nf': '—',
+                'bancario_pk': recorrencia.pk,
+                'tipo_label': 'Bancário',
             }
         )
 
-    total_boletos_venc_hoje = sum((b.valor for b in boletos_venc_hoje), Decimal('0'))
+    total_boletos_venc_hoje = sum((b.valor for b in boletos_venc_hoje), Decimal('0')) + sum(
+        (imposto.total_itens_calc for imposto in impostos_venc_hoje),
+        Decimal('0'),
+    ) + sum(
+        (parcela.valor for parcela in bancarios_venc_hoje),
+        Decimal('0'),
+    )
     total_boletos_vencidos = sum((b.valor for b in boletos_vencidos), Decimal('0'))
+    total_notas_sem_pagamento_card = sum((linha['valor'] for linha in dashboard_notas_sem_pagamento_linhas), Decimal('0'))
+    total_impostos_vencidos = sum((linha['valor'] for linha in dashboard_impostos_vencidos_linhas), Decimal('0'))
+    total_bancarios_vencidos = sum((linha['valor'] for linha in dashboard_bancarios_vencidos_linhas), Decimal('0'))
     total_notas_sem_pagamento = sum((nf.total_itens_calc for nf in notas_sem_pagamento), Decimal('0'))
     total_notas_pagamento_parcial = sum(
         (nf.valor_em_aberto_dashboard for nf in notas_pagamento_parcial),
         Decimal('0'),
     )
-    total_pagamentos_em_aberto = total_notas_sem_pagamento + total_notas_pagamento_parcial
+    total_impostos_em_aberto = sum(
+        (imposto.total_itens_calc for imposto in impostos_abertos),
+        Decimal('0'),
+    )
+    total_pagamentos_em_aberto = (
+        total_notas_sem_pagamento
+        + total_notas_pagamento_parcial
+        + total_impostos_em_aberto
+    )
     return {
         'hoje': hoje,
         'dashboard_boletos_venc_hoje_linhas': dashboard_boletos_venc_hoje_linhas,
         'total_boletos_venc_hoje': total_boletos_venc_hoje,
         'dashboard_boletos_vencidos_linhas': dashboard_boletos_vencidos_linhas,
         'total_boletos_vencidos': total_boletos_vencidos,
+        'dashboard_notas_sem_pagamento_linhas': dashboard_notas_sem_pagamento_linhas,
+        'total_notas_sem_pagamento_card': total_notas_sem_pagamento_card,
+        'dashboard_impostos_vencidos_linhas': dashboard_impostos_vencidos_linhas,
+        'total_impostos_vencidos': total_impostos_vencidos,
+        'dashboard_bancarios_vencidos_linhas': dashboard_bancarios_vencidos_linhas,
+        'total_bancarios_vencidos': total_bancarios_vencidos,
         'dashboard_pagamentos_aberto_linhas': dashboard_pagamentos_aberto_linhas,
         'total_pagamentos_em_aberto': total_pagamentos_em_aberto,
     }
@@ -2655,56 +2950,59 @@ def dashboard_card_pdf(request, tipo: str):
     data = _dashboard_alertas_financeiro_data(empresa)
     configs = {
         'boletos-vencendo-hoje': {
-            'titulo': 'Boletos vencendo hoje',
+            'titulo': 'Pagamentos vencendo hoje',
             'total': data['total_boletos_venc_hoje'],
             'linhas': data['dashboard_boletos_venc_hoje_linhas'],
-            'headers': ['#', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor', 'CPF/CNPJ', 'Nº NF'],
+            'headers': ['#', 'Tipo', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor/Func/Entidade', 'CPF/CNPJ/Detalhe', 'Nº NF'],
             'row': lambda r: [
                 r['index'],
+                r.get('tipo_label') or 'Boleto',
                 r['numero_doc'],
                 r['parcela_label'],
                 _format_moeda_pdf(r['valor']),
-                r['fornecedor_nome'],
-                r['fornecedor_doc'],
+                r.get('entidade_nome') or r['fornecedor_nome'],
+                r.get('entidade_doc') or r['fornecedor_doc'],
                 r['numero_nf'],
             ],
-            'widths': [9, 28, 22, 25, 55, 32, 25],
+            'widths': [8, 18, 26, 20, 24, 54, 36, 22],
         },
         'boletos-vencidos': {
             'titulo': 'Boletos vencidos',
             'total': data['total_boletos_vencidos'],
             'linhas': data['dashboard_boletos_vencidos_linhas'],
-            'headers': ['#', 'Vencimento', 'Dias', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor', 'Nº NF', 'Valor total', 'Valor pago'],
+            'headers': ['#', 'Tipo', 'Vencimento', 'Dias', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor/Func/Entidade', 'Nº NF', 'Valor total', 'Valor pago'],
             'row': lambda r: [
                 r['index'],
+                r.get('tipo_label') or 'Boleto',
                 _format_data_pdf(r['vencimento']),
                 r['dias_atrasados'],
                 r['numero_doc'],
                 r['parcela_label'],
                 _format_moeda_pdf(r['valor']),
-                r['fornecedor_nome'],
+                r.get('entidade_nome') or r['fornecedor_nome'],
                 r['numero_nf'],
                 _format_moeda_pdf(r['valor_total']),
                 _format_moeda_pdf(r['valor_pago']),
             ],
-            'widths': [8, 23, 13, 25, 19, 23, 44, 20, 25, 25],
+            'widths': [7, 16, 21, 12, 22, 18, 22, 44, 18, 23, 23],
         },
         'pagamentos-em-aberto': {
             'titulo': 'Pagamentos em aberto',
             'total': data['total_pagamentos_em_aberto'],
             'linhas': data['dashboard_pagamentos_aberto_linhas'],
-            'headers': ['#', 'Situação', 'Referência', 'Emissão', 'Valor total', 'Valor pago', 'Último pagamento', 'Valor à pagar'],
+            'headers': ['#', 'Situação', 'Referência', 'Emissão', 'Vencimento', 'Valor total', 'Valor pago', 'Último pagamento', 'Valor à pagar'],
             'row': lambda r: [
                 r['index'],
                 r['situacao'],
                 r['ref_principal'],
                 _format_data_pdf(r['data_emissao']),
+                _format_data_pdf(r.get('data_vencimento')),
                 _format_moeda_pdf(r['valor_total']),
                 _format_moeda_pdf(r['valor_pago']),
                 _format_data_pdf(r['ultimo_pagamento']),
                 _format_moeda_pdf(r['valor_a_pagar']),
             ],
-            'widths': [8, 26, 62, 24, 28, 28, 28, 28],
+            'widths': [8, 24, 56, 22, 22, 26, 26, 26, 26],
         },
     }
     config = configs.get(tipo)
@@ -3003,7 +3301,7 @@ def partial_dashboard_cards(request):
         .order_by('-criado_em', '-pk')[:25]
     )
     impostos_qs = (
-        PagamentoImposto.objects.filter(empresa=empresa)
+        PagamentoImposto.objects.filter(empresa=empresa, data_pagamento__isnull=False)
         .select_related('autoridade', 'caixa')
         .prefetch_related('itens')
         .order_by('-criado_em', '-pk')[:25]
@@ -3102,22 +3400,172 @@ def partial_dashboard_cards(request):
         )
     eventos.sort(key=lambda e: (e['sort_dt'] or hoje), reverse=True)
     eventos = eventos[:10]
+    alertas_dashboard = _dashboard_alertas_financeiro_data(empresa)
 
     return render(
         request,
         'financeiro/partials/dashboard_cards_loaded.html',
         {
             'hoje': hoje,
-            'dashboard_boletos_venc_hoje_linhas': dashboard_boletos_venc_hoje_linhas,
-            'total_boletos_venc_hoje': total_boletos_venc_hoje,
-            'dashboard_boletos_vencidos_linhas': dashboard_boletos_vencidos_linhas,
-            'total_boletos_vencidos': total_boletos_vencidos,
-            'dashboard_pagamentos_aberto_linhas': dashboard_pagamentos_aberto_linhas,
-            'total_pagamentos_em_aberto': total_pagamentos_em_aberto,
+            'dashboard_boletos_venc_hoje_linhas': alertas_dashboard['dashboard_boletos_venc_hoje_linhas'],
+            'total_boletos_venc_hoje': alertas_dashboard['total_boletos_venc_hoje'],
+            'dashboard_boletos_vencidos_linhas': alertas_dashboard['dashboard_boletos_vencidos_linhas'],
+            'total_boletos_vencidos': alertas_dashboard['total_boletos_vencidos'],
+            'dashboard_notas_sem_pagamento_linhas': alertas_dashboard['dashboard_notas_sem_pagamento_linhas'],
+            'total_notas_sem_pagamento_card': alertas_dashboard['total_notas_sem_pagamento_card'],
+            'dashboard_impostos_vencidos_linhas': alertas_dashboard['dashboard_impostos_vencidos_linhas'],
+            'total_impostos_vencidos': alertas_dashboard['total_impostos_vencidos'],
+            'dashboard_bancarios_vencidos_linhas': alertas_dashboard['dashboard_bancarios_vencidos_linhas'],
+            'total_bancarios_vencidos': alertas_dashboard['total_bancarios_vencidos'],
+            'dashboard_pagamentos_aberto_linhas': alertas_dashboard['dashboard_pagamentos_aberto_linhas'],
+            'total_pagamentos_em_aberto': alertas_dashboard['total_pagamentos_em_aberto'],
             'ultimos_lancamentos': ultimos_lancamentos,
             'ultimos_eventos': eventos,
         },
     )
+
+
+@login_required
+def partial_dashboard_card_body(request, tipo: str):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    if not _is_htmx(request):
+        return redirect_empresa(request, 'financeiro:dashboard')
+
+    tipos_validos = {
+        'pagamentos-vencendo-hoje',
+        'boletos-vencidos',
+        'notas-sem-pagamento',
+        'impostos-vencidos',
+        'bancarios-vencidos',
+    }
+    if tipo not in tipos_validos:
+        return HttpResponseBadRequest('Card inválido.')
+
+    context = _dashboard_alertas_financeiro_data(empresa)
+    context['tipo'] = tipo
+    return render(
+        request,
+        'financeiro/partials/dashboard_card_body.html',
+        context,
+    )
+
+
+def _ultimos_eventos_caixa(empresa):
+    hoje = timezone.localdate()
+    nf_qs = (
+        PagamentoNotaFiscal.objects.filter(empresa=empresa)
+        .select_related('fornecedor', 'caixa')
+        .prefetch_related('pagamentos')
+        .annotate(
+            total_itens=Coalesce(
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            )
+        )
+        .order_by('-criado_em', '-pk')[:25]
+    )
+    pessoal_qs = (
+        PagamentoPessoal.objects.filter(empresa=empresa)
+        .select_related('funcionario', 'caixa')
+        .prefetch_related('itens')
+        .order_by('-criado_em', '-pk')[:25]
+    )
+    impostos_qs = (
+        PagamentoImposto.objects.filter(empresa=empresa, data_pagamento__isnull=False)
+        .select_related('autoridade', 'caixa')
+        .prefetch_related('itens')
+        .order_by('-criado_em', '-pk')[:25]
+    )
+    eventos = []
+    for m in MovimentoCaixa.objects.filter(empresa=empresa).select_related('caixa').order_by(
+        '-criado_em', '-pk'
+    )[:25]:
+        eventos.append(
+            {
+                'kind': 'movimento',
+                'sort_dt': m.criado_em,
+                'data': m.data,
+                'caixa_nome': m.caixa.nome if m.caixa_id else '-',
+                'descricao': m.descricao,
+                'valor': m.valor,
+                'valor_sinal': '+' if m.natureza == MovimentoCaixa.Natureza.ENTRADA else '-',
+                'badge_text': 'Entrada' if m.natureza == MovimentoCaixa.Natureza.ENTRADA else 'Saída',
+                'badge_class': 'text-bg-success'
+                if m.natureza == MovimentoCaixa.Natureza.ENTRADA
+                else 'text-bg-danger',
+            }
+        )
+    for nf in nf_qs:
+        pagamentos_nf = list(nf.pagamentos.all())
+        tipos_pagamento = {pg.tipo for pg in pagamentos_nf}
+        if len(tipos_pagamento) > 1:
+            badge_text = 'Misto'
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS in tipos_pagamento:
+            badge_text = 'Boleto'
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA in tipos_pagamento:
+            badge_text = 'À vista'
+        elif PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO in tipos_pagamento:
+            badge_text = 'Crédito'
+        else:
+            badge_text = 'Sem pagamento'
+        eventos.append(
+            {
+                'kind': 'nf',
+                'sort_dt': nf.criado_em,
+                'data': nf.data_emissao,
+                'caixa_nome': nf.caixa.nome if nf.caixa_id else '-',
+                'descricao': f'{nf.fornecedor.nome} - NF {nf.numero_nf}',
+                'valor': nf.total_itens,
+                'valor_sinal': '-',
+                'badge_text': badge_text,
+                'badge_class': 'text-bg-secondary' if badge_text == 'Sem pagamento' else 'text-bg-danger',
+                'nf_pk': nf.pk,
+            }
+        )
+    for pagamento in pessoal_qs:
+        descricao_item = ', '.join(item.descricao for item in pagamento.itens.all() if item.descricao)
+        eventos.append(
+            {
+                'kind': 'pessoal',
+                'sort_dt': pagamento.criado_em,
+                'data': pagamento.data_pagamento or pagamento.data_emissao,
+                'caixa_nome': pagamento.caixa.nome if pagamento.caixa_id else '-',
+                'descricao': (
+                    f'{pagamento.funcionario.nome} - {descricao_item or "Pagamento pessoal"}'
+                    if pagamento.funcionario_id
+                    else descricao_item or 'Pagamento pessoal geral'
+                ),
+                'valor': pagamento.total_itens(),
+                'valor_sinal': '-',
+                'badge_text': 'À vista',
+                'badge_class': 'text-bg-danger',
+                'pessoal_pk': pagamento.pk,
+            }
+        )
+    for pagamento in impostos_qs:
+        descricao_item = ', '.join(item.descricao for item in pagamento.itens.all() if item.descricao)
+        eventos.append(
+            {
+                'kind': 'imposto',
+                'sort_dt': pagamento.criado_em,
+                'data': pagamento.data_pagamento or pagamento.data_emissao,
+                'caixa_nome': pagamento.caixa.nome if pagamento.caixa_id else '-',
+                'descricao': f'{pagamento.autoridade.nome} - {descricao_item or "Pagamento de imposto"}',
+                'valor': pagamento.total_itens(),
+                'valor_sinal': '-',
+                'badge_text': 'À vista',
+                'badge_class': 'text-bg-danger',
+                'imposto_pk': pagamento.pk,
+            }
+        )
+    eventos.sort(key=lambda e: (e['sort_dt'] or hoje), reverse=True)
+    return eventos[:10]
 
 
 @login_required
@@ -3198,6 +3646,7 @@ def caixa_lista(request):
             'saldo_consolidado': saldo_consolidado,
             'saldo_consolidado_unificado': saldo_consolidado_unificado,
             'caixa_padrao': caixa_padrao,
+            'ultimos_eventos': _ultimos_eventos_caixa(empresa),
         },
     )
 
@@ -5959,6 +6408,58 @@ def pagamento_pessoal_excluir(request, pk: int):
 
 
 @login_required
+def pagamento_imposto_lista(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    hoje = timezone.localdate()
+    decimal_out = DecimalField(max_digits=16, decimal_places=2)
+    base_qs = (
+        PagamentoImposto.objects.filter(empresa=empresa)
+        .select_related('autoridade', 'caixa', 'conta_bancaria')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=decimal_out,
+            ),
+            descricao_item=Coalesce(
+                Subquery(
+                    PagamentoImpostoItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('descricao')[:1]
+                ),
+                Value(''),
+            ),
+            categoria_item=Coalesce(
+                Subquery(
+                    PagamentoImpostoItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('categoria__nome')[:1]
+                ),
+                Value(''),
+            ),
+        )
+    )
+    impostos_abertos = list(
+        base_qs.filter(data_pagamento__isnull=True).order_by('data_emissao', 'pk')
+    )
+    ultimos_pagamentos = list(
+        base_qs.filter(data_pagamento__lte=hoje).order_by('-data_pagamento', '-pk')[:20]
+    )
+    return render(
+        request,
+        'financeiro/pagamento_imposto_lista.html',
+        {
+            'page_title': 'Pagamento Impostos',
+            'impostos_abertos': impostos_abertos,
+            'ultimos_pagamentos': ultimos_pagamentos,
+        },
+    )
+
+
+@login_required
 def pagamento_imposto_novo(request):
     empresa = _empresa(request)
     if not empresa:
@@ -5984,7 +6485,8 @@ def pagamento_imposto_novo(request):
                 break
             if item_form is None:
                 raise ValidationError('Informe a descrição do pagamento.')
-            pagamento.data_pagamento = item_form.cleaned_data.get('data_pagamento') or timezone.localdate()
+            pagamento.data_pagamento = None
+            pagamento.conta_bancaria = None
             pagamento.full_clean()
             pagamento.save()
             item = item_form.save(commit=False)
@@ -5992,19 +6494,29 @@ def pagamento_imposto_novo(request):
             item.full_clean()
             item.save()
         messages.success(request, 'Pagamento de imposto registrado.')
+        if _is_htmx(request):
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_imposto_lista')
+            return response
         return redirect_empresa(
             request,
             'financeiro:pagamento_imposto_detalhe',
             kwargs={'pk': pagamento.pk},
         )
 
+    template_name = (
+        'financeiro/partials/pagamento_imposto_form_modal.html'
+        if _is_htmx(request)
+        else 'financeiro/pagamento_imposto_form.html'
+    )
     return render(
         request,
-        'financeiro/pagamento_imposto_form.html',
+        template_name,
         {
             'page_title': 'Pagamento Impostos',
             'form': form,
             'itens_fs': itens_fs,
+            'post_url': reverse_empresa(request, 'financeiro:pagamento_imposto_novo'),
         },
     )
 
@@ -6047,7 +6559,6 @@ def pagamento_imposto_editar(request, pk: int):
             {
                 'descricao': item.descricao,
                 'categoria': item.categoria_id,
-                'data_pagamento': pagamento.data_pagamento.isoformat() if pagamento.data_pagamento else '',
                 'valor_total': format_decimal_br_moeda(item.valor_total),
             }
         )
@@ -6071,7 +6582,6 @@ def pagamento_imposto_editar(request, pk: int):
                 break
             if item_form is None:
                 raise ValidationError('Informe a descrição do pagamento.')
-            pagamento.data_pagamento = item_form.cleaned_data.get('data_pagamento') or timezone.localdate()
             pagamento.full_clean()
             pagamento.save()
             pagamento.itens.all().delete()
@@ -6080,20 +6590,74 @@ def pagamento_imposto_editar(request, pk: int):
             novo_item.full_clean()
             novo_item.save()
         messages.success(request, 'Pagamento de imposto atualizado.')
+        if _is_htmx(request):
+            response = HttpResponse(status=200)
+            response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_imposto_lista')
+            return response
         return redirect_empresa(
             request,
             'financeiro:pagamento_imposto_detalhe',
             kwargs={'pk': pagamento.pk},
         )
+    template_name = (
+        'financeiro/partials/pagamento_imposto_form_modal.html'
+        if _is_htmx(request)
+        else 'financeiro/pagamento_imposto_form.html'
+    )
     return render(
         request,
-        'financeiro/pagamento_imposto_form.html',
+        template_name,
         {
             'page_title': 'Editar Pagamento Impostos',
             'form': form,
             'itens_fs': itens_fs,
             'pagamento': pagamento,
             'modo': 'editar',
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_imposto_editar',
+                kwargs={'pk': pagamento.pk},
+            ),
+        },
+    )
+
+
+@login_required
+def pagamento_imposto_pagar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoImposto.objects.filter(empresa=empresa)
+        .select_related('autoridade', 'caixa', 'conta_bancaria'),
+        pk=pk,
+    )
+    form = PagamentoImpostoPagarForm(
+        request.POST or None,
+        empresa=empresa,
+        pagamento=pagamento,
+    )
+    if request.method == 'POST' and form.is_valid():
+        pagamento.data_pagamento = form.cleaned_data['data_pagamento']
+        pagamento.conta_bancaria = form.cleaned_data.get('conta_bancaria')
+        pagamento.full_clean()
+        pagamento.save()
+        messages.success(request, 'Pagamento de imposto realizado.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_imposto_lista')
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_imposto_pagar_modal.html',
+        {
+            'pagamento': pagamento,
+            'form': form,
+            'total_itens': pagamento.total_itens(),
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_imposto_pagar',
+                kwargs={'pk': pagamento.pk},
+            ),
         },
     )
 

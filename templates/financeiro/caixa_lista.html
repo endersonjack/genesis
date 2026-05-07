@@ -246,6 +246,59 @@
     <div class="p-4 text-center text-muted">Nenhum caixa cadastrado.</div>
     {% endif %}
 </div>
+
+<div class="financeiro-board-card mt-3">
+    <div class="p-3 border-bottom bg-white">
+        <div class="fw-bold">&Uacute;ltimas movimenta&ccedil;&otilde;es de caixa</div>
+        <div class="small text-muted">&Uacute;ltimos 10 registros (entradas e pagamentos).</div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Data</th>
+                    <th>Caixa</th>
+                    <th>Tipo</th>
+                    <th>Descri&ccedil;&atilde;o</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in ultimos_eventos %}
+                <tr class="{% if e.kind == 'nf' and e.nf_pk or e.kind == 'pessoal' and e.pessoal_pk or e.kind == 'imposto' and e.imposto_pk %}fin-clickable-row{% endif %}"
+                    {% if e.kind == 'nf' and e.nf_pk %}
+                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=e.nf_pk %}"
+                    tabindex="0"
+                    role="link"
+                    {% elif e.kind == 'pessoal' and e.pessoal_pk %}
+                    data-row-href="{% url 'financeiro:pagamento_pessoal_detalhe' empresa_id=request.empresa_ativa.pk pk=e.pessoal_pk %}"
+                    tabindex="0"
+                    role="link"
+                    {% elif e.kind == 'imposto' and e.imposto_pk %}
+                    data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=e.imposto_pk %}"
+                    tabindex="0"
+                    role="link"
+                    {% endif %}
+                >
+                    <td class="ps-4 small">{{ e.data|date:"d/m/Y" }}</td>
+                    <td class="small fw-semibold">{{ e.caixa_nome }}</td>
+                    <td class="small">
+                        <span class="badge {{ e.badge_class }}">{{ e.badge_text }}</span>
+                    </td>
+                    <td class="small text-truncate" style="max-width: 34rem;">{{ e.descricao }}</td>
+                    <td class="text-end pe-4 fw-semibold small">
+                        {{ e.valor_sinal }} R$ {{ e.valor|moeda_br }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="py-4 text-center text-muted small">Sem lan&ccedil;amentos ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 <script>
 document.addEventListener('click', function (event) {
     const row = event.target.closest('[data-row-href]');

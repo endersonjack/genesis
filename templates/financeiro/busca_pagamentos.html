@@ -335,6 +335,14 @@
                         <label class="form-check-label fw-semibold mb-0" for="statusAberto">Em aberto</label>
                     </div>
                     <div class="fin-status-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="statusPagoParcial" name="status_pago_parcial" form="buscarLancamentosForm" {% if status_pago_parcial %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold mb-0" for="statusPagoParcial">Pago Parcial</label>
+                    </div>
+                    <div class="fin-status-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="statusSemPagamento" name="status_sem_pagamento" form="buscarLancamentosForm" {% if status_sem_pagamento %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold mb-0" for="statusSemPagamento">Sem Pagamento</label>
+                    </div>
+                    <div class="fin-status-check">
                         <input class="form-check-input" type="checkbox" value="1" id="statusPago" name="status_pago" form="buscarLancamentosForm" {% if status_pago %}checked{% endif %}>
                         <label class="form-check-label fw-semibold mb-0" for="statusPago">Pagos</label>
                     </div>

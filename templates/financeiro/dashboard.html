@@ -264,6 +264,60 @@
         background: linear-gradient(135deg, #f8fafc 0%, #ffffff 58%, #eef2ff 100%) !important;
         border-left: 5px solid {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
     }
+    .financeiro-dashboard-accordion-card.is-empty {
+        background: #f8fafc;
+        border-color: #e5e7eb;
+        box-shadow: none;
+    }
+    .financeiro-dashboard-accordion-card.is-empty .financeiro-dashboard-alert-header {
+        background: #f8fafc !important;
+        border-left-color: #cbd5e1;
+        color: #64748b;
+    }
+    .financeiro-dashboard-accordion-card.is-empty .financeiro-payment-type-card__icon {
+        background: #e2e8f0;
+        color: #64748b;
+    }
+    .financeiro-dashboard-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.75rem;
+        height: 1.35rem;
+        padding: 0 .5rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #075985;
+        font-size: .72rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+    .financeiro-dashboard-accordion-card.is-empty .financeiro-dashboard-count {
+        background: #e5e7eb;
+        color: #64748b;
+    }
+    .financeiro-dashboard-collapse-btn {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 999px;
+        border: 1px solid #dbe4ee;
+        background: #fff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .financeiro-dashboard-collapse-btn:hover {
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+    }
+    .financeiro-dashboard-collapse-btn .bi-chevron-down {
+        transition: transform .16s ease;
+    }
+    .financeiro-dashboard-collapse-btn[aria-expanded="true"] .bi-chevron-down {
+        transform: rotate(180deg);
+    }
     .financeiro-dashboard-pdf-btn {
         width: 2.35rem;
         height: 2.35rem;
@@ -438,7 +492,7 @@
                         </a>
                     </div>
                     <div class="col-12 col-md-6 col-lg-4">
-                        <a href="{% url 'financeiro:pagamento_imposto_novo' empresa_id=request.empresa_ativa.pk %}"
+                        <a href="{% url 'financeiro:pagamento_imposto_lista' empresa_id=request.empresa_ativa.pk %}"
                            class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--impostos">

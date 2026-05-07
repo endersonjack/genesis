@@ -1,0 +1,203 @@
+{% load moeda %}
+{% if tipo == 'pagamentos-vencendo-hoje' %}
+<div class="card-body p-0">
+    <div class="table-responsive financeiro-dashboard-table-scroll">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-muted">#</th>
+                    <th>Nº Doc</th>
+                    <th>Tipo</th>
+                    <th class="text-center">Parcela</th>
+                    <th class="text-center">Valor</th>
+                    <th>Fornecedor/Func/Entidade</th>
+                    <th class="text-end pe-4">Nº NF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in dashboard_boletos_venc_hoje_linhas %}
+                <tr class="financeiro-clickable-row"
+                    {% if row.imposto_pk %}
+                    data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=row.imposto_pk %}"
+                    {% elif row.bancario_pk %}
+                    data-row-href="{% url 'financeiro:pagamento_bancario_detalhe' empresa_id=request.empresa_ativa.pk pk=row.bancario_pk %}"
+                    {% else %}
+                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=row.pagamento_nf_pk %}"
+                    {% endif %}
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4 small text-muted">{{ row.index }}</td>
+                    <td class="small fw-semibold">{{ row.numero_doc }}</td>
+                    <td class="small">{{ row.tipo_label }}</td>
+                    <td class="text-center small text-muted">{{ row.parcela_label }}</td>
+                    <td class="text-center small fw-semibold text-primary">R$ {{ row.valor|moeda_br }}</td>
+                    <td class="small">
+                        <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.entidade_nome|default:row.fornecedor_nome }}</div>
+                        <div class="text-muted small">{{ row.entidade_doc|default:row.fornecedor_doc }}</div>
+                    </td>
+                    <td class="text-end pe-4 small fw-semibold">{{ row.numero_nf }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="py-4 text-center text-muted small">Nenhum pagamento vencendo hoje.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif tipo == 'boletos-vencidos' %}
+<div class="card-body p-0">
+    <div class="table-responsive financeiro-dashboard-table-scroll">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-muted">#</th>
+                    <th>Data Vencimento</th>
+                    <th class="text-center">Dias</th>
+                    <th>Nº Doc</th>
+                    <th class="text-center">Parcela</th>
+                    <th class="text-center">Valor</th>
+                    <th>Fornecedor/Func/Entidade</th>
+                    <th class="text-end pe-4">Nº NF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in dashboard_boletos_vencidos_linhas %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=row.pagamento_nf_pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4 small text-muted">{{ row.index }}</td>
+                    <td class="small">{{ row.vencimento|date:"d/m/Y" }}</td>
+                    <td class="text-center small fw-semibold text-danger">{{ row.dias_atrasados }}</td>
+                    <td class="small fw-semibold">{{ row.numero_doc }}</td>
+                    <td class="text-center small text-muted">{{ row.parcela_label }}</td>
+                    <td class="text-center small fw-semibold text-danger">R$ {{ row.valor|moeda_br }}</td>
+                    <td class="small">
+                        <div class="fw-semibold text-truncate" style="max-width: 16rem;">{{ row.entidade_nome|default:row.fornecedor_nome }}</div>
+                        <div class="text-muted small">{{ row.entidade_doc|default:row.fornecedor_doc }}</div>
+                    </td>
+                    <td class="text-end pe-4 small fw-semibold">{{ row.numero_nf }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="py-4 text-center text-muted small">Nenhum boleto vencido.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif tipo == 'notas-sem-pagamento' %}
+<div class="card-body p-0">
+    <div class="table-responsive financeiro-dashboard-table-scroll">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-muted">#</th>
+                    <th>Situação</th>
+                    <th>Fornecedor/Func/Entidade</th>
+                    <th>Emissão</th>
+                    <th class="text-center">Dias</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in dashboard_notas_sem_pagamento_linhas %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_nf_detalhe' empresa_id=request.empresa_ativa.pk pk=linha.nf_pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4 small text-muted">{{ linha.index }}</td>
+                    <td class="small"><span class="badge {{ linha.badge_class }}">{{ linha.situacao }}</span></td>
+                    <td class="small">
+                        <div class="fw-semibold text-truncate" style="max-width: 18rem;">{{ linha.entidade_nome }}</div>
+                        <div class="text-muted small">NF {{ linha.numero_nf }}{% if linha.entidade_doc %} · {{ linha.entidade_doc }}{% endif %}</div>
+                    </td>
+                    <td class="small">{{ linha.data_emissao|date:"d/m/Y" }}</td>
+                    <td class="text-center small fw-semibold">{{ linha.dias_atrasados }}</td>
+                    <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="py-4 text-center text-muted small">Nenhuma nota vencida/sem pagamento.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif tipo == 'impostos-vencidos' %}
+<div class="card-body p-0">
+    <div class="table-responsive financeiro-dashboard-table-scroll">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-muted">#</th>
+                    <th>Status</th>
+                    <th>Vencimento</th>
+                    <th class="text-center">Dias</th>
+                    <th>Fornecedor/Func/Entidade</th>
+                    <th>Período</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in dashboard_impostos_vencidos_linhas %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=linha.imposto_pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4 small text-muted">{{ linha.index }}</td>
+                    <td class="small"><span class="badge {{ linha.badge_class }}">{{ linha.situacao }}</span></td>
+                    <td class="small">{{ linha.vencimento|date:"d/m/Y" }}</td>
+                    <td class="text-center small fw-semibold text-danger">{{ linha.dias_atrasados }}</td>
+                    <td class="small">
+                        <div class="fw-semibold text-truncate" style="max-width: 18rem;">{{ linha.entidade_nome }}</div>
+                        <div class="text-muted small">{{ linha.entidade_doc }}</div>
+                    </td>
+                    <td class="small">{{ linha.periodo_apuracao }}</td>
+                    <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="py-4 text-center text-muted small">Nenhum imposto vencido/sem pagamento.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif tipo == 'bancarios-vencidos' %}
+<div class="card-body p-0">
+    <div class="table-responsive financeiro-dashboard-table-scroll">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-muted">#</th>
+                    <th>Status</th>
+                    <th>Vencimento</th>
+                    <th class="text-center">Dias</th>
+                    <th>Fornecedor/Func/Entidade</th>
+                    <th>Parcela</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in dashboard_bancarios_vencidos_linhas %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_bancario_detalhe' empresa_id=request.empresa_ativa.pk pk=linha.bancario_pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4 small text-muted">{{ linha.index }}</td>
+                    <td class="small"><span class="badge {{ linha.badge_class }}">{{ linha.situacao }}</span></td>
+                    <td class="small">{{ linha.vencimento|date:"d/m/Y" }}</td>
+                    <td class="text-center small fw-semibold text-danger">{{ linha.dias_atrasados }}</td>
+                    <td class="small">
+                        <div class="fw-semibold text-truncate" style="max-width: 18rem;">{{ linha.entidade_nome }}</div>
+                        <div class="text-muted small">{{ linha.descricao }}</div>
+                    </td>
+                    <td class="small">{{ linha.parcela_label }}</td>
+                    <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="py-4 text-center text-muted small">Nenhum bancário vencido/sem pagamento.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}

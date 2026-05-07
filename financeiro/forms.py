@@ -1515,17 +1515,26 @@ PagamentoPessoalItemFormSet = formset_factory(
 class PagamentoImpostoForm(forms.ModelForm):
     class Meta:
         model = PagamentoImposto
-        fields = ('autoridade', 'data_emissao', 'caixa', 'conta_bancaria')
+        fields = ('autoridade', 'data_emissao', 'periodo_apuracao', 'data_vencimento', 'caixa')
         widgets = {
             'autoridade': forms.Select(attrs={'class': 'form-select rounded-3'}),
             'data_emissao': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control rounded-3'},
             ),
+            'periodo_apuracao': forms.TextInput(
+                attrs={
+                    'class': 'form-control rounded-3',
+                    'placeholder': 'Ex.: 05/2026',
+                    'maxlength': '60',
+                }
+            ),
+            'data_vencimento': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control rounded-3'},
+            ),
             'caixa': forms.Select(attrs={'class': 'form-select rounded-3'}),
-            'conta_bancaria': forms.Select(attrs={'class': 'form-select rounded-3'}),
         }
-        labels = {'conta_bancaria': 'Pagamento realizado em'}
 
     def __init__(self, *args, empresa=None, **kwargs):
         self.empresa = empresa
@@ -1540,10 +1549,6 @@ class PagamentoImpostoForm(forms.ModelForm):
                 empresa=empresa,
                 ativo=True,
             ).order_by('tipo', 'nome')
-            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
-                empresa=empresa,
-                ativo=True,
-            ).order_by('banco', 'nome')
             if not self.is_bound and not self.initial.get('caixa'):
                 caixa_geral = Caixa.objects.filter(
                     empresa=empresa,
@@ -1552,8 +1557,8 @@ class PagamentoImpostoForm(forms.ModelForm):
                 ).first()
                 if caixa_geral:
                     self.initial['caixa'] = caixa_geral.pk
-        self.fields['conta_bancaria'].required = False
-        self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
+        self.fields['periodo_apuracao'].required = False
+        self.fields['data_vencimento'].required = False
 
     def save(self, commit=True):
         obj = super().save(commit=False)
@@ -1566,15 +1571,6 @@ class PagamentoImpostoForm(forms.ModelForm):
 
 
 class PagamentoImpostoItemForm(forms.ModelForm):
-    data_pagamento = forms.DateField(
-        label='Data de pagamento',
-        required=False,
-        input_formats=['%Y-%m-%d'],
-        widget=forms.DateInput(
-            format='%Y-%m-%d',
-            attrs={'type': 'date', 'class': 'form-control rounded-3'},
-        ),
-    )
     valor_total = forms.CharField(
         label='Valor total (R$)',
         required=False,
@@ -1592,7 +1588,7 @@ class PagamentoImpostoItemForm(forms.ModelForm):
 
     class Meta:
         model = PagamentoImpostoItem
-        fields = ('descricao', 'categoria', 'data_pagamento', 'valor_total')
+        fields = ('descricao', 'categoria', 'valor_total')
         widgets = {
             'descricao': forms.TextInput(attrs={'class': 'form-control rounded-3'}),
             'categoria': forms.Select(attrs={'class': 'form-select rounded-3'}),
@@ -1601,10 +1597,8 @@ class PagamentoImpostoItemForm(forms.ModelForm):
     def __init__(self, *args, empresa=None, **kwargs):
         self.empresa = empresa
         super().__init__(*args, **kwargs)
-        for field_name in ('descricao', 'categoria', 'data_pagamento', 'valor_total'):
+        for field_name in ('descricao', 'categoria', 'valor_total'):
             self.fields[field_name].required = False
-        if not self.is_bound:
-            self.initial.setdefault('data_pagamento', timezone.localdate().isoformat())
         if empresa:
             self.fields['categoria'].queryset = CategoriaFinanceira.objects.filter(
                 empresa=empresa,
@@ -1621,7 +1615,6 @@ class PagamentoImpostoItemForm(forms.ModelForm):
         return (
             self._raw_value('descricao') == ''
             and self._raw_value('categoria') == ''
-            and self._raw_value('data_pagamento') == ''
             and self._raw_value('valor_total') in ('', '0', '0,0', '0,00')
         )
 
@@ -1642,8 +1635,6 @@ class PagamentoImpostoItemForm(forms.ModelForm):
                 cleaned_data['descricao'] = categoria.nome
         if not cleaned_data.get('categoria'):
             self.add_error('categoria', 'Este campo é obrigatório.')
-        if not cleaned_data.get('data_pagamento'):
-            self.add_error('data_pagamento', 'Este campo é obrigatório.')
         if cleaned_data.get('valor_total') in (None, Decimal('0')):
             self.add_error('valor_total', 'Informe um valor maior que zero.')
         return cleaned_data
@@ -1662,6 +1653,48 @@ PagamentoImpostoItemFormSet = formset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class PagamentoImpostoPagarForm(forms.Form):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento',
+        initial=timezone.localdate,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Pagamento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
+
+    def __init__(self, *args, empresa=None, pagamento=None, **kwargs):
+        self.empresa = empresa
+        self.pagamento = pagamento
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+        self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
+        if pagamento and not self.is_bound:
+            self.initial['data_pagamento'] = (
+                pagamento.data_pagamento.isoformat()
+                if pagamento.data_pagamento
+                else timezone.localdate().isoformat()
+            )
+            self.initial['conta_bancaria'] = pagamento.conta_bancaria_id
+
+    def clean_conta_bancaria(self):
+        conta = self.cleaned_data.get('conta_bancaria')
+        if conta and self.empresa and conta.empresa_id != self.empresa.pk:
+            raise forms.ValidationError('Conta bancária inválida para esta empresa.')
+        return conta
 
 
 def _somar_meses(data_ref: date, quantidade: int) -> date:
@@ -1987,4 +2020,3 @@ class PagamentoBancarioAvulsoForm(forms.ModelForm):
             obj.full_clean()
             obj.save()
         return obj
-

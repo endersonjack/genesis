@@ -26,6 +26,11 @@ urlpatterns = [
         name='partial_dashboard_cards',
     ),
     path(
+        'partial/dashboard-card/<slug:tipo>/',
+        empresa_scoped(views.partial_dashboard_card_body),
+        name='partial_dashboard_card_body',
+    ),
+    path(
         'dashboard/cards/<slug:tipo>/pdf/',
         empresa_scoped(views.dashboard_card_pdf),
         name='dashboard_card_pdf',
@@ -135,6 +140,11 @@ urlpatterns = [
         name='pagamento_pessoal_novo',
     ),
     path(
+        'pagamentos/impostos/',
+        empresa_scoped(views.pagamento_imposto_lista),
+        name='pagamento_imposto_lista',
+    ),
+    path(
         'pagamentos/impostos/novo/',
         empresa_scoped(views.pagamento_imposto_novo),
         name='pagamento_imposto_novo',
@@ -148,6 +158,11 @@ urlpatterns = [
         'pagamentos/impostos/<int:pk>/editar/',
         empresa_scoped(views.pagamento_imposto_editar),
         name='pagamento_imposto_editar',
+    ),
+    path(
+        'pagamentos/impostos/<int:pk>/pagar/',
+        empresa_scoped(views.pagamento_imposto_pagar),
+        name='pagamento_imposto_pagar',
     ),
     path(
         'pagamentos/impostos/<int:pk>/excluir/',
