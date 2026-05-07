@@ -2626,7 +2626,6 @@ def _dashboard_alertas_financeiro_data(empresa):
             empresa=empresa,
             pagamentos__isnull=False,
         )
-        .exclude(pagamentos__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS)
         .select_related('fornecedor', 'caixa')
         .prefetch_related('pagamentos', 'boletos')
         .annotate(
@@ -2734,6 +2733,21 @@ def _dashboard_alertas_financeiro_data(empresa):
                 'valor': nf.total_itens_calc,
                 'situacao': 'Sem pagamento',
                 'badge_class': 'text-bg-secondary',
+            }
+        )
+    for nf in notas_pagamento_parcial:
+        dashboard_notas_sem_pagamento_linhas.append(
+            {
+                'index': len(dashboard_notas_sem_pagamento_linhas) + 1,
+                'nf_pk': nf.pk,
+                'data_emissao': nf.data_emissao,
+                'dias_atrasados': max((hoje - nf.data_emissao).days, 0),
+                'entidade_nome': nf.fornecedor.nome,
+                'entidade_doc': nf.fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
+                'valor': nf.valor_em_aberto_dashboard,
+                'situacao': 'Pago parcial',
+                'badge_class': 'text-bg-primary',
             }
         )
 

@@ -116,7 +116,7 @@
                     <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor|moeda_br }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="py-4 text-center text-muted small">Nenhuma nota vencida/sem pagamento.</td></tr>
+                <tr><td colspan="6" class="py-4 text-center text-muted small">Nenhuma nota pago parcial/sem pagamento.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
