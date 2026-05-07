@@ -25,6 +25,11 @@ urlpatterns = [
         empresa_scoped(views.partial_dashboard_cards),
         name='partial_dashboard_cards',
     ),
+    path(
+        'dashboard/cards/<slug:tipo>/pdf/',
+        empresa_scoped(views.dashboard_card_pdf),
+        name='dashboard_card_pdf',
+    ),
     path('caixas/', empresa_scoped(views.caixa_lista), name='caixa_lista'),
     path('caixas/novo/', empresa_scoped(views.caixa_novo), name='caixa_novo'),
     path('caixas/unificado/', empresa_scoped(views.caixa_unificado), name='caixa_unificado'),
@@ -168,6 +173,11 @@ urlpatterns = [
         'pagamentos/nf/<int:pk>/',
         empresa_scoped(views.pagamento_nf_detalhe),
         name='pagamento_nf_detalhe',
+    ),
+    path(
+        'pagamentos/nf/<int:pk>/pdf/',
+        empresa_scoped(views.pagamento_nf_pdf),
+        name='pagamento_nf_pdf',
     ),
     path(
         'pagamentos/nf/fornecedor-info/',

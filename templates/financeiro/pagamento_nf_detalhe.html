@@ -305,6 +305,11 @@
                         <i class="bi bi-credit-card me-2 text-primary"></i> Editar pagamento
                     </a>
                 </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:pagamento_nf_pdf' empresa_id=request.empresa_ativa.pk pk=nf.pk %}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-file-earmark-pdf me-2 text-danger"></i> Gerar PDF
+                    </a>
+                </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <button
@@ -447,9 +452,10 @@
                     <th class="ps-4">#</th>
                     <th>Descrição</th>
                     <th>Categoria</th>
-                    <th class="text-end">Valor Unit</th>
-                    <th>Und</th>
-                    <th class="text-end pe-4">Valor Total</th>
+                    <th class="text-center">Qtd</th>
+                    <th class="text-center">Valor Unit</th>
+                    <th class="text-center">Und</th>
+                    <th class="text-center pe-4">Valor Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -458,12 +464,13 @@
                     <td class="ps-4 small fw-semibold">{{ forloop.counter }}</td>
                     <td class="small">{{ i.descricao }}</td>
                     <td class="small text-muted">{% if i.categoria_id %}{{ i.categoria.nome }}{% else %}—{% endif %}</td>
-                    <td class="text-end small fw-semibold">R$ {{ i.valor_unitario|moeda_br }}</td>
-                    <td class="small">{{ i.unidade|default:"—" }}</td>
-                    <td class="text-end pe-4 fw-semibold small">R$ {{ i.valor_total|moeda_br }}</td>
+                    <td class="text-center small fw-semibold">{{ i.quantidade|moeda_br:4 }}</td>
+                    <td class="text-center small fw-semibold">R$ {{ i.valor_unitario|moeda_br }}</td>
+                    <td class="text-center small">{{ i.unidade|default:"—" }}</td>
+                    <td class="text-center pe-4 fw-semibold small">R$ {{ i.valor_total|moeda_br }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="py-4 text-center text-muted small">Sem itens.</td></tr>
+                <tr><td colspan="7" class="py-4 text-center text-muted small">Sem itens.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

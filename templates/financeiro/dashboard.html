@@ -260,6 +260,29 @@
         background: rgba(148, 163, 184, 0.18);
         color: #475569;
     }
+    .financeiro-dashboard-alert-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 58%, #eef2ff 100%) !important;
+        border-left: 5px solid {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+    }
+    .financeiro-dashboard-pdf-btn {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #fecaca;
+        background: #fff;
+        color: #dc2626;
+        text-decoration: none;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .financeiro-dashboard-pdf-btn:hover {
+        color: #b91c1c;
+        border-color: #fca5a5;
+        box-shadow: 0 10px 22px rgba(220, 38, 38, 0.12);
+        transform: translateY(-1px);
+    }
     @media (max-width: 767.98px) {
         .financeiro-top-actions {
             width: 100%;

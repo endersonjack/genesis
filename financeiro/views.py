@@ -2450,6 +2450,337 @@ def buscar_pagamentos_pdf(request):
     return response
 
 
+def _dashboard_alertas_financeiro_data(empresa):
+    hoje = timezone.localdate()
+    boleto_status_aberto = (
+        BoletoPagamento.Status.RASCUNHO,
+        BoletoPagamento.Status.EMITIDO,
+    )
+    boletos_venc_hoje = list(
+        BoletoPagamento.objects.filter(
+            pagamento_nf__empresa=empresa,
+            vencimento=hoje,
+            status__in=boleto_status_aberto,
+        )
+        .select_related('pagamento_nf', 'pagamento_nf__fornecedor')
+        .prefetch_related('pagamento_nf__boletos')
+        .order_by('vencimento', 'parcela', 'pk')[:50]
+    )
+    boletos_vencidos = list(
+        BoletoPagamento.objects.filter(
+            pagamento_nf__empresa=empresa,
+            vencimento__lt=hoje,
+            status__in=boleto_status_aberto,
+        )
+        .select_related('pagamento_nf', 'pagamento_nf__fornecedor')
+        .prefetch_related('pagamento_nf__boletos', 'pagamento_nf__pagamentos', 'pagamento_nf__itens')
+        .order_by('vencimento', 'parcela', 'pk')[:100]
+    )
+    notas_sem_pagamento = list(
+        PagamentoNotaFiscal.objects.filter(
+            empresa=empresa,
+            data_emissao__lte=hoje,
+            pagamentos__isnull=True,
+        )
+        .select_related('fornecedor', 'caixa')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+        )
+        .order_by('-data_emissao', '-pk')[:50]
+    )
+    notas_com_pagamento = (
+        PagamentoNotaFiscal.objects.filter(
+            empresa=empresa,
+            pagamentos__isnull=False,
+        )
+        .exclude(pagamentos__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS)
+        .select_related('fornecedor', 'caixa')
+        .prefetch_related('pagamentos', 'boletos')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Subquery(
+                    _subquery_total_itens_nf(),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Value(Decimal('0')),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            )
+        )
+        .order_by('-data_emissao', '-pk')
+        .distinct()
+    )
+    notas_pagamento_parcial = []
+    for nf in notas_com_pagamento:
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pagamentos_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        resumo_nf = _resumo_pagamento_nf(
+            pagamentos_nf,
+            boletos_nf,
+            nf.total_itens_calc,
+            hoje,
+        )
+        if resumo_nf['situacao_label'] != 'Pago Parcial':
+            continue
+        if resumo_nf['valor_em_aberto'] <= 0:
+            continue
+        nf.valor_em_aberto_dashboard = resumo_nf['valor_em_aberto']
+        nf.pagamento_label_dashboard = resumo_nf['pagamento_label']
+        notas_pagamento_parcial.append(nf)
+        if len(notas_pagamento_parcial) >= 50:
+            break
+
+    def nf_total_dashboard(nf: PagamentoNotaFiscal) -> Decimal:
+        tc = getattr(nf, 'total_itens_calc', None)
+        if tc is not None:
+            return tc
+        items = nf.itens.all()
+        return sum((i.valor_total for i in items), Decimal('0')).quantize(Decimal('0.01'))
+
+    dashboard_boletos_vencidos_linhas = []
+    for b in boletos_vencidos:
+        nf = b.pagamento_nf
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pags_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        total_nf = nf_total_dashboard(nf)
+        resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
+        fornecedor = nf.fornecedor
+        dashboard_boletos_vencidos_linhas.append(
+            {
+                'index': len(dashboard_boletos_vencidos_linhas) + 1,
+                'vencimento': b.vencimento,
+                'dias_atrasados': (hoje - b.vencimento).days,
+                'numero_doc': b.numero_doc or '—',
+                'parcela_label': _parcela_dashboard_boleto(b),
+                'valor': b.valor,
+                'fornecedor_nome': fornecedor.nome,
+                'fornecedor_doc': fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
+                'valor_total': total_nf,
+                'valor_pago': resumo['valor_pago'],
+                'pagamento_nf_pk': nf.pk,
+            }
+        )
+
+    dashboard_pagamentos_aberto_linhas = []
+    idx_linha = 0
+    for nf in notas_sem_pagamento:
+        idx_linha += 1
+        vt = nf.total_itens_calc
+        dashboard_pagamentos_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'nf_pk': nf.pk,
+                'situacao': 'Sem pagamento',
+                'badge_class': 'text-bg-secondary',
+                'ref_principal': nf.fornecedor.nome,
+                'data_emissao': nf.data_emissao,
+                'valor_total': vt,
+                'valor_pago': Decimal('0'),
+                'ultimo_pagamento': None,
+                'valor_a_pagar': vt,
+            }
+        )
+
+    for nf in notas_pagamento_parcial:
+        idx_linha += 1
+        boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
+        pags_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        total_nf = nf.total_itens_calc
+        resumo = _resumo_pagamento_nf(pags_nf, boletos_nf, total_nf, hoje)
+        ultimo = _data_ultimo_pagamento_nf(pags_nf, boletos_nf)
+        dashboard_pagamentos_aberto_linhas.append(
+            {
+                'index': idx_linha,
+                'nf_pk': nf.pk,
+                'situacao': 'Pago parcial',
+                'badge_class': 'text-bg-primary',
+                'ref_principal': nf.fornecedor.nome,
+                'data_emissao': nf.data_emissao,
+                'valor_total': total_nf,
+                'valor_pago': resumo['valor_pago'],
+                'ultimo_pagamento': ultimo,
+                'valor_a_pagar': nf.valor_em_aberto_dashboard,
+            }
+        )
+
+    dashboard_boletos_venc_hoje_linhas = []
+    for ii, b in enumerate(boletos_venc_hoje, start=1):
+        nf = b.pagamento_nf
+        fornecedor = nf.fornecedor
+        dashboard_boletos_venc_hoje_linhas.append(
+            {
+                'index': ii,
+                'numero_doc': b.numero_doc or '—',
+                'parcela_label': _parcela_dashboard_boleto(b),
+                'valor': b.valor,
+                'fornecedor_nome': fornecedor.nome,
+                'fornecedor_doc': fornecedor.cpf_cnpj_formatado,
+                'numero_nf': nf.numero_nf,
+                'pagamento_nf_pk': nf.pk,
+            }
+        )
+
+    total_boletos_venc_hoje = sum((b.valor for b in boletos_venc_hoje), Decimal('0'))
+    total_boletos_vencidos = sum((b.valor for b in boletos_vencidos), Decimal('0'))
+    total_notas_sem_pagamento = sum((nf.total_itens_calc for nf in notas_sem_pagamento), Decimal('0'))
+    total_notas_pagamento_parcial = sum(
+        (nf.valor_em_aberto_dashboard for nf in notas_pagamento_parcial),
+        Decimal('0'),
+    )
+    total_pagamentos_em_aberto = total_notas_sem_pagamento + total_notas_pagamento_parcial
+    return {
+        'hoje': hoje,
+        'dashboard_boletos_venc_hoje_linhas': dashboard_boletos_venc_hoje_linhas,
+        'total_boletos_venc_hoje': total_boletos_venc_hoje,
+        'dashboard_boletos_vencidos_linhas': dashboard_boletos_vencidos_linhas,
+        'total_boletos_vencidos': total_boletos_vencidos,
+        'dashboard_pagamentos_aberto_linhas': dashboard_pagamentos_aberto_linhas,
+        'total_pagamentos_em_aberto': total_pagamentos_em_aberto,
+    }
+
+
+@login_required
+def dashboard_card_pdf(request, tipo: str):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    data = _dashboard_alertas_financeiro_data(empresa)
+    configs = {
+        'boletos-vencendo-hoje': {
+            'titulo': 'Boletos vencendo hoje',
+            'total': data['total_boletos_venc_hoje'],
+            'linhas': data['dashboard_boletos_venc_hoje_linhas'],
+            'headers': ['#', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor', 'CPF/CNPJ', 'Nº NF'],
+            'row': lambda r: [
+                r['index'],
+                r['numero_doc'],
+                r['parcela_label'],
+                _format_moeda_pdf(r['valor']),
+                r['fornecedor_nome'],
+                r['fornecedor_doc'],
+                r['numero_nf'],
+            ],
+            'widths': [9, 28, 22, 25, 55, 32, 25],
+        },
+        'boletos-vencidos': {
+            'titulo': 'Boletos vencidos',
+            'total': data['total_boletos_vencidos'],
+            'linhas': data['dashboard_boletos_vencidos_linhas'],
+            'headers': ['#', 'Vencimento', 'Dias', 'Nº Doc', 'Parcela', 'Valor', 'Fornecedor', 'Nº NF', 'Valor total', 'Valor pago'],
+            'row': lambda r: [
+                r['index'],
+                _format_data_pdf(r['vencimento']),
+                r['dias_atrasados'],
+                r['numero_doc'],
+                r['parcela_label'],
+                _format_moeda_pdf(r['valor']),
+                r['fornecedor_nome'],
+                r['numero_nf'],
+                _format_moeda_pdf(r['valor_total']),
+                _format_moeda_pdf(r['valor_pago']),
+            ],
+            'widths': [8, 23, 13, 25, 19, 23, 44, 20, 25, 25],
+        },
+        'pagamentos-em-aberto': {
+            'titulo': 'Pagamentos em aberto',
+            'total': data['total_pagamentos_em_aberto'],
+            'linhas': data['dashboard_pagamentos_aberto_linhas'],
+            'headers': ['#', 'Situação', 'Referência', 'Emissão', 'Valor total', 'Valor pago', 'Último pagamento', 'Valor à pagar'],
+            'row': lambda r: [
+                r['index'],
+                r['situacao'],
+                r['ref_principal'],
+                _format_data_pdf(r['data_emissao']),
+                _format_moeda_pdf(r['valor_total']),
+                _format_moeda_pdf(r['valor_pago']),
+                _format_data_pdf(r['ultimo_pagamento']),
+                _format_moeda_pdf(r['valor_a_pagar']),
+            ],
+            'widths': [8, 26, 62, 24, 28, 28, 28, 28],
+        },
+    }
+    config = configs.get(tipo)
+    if not config:
+        return redirect_empresa(request, 'financeiro:dashboard')
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        rightMargin=10 * mm,
+        leftMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+        title=config['titulo'],
+    )
+    styles = getSampleStyleSheet()
+    story = []
+    story.extend(_flowables_titulo_pdf_centro(config['titulo'], styles))
+    meta = ParagraphStyle(
+        'dash_card_pdf_meta',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10,
+        alignment=1,
+        textColor=colors.HexColor('#475569'),
+    )
+    story.append(
+        Paragraph(
+            xml_escape(
+                f'{_nome_empresa_pdf(empresa)} · {data["hoje"].strftime("%d/%m/%Y")} · Total: {_format_moeda_pdf(config["total"])}'
+            ),
+            meta,
+        )
+    )
+    story.append(Spacer(1, 5 * mm))
+
+    cell = ParagraphStyle('dash_card_pdf_cell', parent=styles['Normal'], fontSize=6.5, leading=8)
+    table_data = [config['headers']]
+    for linha in config['linhas']:
+        table_data.append([_pdf_cell(value, cell) for value in config['row'](linha)])
+    if len(table_data) == 1:
+        table_data.append(['-', 'Nenhuma informação encontrada.'] + [''] * (len(config['headers']) - 2))
+    total_row = [''] * len(config['headers'])
+    total_row[-2] = 'Total'
+    total_row[-1] = _format_moeda_pdf(config['total'])
+    table_data.append(total_row)
+
+    table = Table(
+        table_data,
+        colWidths=[w * mm for w in config['widths']],
+        repeatRows=1,
+    )
+    table.setStyle(_pdf_table_style())
+    last_row = len(table_data) - 1
+    table.setStyle(
+        TableStyle(
+            [
+                ('SPAN', (0, last_row), (-3, last_row)),
+                ('BACKGROUND', (0, last_row), (-1, last_row), colors.HexColor('#e0f2fe')),
+                ('FONTNAME', (0, last_row), (-1, last_row), 'Helvetica-Bold'),
+                ('ALIGN', (-2, last_row), (-1, last_row), 'RIGHT'),
+            ]
+        )
+    )
+    story.append(table)
+    story.extend(_flowables_rodape_impressao(request, styles))
+    doc.build(story)
+
+    ref = data['hoje'].strftime('%Y%m%d')
+    filename = f'{_safe_filename_part(config["titulo"])}_{ref}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
 @login_required
 def partial_dashboard_cards(request):
     empresa = _empresa(request)
@@ -6027,6 +6358,289 @@ def pagamento_nf_detalhe(request, pk: int):
             'registros': registros,
         },
     )
+
+
+def _format_quantidade_nf_pdf(valor) -> str:
+    if valor is None:
+        return '-'
+    return format_decimal_br_moeda(valor, decimal_places=4)
+
+
+def _nf_pdf_header(empresa, nf, styles):
+    nome = _nome_empresa_pdf(empresa)
+    linhas = [f'<b>{xml_escape(nome)}</b>']
+    cnpj = (getattr(empresa, 'cnpj', None) or '').strip()
+    if cnpj:
+        linhas.append(xml_escape(f'CNPJ: {cnpj}'))
+    endereco = (getattr(empresa, 'endereco', None) or '').strip()
+    if endereco:
+        linhas.append(xml_escape(endereco))
+    telefone = (getattr(empresa, 'telefone', None) or '').strip()
+    if telefone:
+        linhas.append(xml_escape(f'Tel: {telefone}'))
+    email = (getattr(empresa, 'email', None) or '').strip()
+    if email:
+        linhas.append(xml_escape(f'E-mail: {email}'))
+
+    hdr_style = ParagraphStyle(
+        'nf_pdf_header',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    logo = _empresa_logo_flowable(empresa) or ''
+    table = Table(
+        [[logo, Paragraph('<br/>'.join(linhas), hdr_style)]],
+        colWidths=[34 * mm, 156 * mm],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    return [table, Spacer(1, 6 * mm)]
+
+
+def _nf_pdf_section_title(text, styles):
+    style = ParagraphStyle(
+        f'nf_pdf_title_{re.sub(r"[^a-z0-9]+", "_", text.lower())}',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=12,
+        textColor=colors.HexColor('#0f172a'),
+        spaceBefore=2 * mm,
+        spaceAfter=2 * mm,
+    )
+    return Paragraph(xml_escape(text), style)
+
+
+def _nf_pdf_key_value_card(rows, styles):
+    label_style = ParagraphStyle(
+        'nf_pdf_label',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#475569'),
+    )
+    value_style = ParagraphStyle(
+        'nf_pdf_value',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    data = [
+        [
+            Paragraph(xml_escape(label), label_style),
+            Paragraph(xml_escape(str(value if value not in (None, '') else '-')), value_style),
+        ]
+        for label, value in rows
+    ]
+    table = Table(data, colWidths=[42 * mm, 148 * mm], hAlign='LEFT')
+    table.setStyle(
+        TableStyle(
+            [
+                ('BOX', (0, 0), (-1, -1), 0.35, colors.HexColor('#cbd5e1')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#e2e8f0')),
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f8fafc')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return table
+
+
+@login_required
+def pagamento_nf_pdf(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    nf = get_object_or_404(
+        PagamentoNotaFiscal.objects.filter(empresa=empresa).select_related(
+            'fornecedor',
+            'caixa',
+        ),
+        pk=pk,
+    )
+    itens = list(nf.itens.select_related('categoria', 'caixa').order_by('pk'))
+    pagamentos = list(
+        nf.pagamentos.select_related('conta_bancaria').order_by('data', 'pk')
+    )
+    hoje = timezone.localdate()
+    boletos = [
+        _aplicar_situacao_boleto(boleto, hoje)
+        for boleto in nf.boletos.select_related('conta_bancaria').order_by('vencimento', 'parcela', 'pk')
+    ]
+    total_itens = nf.total_itens()
+    total_boletos = sum((b.valor for b in boletos), Decimal('0'))
+    resumo_pagamento = _resumo_pagamento_nf(pagamentos, boletos, total_itens, hoje)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        rightMargin=10 * mm,
+        leftMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+        title=f'Nota Fiscal nº {nf.numero_nf}',
+    )
+    styles = getSampleStyleSheet()
+    story = []
+    story.extend(_nf_pdf_header(empresa, nf, styles))
+    story.extend(_flowables_titulo_pdf_centro(f'Detalhes da NF nº {nf.numero_nf}', styles))
+
+    story.append(_nf_pdf_section_title('Descrição', styles))
+    story.append(
+        _nf_pdf_key_value_card(
+            [
+                ('Fornecedor', nf.fornecedor.nome),
+                ('Nº NF', nf.numero_nf),
+                ('Data de emissão', _format_data_pdf(nf.data_emissao)),
+                ('Caixa', nf.caixa.nome if nf.caixa_id else '-'),
+                ('Descrição', nf.descricao or '-'),
+            ],
+            styles,
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
+
+    story.append(_nf_pdf_section_title('Itens', styles))
+    cell = ParagraphStyle('nf_pdf_cell', parent=styles['Normal'], fontSize=6.6, leading=8)
+    cell_right = ParagraphStyle('nf_pdf_cell_right', parent=cell, alignment=2)
+    cell_center = ParagraphStyle('nf_pdf_cell_center', parent=cell, alignment=1)
+    item_rows = [['#', 'Descrição', 'Categoria', 'Qtd', 'Valor Unit', 'Und', 'Valor Total']]
+    for index, item in enumerate(itens, start=1):
+        item_rows.append(
+            [
+                str(index),
+                _pdf_cell(item.descricao, cell),
+                _pdf_cell(item.categoria.nome if item.categoria_id else '-', cell),
+                _pdf_cell(_format_quantidade_nf_pdf(item.quantidade), cell_center),
+                _pdf_cell(_format_moeda_pdf(item.valor_unitario), cell_right),
+                _pdf_cell(item.unidade or '-', cell_center),
+                _pdf_cell(_format_moeda_pdf(item.valor_total), cell_right),
+            ]
+        )
+    if len(item_rows) == 1:
+        item_rows.append(['-', 'Sem itens.', '-', '-', '-', '-', '-'])
+    itens_table = Table(
+        item_rows,
+        colWidths=[8 * mm, 54 * mm, 34 * mm, 18 * mm, 24 * mm, 16 * mm, 28 * mm],
+        repeatRows=1,
+    )
+    itens_table.setStyle(_pdf_table_style())
+    itens_table.setStyle(
+        TableStyle(
+            [
+                ('ALIGN', (3, 1), (6, -1), 'CENTER'),
+                ('ALIGN', (4, 1), (4, -1), 'RIGHT'),
+                ('ALIGN', (6, 1), (6, -1), 'RIGHT'),
+            ]
+        )
+    )
+    story.append(itens_table)
+    story.append(Spacer(1, 4 * mm))
+
+    story.append(_nf_pdf_section_title('Resumo financeiro', styles))
+    story.append(
+        _nf_pdf_key_value_card(
+            [
+                ('Valor total da Nota', _format_moeda_pdf(total_itens)),
+                ('Pagamento', resumo_pagamento['pagamento_label']),
+                ('Situação', resumo_pagamento['situacao_label']),
+                ('Valor pago', _format_moeda_pdf(resumo_pagamento['valor_pago'])),
+                ('Valor em aberto', _format_moeda_pdf(resumo_pagamento['valor_em_aberto'])),
+            ],
+            styles,
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
+
+    story.append(_nf_pdf_section_title('Pagamento', styles))
+    if pagamentos:
+        pagamento_rows = [['Tipo', 'Data', 'Valor', 'Acréscimos', 'Descontos', 'Pago em', 'Observação']]
+        for pagamento in pagamentos:
+            conta = (
+                f'{pagamento.conta_bancaria.nome} - {pagamento.conta_bancaria.banco}'
+                if pagamento.conta_bancaria_id
+                else 'DINHEIRO'
+            )
+            pagamento_rows.append(
+                [
+                    pagamento.get_tipo_display(),
+                    _format_data_pdf(pagamento.data),
+                    _pdf_cell(_format_moeda_pdf(pagamento.valor), cell_right),
+                    _pdf_cell(_format_moeda_pdf(pagamento.acrescimos), cell_right),
+                    _pdf_cell(_format_moeda_pdf(pagamento.descontos), cell_right),
+                    _pdf_cell(conta, cell),
+                    _pdf_cell(pagamento.observacao or '-', cell),
+                ]
+            )
+        pagamento_table = Table(
+            pagamento_rows,
+            colWidths=[22 * mm, 20 * mm, 24 * mm, 24 * mm, 24 * mm, 42 * mm, 26 * mm],
+            repeatRows=1,
+        )
+        pagamento_table.setStyle(_pdf_table_style())
+        story.append(pagamento_table)
+        story.append(Spacer(1, 3 * mm))
+
+    if boletos:
+        boleto_rows = [['Doc', 'Vencimento', 'Situação', 'Valor', 'Valor pago', 'Pago em']]
+        for boleto in boletos:
+            conta = (
+                f'{boleto.conta_bancaria.nome} - {boleto.conta_bancaria.banco}'
+                if boleto.valor_pago and boleto.conta_bancaria_id
+                else ('DINHEIRO' if boleto.valor_pago else '-')
+            )
+            boleto_rows.append(
+                [
+                    boleto.numero_doc,
+                    _format_data_pdf(boleto.vencimento),
+                    boleto.situacao_label,
+                    _pdf_cell(_format_moeda_pdf(boleto.valor), cell_right),
+                    _pdf_cell(_format_moeda_pdf(boleto.valor_pago), cell_right) if boleto.valor_pago else '-',
+                    _pdf_cell(conta, cell),
+                ]
+            )
+        boleto_table = Table(
+            boleto_rows,
+            colWidths=[34 * mm, 24 * mm, 24 * mm, 28 * mm, 28 * mm, 44 * mm],
+            repeatRows=1,
+        )
+        boleto_table.setStyle(_pdf_table_style())
+        story.append(boleto_table)
+        story.append(Spacer(1, 2 * mm))
+        story.append(
+            _nf_pdf_key_value_card([('Total boletos', _format_moeda_pdf(total_boletos))], styles)
+        )
+
+    if not pagamentos and not boletos:
+        story.append(_nf_pdf_key_value_card([('Pagamento', 'Sem pagamentos registrados.')], styles))
+
+    story.extend(_flowables_rodape_impressao(request, styles, space_before_mm=4))
+    doc.build(story)
+
+    filename = f'NF_{_safe_filename_part(str(nf.numero_nf))}_{_safe_filename_part(nf.fornecedor.nome)}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 
 @login_required
