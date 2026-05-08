@@ -10,7 +10,11 @@ from django.forms import formset_factory
 from django.utils import timezone
 
 from clientes.models import Cliente
-from core.moeda_fmt import format_decimal_br_moeda, parse_valor_moeda_obrigatorio
+from core.moeda_fmt import (
+    format_decimal_br_moeda,
+    parse_valor_moeda_br,
+    parse_valor_moeda_obrigatorio,
+)
 from estoque.models import UnidadeMedida
 from fornecedores.models import Fornecedor
 from rh.models import Funcionario
@@ -322,7 +326,7 @@ class RecebimentoAvulsoForm(forms.Form):
         raw = self.cleaned_data.get('impostos')
         if raw in (None, ''):
             return Decimal('0')
-        return parse_valor_moeda_obrigatorio(raw)
+        return parse_valor_moeda_br(raw) or Decimal('0')
 
     def clean_valor_liquido(self):
         if self.fields['valor_liquido'].disabled:
@@ -464,7 +468,7 @@ class RecebimentoLiquidacaoForm(forms.Form):
         raw = self.cleaned_data.get('impostos')
         if raw in (None, ''):
             return Decimal('0')
-        return parse_valor_moeda_obrigatorio(raw)
+        return parse_valor_moeda_br(raw) or Decimal('0')
 
     def clean_valor_liquido(self):
         return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor_liquido'))
