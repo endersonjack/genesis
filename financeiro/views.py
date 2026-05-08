@@ -2627,7 +2627,7 @@ def _dashboard_alertas_financeiro_data(empresa):
     notas_com_pagamento = (
         PagamentoNotaFiscal.objects.filter(
             empresa=empresa,
-            pagamentos__isnull=False,
+            pagamentos__tipo=PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA,
         )
         .select_related('fornecedor', 'caixa')
         .prefetch_related('pagamentos', 'boletos')
@@ -2672,6 +2672,17 @@ def _dashboard_alertas_financeiro_data(empresa):
     for nf in notas_com_pagamento:
         boletos_nf = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
         pagamentos_nf = list(nf.pagamentos.all().order_by('data', 'pk'))
+        tem_boletos = any(
+            pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS
+            for pagamento in pagamentos_nf
+        ) or any(boleto.status != BoletoPagamento.Status.CANCELADO for boleto in boletos_nf)
+        if tem_boletos:
+            continue
+        if any(
+            pagamento.tipo != PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA
+            for pagamento in pagamentos_nf
+        ):
+            continue
         resumo_nf = _resumo_pagamento_nf(
             pagamentos_nf,
             boletos_nf,
