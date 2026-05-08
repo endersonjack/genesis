@@ -291,6 +291,25 @@ def _totais_recebimentos(recebimentos: list[dict]) -> dict:
     }
 
 
+def _descricao_movimento_recebimento(recebimento) -> str:
+    descricao = (getattr(recebimento, 'descricao', '') or '').strip()
+    if descricao:
+        return descricao
+
+    cliente_nome = getattr(getattr(recebimento, 'cliente', None), 'nome', '') or ''
+    if hasattr(recebimento, 'medicao_numero'):
+        partes = ['Recebimento por medição']
+        if recebimento.medicao_numero:
+            partes.append(f'Medição {recebimento.medicao_numero}')
+        if recebimento.nota_fiscal_numero:
+            partes.append(f'NF {recebimento.nota_fiscal_numero}')
+        if cliente_nome:
+            partes.append(cliente_nome)
+        return ' - '.join(partes)
+
+    return f'Recebimento avulso - {cliente_nome}' if cliente_nome else 'Recebimento avulso'
+
+
 def _criar_movimento_recebimento(recebimento, categoria_origem, data_liquidacao=None):
     data_liquidacao = data_liquidacao or timezone.localdate()
     mov = MovimentoCaixa(
@@ -300,7 +319,7 @@ def _criar_movimento_recebimento(recebimento, categoria_origem, data_liquidacao=
         categoria_origem=categoria_origem,
         valor=recebimento.valor_liquido,
         data=data_liquidacao,
-        descricao=recebimento.descricao,
+        descricao=_descricao_movimento_recebimento(recebimento),
         observacao=recebimento.observacao,
     )
     mov.full_clean()
