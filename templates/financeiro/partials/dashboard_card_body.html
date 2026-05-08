@@ -171,7 +171,9 @@
                     <th>Status</th>
                     <th>Vencimento</th>
                     <th class="text-center">Dias</th>
-                    <th>Fornecedor/Func/Entidade</th>
+                    <th>Banco</th>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
                     <th>Parcela</th>
                     <th class="text-end pe-4">Valor</th>
                 </tr>
@@ -186,15 +188,16 @@
                     <td class="small"><span class="badge {{ linha.badge_class }}">{{ linha.situacao }}</span></td>
                     <td class="small">{{ linha.vencimento|date:"d/m/Y" }}</td>
                     <td class="text-center small fw-semibold text-danger">{{ linha.dias_atrasados }}</td>
+                    <td class="small fw-semibold">{{ linha.entidade_nome }}</td>
+                    <td class="small text-muted">{{ linha.entidade_doc|default:"—" }}</td>
                     <td class="small">
-                        <div class="fw-semibold text-truncate" style="max-width: 18rem;">{{ linha.entidade_nome }}</div>
-                        <div class="text-muted small">{{ linha.descricao }}</div>
+                        <div class="text-truncate" style="max-width: 18rem;">{{ linha.descricao|default:"—" }}</div>
                     </td>
                     <td class="small">{{ linha.parcela_label }}</td>
                     <td class="text-end pe-4 fw-semibold small">R$ {{ linha.valor|moeda_br }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="py-4 text-center text-muted small">Nenhum bancário vencido/sem pagamento.</td></tr>
+                <tr><td colspan="9" class="py-4 text-center text-muted small">Nenhum registro bancário no mês corrente.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

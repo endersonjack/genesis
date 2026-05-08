@@ -165,6 +165,11 @@ urlpatterns = [
         name='pagamento_imposto_pagar',
     ),
     path(
+        'pagamentos/impostos/<int:pk>/pagamento/excluir/',
+        empresa_scoped(views.pagamento_imposto_pagamento_excluir),
+        name='pagamento_imposto_pagamento_excluir',
+    ),
+    path(
         'pagamentos/impostos/<int:pk>/excluir/',
         empresa_scoped(views.pagamento_imposto_excluir),
         name='pagamento_imposto_excluir',

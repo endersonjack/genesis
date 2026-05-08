@@ -2512,6 +2512,8 @@ def buscar_pagamentos_pdf(request):
 
 def _dashboard_alertas_financeiro_data(empresa):
     hoje = timezone.localdate()
+    inicio_mes = hoje.replace(day=1)
+    fim_mes = _somar_meses(inicio_mes, 1)
     boleto_status_aberto = (
         BoletoPagamento.Status.RASCUNHO,
         BoletoPagamento.Status.EMITIDO,
@@ -2596,9 +2598,10 @@ def _dashboard_alertas_financeiro_data(empresa):
     bancarios_vencidos = list(
         PagamentoBancarioParcela.objects.filter(
             recorrencia__empresa=empresa,
-            status=PagamentoBancarioParcela.Status.ABERTO,
-            data_vencimento__lt=hoje,
+            data_vencimento__gte=inicio_mes,
+            data_vencimento__lt=fim_mes,
         )
+        .exclude(status=PagamentoBancarioParcela.Status.CANCELADO)
         .select_related('recorrencia', 'recorrencia__categoria', 'recorrencia__conta_bancaria')
         .order_by('data_vencimento', 'pk')[:100]
     )
@@ -2771,12 +2774,24 @@ def _dashboard_alertas_financeiro_data(empresa):
     dashboard_bancarios_vencidos_linhas = []
     for parcela in bancarios_vencidos:
         recorrencia = parcela.recorrencia
+        if parcela.status == PagamentoBancarioParcela.Status.PAGO:
+            situacao = parcela.get_status_display()
+            badge_class = 'text-bg-success'
+        elif parcela.data_vencimento < hoje:
+            situacao = 'Vencido'
+            badge_class = 'text-bg-danger'
+        elif parcela.data_vencimento == hoje:
+            situacao = 'Vence Hoje'
+            badge_class = 'text-bg-primary'
+        else:
+            situacao = parcela.get_status_display()
+            badge_class = 'text-bg-warning'
         dashboard_bancarios_vencidos_linhas.append(
             {
                 'index': len(dashboard_bancarios_vencidos_linhas) + 1,
                 'bancario_pk': recorrencia.pk,
                 'vencimento': parcela.data_vencimento,
-                'dias_atrasados': (hoje - parcela.data_vencimento).days,
+                'dias_atrasados': max((hoje - parcela.data_vencimento).days, 0),
                 'entidade_nome': recorrencia.conta_bancaria.nome,
                 'entidade_doc': recorrencia.categoria.nome if recorrencia.categoria_id else '',
                 'descricao': recorrencia.descricao,
@@ -2786,8 +2801,8 @@ def _dashboard_alertas_financeiro_data(empresa):
                     else str(parcela.numero_parcela)
                 ),
                 'valor': parcela.valor,
-                'situacao': 'Vencido',
-                'badge_class': 'text-bg-danger',
+                'situacao': situacao,
+                'badge_class': badge_class,
             }
         )
 
@@ -6541,7 +6556,11 @@ def pagamento_imposto_detalhe(request, pk: int):
     if not empresa:
         return redirect('selecionar_empresa')
     pagamento = get_object_or_404(
-        PagamentoImposto.objects.filter(empresa=empresa).select_related('autoridade', 'caixa'),
+        PagamentoImposto.objects.filter(empresa=empresa).select_related(
+            'autoridade',
+            'caixa',
+            'conta_bancaria',
+        ),
         pk=pk,
     )
     itens = list(pagamento.itens.select_related('categoria').order_by('pk'))
@@ -6656,9 +6675,13 @@ def pagamento_imposto_pagar(request, pk: int):
         pagamento.conta_bancaria = form.cleaned_data.get('conta_bancaria')
         pagamento.full_clean()
         pagamento.save()
-        messages.success(request, 'Pagamento de imposto realizado.')
+        messages.success(request, 'Pagamento de imposto atualizado.')
         response = HttpResponse(status=200)
-        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_imposto_lista')
+        response['HX-Redirect'] = reverse_empresa(
+            request,
+            'financeiro:pagamento_imposto_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
         return response
     return render(
         request,
@@ -6673,6 +6696,51 @@ def pagamento_imposto_pagar(request, pk: int):
                 kwargs={'pk': pagamento.pk},
             ),
         },
+    )
+
+
+@login_required
+def pagamento_imposto_pagamento_excluir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoImposto.objects.filter(empresa=empresa)
+        .select_related('autoridade', 'conta_bancaria'),
+        pk=pk,
+    )
+    if request.method != 'POST':
+        if not _is_htmx(request):
+            return redirect_empresa(
+                request,
+                'financeiro:pagamento_imposto_detalhe',
+                kwargs={'pk': pagamento.pk},
+            )
+        return render(
+            request,
+            'financeiro/partials/pagamento_imposto_pagamento_excluir_modal.html',
+            {
+                'pagamento': pagamento,
+                'total_itens': pagamento.total_itens(),
+            },
+        )
+    pagamento.data_pagamento = None
+    pagamento.conta_bancaria = None
+    pagamento.full_clean()
+    pagamento.save(update_fields=['data_pagamento', 'conta_bancaria', 'updated_at'])
+    messages.success(request, 'Pagamento do imposto removido.')
+    if _is_htmx(request):
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(
+            request,
+            'financeiro:pagamento_imposto_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
+        return response
+    return redirect_empresa(
+        request,
+        'financeiro:pagamento_imposto_detalhe',
+        kwargs={'pk': pagamento.pk},
     )
 
 

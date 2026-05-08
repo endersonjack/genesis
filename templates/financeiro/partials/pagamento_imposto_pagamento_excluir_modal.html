@@ -1,0 +1,48 @@
+{% load moeda %}
+<div class="modal-header border-0 pb-0 px-4 pt-4">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">Excluir pagamento</h5>
+        <div class="text-muted small">{{ pagamento.autoridade.nome }}{% if pagamento.periodo_apuracao %} · {{ pagamento.periodo_apuracao }}{% endif %}</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<form method="post"
+      hx-post="{% url 'financeiro:pagamento_imposto_pagamento_excluir' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+      hx-target="#modal-content"
+      hx-swap="innerHTML"
+      data-no-global-loading>
+    {% csrf_token %}
+    <div class="modal-body px-4 py-3">
+        <div class="alert alert-warning rounded-4 mb-3">
+            O imposto continuará cadastrado. Apenas a data de pagamento e a conta serão removidas.
+        </div>
+        <div class="border rounded-4 bg-light p-3">
+            <div class="row g-2 small">
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Data de pagamento</span>
+                    <div class="fw-semibold">{{ pagamento.data_pagamento|date:"d/m/Y"|default:"—" }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Valor pago</span>
+                    <div class="fw-semibold">R$ {{ total_itens|moeda_br }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <span class="text-muted">Conta</span>
+                    <div class="fw-semibold">
+                        {% if pagamento.conta_bancaria_id %}
+                            {{ pagamento.conta_bancaria.nome }}
+                        {% else %}
+                            DINHEIRO
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger rounded-pill fw-semibold">
+            <i class="bi bi-trash me-1"></i> Excluir pagamento
+        </button>
+    </div>
+</form>

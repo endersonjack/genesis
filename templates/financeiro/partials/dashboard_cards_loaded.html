@@ -23,6 +23,13 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
+                                <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}"
+                                   class="financeiro-dashboard-new-btn"
+                                   title="Novo pagamento por nota fiscal"
+                                   aria-label="Novo pagamento por nota fiscal">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <span>Novo</span>
+                                </a>
                                 <a href="{% url 'financeiro:dashboard_card_pdf' empresa_id=request.empresa_ativa.pk tipo='boletos-vencendo-hoje' %}"
                                    target="_blank"
                                    rel="noopener noreferrer"
@@ -81,6 +88,13 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
+                                <a href="{% url 'financeiro:pagamento_imposto_novo' empresa_id=request.empresa_ativa.pk %}"
+                                   class="financeiro-dashboard-new-btn"
+                                   title="Novo pagamento de imposto"
+                                   aria-label="Novo pagamento de imposto">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <span>Novo</span>
+                                </a>
                                 <button type="button"
                                         class="financeiro-dashboard-collapse-btn"
                                         data-bs-toggle="collapse"
@@ -124,13 +138,20 @@
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--bancario mb-0"><i class="bi bi-credit-card-2-front"></i></span>
                                 <div>
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        <div class="fw-bold">Banc&aacute;rios Vencidos/Sem Pagamento</div>
+                                        <div class="fw-bold">Banc&aacute;rios do M&ecirc;s</div>
                                         <span class="financeiro-dashboard-count">{{ dashboard_bancarios_vencidos_linhas|length }}</span>
                                     </div>
-                                    <div class="small text-muted">Parcelas banc&aacute;rias vencidas em aberto.</div>
+                                    <div class="small text-muted">Parcelas banc&aacute;rias com vencimento no m&ecirc;s corrente.</div>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
+                                <a href="{% url 'financeiro:pagamento_bancario_novo' empresa_id=request.empresa_ativa.pk %}"
+                                   class="financeiro-dashboard-new-btn"
+                                   title="Novo pagamento bancário"
+                                   aria-label="Novo pagamento bancário">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <span>Novo</span>
+                                </a>
                                 <button type="button"
                                         class="financeiro-dashboard-collapse-btn"
                                         data-bs-toggle="collapse"
@@ -181,6 +202,13 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
+                                <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}"
+                                   class="financeiro-dashboard-new-btn"
+                                   title="Novo boleto por nota fiscal"
+                                   aria-label="Novo boleto por nota fiscal">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <span>Novo</span>
+                                </a>
                                 <a href="{% url 'financeiro:dashboard_card_pdf' empresa_id=request.empresa_ativa.pk tipo='boletos-vencidos' %}"
                                    target="_blank"
                                    rel="noopener noreferrer"
@@ -239,6 +267,13 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
+                                <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}"
+                                   class="financeiro-dashboard-new-btn"
+                                   title="Nova nota fiscal"
+                                   aria-label="Nova nota fiscal">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <span>Novo</span>
+                                </a>
                                 <a href="{% url 'financeiro:dashboard_card_pdf' empresa_id=request.empresa_ativa.pk tipo='pagamentos-em-aberto' %}"
                                    target="_blank"
                                    rel="noopener noreferrer"

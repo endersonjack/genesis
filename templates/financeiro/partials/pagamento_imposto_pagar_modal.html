@@ -1,7 +1,7 @@
 {% load moeda %}
 <div class="modal-header border-0 pb-0 px-4 pt-4">
     <div>
-        <h5 class="modal-title fw-bold mb-1">Pagar imposto</h5>
+        <h5 class="modal-title fw-bold mb-1">{% if pagamento.data_pagamento %}Editar pagamento{% else %}Pagar imposto{% endif %}</h5>
         <div class="text-muted small">{{ pagamento.autoridade.nome }}{% if pagamento.periodo_apuracao %} · {{ pagamento.periodo_apuracao }}{% endif %}</div>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -45,7 +45,7 @@
     <div class="modal-footer border-0 px-4 pb-4">
         <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
         <button type="submit" class="btn btn-success rounded-pill fw-semibold">
-            <i class="bi bi-check2-circle me-1"></i> Confirmar pagamento
+            <i class="bi bi-check2-circle me-1"></i> {% if pagamento.data_pagamento %}Salvar pagamento{% else %}Confirmar pagamento{% endif %}
         </button>
     </div>
 </form>

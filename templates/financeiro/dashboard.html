@@ -337,6 +337,29 @@
         box-shadow: 0 10px 22px rgba(220, 38, 38, 0.12);
         transform: translateY(-1px);
     }
+    .financeiro-dashboard-new-btn {
+        min-width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        padding: 0 .75rem;
+        border: 1px solid #bbf7d0;
+        background: #fff;
+        color: #15803d;
+        font-size: .78rem;
+        font-weight: 800;
+        text-decoration: none;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .financeiro-dashboard-new-btn:hover {
+        color: #166534;
+        border-color: #86efac;
+        box-shadow: 0 10px 22px rgba(22, 163, 74, 0.12);
+        transform: translateY(-1px);
+    }
     @media (max-width: 767.98px) {
         .financeiro-top-actions {
             width: 100%;
@@ -447,8 +470,10 @@
 
 <div id="financeiro-dash-cards-root"
      hx-get="{% url 'financeiro:partial_dashboard_cards' empresa_id=request.empresa_ativa.pk %}"
-     hx-trigger="load"
+     hx-trigger="financeiro-dashboard-cache-miss from:body"
      hx-swap="innerHTML"
+     data-dashboard-cache-key="financeiro:dashboard:cards:empresa:{{ request.empresa_ativa.pk }}"
+     data-dashboard-cache-version="2026-05-08-v4"
      data-no-global-loading>
     {% include 'financeiro/partials/dashboard_cards_skeleton.html' %}
 </div>
@@ -571,6 +596,97 @@
     </div>
 </div>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('financeiro-dash-cards-root');
+    if (!root) return;
+    if (!window.localStorage) {
+        if (window.htmx) {
+            window.htmx.trigger(document.body, 'financeiro-dashboard-cache-miss');
+        }
+        return;
+    }
+
+    const cacheKey = root.dataset.dashboardCacheKey;
+    const cacheVersion = root.dataset.dashboardCacheVersion;
+    const cookieName = 'financeiro_dash_cards_cache_{{ request.empresa_ativa.pk }}';
+    const maxAgeMs = 20 * 60 * 1000;
+
+    function readCookie(name) {
+        return document.cookie
+            .split('; ')
+            .find((item) => item.startsWith(name + '='))
+            ?.split('=')
+            .slice(1)
+            .join('=') || '';
+    }
+
+    function writeCookie(name, value) {
+        document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=1200; SameSite=Lax`;
+    }
+
+    function readCache() {
+        try {
+            const payload = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+            if (!payload || payload.version !== cacheVersion || !payload.html) return null;
+            if (Date.now() - payload.savedAt > maxAgeMs) return null;
+            if (readCookie(cookieName) !== payload.token) return null;
+            return payload;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function saveCache() {
+        try {
+            if (!root.innerHTML.trim()) return;
+            const token = `${cacheVersion}-${Date.now()}`;
+            localStorage.setItem(cacheKey, JSON.stringify({
+                version: cacheVersion,
+                token: token,
+                savedAt: Date.now(),
+                html: root.innerHTML,
+            }));
+            writeCookie(cookieName, token);
+        } catch (error) {
+            localStorage.removeItem(cacheKey);
+        }
+    }
+
+    const cached = readCache();
+    if (cached) {
+        root.innerHTML = cached.html;
+        root.querySelectorAll('.collapse.show').forEach((collapse) => collapse.classList.remove('show'));
+        root.querySelectorAll('.financeiro-dashboard-collapse-btn[aria-expanded="true"]').forEach((button) => {
+            button.setAttribute('aria-expanded', 'false');
+        });
+        root.dataset.loadedFromCache = '1';
+        if (window.htmx) {
+            window.htmx.process(root);
+        }
+    } else if (window.htmx) {
+        window.htmx.trigger(document.body, 'financeiro-dashboard-cache-miss');
+    }
+
+    document.body.addEventListener('htmx:beforeRequest', function (event) {
+        if (event.detail.elt !== root) return;
+        if (root.dataset.loadedFromCache === '1') {
+            event.preventDefault();
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        const target = event.detail.target;
+        if (target === root) {
+            root.dataset.loadedFromCache = '0';
+            saveCache();
+            return;
+        }
+        if (root.contains(target) && target.classList.contains('collapse')) {
+            saveCache();
+        }
+    });
+});
+
 document.addEventListener('click', function (event) {
     const row = event.target.closest('[data-row-href]');
     if (!row) return;
