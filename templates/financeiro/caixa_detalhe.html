@@ -191,6 +191,32 @@
         background: #f8fafc;
         color: #0f172a;
     }
+    .caixa-filter-form {
+        display: flex;
+        align-items: end;
+        gap: .45rem;
+        flex-wrap: nowrap;
+    }
+    .caixa-filter-field {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+    .caixa-filter-field--mes { width: 8.8rem; }
+    .caixa-filter-field--ano { width: 7.5rem; }
+    .caixa-filter-field--fornecedor { width: clamp(11rem, 18vw, 18rem); }
+    .caixa-filter-field--tipo { width: 12rem; }
+    .caixa-filter-field--caixa { width: 12rem; }
+    .caixa-filter-field--categoria { width: clamp(10rem, 16vw, 16rem); }
+    .caixa-filter-field .form-select,
+    .caixa-filter-field .form-control {
+        width: 100%;
+    }
+    .caixa-filter-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        flex: 0 0 auto;
+    }
     .caixa-empty {
         color: #64748b;
         padding: 2.25rem 1rem;
@@ -198,6 +224,7 @@
     }
     @media (max-width: 992px) {
         .caixa-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .caixa-filter-form { flex-wrap: wrap; }
     }
     @media (max-width: 576px) {
         .caixa-metrics { grid-template-columns: 1fr; }
@@ -329,13 +356,13 @@
                 {% endif %}
             </p>
         </div>
-        <form method="get" class="d-flex flex-wrap align-items-end gap-2">
+        <form method="get" class="caixa-filter-form">
             <input type="hidden" name="modo" value="{{ modo_extrato }}">
             {% if modo_extrato == 'detalhado' %}
                 <input type="hidden" name="sort" value="{{ sort_key }}">
                 <input type="hidden" name="dir" value="{{ sort_dir }}">
             {% endif %}
-            <div>
+            <div class="caixa-filter-field caixa-filter-field--mes">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-mes">Mês</label>
                 <select id="caixa-mes" name="mes" class="form-select form-select-sm rounded-pill">
                     <option value="0" {% if periodo.todos_os_meses %}selected{% endif %}>Todos os meses</option>
@@ -344,7 +371,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div>
+            <div class="caixa-filter-field caixa-filter-field--ano">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-ano">Ano</label>
                 <div class="caixa-year-control">
                     <input id="caixa-ano"
@@ -361,19 +388,28 @@
                     </div>
                 </div>
             </div>
-            <div>
+            <div class="caixa-filter-field caixa-filter-field--fornecedor">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-fornecedor">Fornecedor</label>
-                <select id="caixa-fornecedor" name="fornecedor" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                <select id="caixa-fornecedor" name="fornecedor" class="form-select form-select-sm rounded-pill">
                     <option value="">Todos</option>
                     {% for fornecedor in fornecedores_filtro %}
                         <option value="{{ fornecedor.pk }}" {% if fornecedor.pk == fornecedor_id %}selected{% endif %}>{{ fornecedor.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
+            <div class="caixa-filter-field caixa-filter-field--tipo">
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-tipo-pagamento">Tipo de Pagamento</label>
+                <select id="caixa-tipo-pagamento" name="tipo_pagamento" class="form-select form-select-sm rounded-pill" data-caixa-tipo-pagamento>
+                    <option value="">Todos</option>
+                    {% for tipo in tipos_pagamento_filtro %}
+                        <option value="{{ tipo.value }}" {% if tipo.value == tipo_pagamento %}selected{% endif %}>{{ tipo.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             {% if unificado %}
-            <div>
+            <div class="caixa-filter-field caixa-filter-field--caixa">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-filtro">Caixa</label>
-                <select id="caixa-filtro" name="caixa" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                <select id="caixa-filtro" name="caixa" class="form-select form-select-sm rounded-pill">
                     <option value="">Todos</option>
                     {% for caixa_filtro in caixas_filtro %}
                         <option value="{{ caixa_filtro.pk }}" {% if caixa_filtro.pk == caixa_id %}selected{% endif %}>{{ caixa_filtro.nome }}</option>
@@ -381,19 +417,21 @@
                 </select>
             </div>
             {% endif %}
-            <div>
+            <div class="caixa-filter-field caixa-filter-field--categoria">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-categoria">Categoria</label>
-                <select id="caixa-categoria" name="categoria" class="form-select form-select-sm rounded-pill" style="min-width: 12rem;">
+                <select id="caixa-categoria" name="categoria" class="form-select form-select-sm rounded-pill" data-caixa-categoria>
                     <option value="">Todas</option>
                     {% for categoria in categorias_filtro %}
-                        <option value="{{ categoria.pk }}" {% if categoria.pk == categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
+                        <option value="{{ categoria.pk }}" data-tipo="{{ categoria.movimentacao_tipo }}" {% if categoria.pk == categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">Filtrar</button>
-            <a href="{{ pdf_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3">
-                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-            </a>
+            <div class="caixa-filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">Filtrar</button>
+                <a href="{{ pdf_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </a>
+            </div>
         </form>
     </div>
 
@@ -542,6 +580,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const table = document.querySelector('.caixa-table');
     const topInner = document.querySelector('.caixa-scroll-top-inner');
     const yearInput = document.querySelector('[data-year-input]');
+    const tipoPagamentoSelect = document.querySelector('[data-caixa-tipo-pagamento]');
+    const categoriaSelect = document.querySelector('[data-caixa-categoria]');
     if (table && topInner) topInner.style.width = `${table.scrollWidth}px`;
 
     function cleanYearValue(value) {
@@ -564,6 +604,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 yearInput.value = String(current + step);
             });
         });
+    }
+
+    function syncCategoriasPorTipo() {
+        if (!tipoPagamentoSelect || !categoriaSelect) return;
+        const tipo = tipoPagamentoSelect.value;
+        const selectedOption = categoriaSelect.selectedOptions[0];
+        let selectedStillVisible = !selectedOption || !selectedOption.value;
+        Array.from(categoriaSelect.options).forEach(function (option) {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+            const visible = !tipo || option.dataset.tipo === tipo;
+            option.hidden = !visible;
+            if (option.selected && visible) selectedStillVisible = true;
+        });
+        if (!selectedStillVisible) categoriaSelect.value = '';
+    }
+
+    if (tipoPagamentoSelect && categoriaSelect) {
+        syncCategoriasPorTipo();
+        tipoPagamentoSelect.addEventListener('change', syncCategoriasPorTipo);
     }
 
     let syncing = false;

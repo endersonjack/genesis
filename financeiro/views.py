@@ -892,12 +892,52 @@ def _caixas_com_saldo(empresa, *, somente_ativos: bool = True):
     return caixas
 
 
+TIPOS_EXTRATO_CATEGORIA = (
+    CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
+    CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_PESSOAL,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_ALUGUEIS,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_VEICULOS,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_AVULSO,
+    CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_AVULSO_MENSAL,
+)
+
+
+def _tipo_extrato_param(request) -> str:
+    tipo = (request.GET.get('tipo_pagamento') or '').strip()
+    return tipo if tipo in set(TIPOS_EXTRATO_CATEGORIA) else ''
+
+
+def _tipos_pagamento_extrato_filtro():
+    labels = dict(CategoriaFinanceira.MovimentacaoTipo.choices)
+    return [
+        {'value': value, 'label': labels.get(value, value)}
+        for value in TIPOS_EXTRATO_CATEGORIA
+    ]
+
+
+def _categoria_origem_para_tipo_extrato(categoria_origem: str) -> str:
+    mapping = {
+        MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_AVULSO: CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
+        MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_CONTRATO: CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
+        MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_MEDICAO: CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
+        MovimentoCaixa.CategoriaOrigem.PAGAMENTO_AVULSO: CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_AVULSO,
+        MovimentoCaixa.CategoriaOrigem.PAGAMENTO_VISTA: CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
+        MovimentoCaixa.CategoriaOrigem.PAGAMENTO_BOLETO: CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
+    }
+    return mapping.get(categoria_origem, '')
+
+
 def _aplicar_filtros_extrato(
     linhas: list[dict],
     *,
     fornecedor_id: int | None = None,
     categoria_id: int | None = None,
     caixa_id: int | None = None,
+    tipo_pagamento: str = '',
 ) -> list[dict]:
     filtradas = linhas
     if caixa_id:
@@ -911,6 +951,12 @@ def _aplicar_filtros_extrato(
             linha
             for linha in filtradas
             if not linha.get('entrada') and linha.get('fornecedor_id') == fornecedor_id
+        ]
+    if tipo_pagamento:
+        filtradas = [
+            linha
+            for linha in filtradas
+            if linha.get('tipo_pagamento') == tipo_pagamento
         ]
     if categoria_id:
         filtradas = [
@@ -938,6 +984,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
     )
     for movimento in movimentos:
         natureza = movimento.natureza
+        tipo_pagamento = _categoria_origem_para_tipo_extrato(movimento.categoria_origem)
         linhas.append(
             {
                 'data': movimento.data,
@@ -952,6 +999,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': None,
                 'categoria_ids': set(),
+                'tipo_pagamento': tipo_pagamento,
                 'referencia': f'MOV #{movimento.pk}',
                 'url': '',
             }
@@ -982,6 +1030,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
                 'referencia': f'REC #{recebimento.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1019,6 +1068,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
                 'referencia': f'REC #{recebimento.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1059,6 +1109,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': nf.fornecedor_id,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
                 'referencia': f'NF #{nf.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1102,6 +1153,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': nf.fornecedor_id,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
                 'referencia': f'BOL #{boleto.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1144,6 +1196,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_PESSOAL,
                 'referencia': f'PES #{pagamento.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1176,6 +1229,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': None,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS,
                 'referencia': f'IMP #{pagamento.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1211,6 +1265,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': recorrencia.categoria_id,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
                 'referencia': f'BAN #{parcela.pk}',
                 'url': reverse_empresa(
                     request,
@@ -1242,6 +1297,7 @@ def _extrato_caixa(request, caixa: Caixa, inicio=None, fim=None) -> list[dict]:
                 'fornecedor_id': None,
                 'categoria_id': avulso.categoria_id,
                 'categoria_ids': categoria_ids,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
                 'referencia': f'BVA #{avulso.pk}',
                 'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
             }
@@ -1284,6 +1340,7 @@ def _extrato_caixa_detalhado(
                 'caixa_nome': caixa.nome,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
                 'nf': '-',
                 'pessoa': recebimento.cliente,
                 'fornecedor_id': None,
@@ -1327,6 +1384,7 @@ def _extrato_caixa_detalhado(
                 'caixa_nome': caixa.nome,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
                 'nf': recebimento.nota_fiscal_numero or '-',
                 'pessoa': recebimento.cliente,
                 'fornecedor_id': None,
@@ -1371,6 +1429,7 @@ def _extrato_caixa_detalhado(
                 'valor_bruto': item.valor_total,
                 'descontos': Decimal('0'),
                 'valor_liquido': item.valor_total,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
                 'url': reverse_empresa(
                     request,
                     'financeiro:pagamento_nf_detalhe',
@@ -1405,6 +1464,7 @@ def _extrato_caixa_detalhado(
                 'valor_bruto': item.valor_total,
                 'descontos': Decimal('0'),
                 'valor_liquido': item.valor_total,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_PESSOAL,
                 'url': reverse_empresa(
                     request,
                     'financeiro:pagamento_pessoal_detalhe',
@@ -1442,6 +1502,7 @@ def _extrato_caixa_detalhado(
                 'valor_bruto': item.valor_total,
                 'descontos': Decimal('0'),
                 'valor_liquido': item.valor_total,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS,
                 'url': reverse_empresa(
                     request,
                     'financeiro:pagamento_imposto_detalhe',
@@ -1497,6 +1558,7 @@ def _extrato_caixa_detalhado(
                 'valor_bruto': parcela.valor,
                 'descontos': Decimal('0'),
                 'valor_liquido': parcela.valor,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
                 'extrato_apenas_comprometido': extrato_apenas_comprometido,
                 'url': reverse_empresa(
                     request,
@@ -1530,6 +1592,7 @@ def _extrato_caixa_detalhado(
                 'valor_bruto': avulso.valor,
                 'descontos': Decimal('0'),
                 'valor_liquido': avulso.valor,
+                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_BANCARIO,
                 'url': reverse_empresa(request, 'financeiro:pagamento_bancario_lista'),
             }
         )
@@ -3432,12 +3495,20 @@ def caixa_detalhe(request, pk):
         modo_extrato = 'detalhado'
     fornecedor_id = _int_param(request, 'fornecedor')
     categoria_id = _int_param(request, 'categoria')
+    tipo_pagamento = _tipo_extrato_param(request)
+    if categoria_id and tipo_pagamento and not CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        pk=categoria_id,
+        movimentacao_tipo=tipo_pagamento,
+    ).exists():
+        categoria_id = None
     query_base = {
         'modo': modo_extrato,
         'mes': periodo['mes'],
         'ano': periodo['ano'],
         'fornecedor': fornecedor_id,
         'categoria': categoria_id,
+        'tipo_pagamento': tipo_pagamento,
     }
 
     movimentacoes = _extrato_caixa(request, caixa, periodo['inicio'], periodo['fim'])
@@ -3453,6 +3524,7 @@ def caixa_detalhe(request, pk):
             movimentacoes,
             fornecedor_id=fornecedor_id,
             categoria_id=categoria_id,
+            tipo_pagamento=tipo_pagamento,
         ),
         'valor',
     )
@@ -3461,6 +3533,7 @@ def caixa_detalhe(request, pk):
             movimentacoes_detalhadas,
             fornecedor_id=fornecedor_id,
             categoria_id=categoria_id,
+            tipo_pagamento=tipo_pagamento,
         ),
         'valor_liquido',
     )
@@ -3542,6 +3615,8 @@ def caixa_detalhe(request, pk):
                 'movimentacao_tipo',
                 'nome',
             ),
+            'tipos_pagamento_filtro': _tipos_pagamento_extrato_filtro(),
+            'tipo_pagamento': tipo_pagamento,
             'caixas_filtro': Caixa.objects.filter(empresa=empresa, ativo=True).order_by('tipo', 'nome'),
             'fornecedor_id': fornecedor_id,
             'categoria_id': categoria_id,
@@ -3578,6 +3653,13 @@ def caixa_unificado(request):
     fornecedor_id = _int_param(request, 'fornecedor')
     categoria_id = _int_param(request, 'categoria')
     caixa_id = _int_param(request, 'caixa')
+    tipo_pagamento = _tipo_extrato_param(request)
+    if categoria_id and tipo_pagamento and not CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        pk=categoria_id,
+        movimentacao_tipo=tipo_pagamento,
+    ).exists():
+        categoria_id = None
     query_base = {
         'modo': modo_extrato,
         'mes': periodo['mes'],
@@ -3585,6 +3667,7 @@ def caixa_unificado(request):
         'fornecedor': fornecedor_id,
         'categoria': categoria_id,
         'caixa': caixa_id,
+        'tipo_pagamento': tipo_pagamento,
     }
 
     movimentacoes = []
@@ -3607,6 +3690,7 @@ def caixa_unificado(request):
             fornecedor_id=fornecedor_id,
             categoria_id=categoria_id,
             caixa_id=caixa_id,
+            tipo_pagamento=tipo_pagamento,
         ),
         'valor',
     )
@@ -3616,6 +3700,7 @@ def caixa_unificado(request):
             fornecedor_id=fornecedor_id,
             categoria_id=categoria_id,
             caixa_id=caixa_id,
+            tipo_pagamento=tipo_pagamento,
         ),
         'valor_liquido',
     )
@@ -3693,6 +3778,8 @@ def caixa_unificado(request):
                 'movimentacao_tipo',
                 'nome',
             ),
+            'tipos_pagamento_filtro': _tipos_pagamento_extrato_filtro(),
+            'tipo_pagamento': tipo_pagamento,
             'caixas_filtro': caixas_ativos,
             'fornecedor_id': fornecedor_id,
             'categoria_id': categoria_id,
@@ -3924,6 +4011,13 @@ def caixa_extrato_pdf(request, pk):
         modo_extrato = 'detalhado'
     fornecedor_id = _int_param(request, 'fornecedor')
     categoria_id = _int_param(request, 'categoria')
+    tipo_pagamento = _tipo_extrato_param(request)
+    if categoria_id and tipo_pagamento and not CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        pk=categoria_id,
+        movimentacao_tipo=tipo_pagamento,
+    ).exists():
+        categoria_id = None
 
     if modo_extrato == 'consolidado':
         linhas = _extrato_caixa(request, caixa, periodo['inicio'], periodo['fim'])
@@ -3932,6 +4026,7 @@ def caixa_extrato_pdf(request, pk):
                 linhas,
                 fornecedor_id=fornecedor_id,
                 categoria_id=categoria_id,
+                tipo_pagamento=tipo_pagamento,
             ),
             'valor',
         )
@@ -3950,6 +4045,7 @@ def caixa_extrato_pdf(request, pk):
                 linhas,
                 fornecedor_id=fornecedor_id,
                 categoria_id=categoria_id,
+                tipo_pagamento=tipo_pagamento,
             ),
             'valor_liquido',
         )
@@ -4081,6 +4177,13 @@ def caixa_unificado_pdf(request):
     fornecedor_id = _int_param(request, 'fornecedor')
     categoria_id = _int_param(request, 'categoria')
     caixa_id = _int_param(request, 'caixa')
+    tipo_pagamento = _tipo_extrato_param(request)
+    if categoria_id and tipo_pagamento and not CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        pk=categoria_id,
+        movimentacao_tipo=tipo_pagamento,
+    ).exists():
+        categoria_id = None
 
     linhas = []
     for caixa in caixas_ativos:
@@ -4104,6 +4207,7 @@ def caixa_unificado_pdf(request):
             fornecedor_id=fornecedor_id,
             categoria_id=categoria_id,
             caixa_id=caixa_id,
+            tipo_pagamento=tipo_pagamento,
         ),
         campo_total,
     )
