@@ -492,8 +492,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="row g-3">
-                    <div class="col-12 col-md-6 col-lg-4">
+                <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-xl-4">
+                    <div class="col">
                         <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}"
                            class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
@@ -506,7 +506,7 @@
                             <div class="small fw-semibold text-primary mt-3">Abrir</div>
                         </a>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <a href="{% url 'financeiro:pagamento_pessoal_lista' empresa_id=request.empresa_ativa.pk %}"
                            class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
@@ -519,7 +519,7 @@
                             <div class="small fw-semibold text-primary mt-3">Abrir</div>
                         </a>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <a href="{% url 'financeiro:pagamento_imposto_lista' empresa_id=request.empresa_ativa.pk %}"
                            class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
@@ -532,7 +532,7 @@
                             <div class="small fw-semibold text-primary mt-3">Abrir</div>
                         </a>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <a href="{% url 'financeiro:pagamento_bancario_lista' empresa_id=request.empresa_ativa.pk %}"
                            class="financeiro-payment-type-card text-decoration-none text-reset d-flex flex-column justify-content-between p-3">
                             <div>
@@ -545,7 +545,8 @@
                             <div class="small fw-semibold text-primary mt-3">Abrir</div>
                         </a>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    {% comment %}
+                    <div class="col">
                         <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--aluguels">
@@ -557,7 +558,7 @@
                             <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--veiculos">
@@ -569,7 +570,7 @@
                             <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--avulso">
@@ -581,7 +582,7 @@
                             <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col">
                         <div class="financeiro-payment-type-card is-disabled d-flex flex-column justify-content-between p-3">
                             <div>
                                 <span class="financeiro-payment-type-card__icon financeiro-payment-type-card__icon--avulso-mensal">
@@ -593,6 +594,7 @@
                             <span class="badge text-bg-secondary align-self-start mt-3">Em breve</span>
                         </div>
                     </div>
+                    {% endcomment %}
                 </div>
             </div>
         </div>
