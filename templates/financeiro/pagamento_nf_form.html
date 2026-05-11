@@ -493,6 +493,7 @@
                                     <thead>
                                         <tr>
                                             <th>Data</th>
+                                            <th>Status</th>
                                             <th>Nº Nota</th>
                                             <th class="text-end">Valor</th>
                                         </tr>
@@ -2237,6 +2238,11 @@
                 const tr = document.createElement('tr');
                 const dataTd = document.createElement('td');
                 dataTd.textContent = row.data || '-';
+                const statusTd = document.createElement('td');
+                const statusBadge = document.createElement('span');
+                statusBadge.className = `badge rounded-pill ${row.status_badge_class || 'text-bg-secondary'}`;
+                statusBadge.textContent = row.status_label || '-';
+                statusTd.appendChild(statusBadge);
                 const numeroTd = document.createElement('td');
                 const numeroLink = document.createElement('a');
                 numeroLink.href = row.url || '#';
@@ -2247,6 +2253,7 @@
                 valorTd.className = 'text-end fw-semibold';
                 valorTd.textContent = `R$ ${row.valor || '0,00'}`;
                 tr.appendChild(dataTd);
+                tr.appendChild(statusTd);
                 tr.appendChild(numeroTd);
                 tr.appendChild(valorTd);
                 fornecedorHistoryRows.appendChild(tr);

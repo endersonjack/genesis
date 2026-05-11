@@ -7305,6 +7305,7 @@ def pagamento_nf_fornecedor_info(request):
                 fornecedor_id=fornecedor_id,
             )
             .select_related('fornecedor')
+            .prefetch_related('pagamentos', 'boletos')
             .annotate(
                 total_itens_info=Coalesce(
                     Subquery(
@@ -7321,12 +7322,20 @@ def pagamento_nf_fornecedor_info(request):
         if exclude_pk:
             ultimos_qs = ultimos_qs.exclude(pk=exclude_pk)
         for nf in ultimos_qs[:5]:
+            total_nf = nf.total_itens_info or Decimal('0')
+            resumo_nf = _resumo_pagamento_nf(
+                list(nf.pagamentos.all()),
+                list(nf.boletos.all()),
+                total_nf,
+            )
             ultimos.append(
                 {
                     'pk': nf.pk,
                     'data': nf.data_emissao.strftime('%d/%m/%Y') if nf.data_emissao else '-',
+                    'status_label': resumo_nf['situacao_label'],
+                    'status_badge_class': resumo_nf['situacao_badge_class'],
                     'numero_nf': nf.numero_nf or '-',
-                    'valor': format_decimal_br_moeda(nf.total_itens_info or Decimal('0')),
+                    'valor': format_decimal_br_moeda(total_nf),
                     'url': reverse_empresa(
                         request,
                         'financeiro:pagamento_nf_detalhe',
