@@ -58,6 +58,7 @@ from .forms import (
     PagamentoImpostoPagarForm,
     PagamentoPessoalForm,
     PagamentoPessoalItemFormSet,
+    PagamentoPessoalPagarForm,
     PagamentoNotaFiscalItemEditFormSet,
     PagamentoNotaFiscalForm,
     PagamentoNotaFiscalItemFormSet,
@@ -6016,6 +6017,92 @@ def _caixa_padrao_funcionario(empresa, funcionario) -> Caixa | None:
 
 
 @login_required
+def pagamento_pessoal_lista(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    periodo = _periodo_pagamentos_avulsos_mensais(request)
+    filtro_funcionario_raw = (request.GET.get('funcionario') or '').strip()
+    filtro_funcionario_id = _int_param(request, 'funcionario')
+    filtro_funcionario_geral = filtro_funcionario_raw == 'geral'
+    filtro_categoria_id = _int_param(request, 'categoria')
+    decimal_out = DecimalField(max_digits=16, decimal_places=2)
+    base_qs = (
+        PagamentoPessoal.objects.filter(empresa=empresa)
+        .select_related('funcionario', 'caixa', 'conta_bancaria')
+        .annotate(
+            total_itens_calc=Coalesce(
+                Sum('itens__valor_total'),
+                Value(Decimal('0')),
+                output_field=decimal_out,
+            ),
+            descricao_item=Coalesce(
+                Subquery(
+                    PagamentoPessoalItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('descricao')[:1]
+                ),
+                Value(''),
+            ),
+            categoria_item=Coalesce(
+                Subquery(
+                    PagamentoPessoalItem.objects.filter(pagamento=OuterRef('pk'))
+                    .order_by('pk')
+                    .values('categoria__nome')[:1]
+                ),
+                Value(''),
+            ),
+        )
+    )
+    pagamentos_periodo_qs = base_qs.filter(
+        data_pagamento__gte=periodo['inicio'],
+        data_pagamento__lte=periodo['fim_inclusive'],
+    )
+    if filtro_funcionario_geral:
+        pagamentos_periodo_qs = pagamentos_periodo_qs.filter(funcionario__isnull=True)
+    elif filtro_funcionario_id:
+        pagamentos_periodo_qs = pagamentos_periodo_qs.filter(funcionario_id=filtro_funcionario_id)
+    if filtro_categoria_id:
+        pagamentos_periodo_qs = pagamentos_periodo_qs.filter(itens__categoria_id=filtro_categoria_id)
+
+    pagamentos_periodo = list(
+        pagamentos_periodo_qs.order_by('-data_pagamento', '-pk').distinct()
+    )
+    ultimos_pagamentos = list(base_qs.order_by('-data_pagamento', '-pk')[:20])
+    total_periodo = sum(
+        (pagamento.total_itens_calc for pagamento in pagamentos_periodo),
+        Decimal('0'),
+    )
+    funcionarios_filtro = (
+        Funcionario.objects.filter(empresa=empresa, pagamentos_pessoal__isnull=False)
+        .distinct()
+        .order_by('nome')
+    )
+    categorias_filtro = CategoriaFinanceira.objects.filter(
+        empresa=empresa,
+        movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_PESSOAL,
+    ).order_by('nome')
+    return render(
+        request,
+        'financeiro/pagamento_pessoal_lista.html',
+        {
+            'page_title': 'Pagamentos Pessoais',
+            'periodo': periodo,
+            'meses_filtro_caixa': MESES_FILTRO_CAIXA,
+            'pagamentos_periodo': pagamentos_periodo,
+            'ultimos_pagamentos': ultimos_pagamentos,
+            'total_periodo': total_periodo,
+            'funcionarios_filtro': funcionarios_filtro,
+            'categorias_filtro': categorias_filtro,
+            'filtro_funcionario_geral': filtro_funcionario_geral,
+            'filtro_funcionario_pk': filtro_funcionario_id,
+            'filtro_categoria_pk': filtro_categoria_id,
+        },
+    )
+
+
+@login_required
 def pagamento_pessoal_novo(request):
     empresa = _empresa(request)
     if not empresa:
@@ -6103,6 +6190,7 @@ def pagamento_pessoal_detalhe(request, pk: int):
         PagamentoPessoal.objects.filter(empresa=empresa).select_related(
             'funcionario',
             'caixa',
+            'conta_bancaria',
         ),
         pk=pk,
     )
@@ -6216,6 +6304,95 @@ def pagamento_pessoal_editar(request, pk: int):
 
 
 @login_required
+def pagamento_pessoal_pagar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoPessoal.objects.filter(empresa=empresa)
+        .select_related('funcionario', 'caixa', 'conta_bancaria'),
+        pk=pk,
+    )
+    form = PagamentoPessoalPagarForm(
+        request.POST or None,
+        empresa=empresa,
+        pagamento=pagamento,
+    )
+    if request.method == 'POST' and form.is_valid():
+        pagamento.data_pagamento = form.cleaned_data['data_pagamento']
+        pagamento.conta_bancaria = form.cleaned_data.get('conta_bancaria')
+        pagamento.full_clean()
+        pagamento.save()
+        messages.success(request, 'Pagamento pessoal atualizado.')
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(
+            request,
+            'financeiro:pagamento_pessoal_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
+        return response
+    return render(
+        request,
+        'financeiro/partials/pagamento_pessoal_pagar_modal.html',
+        {
+            'pagamento': pagamento,
+            'form': form,
+            'total_itens': pagamento.total_itens(),
+            'post_url': reverse_empresa(
+                request,
+                'financeiro:pagamento_pessoal_pagar',
+                kwargs={'pk': pagamento.pk},
+            ),
+        },
+    )
+
+
+@login_required
+def pagamento_pessoal_pagamento_excluir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    pagamento = get_object_or_404(
+        PagamentoPessoal.objects.filter(empresa=empresa)
+        .select_related('funcionario', 'conta_bancaria'),
+        pk=pk,
+    )
+    if request.method != 'POST':
+        if not _is_htmx(request):
+            return redirect_empresa(
+                request,
+                'financeiro:pagamento_pessoal_detalhe',
+                kwargs={'pk': pagamento.pk},
+            )
+        return render(
+            request,
+            'financeiro/partials/pagamento_pessoal_pagamento_excluir_modal.html',
+            {
+                'pagamento': pagamento,
+                'total_itens': pagamento.total_itens(),
+            },
+        )
+    pagamento.data_pagamento = None
+    pagamento.conta_bancaria = None
+    pagamento.full_clean()
+    pagamento.save(update_fields=['data_pagamento', 'conta_bancaria', 'updated_at'])
+    messages.success(request, 'Pagamento pessoal removido.')
+    if _is_htmx(request):
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse_empresa(
+            request,
+            'financeiro:pagamento_pessoal_detalhe',
+            kwargs={'pk': pagamento.pk},
+        )
+        return response
+    return redirect_empresa(
+        request,
+        'financeiro:pagamento_pessoal_detalhe',
+        kwargs={'pk': pagamento.pk},
+    )
+
+
+@login_required
 def pagamento_pessoal_excluir(request, pk: int):
     empresa = _empresa(request)
     if not empresa:
@@ -6250,9 +6427,9 @@ def pagamento_pessoal_excluir(request, pk: int):
     messages.success(request, f'Pagamento pessoal de {funcionario_nome} excluído.')
     if _is_htmx(request):
         response = HttpResponse(status=200)
-        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:dashboard')
+        response['HX-Redirect'] = reverse_empresa(request, 'financeiro:pagamento_pessoal_lista')
         return response
-    return redirect_empresa(request, 'financeiro:dashboard')
+    return redirect_empresa(request, 'financeiro:pagamento_pessoal_lista')
 
 
 @login_required

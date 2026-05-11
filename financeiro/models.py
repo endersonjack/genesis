@@ -842,7 +842,12 @@ class PagamentoPessoal(TimeStampedModel):
         verbose_name='Caixa',
     )
     descricao = models.CharField('Descrição', max_length=500, blank=True)
-    data_pagamento = models.DateField('Data de pagamento', default=timezone.localdate, db_index=True)
+    data_pagamento = models.DateField(
+        'Data de pagamento',
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     conta_bancaria = models.ForeignKey(
         ContaBancaria,
         on_delete=models.PROTECT,
@@ -864,6 +869,18 @@ class PagamentoPessoal(TimeStampedModel):
 
     def __str__(self) -> str:
         return f'Pessoal {self.funcionario or "Geral"} — {self.data_emissao}'
+
+    @property
+    def status_label(self) -> str:
+        if self.data_pagamento:
+            return 'Pago'
+        return 'Em Aberto'
+
+    @property
+    def status_badge_class(self) -> str:
+        if self.data_pagamento:
+            return 'text-bg-success'
+        return 'text-bg-warning'
 
     def clean(self) -> None:
         if self.tipo_destino == self.TipoDestino.FUNCIONARIO and not self.funcionario_id:

@@ -140,6 +140,11 @@ urlpatterns = [
         name='pagamento_pessoal_novo',
     ),
     path(
+        'pagamentos/pessoal/',
+        empresa_scoped(views.pagamento_pessoal_lista),
+        name='pagamento_pessoal_lista',
+    ),
+    path(
         'pagamentos/impostos/',
         empresa_scoped(views.pagamento_imposto_lista),
         name='pagamento_imposto_lista',
@@ -183,6 +188,16 @@ urlpatterns = [
         'pagamentos/pessoal/<int:pk>/editar/',
         empresa_scoped(views.pagamento_pessoal_editar),
         name='pagamento_pessoal_editar',
+    ),
+    path(
+        'pagamentos/pessoal/<int:pk>/pagar/',
+        empresa_scoped(views.pagamento_pessoal_pagar),
+        name='pagamento_pessoal_pagar',
+    ),
+    path(
+        'pagamentos/pessoal/<int:pk>/pagamento/excluir/',
+        empresa_scoped(views.pagamento_pessoal_pagamento_excluir),
+        name='pagamento_pessoal_pagamento_excluir',
     ),
     path(
         'pagamentos/pessoal/<int:pk>/excluir/',

@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load moeda %}
+
+{% block title %}{{ page_title }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .fin-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+    .financeiro-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+    .financeiro-top-btn-primary {
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .financeiro-section-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+    .fin-table th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        font-weight: 800;
+    }
+    .fin-table td {
+        vertical-align: middle;
+        font-size: .95rem;
+    }
+    .financeiro-filter {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: .5rem;
+        padding: .85rem 1.25rem;
+        border-top: 1px solid #e5edf5;
+    }
+    .financeiro-filter label {
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        font-weight: 800;
+        color: #64748b;
+        margin-bottom: .2rem;
+    }
+    .financeiro-filter .form-select,
+    .financeiro-filter .form-control {
+        min-height: 38px;
+        border-radius: .85rem;
+        font-weight: 600;
+    }
+    .caixa-year-control {
+        display: flex;
+        align-items: stretch;
+        width: 7.5rem;
+    }
+    .caixa-year-control .form-control {
+        border-radius: 999px 0 0 999px;
+        border-right: 0;
+        text-align: center;
+        min-height: 31px;
+    }
+    .caixa-year-buttons {
+        display: grid;
+        width: 1.8rem;
+    }
+    .caixa-year-buttons button {
+        border: 1px solid #dbe4ee;
+        background: #fff;
+        color: #475569;
+        font-size: .58rem;
+        line-height: 1;
+        padding: 0;
+    }
+    .caixa-year-buttons button:first-child { border-radius: 0 999px 0 0; }
+    .caixa-year-buttons button:last-child {
+        border-top: 0;
+        border-radius: 0 0 999px 0;
+    }
+    .financeiro-clickable-row {
+        cursor: pointer;
+    }
+</style>
+
+<div class="fin-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <span class="financeiro-section-icon"><i class="bi bi-people"></i></span>
+        <div>
+            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
+            <h2 class="fw-bold mb-1">Pagamentos Pessoais</h2>
+            <p class="text-muted mb-0">Funcionários, pagamentos gerais e histórico recente.</p>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'financeiro:pagamento_pessoal_novo' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-plus-lg"></i> Novo Pessoal
+        </a>
+    </div>
+</div>
+
+<div class="fin-card mb-3 overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-calendar-check"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Pagamentos no período</h3>
+                <div class="small text-muted">Registros pagos no mês selecionado.</div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="badge rounded-pill text-bg-secondary">{{ pagamentos_periodo|length }}</span>
+            <span class="badge rounded-pill text-bg-primary">R$ {{ total_periodo|moeda_br }}</span>
+        </div>
+    </div>
+    <form method="get" class="financeiro-filter" data-pessoal-filtro-form>
+        <div>
+            <label for="av_mes">Mês</label>
+            <select id="av_mes" name="av_mes" class="form-select form-select-sm">
+                {% for num, nome_mes in meses_filtro_caixa %}
+                    <option value="{{ num }}" {% if periodo.mes == num %}selected{% endif %}>{{ nome_mes }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="av_ano">Ano</label>
+            <div class="caixa-year-control">
+                <input id="av_ano"
+                       name="av_ano"
+                       type="text"
+                       inputmode="numeric"
+                       autocomplete="off"
+                       value="{{ periodo.ano }}"
+                       class="form-control form-control-sm"
+                       data-year-input>
+                <div class="caixa-year-buttons" aria-hidden="true">
+                    <button type="button" data-year-step="1">▲</button>
+                    <button type="button" data-year-step="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label for="funcionario">Funcionário</label>
+            <select id="funcionario" name="funcionario" class="form-select form-select-sm" style="min-width: 14rem;">
+                <option value="">Todos</option>
+                <option value="geral" {% if filtro_funcionario_geral %}selected{% endif %}>Geral</option>
+                {% for funcionario in funcionarios_filtro %}
+                    <option value="{{ funcionario.pk }}" {% if filtro_funcionario_pk == funcionario.pk %}selected{% endif %}>{{ funcionario.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="categoria">Categoria</label>
+            <select id="categoria" name="categoria" class="form-select form-select-sm" style="min-width: 12rem;">
+                <option value="">Todas</option>
+                {% for categoria in categorias_filtro %}
+                    <option value="{{ categoria.pk }}" {% if filtro_categoria_pk == categoria.pk %}selected{% endif %}>{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary rounded-3 fw-semibold">
+            <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Situação</th>
+                    <th>Data pagamento</th>
+                    <th>Destino</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Caixa</th>
+                    <th>Pagamento realizado em</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pagamento in pagamentos_periodo %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_pessoal_detalhe' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4"><span class="badge rounded-pill {{ pagamento.status_badge_class }}">{{ pagamento.status_label }}</span></td>
+                    <td class="text-nowrap">{{ pagamento.data_pagamento|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        <div class="fw-semibold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
+                        <div class="small text-muted">{{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+                    </td>
+                    <td>{{ pagamento.descricao_item|default:pagamento.descricao|default:"-" }}</td>
+                    <td class="small text-muted">{{ pagamento.categoria_item|default:"-" }}</td>
+                    <td>{{ pagamento.caixa.nome }}</td>
+                    <td>{% if pagamento.data_pagamento %}{% if pagamento.conta_bancaria_id %}{{ pagamento.conta_bancaria.nome }} - {{ pagamento.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}{% else %}-{% endif %}</td>
+                    <td class="text-end pe-4 fw-bold text-nowrap">R$ {{ pagamento.total_itens_calc|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">Nenhum pagamento pessoal no período{% if filtro_funcionario_pk or filtro_categoria_pk %} com estes filtros{% endif %}.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="fin-card overflow-hidden">
+    <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon"><i class="bi bi-clock-history"></i></span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Últimos 20 pagamentos pessoais</h3>
+                <div class="small text-muted">Lançamentos mais recentes no financeiro.</div>
+            </div>
+        </div>
+        <span class="badge rounded-pill text-bg-secondary">{{ ultimos_pagamentos|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover fin-table mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Situação</th>
+                    <th>Data pagamento</th>
+                    <th>Destino</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Caixa</th>
+                    <th>Pagamento realizado em</th>
+                    <th class="text-end pe-4">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pagamento in ultimos_pagamentos %}
+                <tr class="financeiro-clickable-row"
+                    data-row-href="{% url 'financeiro:pagamento_pessoal_detalhe' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+                    tabindex="0"
+                    role="link">
+                    <td class="ps-4"><span class="badge rounded-pill {{ pagamento.status_badge_class }}">{{ pagamento.status_label }}</span></td>
+                    <td class="text-nowrap">{{ pagamento.data_pagamento|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        <div class="fw-semibold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
+                        <div class="small text-muted">{{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+                    </td>
+                    <td>{{ pagamento.descricao_item|default:pagamento.descricao|default:"-" }}</td>
+                    <td class="small text-muted">{{ pagamento.categoria_item|default:"-" }}</td>
+                    <td>{{ pagamento.caixa.nome }}</td>
+                    <td>{% if pagamento.data_pagamento %}{% if pagamento.conta_bancaria_id %}{{ pagamento.conta_bancaria.nome }} - {{ pagamento.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}{% else %}-{% endif %}</td>
+                    <td class="text-end pe-4 fw-bold text-nowrap">R$ {{ pagamento.total_itens_calc|moeda_br }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">Nenhum pagamento pessoal registrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const pessoalForm = document.querySelector('[data-pessoal-filtro-form]');
+    if (pessoalForm) {
+        const yearInput = pessoalForm.querySelector('[data-year-input]');
+        function cleanYearValue(value) {
+            return String(value || '').replace(/\D/g, '').slice(0, 4);
+        }
+        if (yearInput) {
+            yearInput.value = cleanYearValue(yearInput.value);
+            yearInput.addEventListener('input', function () {
+                yearInput.value = cleanYearValue(yearInput.value);
+            });
+            pessoalForm.addEventListener('submit', function () {
+                yearInput.value = cleanYearValue(yearInput.value);
+            });
+            pessoalForm.querySelectorAll('[data-year-step]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const currentYear = new Date().getFullYear();
+                    const current = parseInt(cleanYearValue(yearInput.value), 10) || currentYear;
+                    const step = parseInt(button.dataset.yearStep, 10) || 0;
+                    yearInput.value = String(current + step);
+                });
+            });
+        }
+    }
+});
+document.addEventListener('click', function (event) {
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    if (event.target.closest('a, button, input, select, textarea, label')) return;
+    window.location.href = row.dataset.rowHref;
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('[data-row-href]');
+    if (!row) return;
+    event.preventDefault();
+    window.location.href = row.dataset.rowHref;
+});
+</script>
+{% endblock %}

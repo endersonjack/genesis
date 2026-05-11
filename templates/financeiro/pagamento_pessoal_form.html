@@ -10,7 +10,7 @@
             <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
             <h2 class="fw-bold mb-0">Pagamento Pessoal</h2>
         </div>
-        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
+        <a href="{% url 'financeiro:pagamento_pessoal_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
     </div>
@@ -33,7 +33,7 @@
                         {% if form.tipo_destino.errors %}<div class="text-danger small mt-1">{{ form.tipo_destino.errors }}</div>{% endif %}
                     </div>
                     <div class="col-12 col-lg-5">
-                        <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">Funcionário</label>
+                        <label class="form-label fw-semibold" for="{{ form.funcionario.id_for_label }}">Funcionário / Geral</label>
                         {{ form.funcionario }}
                         <div class="text-muted small mt-1" id="funcionario-lotacao-text"></div>
                         {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors }}</div>{% endif %}
@@ -102,7 +102,7 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2">
-            <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">Cancelar</a>
+            <a href="{% url 'financeiro:pagamento_pessoal_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">Cancelar</a>
             <button type="submit" class="btn btn-primary rounded-pill fw-semibold" id="btnSalvarPagamentoPessoal">
                 <i class="bi bi-check2-circle me-1"></i> Salvar pagamento
             </button>
@@ -144,6 +144,17 @@
         return checked ? checked.value : 'funcionario';
     }
 
+    function selecionarTipo(tipo) {
+        var radio = document.querySelector('[name="{{ form.tipo_destino.html_name }}"][value="' + tipo + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    function aplicarTipoPeloFuncionario() {
+        selecionarTipo(funcionarioSelect.value ? 'funcionario' : 'geral');
+    }
+
     function aplicarModoPagamento() {
         var isGeral = tipoSelecionado() === 'geral';
         funcionarioSelect.disabled = isGeral;
@@ -156,6 +167,7 @@
         }
     }
 
+    funcionarioSelect.addEventListener('change', aplicarTipoPeloFuncionario);
     funcionarioSelect.addEventListener('change', aplicarCaixaDoFuncionario);
     funcionarioSelect.addEventListener('change', aplicarLotacaoDoFuncionario);
     document.querySelectorAll('[name="{{ form.tipo_destino.html_name }}"]').forEach(function (radio) {

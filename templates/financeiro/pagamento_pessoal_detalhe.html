@@ -9,10 +9,13 @@
         <div>
             <div class="text-uppercase small fw-bold text-muted">Financeiro</div>
             <h2 class="fw-bold mb-1">Pagamento Pessoal</h2>
-            <div class="text-muted small">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %} · {{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+            <div class="d-flex flex-wrap align-items-center gap-2 text-muted small">
+                <span>{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %} · {{ pagamento.data_emissao|date:"d/m/Y" }}</span>
+                <span class="badge rounded-pill {{ pagamento.status_badge_class }}">{{ pagamento.status_label }}</span>
+            </div>
         </div>
         <div class="d-flex gap-2">
-            <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
+            <a href="{% url 'financeiro:pagamento_pessoal_lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-pill fw-semibold">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
             <a href="{% url 'financeiro:pagamento_pessoal_novo' empresa_id=request.empresa_ativa.pk %}" class="btn btn-primary rounded-pill fw-semibold">
@@ -46,7 +49,7 @@
                             data-no-global-loading
                             data-bs-toggle="modal"
                             data-bs-target="#modalPadrao">
-                            <i class="bi bi-trash me-2"></i> Excluir
+                            <i class="bi bi-trash me-2"></i> Excluir lançamento
                         </button>
                     </li>
                 </ul>
@@ -54,72 +57,156 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-4">
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body">
-                    <div class="small text-muted fw-bold text-uppercase">{% if pagamento.funcionario_id %}Funcionário{% else %}Pagamento{% endif %}</div>
-                    <div class="fw-bold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
-                    <div class="text-muted small">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.cpf }}{% else %}Pagamento geral{% endif %}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted fw-bold text-uppercase">Pagamento</div>
-                    <div class="fw-bold">À vista</div>
-                    <div class="text-muted small">Pago em {{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
-                    <div class="text-muted small">
-                        {% if pagamento.conta_bancaria_id %}
-                            {{ pagamento.conta_bancaria.nome }} — {{ pagamento.conta_bancaria.banco }}
-                        {% else %}
-                            DINHEIRO
-                        {% endif %}
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <div class="small text-muted fw-bold text-uppercase">Detalhes do Pessoal</div>
+                            <div class="fw-bold">{% if pagamento.funcionario_id %}{{ pagamento.funcionario.nome }}{% else %}Geral{% endif %}</div>
+                            <div class="text-muted small">
+                                {% if pagamento.funcionario_id %}
+                                    {{ pagamento.funcionario.cpf|default:"CPF não informado" }}
+                                {% else %}
+                                    Pagamento geral
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="text-lg-end">
+                            <div class="small text-muted fw-bold text-uppercase">Total</div>
+                            <div class="h4 fw-bold mb-0">R$ {{ total_itens|moeda_br }}</div>
+                            <div class="text-muted small">{{ pagamento.caixa.nome }}</div>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <div class="small text-muted fw-bold text-uppercase">Tipo</div>
+                            <div class="fw-semibold">{{ pagamento.get_tipo_destino_display }}</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="small text-muted fw-bold text-uppercase">Data de emissão</div>
+                            <div class="fw-semibold">{{ pagamento.data_emissao|date:"d/m/Y" }}</div>
+                        </div>
+                    </div>
+                    <div class="border-top pt-3">
+                        <div class="fw-bold mb-2">Descrição do pagamento</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Descrição</th>
+                                        <th>Categoria</th>
+                                        <th class="text-end">Valor total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in itens %}
+                                    <tr>
+                                        <td class="small text-muted">{{ forloop.counter }}</td>
+                                        <td class="small fw-semibold">{{ item.descricao }}</td>
+                                        <td class="small text-muted">{{ item.categoria.nome }}</td>
+                                        <td class="text-end small fw-bold">R$ {{ item.valor_total|moeda_br }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="py-4 text-center text-muted small">Sem descrição.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-5">
             <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="small text-muted fw-bold text-uppercase">Total</div>
-                    <div class="h4 fw-bold mb-0">R$ {{ total_itens|moeda_br }}</div>
-                    <div class="text-muted small">{{ pagamento.caixa.nome }}</div>
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <div class="small text-muted fw-bold text-uppercase">Detalhes do pagamento</div>
+                            <div class="fw-bold">{{ pagamento.status_label }}</div>
+                        </div>
+                        <span class="badge rounded-pill {{ pagamento.status_badge_class }}">{{ pagamento.status_label }}</span>
+                    </div>
+                    {% if pagamento.data_pagamento %}
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Data de pagamento</div>
+                            <div class="fw-semibold">{{ pagamento.data_pagamento|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Valor pago</div>
+                            <div class="h5 fw-bold mb-0">R$ {{ total_itens|moeda_br }}</div>
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Conta</div>
+                            <div class="fw-semibold">
+                                {% if pagamento.conta_bancaria_id %}
+                                    {{ pagamento.conta_bancaria.nome }}
+                                {% else %}
+                                    DINHEIRO
+                                {% endif %}
+                            </div>
+                            {% if pagamento.conta_bancaria_id %}
+                            <div class="text-muted small">{{ pagamento.conta_bancaria.banco }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-auto pt-4">
+                        <button type="button"
+                                class="btn btn-outline-primary rounded-pill fw-semibold"
+                                hx-get="{% url 'financeiro:pagamento_pessoal_pagar' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-pencil-square me-1"></i> Editar
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-danger rounded-pill fw-semibold"
+                                hx-get="{% url 'financeiro:pagamento_pessoal_pagamento_excluir' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-trash me-1"></i> Excluir
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Data de pagamento</div>
+                            <div class="fw-semibold">-</div>
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Valor pago</div>
+                            <div class="h5 fw-bold mb-0">R$ 0,00</div>
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-12">
+                            <div class="small text-muted fw-bold text-uppercase">Conta</div>
+                            <div class="fw-semibold">-</div>
+                        </div>
+                    </div>
+                    <div class="mt-auto pt-4">
+                        <button type="button"
+                                class="btn btn-success rounded-pill fw-semibold"
+                                hx-get="{% url 'financeiro:pagamento_pessoal_pagar' empresa_id=request.empresa_ativa.pk pk=pagamento.pk %}"
+                                hx-target="#modal-content"
+                                hx-swap="innerHTML"
+                                data-no-global-loading
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPadrao">
+                            <i class="bi bi-check2-circle me-1"></i> Pagar
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-header bg-white border-0 pt-3 px-3">
-            <div class="fw-bold">Descrição do pagamento</div>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0 align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4">#</th>
-                        <th>Descrição</th>
-                        <th>Categoria</th>
-                        <th class="text-end pe-4">Valor total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in itens %}
-                    <tr>
-                        <td class="ps-4 small text-muted">{{ forloop.counter }}</td>
-                        <td class="small fw-semibold">{{ item.descricao }}</td>
-                        <td class="small text-muted">{{ item.categoria.nome }}</td>
-                        <td class="text-end pe-4 small fw-bold">R$ {{ item.valor_total|moeda_br }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="py-4 text-center text-muted small">Sem itens.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
 </div>

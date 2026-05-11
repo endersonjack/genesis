@@ -1395,15 +1395,17 @@ class PagamentoPessoalForm(forms.ModelForm):
                 empresa=empresa,
                 ativo=True,
             ).order_by('banco', 'nome')
+        self.fields['funcionario'].empty_label = 'Geral'
         self.fields['conta_bancaria'].required = False
         self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
 
     def clean(self):
         cleaned_data = super().clean()
-        tipo_destino = cleaned_data.get('tipo_destino') or PagamentoPessoal.TipoDestino.FUNCIONARIO
-        if tipo_destino == PagamentoPessoal.TipoDestino.FUNCIONARIO and not cleaned_data.get('funcionario'):
-            self.add_error('funcionario', 'Informe o funcionário.')
-        if tipo_destino == PagamentoPessoal.TipoDestino.GERAL:
+        funcionario = cleaned_data.get('funcionario')
+        if funcionario:
+            cleaned_data['tipo_destino'] = PagamentoPessoal.TipoDestino.FUNCIONARIO
+        else:
+            cleaned_data['tipo_destino'] = PagamentoPessoal.TipoDestino.GERAL
             cleaned_data['funcionario'] = None
         return cleaned_data
 
@@ -1698,6 +1700,48 @@ class PagamentoImpostoPagarForm(forms.Form):
         conta = self.cleaned_data.get('conta_bancaria')
         if conta and self.empresa and conta.empresa_id != self.empresa.pk:
             raise forms.ValidationError('Conta bancária inválida para esta empresa.')
+        return conta
+
+
+class PagamentoPessoalPagarForm(forms.Form):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento',
+        initial=timezone.localdate,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'type': 'date', 'class': 'form-control rounded-3'},
+        ),
+    )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Pagamento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
+
+    def __init__(self, *args, empresa=None, pagamento=None, **kwargs):
+        self.empresa = empresa
+        self.pagamento = pagamento
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+        self.fields['conta_bancaria'].empty_label = 'DINHEIRO'
+        if pagamento and not self.is_bound:
+            self.initial['data_pagamento'] = (
+                pagamento.data_pagamento.isoformat()
+                if pagamento.data_pagamento
+                else timezone.localdate().isoformat()
+            )
+            self.initial['conta_bancaria'] = pagamento.conta_bancaria_id
+
+    def clean_conta_bancaria(self):
+        conta = self.cleaned_data.get('conta_bancaria')
+        if conta and self.empresa and conta.empresa_id != self.empresa.pk:
+            raise forms.ValidationError('Conta bancÃ¡ria invÃ¡lida para esta empresa.')
         return conta
 
 
