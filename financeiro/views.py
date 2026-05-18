@@ -2649,7 +2649,6 @@ def _dashboard_alertas_financeiro_data(empresa):
         PagamentoImposto.objects.filter(
             empresa=empresa,
             data_pagamento__isnull=True,
-            data_vencimento__lt=hoje,
         )
         .select_related('autoridade', 'caixa')
         .annotate(
@@ -2667,7 +2666,7 @@ def _dashboard_alertas_financeiro_data(empresa):
                 Value(''),
             ),
         )
-        .order_by('data_vencimento', 'pk')[:100]
+        .order_by('data_vencimento', 'data_emissao', 'pk')[:100]
     )
     bancarios_venc_hoje = list(
         PagamentoBancarioParcela.objects.filter(
@@ -2850,12 +2849,18 @@ def _dashboard_alertas_financeiro_data(empresa):
 
     dashboard_impostos_vencidos_linhas = []
     for imposto in impostos_vencidos:
+        dias_atrasados = (
+            max((hoje - imposto.data_vencimento).days, 0)
+            if imposto.data_vencimento
+            else 0
+        )
         dashboard_impostos_vencidos_linhas.append(
             {
                 'index': len(dashboard_impostos_vencidos_linhas) + 1,
                 'imposto_pk': imposto.pk,
                 'vencimento': imposto.data_vencimento,
-                'dias_atrasados': (hoje - imposto.data_vencimento).days if imposto.data_vencimento else 0,
+                'dias_atrasados': dias_atrasados,
+                'dias_class': 'text-danger' if dias_atrasados else 'text-muted',
                 'entidade_nome': imposto.autoridade.nome,
                 'entidade_doc': imposto.descricao_item or imposto.autoridade.get_esfera_display(),
                 'periodo_apuracao': imposto.periodo_apuracao or '—',
