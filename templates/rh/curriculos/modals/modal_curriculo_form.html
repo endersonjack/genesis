@@ -1,0 +1,123 @@
+<form
+    method="post"
+    enctype="multipart/form-data"
+    hx-post="{% if modo == 'editar' and curriculo %}{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% else %}{% url 'rh:adicionar_curriculo' empresa_id=request.empresa_ativa.pk %}{% endif %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML"
+    data-no-global-loading>
+    {% csrf_token %}
+    <input type="hidden" name="return_q" value="{{ return_q|default:'' }}">
+
+    <div class="modal-header">
+        <div>
+            <h5 class="modal-title fw-bold mb-1">{{ titulo }}</h5>
+            <small class="text-muted">{{ subtitulo }}</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body" style="max-height: calc(100vh - 220px); overflow-y: auto;">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.data.id_for_label }}">{{ form.data.label }}</label>
+                {{ form.data }}
+                {% if form.data.errors %}<div class="text-danger small mt-1">{{ form.data.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-8">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }} <span class="text-danger">*</span></label>
+                {{ form.nome }}
+                {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">{{ form.funcao.label }}</label>
+                {{ form.funcao }}
+                {% if form.funcao.errors %}<div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.telefone.id_for_label }}">{{ form.telefone.label }}</label>
+                {{ form.telefone }}
+                {% if form.telefone.errors %}<div class="text-danger small mt-1">{{ form.telefone.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                {{ form.endereco }}
+                {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.indicacao.id_for_label }}">{{ form.indicacao.label }}</label>
+                {{ form.indicacao }}
+                {% if form.indicacao.errors %}<div class="text-danger small mt-1">{{ form.indicacao.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+                {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.anexos.id_for_label }}">{{ form.anexos.label }}</label>
+                {{ form.anexos }}
+                {% if form.anexos.help_text %}<div class="text-muted small mt-1">{{ form.anexos.help_text }}</div>{% endif %}
+                {% if form.anexos.errors %}<div class="text-danger small mt-1">{{ form.anexos.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            {% if curriculo and curriculo.anexos.exists %}
+                <div class="col-12">
+                    <div class="border rounded-3 p-3 bg-light">
+                        <div class="fw-semibold mb-2">Anexos atuais</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for anexo in curriculo.anexos.all %}
+                                <a href="{{ anexo.arquivo.url }}" target="_blank" class="rh-top-btn rh-top-btn-light rh-top-btn-compact">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span>{{ anexo.descricao|default:"Anexo" }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modo == 'editar' and curriculo %}
+            <button
+                type="button"
+                class="rh-top-btn rh-top-btn-danger me-auto"
+                hx-get="{% url 'rh:excluir_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% if return_q %}?return_q={{ return_q|urlencode }}{% endif %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading>
+                <i class="bi bi-trash"></i>
+                <span>Excluir</span>
+            </button>
+        {% endif %}
+        <button type="button" class="rh-top-btn rh-top-btn-light" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i>
+            <span>Cancelar</span>
+        </button>
+        <button type="submit" class="rh-top-btn rh-top-btn-primary">
+            <span class="rh-btn-idle d-inline-flex align-items-center gap-2">
+                <i class="bi bi-check-circle"></i>
+                <span>Salvar</span>
+            </span>
+            <span class="rh-btn-loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Salvando...</span>
+            </span>
+        </button>
+    </div>
+</form>

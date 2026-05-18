@@ -96,6 +96,10 @@ urlpatterns = [
     # ======================
     path('funcionarios/', empresa_scoped(lista_funcionarios), name='lista_funcionarios'),
     path('funcionarios/buscar/', empresa_scoped(buscar_funcionarios), name='buscar_funcionarios'),
+    path('curriculos/', empresa_scoped(banco_curriculos), name='banco_curriculos'),
+    path('curriculos/novo/', empresa_scoped(adicionar_curriculo), name='adicionar_curriculo'),
+    path('curriculos/<int:pk>/editar/', empresa_scoped(editar_curriculo), name='editar_curriculo'),
+    path('curriculos/<int:pk>/excluir/', empresa_scoped(excluir_curriculo), name='excluir_curriculo'),
     path(
         'funcionarios/buscar/exportar/pdf/',
         empresa_scoped(exportar_busca_funcionarios_pdf),

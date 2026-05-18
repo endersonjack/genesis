@@ -809,6 +809,11 @@
             <i class="bi bi-search"></i>
             <span>Buscar</span>
         </a>
+        <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}"
+           class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-folder2-open"></i>
+            <span>Banco de Currículos</span>
+        </a>
         <a href="{% url 'rh:relatorios_rh' empresa_id=request.empresa_ativa.pk %}"
            class="rh-top-btn rh-top-btn-light">
             <i class="bi bi-file-earmark-bar-graph"></i>

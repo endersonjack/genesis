@@ -50,6 +50,56 @@ class BaseStyledModelForm(forms.ModelForm):
                 empresa=empresa_ativa
             ).order_by('nome')
 
+        if 'funcao' in self.fields:
+            self.fields['funcao'].queryset = Cargo.objects.filter(
+                empresa=empresa_ativa
+            ).order_by('nome')
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_file_clean(item, initial) for item in data]
+        return single_file_clean(data, initial)
+
+
+class CurriculoForm(BaseStyledModelForm):
+    anexos = MultipleFileField(
+        required=False,
+        widget=MultipleFileInput(attrs={'multiple': True}),
+        label='Anexos',
+        help_text='Você pode selecionar um ou mais arquivos.',
+    )
+
+    class Meta:
+        model = Curriculo
+        fields = [
+            'data',
+            'nome',
+            'funcao',
+            'telefone',
+            'email',
+            'endereco',
+            'indicacao',
+            'status',
+            'observacoes',
+        ]
+        widgets = {
+            'data': DateInput(format='%Y-%m-%d'),
+            'observacoes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, empresa_ativa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.filter_empresa_queryset(empresa_ativa)
+        self.fields['funcao'].label = 'Função'
+
 
 class FuncionarioForm(BaseStyledModelForm):
     """

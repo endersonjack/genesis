@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from empresas.models import Empresa
 
 
@@ -378,6 +379,68 @@ class Dependente(TimeStampedModel):
         return f'{self.nome} - {self.funcionario.nome}'
 
 
+class Curriculo(TimeStampedModel):
+    STATUS_CHOICES = (
+        ('novo', 'Novo'),
+        ('em_analise', 'Em análise'),
+        ('aprovado', 'Aprovado'),
+        ('descartado', 'Descartado'),
+    )
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='curriculos',
+    )
+    data = models.DateField('Data', default=timezone.localdate, db_index=True)
+    nome = models.CharField(max_length=200)
+    funcao = models.ForeignKey(
+        Cargo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='curriculos',
+        verbose_name='Função',
+    )
+    endereco = models.CharField('Endereço', max_length=255, blank=True)
+    telefone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField('E-mail', blank=True)
+    indicacao = models.CharField('Indicação', max_length=200, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='novo')
+    observacoes = models.TextField('Observações', blank=True)
+
+    class Meta:
+        verbose_name = 'Currículo'
+        verbose_name_plural = 'Currículos'
+        ordering = ['-data', 'nome']
+        indexes = [
+            models.Index(fields=('empresa', 'data')),
+            models.Index(fields=('empresa', 'funcao')),
+            models.Index(fields=('empresa', 'status')),
+        ]
+
+    def __str__(self):
+        return self.nome
+
+
+class CurriculoAnexo(TimeStampedModel):
+    curriculo = models.ForeignKey(
+        Curriculo,
+        on_delete=models.CASCADE,
+        related_name='anexos',
+    )
+    arquivo = models.FileField(upload_to='rh/curriculos/anexos/')
+    descricao = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        verbose_name = 'Anexo de currículo'
+        verbose_name_plural = 'Anexos de currículos'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return self.descricao or self.arquivo.name
+
+
 class FeriasFuncionario(TimeStampedModel):
     funcionario = models.ForeignKey(
         Funcionario,
@@ -745,4 +808,3 @@ class LembreteRH(TimeStampedModel):
     def __str__(self):
         return f'{self.titulo} - {self.data:%d/%m/%Y}'
     
-

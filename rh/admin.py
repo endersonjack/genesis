@@ -41,6 +41,11 @@ class OcorrenciaSaudeFuncionarioInline(admin.TabularInline):
     extra = 1
 
 
+class CurriculoAnexoInline(admin.TabularInline):
+    model = CurriculoAnexo
+    extra = 1
+
+
 @admin.register(Funcionario)
 class FuncionarioAdmin(admin.ModelAdmin):
     list_display = (
@@ -178,6 +183,15 @@ class LotacaoAdmin(admin.ModelAdmin):
 class BancoAdmin(admin.ModelAdmin):
     list_display = ('codigo', 'nome')
     search_fields = ('codigo', 'nome')
+
+
+@admin.register(Curriculo)
+class CurriculoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'funcao', 'telefone', 'email', 'indicacao', 'status', 'data', 'empresa')
+    search_fields = ('nome', 'telefone', 'email', 'indicacao', 'endereco')
+    list_filter = ('empresa', 'funcao', 'status', 'data')
+    autocomplete_fields = ('empresa', 'funcao')
+    inlines = [CurriculoAnexoInline]
 
 
 @admin.register(FeriasFuncionario)

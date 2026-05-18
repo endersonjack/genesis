@@ -1,0 +1,468 @@
+{% extends 'base.html' %}
+
+{% block title %}Banco de Currículos | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .curriculos-page {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .curriculos-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .curriculos-actions {
+        display: flex;
+        gap: .75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .rh-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .rh-top-btn i {
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .rh-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+
+    .rh-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+
+    .rh-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+
+    .rh-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+
+    .rh-top-btn-danger {
+        background: #dc2626;
+        color: #fff;
+        border: 1px solid transparent;
+    }
+
+    .rh-top-btn-danger:hover {
+        background: #b91c1c;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
+    .rh-top-btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.15);
+    }
+
+    .rh-top-btn-compact {
+        min-height: 38px;
+        padding: .58rem .9rem;
+        font-size: .86rem;
+    }
+
+    .rh-top-btn-icon-only {
+        min-width: 38px;
+        padding-left: .72rem;
+        padding-right: .72rem;
+    }
+
+    .rh-btn-loading {
+        display: none;
+    }
+
+    .rh-top-btn.htmx-request,
+    form.htmx-request .rh-top-btn[type="submit"] {
+        pointer-events: none;
+        opacity: .82;
+    }
+
+    .rh-top-btn.htmx-request .rh-btn-idle,
+    form.htmx-request .rh-top-btn[type="submit"] .rh-btn-idle {
+        display: none;
+    }
+
+    .rh-top-btn.htmx-request .rh-btn-loading,
+    form.htmx-request .rh-top-btn[type="submit"] .rh-btn-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+    }
+
+    .curriculos-search {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .curriculos-search .form-control,
+    .curriculos-search .form-select {
+        min-height: 42px;
+        border-radius: 12px;
+    }
+
+    .curriculos-search .form-control {
+        width: min(100%, 280px);
+    }
+
+    .curriculos-main-grid {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) minmax(0, 3fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .curriculos-summary-col {
+        position: sticky;
+        top: 82px;
+    }
+
+    .curriculos-summary-card {
+        background: #fff;
+        border: 1px solid #dbe3ee;
+        border-radius: 8px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+
+    .curriculos-summary-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+    }
+
+    .curriculos-summary-label {
+        color: #64748b;
+        font-size: .83rem;
+        font-weight: 700;
+        margin-bottom: .35rem;
+    }
+
+    .curriculos-summary-value {
+        font-size: 1.65rem;
+        line-height: 1;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .curriculos-funcoes-list {
+        display: grid;
+        gap: .65rem;
+        padding: 1rem 1.25rem;
+    }
+
+    .curriculos-funcao-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: .75rem;
+        align-items: center;
+        padding: .75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
+    }
+
+    .curriculos-funcao-row.is-active {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .curriculos-funcao-count {
+        min-width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border: 1px solid #dbe4ee;
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .curriculos-table-card {
+        background: #fff;
+        border: 1px solid #dbe3ee;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .curriculos-table-card__header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5edf5;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .curriculo-status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: .28rem .65rem;
+        font-size: .78rem;
+        font-weight: 800;
+    }
+
+    .curriculo-status--novo { background: #dbeafe; color: #1d4ed8; }
+    .curriculo-status--em_analise { background: #fef3c7; color: #92400e; }
+    .curriculo-status--aprovado { background: #dcfce7; color: #166534; }
+    .curriculo-status--descartado { background: #e5e7eb; color: #374151; }
+
+    @media (max-width: 767.98px) {
+        .curriculos-actions,
+        .curriculos-search {
+            width: 100%;
+        }
+
+        .curriculos-main-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .curriculos-summary-col {
+            position: static;
+        }
+
+        .curriculos-summary-head,
+        .curriculos-funcao-row {
+            grid-template-columns: 1fr;
+        }
+
+        .curriculos-summary-head {
+            align-items: flex-start;
+        }
+
+        .curriculos-search .form-control,
+        .curriculos-search .form-select,
+        .curriculos-actions .rh-top-btn,
+        .curriculos-search .rh-top-btn,
+        .curriculos-funcao-row .rh-top-btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="curriculos-page">
+    <div class="curriculos-top">
+        <div>
+            <h2 class="fw-bold mb-1">Banco de Currículos</h2>
+            <p class="text-muted mb-0">Currículos recebidos e candidatos disponíveis para futuras vagas.</p>
+        </div>
+
+        <div class="curriculos-actions">
+            <a href="{% url 'rh:dashboard_rh' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </a>
+            <button
+                type="button"
+                class="rh-top-btn rh-top-btn-primary"
+                hx-get="{% url 'rh:adicionar_curriculo' empresa_id=request.empresa_ativa.pk %}{% if request.GET.urlencode %}?return_q={{ request.GET.urlencode|urlencode }}{% endif %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-plus-circle"></i>
+                <span>Adicionar Currículo</span>
+            </button>
+        </div>
+    </div>
+
+    <form method="get" class="curriculos-search">
+        <input type="text"
+               name="q"
+               value="{{ request.GET.q }}"
+               class="form-control"
+               placeholder="Buscar nome, telefone, e-mail...">
+        <select name="funcao" class="form-select" style="max-width: 220px;">
+            <option value="">Todas as funções</option>
+            {% for cargo in cargos %}
+                <option value="{{ cargo.pk }}" {% if request.GET.funcao == cargo.pk|stringformat:"s" %}selected{% endif %}>{{ cargo.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select" style="max-width: 180px;">
+            <option value="">Todos os status</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-search"></i>
+            <span>Buscar</span>
+        </button>
+        {% if filtros_ativos %}
+            <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light">
+                <i class="bi bi-x-circle"></i>
+                <span>Limpar</span>
+            </a>
+        {% endif %}
+    </form>
+
+    <div class="curriculos-main-grid">
+        <aside class="curriculos-summary-card curriculos-summary-col">
+            <div class="curriculos-summary-head">
+                <div>
+                    <div class="curriculos-summary-label">Currículos Totais</div>
+                    <div class="curriculos-summary-value">{{ total_curriculos }}</div>
+                </div>
+                {% if request.GET.funcao %}
+                    <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light rh-top-btn-compact">
+                        <i class="bi bi-list-ul"></i>
+                        <span>Todos</span>
+                    </a>
+                {% endif %}
+            </div>
+            <div class="curriculos-funcoes-list">
+                {% for cargo in contagem_por_funcao %}
+                    <div class="curriculos-funcao-row{% if request.GET.funcao == cargo.pk|stringformat:'s' %} is-active{% endif %}">
+                        <div>
+                            <div class="fw-semibold text-truncate">{{ cargo.nome }}</div>
+                            <div class="small text-muted">Currículos por função</div>
+                        </div>
+                        <span class="curriculos-funcao-count">{{ cargo.total_curriculos }}</span>
+                        <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}?funcao={{ cargo.pk }}" class="rh-top-btn rh-top-btn-light rh-top-btn-compact">
+                            <i class="bi bi-filter-circle"></i>
+                            <span>Ver</span>
+                        </a>
+                    </div>
+                {% empty %}
+                    <div class="text-muted small">Nenhuma função com currículos cadastrados.</div>
+                {% endfor %}
+            </div>
+        </aside>
+
+        <div class="curriculos-table-card">
+        <div class="curriculos-table-card__header">
+            <div>
+                <h5 class="fw-bold mb-1">Currículos</h5>
+                <div class="small text-muted">{{ total_resultados }} resultado{{ total_resultados|pluralize }}</div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Data</th>
+                        <th>Nome</th>
+                        <th>Função</th>
+                        <th>Contato</th>
+                        <th>Indicação</th>
+                        <th>Status</th>
+                        <th>Anexos</th>
+                        <th class="text-end pe-4">Editar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for curriculo in curriculos %}
+                        <tr>
+                            <td class="ps-4 small text-muted">{{ curriculo.data|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ curriculo.nome }}</div>
+                                {% if curriculo.endereco %}
+                                    <div class="small text-muted text-truncate" style="max-width: 22rem;">{{ curriculo.endereco }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ curriculo.funcao.nome|default:"—" }}</td>
+                            <td>
+                                <div class="small">{{ curriculo.telefone|default:"—" }}</div>
+                                {% if curriculo.email %}
+                                    <div class="small text-muted">{{ curriculo.email }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ curriculo.indicacao|default:"—" }}</td>
+                            <td>
+                                <span class="curriculo-status curriculo-status--{{ curriculo.status }}">
+                                    {{ curriculo.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% for anexo in curriculo.anexos.all %}
+                                        <a href="{{ anexo.arquivo.url }}" target="_blank" class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only me-1 mb-1">
+                                            <i class="bi bi-paperclip"></i>
+                                        </a>
+                                {% empty %}
+                                    <span class="text-muted small">—</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <button
+                                    type="button"
+                                        class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only"
+                                    title="Editar currículo"
+                                    aria-label="Editar currículo de {{ curriculo.nome }}"
+                                    hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% if request.GET.urlencode %}?return_q={{ request.GET.urlencode|urlencode }}{% endif %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-no-global-loading
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                    <span class="rh-btn-idle"><i class="bi bi-pencil-square"></i></span>
+                                    <span class="rh-btn-loading">
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">Nenhum currículo encontrado.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}
