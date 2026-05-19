@@ -9,6 +9,11 @@ app_name = 'financeiro'
 urlpatterns = [
     path('', empresa_scoped(views.dashboard), name='dashboard'),
     path('relatorios/', empresa_scoped(views.relatorios), name='relatorios'),
+    path(
+        'relatorios/fornecedor/pdf/',
+        empresa_scoped(views.relatorio_fornecedor_pdf),
+        name='relatorio_fornecedor_pdf',
+    ),
     path('buscar/', empresa_scoped(views.buscar_pagamentos), name='buscar_pagamentos'),
     path(
         'buscar/exportar/pdf/',

@@ -1,11 +1,15 @@
 from django.test import TestCase
+from django.test import RequestFactory
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from empresas.models import Empresa
+from fornecedores.models import Fornecedor
 
 from .models import (
     AutoridadeTributaria,
@@ -14,11 +18,16 @@ from .models import (
     CategoriaFinanceira,
     PagamentoImposto,
     PagamentoImpostoItem,
+    PagamentoNotaFiscal,
+    PagamentoNotaFiscalItem,
 )
 from .views import (
     _busca_pagamentos_nf_corresponde_status,
     _dashboard_alertas_financeiro_data,
+    relatorios,
+    relatorio_fornecedor_pdf,
     _status_busca_pagamento_nf,
+    pagamento_nf_fornecedor_info,
 )
 
 
@@ -178,3 +187,121 @@ class DashboardFinanceiroImpostosTests(TestCase):
         self.assertEqual(linhas_por_pk[imposto_em_aberto.pk]['situacao'], 'Em Aberto')
         self.assertEqual(linhas_por_pk[imposto_em_aberto.pk]['dias_atrasados'], 0)
         self.assertEqual(data['total_impostos_vencidos'], Decimal('300.00'))
+
+
+class PagamentoNotaFiscalFornecedorInfoTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = get_user_model().objects.create_user(
+            username='financeiro',
+            password='senha-teste',
+        )
+        self.empresa = Empresa.objects.create(
+            razao_social='Empresa Teste',
+            nome_fantasia='Empresa Teste',
+            cnpj='11.111.111/0001-11',
+        )
+        self.caixa = Caixa.objects.get(
+            empresa=self.empresa,
+            tipo=Caixa.Tipo.GERAL,
+        )
+        self.fornecedor = Fornecedor.objects.create(
+            empresa=self.empresa,
+            tipo='PJ',
+            cpf_cnpj='22222222000122',
+            nome='Fornecedor Teste',
+        )
+
+    def _criar_nf(self, numero, data_emissao):
+        return PagamentoNotaFiscal.objects.create(
+            empresa=self.empresa,
+            fornecedor=self.fornecedor,
+            numero_nf=numero,
+            data_emissao=data_emissao,
+            caixa=self.caixa,
+        )
+
+    def test_fornecedor_info_ordena_ultimos_por_data_emissao_mais_recente(self):
+        self._criar_nf('30', date(2026, 4, 30))
+        self._criar_nf('10', date(2026, 4, 10))
+        self._criar_nf('18', date(2026, 4, 18))
+        self._criar_nf('29', date(2026, 4, 29))
+
+        request = self.factory.get(
+            '/pagamentos/nf/fornecedor-info/',
+            {'fornecedor': self.fornecedor.pk},
+        )
+        request.user = self.user
+        request.empresa_ativa = self.empresa
+
+        response = pagamento_nf_fornecedor_info(request)
+        data = json.loads(response.content)
+
+        self.assertEqual(
+            [linha['data'] for linha in data['ultimos']],
+            ['30/04/2026', '29/04/2026', '18/04/2026', '10/04/2026'],
+        )
+
+    def test_relatorios_renderiza_card_fornecedor_com_itens_da_nf(self):
+        categoria = CategoriaFinanceira.objects.create(
+            empresa=self.empresa,
+            tipo=CategoriaFinanceira.Tipo.SAIDA,
+            movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_NOTA_FISCAL,
+            nome='Material',
+        )
+        nf = self._criar_nf('77', date(2026, 4, 30))
+        nf.descricao = 'Compra de insumos'
+        nf.save(update_fields=['descricao'])
+        PagamentoNotaFiscalItem.objects.create(
+            pagamento_nf=nf,
+            tipo=PagamentoNotaFiscalItem.TipoItem.PRODUTO,
+            descricao='Cimento',
+            categoria=categoria,
+            quantidade=Decimal('2'),
+            unidade='SC',
+            valor_unitario=Decimal('50.00'),
+            valor_total=Decimal('100.00'),
+            caixa=self.caixa,
+        )
+
+        request = self.factory.get(
+            '/relatorios/',
+            {'rel_fornecedor': self.fornecedor.pk},
+        )
+        request.user = self.user
+        request.empresa_ativa = self.empresa
+
+        response = relatorios(request)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Relatórios de Fornecedor', content)
+        self.assertIn('Fornecedor Teste', content)
+        self.assertIn('Cimento', content)
+        self.assertIn('Compra de insumos', content)
+
+    def test_relatorio_fornecedor_pdf_gera_pdf(self):
+        nf = self._criar_nf('88', date(2026, 4, 30))
+        PagamentoNotaFiscalItem.objects.create(
+            pagamento_nf=nf,
+            tipo=PagamentoNotaFiscalItem.TipoItem.PRODUTO,
+            descricao='Areia',
+            quantidade=Decimal('1'),
+            unidade='M3',
+            valor_unitario=Decimal('80.00'),
+            valor_total=Decimal('80.00'),
+            caixa=self.caixa,
+        )
+
+        request = self.factory.get(
+            '/relatorios/fornecedor/pdf/',
+            {'rel_fornecedor': self.fornecedor.pk},
+        )
+        request.user = self.user
+        request.empresa_ativa = self.empresa
+
+        response = relatorio_fornecedor_pdf(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF'))

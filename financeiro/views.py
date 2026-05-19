@@ -20,6 +20,7 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     OuterRef,
+    Prefetch,
     Q,
     Sum,
     Subquery,
@@ -1704,6 +1705,163 @@ def dashboard(request):
     )
 
 
+RELATORIO_FORNECEDOR_STATUS_CHOICES = (
+    ('', 'Todos'),
+    ('pago', 'Pago'),
+    ('em_aberto', 'Em aberto'),
+    ('pago_parcial', 'Pago Parcial'),
+    ('vencido', 'Vencido'),
+    ('nao_pago', 'Não pago'),
+)
+
+
+def _relatorio_fornecedor_context(request, empresa) -> dict:
+    fornecedor_raw = str(request.GET.get('rel_fornecedor', '')).strip()
+    fornecedor_id = _int_param(request, 'rel_fornecedor')
+    data_inicio_raw = str(request.GET.get('rel_data_inicio', '')).strip()
+    data_fim_raw = str(request.GET.get('rel_data_fim', '')).strip()
+    status_pagamento = str(request.GET.get('rel_status', '')).strip()
+
+    status_validos = {value for value, _label in RELATORIO_FORNECEDOR_STATUS_CHOICES}
+    if status_pagamento not in status_validos:
+        status_pagamento = ''
+
+    data_inicio = parse_date(data_inicio_raw) if data_inicio_raw else None
+    data_fim = parse_date(data_fim_raw) if data_fim_raw else None
+
+    linhas = []
+    consultar_todos = fornecedor_raw == 'todos'
+    deve_consultar = bool(fornecedor_id or consultar_todos)
+
+    if deve_consultar:
+        dec = DecimalField(max_digits=16, decimal_places=2)
+        nfs_qs = (
+            PagamentoNotaFiscal.objects.filter(empresa=empresa)
+            .select_related('fornecedor', 'caixa')
+            .prefetch_related(
+                'pagamentos',
+                'boletos',
+                Prefetch(
+                    'itens',
+                    queryset=PagamentoNotaFiscalItem.objects.select_related(
+                        'categoria',
+                        'caixa',
+                    ).order_by('pk'),
+                ),
+            )
+            .annotate(
+                total_itens_info=Coalesce(
+                    Subquery(
+                        _subquery_total_itens_nf(),
+                        output_field=DecimalField(max_digits=16, decimal_places=2),
+                    ),
+                    Value(Decimal('0')),
+                    output_field=dec,
+                )
+            )
+            .order_by('-data_emissao', '-pk')
+        )
+        if fornecedor_id:
+            nfs_qs = nfs_qs.filter(fornecedor_id=fornecedor_id)
+        if data_inicio:
+            nfs_qs = nfs_qs.filter(data_emissao__gte=data_inicio)
+        if data_fim:
+            nfs_qs = nfs_qs.filter(data_emissao__lte=data_fim)
+
+        for nf in nfs_qs:
+            itens = list(nf.itens.all())
+            pagamentos = list(nf.pagamentos.all())
+            boletos = list(nf.boletos.all())
+            total_nf = nf.total_itens_info or Decimal('0')
+            resumo = _resumo_pagamento_nf(pagamentos, boletos, total_nf)
+
+            if status_pagamento == 'em_aberto' and not resumo['valor_em_aberto']:
+                continue
+            status_map = {
+                'pago': 'Pago',
+                'pago_parcial': 'Pago Parcial',
+                'vencido': 'Vencido',
+                'nao_pago': 'Não pago',
+            }
+            status_label_filtrado = status_map.get(status_pagamento)
+            if status_label_filtrado and resumo['situacao_label'] != status_label_filtrado:
+                continue
+
+            boletos_validos = [
+                boleto
+                for boleto in boletos
+                if boleto.status != BoletoPagamento.Status.CANCELADO
+            ]
+            tem_boletos = bool(boletos_validos) or any(
+                pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS
+                for pagamento in pagamentos
+            )
+            tipos_pagamento = []
+            for pagamento in pagamentos:
+                if pagamento.tipo in (
+                    PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA,
+                    PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO,
+                ):
+                    label = pagamento.get_tipo_display()
+                    if label not in tipos_pagamento:
+                        tipos_pagamento.append(label)
+            if tem_boletos:
+                tipos_pagamento.append('Boletos')
+
+            categorias = []
+            for item in itens:
+                if item.categoria_id and item.categoria.nome not in categorias:
+                    categorias.append(item.categoria.nome)
+
+            total_boletos = len(boletos_validos)
+            boletos_pagos = sum(
+                1
+                for boleto in boletos_validos
+                if boleto.status == BoletoPagamento.Status.PAGO
+            )
+
+            linhas.append(
+                {
+                    'nf': nf,
+                    'itens': itens,
+                    'status_label': resumo['situacao_label'],
+                    'status_badge_class': resumo['situacao_badge_class'],
+                    'categoria_label': ', '.join(categorias) if categorias else '—',
+                    'tipo_pagamento_label': ' + '.join(tipos_pagamento) if tipos_pagamento else 'Sem pagamento',
+                    'parcelas_label': (
+                        f'{boletos_pagos}/{total_boletos} parcelas pagas'
+                        if tem_boletos and total_boletos
+                        else ''
+                    ),
+                    'valor_total': total_nf,
+                    'valor_pago': resumo['valor_pago'],
+                    'valor_a_pagar': resumo['valor_em_aberto'],
+                    'data_pagamento': _data_ultimo_pagamento_nf(pagamentos, boletos),
+                }
+            )
+
+    totais = {
+        'quantidade': len(linhas),
+        'valor_total': sum((linha['valor_total'] for linha in linhas), Decimal('0')),
+        'valor_pago': sum((linha['valor_pago'] for linha in linhas), Decimal('0')),
+        'valor_a_pagar': sum((linha['valor_a_pagar'] for linha in linhas), Decimal('0')),
+    }
+
+    return {
+        'fornecedores': Fornecedor.objects.filter(empresa=empresa).order_by('nome'),
+        'status_choices': RELATORIO_FORNECEDOR_STATUS_CHOICES,
+        'linhas': linhas,
+        'totais': totais,
+        'filtros': {
+            'fornecedor': fornecedor_raw,
+            'fornecedor_id': fornecedor_id,
+            'data_inicio': data_inicio_raw,
+            'data_fim': data_fim_raw,
+            'status': status_pagamento,
+        },
+    }
+
+
 @login_required
 def relatorios(request):
     empresa = _empresa(request)
@@ -1814,8 +1972,248 @@ def relatorios(request):
             'page_title': 'Relatórios Financeiros',
             'faturamento_chart': faturamento_chart,
             'faturamento_total_periodo': faturamento_total_periodo,
+            'relatorio_fornecedor': _relatorio_fornecedor_context(request, empresa),
         },
     )
+
+
+def _filtros_relatorio_fornecedor_pdf(context: dict) -> str:
+    filtros = context['filtros']
+    partes = []
+    fornecedor_label = _fornecedor_label_relatorio_fornecedor(context)
+    if fornecedor_label:
+        partes.append(f'Fornecedor: {fornecedor_label}')
+    if filtros.get('data_inicio') or filtros.get('data_fim'):
+        partes.append(
+            f'Período: {filtros.get("data_inicio") or "..."} a {filtros.get("data_fim") or "..."}'
+        )
+    if filtros.get('status'):
+        status_label = dict(context['status_choices']).get(filtros['status'], filtros['status'])
+        partes.append(f'Status: {status_label}')
+    return ' | '.join(partes) or 'Sem filtros'
+
+
+def _fornecedor_label_relatorio_fornecedor(context: dict) -> str:
+    filtros = context['filtros']
+    if filtros.get('fornecedor') == 'todos':
+        return 'Todos'
+    if filtros.get('fornecedor_id'):
+        for fornecedor in context['fornecedores']:
+            if fornecedor.pk == filtros['fornecedor_id']:
+                return fornecedor.nome
+    return ''
+
+
+@login_required
+def relatorio_fornecedor_pdf(request):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    context = _relatorio_fornecedor_context(request, empresa)
+    styles = getSampleStyleSheet()
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=landscape(A4),
+        leftMargin=8 * mm,
+        rightMargin=8 * mm,
+        topMargin=8 * mm,
+        bottomMargin=8 * mm,
+    )
+    story = []
+    story.extend(_flowables_titulo_pdf_centro('Relatório de Fornecedor', styles))
+    meta_style = ParagraphStyle(
+        'rel_fornecedor_meta',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#475569'),
+        alignment=1,
+    )
+    story.append(Paragraph(xml_escape(_nome_empresa_pdf(empresa)), meta_style))
+    fornecedor_label = _fornecedor_label_relatorio_fornecedor(context)
+    if fornecedor_label:
+        supplier_filter_style = ParagraphStyle(
+            'rel_fornecedor_filter_supplier',
+            parent=styles['Normal'],
+            fontSize=9.2,
+            leading=11,
+            textColor=colors.HexColor('#0f172a'),
+            alignment=1,
+        )
+        story.append(
+            Paragraph(
+                f'<font size="7.2">Fornecedor:</font> <b>{xml_escape(fornecedor_label)}</b>',
+                supplier_filter_style,
+            )
+        )
+    story.append(Paragraph(xml_escape(_filtros_relatorio_fornecedor_pdf(context)), meta_style))
+    story.append(Spacer(1, 3 * mm))
+
+    cell = ParagraphStyle(
+        'rel_fornecedor_cell',
+        parent=styles['Normal'],
+        fontSize=5.5,
+        leading=6.8,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    cell_right = ParagraphStyle('rel_fornecedor_cell_right', parent=cell, alignment=2)
+    supplier_style = ParagraphStyle(
+        'rel_fornecedor_supplier',
+        parent=styles['Normal'],
+        fontSize=8.4,
+        leading=10,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    total_nf_style = ParagraphStyle(
+        'rel_fornecedor_total_nf',
+        parent=cell_right,
+        fontSize=6.4,
+        leading=8,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    desc_style = ParagraphStyle(
+        'rel_fornecedor_desc',
+        parent=styles['Normal'],
+        fontSize=6.2,
+        leading=8,
+        textColor=colors.HexColor('#334155'),
+    )
+
+    if not context['linhas']:
+        story.append(Paragraph('Nenhuma nota fiscal encontrada para os filtros informados.', desc_style))
+
+    for linha in context['linhas']:
+        nf = linha['nf']
+        tipo_pagamento = linha['tipo_pagamento_label']
+        if linha['parcelas_label']:
+            tipo_pagamento = f'{tipo_pagamento}\n{linha["parcelas_label"]}'
+
+        fornecedor_nome = xml_escape(nf.fornecedor.nome)
+        fornecedor_doc = xml_escape(nf.fornecedor.cpf_cnpj_formatado)
+        bloco_header = Table(
+            [[
+                Paragraph(
+                    f'<b>{fornecedor_nome}</b><br/><font size="6.3">{fornecedor_doc}</font>',
+                    supplier_style,
+                ),
+                _pdf_cell(f'NF\n{nf.numero_nf}', cell),
+                _pdf_cell(f'Emissão\n{_format_data_pdf(nf.data_emissao)}', cell),
+                _pdf_cell(f'Status\n{linha["status_label"]}', cell),
+                _pdf_cell(f'Categoria\n{linha["categoria_label"]}', cell),
+                _pdf_cell(f'Tipo Pgto\n{tipo_pagamento}', cell),
+                Paragraph(f'Total NF<br/><b>{xml_escape(_format_moeda_pdf(linha["valor_total"]))}</b>', total_nf_style),
+                _pdf_cell(f'Pago\n{_format_moeda_pdf(linha["valor_pago"])}', cell_right),
+                _pdf_cell(f'A Pagar\n{_format_moeda_pdf(linha["valor_a_pagar"])}', cell_right),
+                _pdf_cell(f'Últ. Pgto\n{_format_data_pdf(linha["data_pagamento"])}', cell),
+            ]],
+            colWidths=[
+                52 * mm,
+                15 * mm,
+                18 * mm,
+                20 * mm,
+                30 * mm,
+                30 * mm,
+                22 * mm,
+                20 * mm,
+                20 * mm,
+                18 * mm,
+            ],
+        )
+        bloco_header.setStyle(
+            TableStyle(
+                [
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#eef6ff')),
+                    ('BOX', (0, 0), (-1, -1), 0.8, colors.HexColor('#cbd5e1')),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        story.append(bloco_header)
+
+        itens_data = [[
+            '#',
+            'Caixa',
+            'Descrição',
+            'Categoria',
+            'Qtd',
+            'Valor Unit',
+            'Und',
+            'Valor Total',
+        ]]
+        for index, item in enumerate(linha['itens'], start=1):
+            itens_data.append(
+                [
+                    _pdf_cell(str(index), cell),
+                    _pdf_cell(item.caixa.nome, cell),
+                    _pdf_cell(item.descricao, cell),
+                    _pdf_cell(item.categoria.nome if item.categoria_id else '-', cell),
+                    _pdf_cell(_format_quantidade_nf_pdf(item.quantidade), cell_right),
+                    _pdf_cell(_format_moeda_pdf(item.valor_unitario), cell_right),
+                    _pdf_cell(item.unidade or '-', cell),
+                    _pdf_cell(_format_moeda_pdf(item.valor_total), cell_right),
+                ]
+            )
+        if len(itens_data) == 1:
+            itens_data.append(['-', '-', 'Sem itens vinculados.', '-', '-', '-', '-', '-'])
+        itens_table = Table(
+            itens_data,
+            repeatRows=1,
+            colWidths=[8 * mm, 30 * mm, 63 * mm, 35 * mm, 16 * mm, 23 * mm, 13 * mm, 24 * mm],
+        )
+        itens_table.setStyle(_pdf_table_style())
+        story.append(itens_table)
+        story.append(Spacer(1, 1.5 * mm))
+        descricao_table = Table(
+            [[Paragraph('<b>Descrição da nota:</b> ' + xml_escape(nf.descricao or '-'), desc_style)]],
+            colWidths=[212 * mm],
+        )
+        descricao_table.setStyle(
+            TableStyle(
+                [
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.append(descricao_table)
+        story.append(Spacer(1, 3 * mm))
+
+    totais = context['totais']
+    story.append(Spacer(1, 2 * mm))
+    totais_table = Table(
+        [[
+            'Quantidade de Notas',
+            'Valor Total da Nota',
+            'Valor Pago',
+            'A Pagar',
+        ], [
+            str(totais['quantidade']),
+            _format_moeda_pdf(totais['valor_total']),
+            _format_moeda_pdf(totais['valor_pago']),
+            _format_moeda_pdf(totais['valor_a_pagar']),
+        ]],
+        colWidths=[45 * mm, 50 * mm, 45 * mm, 45 * mm],
+    )
+    totais_table.setStyle(_pdf_table_style())
+    story.append(totais_table)
+
+    story.extend(_flowables_rodape_impressao(request, styles))
+    doc.build(story)
+    ref = timezone.localdate().strftime('%Y%m%d')
+    filename = f'Relatorio_Fornecedor_{ref}.pdf'
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 def _buscar_pagamentos_context(request, empresa) -> dict:
@@ -7321,7 +7719,7 @@ def pagamento_nf_fornecedor_info(request):
                     output_field=DecimalField(max_digits=16, decimal_places=2),
                 )
             )
-            .order_by('-criado_em', '-pk')
+            .order_by('-data_emissao', '-pk')
         )
         ultimos_qs = nfs_qs
         if exclude_pk:

@@ -146,6 +146,127 @@
         gap: 1rem;
         flex-wrap: wrap;
     }
+    .financeiro-supplier-filter {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr)) auto auto;
+        gap: .75rem;
+        align-items: end;
+        width: 100%;
+    }
+    .financeiro-supplier-filter .form-select,
+    .financeiro-supplier-filter .form-control {
+        border-color: #dbe4ee;
+        border-radius: 999px;
+        min-height: 44px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .financeiro-supplier-table {
+        padding: .75rem;
+        overflow-x: auto;
+    }
+    .financeiro-supplier-grid {
+        display: grid;
+        grid-template-columns: 88px 82px minmax(130px, 1.35fr) minmax(100px, .9fr) 64px minmax(105px, .9fr) 96px 88px 88px 90px 22px;
+        gap: .45rem;
+        align-items: center;
+        min-width: 0;
+        width: 100%;
+    }
+    .financeiro-supplier-grid > * {
+        min-width: 0;
+    }
+    .financeiro-supplier-table-head {
+        padding: 0 .65rem .55rem;
+        color: #64748b;
+        font-size: .64rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+        text-transform: uppercase;
+    }
+    .financeiro-supplier-row-card {
+        border: 1px solid #e2e8f0;
+        border-radius: .9rem;
+        background: #fff;
+        margin-bottom: .75rem;
+        overflow: hidden;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+    .financeiro-supplier-row-button {
+        border: 0;
+        background: #fff;
+        color: #0f172a;
+        width: 100%;
+        padding: .65rem .65rem;
+        text-align: left;
+        text-decoration: none;
+        font-size: .82rem;
+    }
+    .financeiro-supplier-row-button:hover {
+        background: #f8fafc;
+    }
+    .financeiro-supplier-row-button[aria-expanded="true"] .bi-chevron-down {
+        transform: rotate(180deg);
+    }
+    .financeiro-supplier-row-button .bi-chevron-down {
+        transition: transform .2s ease;
+    }
+    .financeiro-supplier-main {
+        font-weight: 800;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+    .financeiro-supplier-note {
+        display: block;
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 600;
+        line-height: 1.2;
+        margin-top: .18rem;
+    }
+    .financeiro-supplier-detail {
+        border-top: 1px solid #e5edf5;
+        background: #f8fafc;
+        padding: .75rem;
+        min-width: 0;
+    }
+    .financeiro-supplier-description {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        border-radius: .75rem;
+        padding: .85rem 1rem;
+    }
+    .financeiro-supplier-totals {
+        border-top: 1px solid #e5edf5;
+        background: #f8fafc;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-supplier-total-item {
+        border: 1px solid #e2e8f0;
+        border-radius: .75rem;
+        background: #fff;
+        padding: .75rem .9rem;
+        min-width: 150px;
+    }
+    .financeiro-supplier-export-actions {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+    .financeiro-supplier-action-btn {
+        min-height: 38px;
+        padding: .58rem .82rem;
+        border-radius: 999px;
+        font-size: .82rem;
+        box-shadow: none;
+        white-space: nowrap;
+    }
     @media (max-width: 767.98px) {
         .financeiro-chart-shell {
             min-height: 300px;
@@ -156,6 +277,50 @@
         }
         .financeiro-chart-filter {
             width: 100%;
+        }
+        .financeiro-supplier-filter {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media print {
+        body * {
+            visibility: hidden !important;
+        }
+        #relFornecedorPrintArea,
+        #relFornecedorPrintArea * {
+            visibility: visible !important;
+        }
+        #relFornecedorPrintArea {
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            border: 0;
+            box-shadow: none;
+            margin: 0;
+        }
+        #relFornecedorPrintArea .financeiro-supplier-filter,
+        #relFornecedorPrintArea .financeiro-supplier-export-actions,
+        #relFornecedorPrintArea .financeiro-supplier-table-head > div:last-child,
+        #relFornecedorPrintArea .financeiro-supplier-row-button > div:last-child {
+            display: none !important;
+        }
+        #relFornecedorPrintArea .collapse {
+            display: block !important;
+            height: auto !important;
+            visibility: visible !important;
+        }
+        #relFornecedorPrintArea .financeiro-supplier-table {
+            overflow: visible;
+            padding: .25rem 0;
+        }
+        #relFornecedorPrintArea .financeiro-supplier-grid {
+            min-width: 0;
+            grid-template-columns: 80px 80px minmax(120px, 1.2fr) minmax(95px, .8fr) 58px minmax(95px, .8fr) 90px 80px 80px 80px;
+            gap: .32rem;
+        }
+        #relFornecedorPrintArea .financeiro-supplier-detail {
+            min-width: 0;
+            background: #fff;
         }
     }
 </style>
@@ -207,6 +372,184 @@
     </div>
     <div class="financeiro-chart-shell">
         <canvas id="financeiroFaturamentoChart" aria-label="Gráfico de faturamento mensal" role="img"></canvas>
+    </div>
+</div>
+
+<div class="financeiro-board-card" id="relFornecedorPrintArea">
+    <div class="financeiro-board-header">
+        <div class="d-flex align-items-center gap-3">
+            <span class="financeiro-section-icon" aria-hidden="true">
+                <i class="bi bi-receipt-cutoff"></i>
+            </span>
+            <div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Relatórios de Fornecedor</h3>
+                <div class="small text-muted">Notas fiscais por fornecedor, período e situação de pagamento.</div>
+            </div>
+        </div>
+        <form method="get" class="financeiro-supplier-filter">
+            <div>
+                <label for="relFornecedorFiltro" class="financeiro-metric-label">Fornecedor</label>
+                <select id="relFornecedorFiltro" name="rel_fornecedor" class="form-select">
+                    <option value="">-----------</option>
+                    <option value="todos" {% if relatorio_fornecedor.filtros.fornecedor == 'todos' %}selected{% endif %}>Todos</option>
+                    {% for fornecedor in relatorio_fornecedor.fornecedores %}
+                        <option value="{{ fornecedor.pk }}" {% if fornecedor.pk == relatorio_fornecedor.filtros.fornecedor_id %}selected{% endif %}>{{ fornecedor.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="relDataInicio" class="financeiro-metric-label">Início</label>
+                <input id="relDataInicio" name="rel_data_inicio" type="date" class="form-control" value="{{ relatorio_fornecedor.filtros.data_inicio }}">
+            </div>
+            <div>
+                <label for="relDataFim" class="financeiro-metric-label">Fim</label>
+                <input id="relDataFim" name="rel_data_fim" type="date" class="form-control" value="{{ relatorio_fornecedor.filtros.data_fim }}">
+            </div>
+            <div>
+                <label for="relStatusFiltro" class="financeiro-metric-label">Status de Pagamento</label>
+                <select id="relStatusFiltro" name="rel_status" class="form-select">
+                    {% for value, label in relatorio_fornecedor.status_choices %}
+                        <option value="{{ value }}" {% if value == relatorio_fornecedor.filtros.status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="financeiro-top-btn" style="background:{% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};color:#fff;">
+                <i class="bi bi-funnel"></i> Filtrar
+            </button>
+            <a href="{% url 'financeiro:relatorios' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
+                <i class="bi bi-x-lg"></i> Limpar
+            </a>
+        </form>
+    </div>
+    <div class="financeiro-supplier-table">
+        <div class="financeiro-supplier-grid financeiro-supplier-table-head">
+            <div>Status</div>
+            <div>Data Emissão</div>
+            <div>Nome</div>
+            <div>Categoria</div>
+            <div>Nº NF</div>
+            <div>Tipo Pagamento</div>
+            <div class="text-end">Valor Total da Nota</div>
+            <div class="text-end">Valor Pago</div>
+            <div class="text-end">À Pagar</div>
+            <div>Data Pagamento</div>
+            <div></div>
+        </div>
+        {% for linha in relatorio_fornecedor.linhas %}
+            <div class="financeiro-supplier-row-card">
+                <a class="financeiro-supplier-row-button financeiro-supplier-grid"
+                        href="#relFornecedorLinha{{ linha.nf.pk }}"
+                        role="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#relFornecedorLinha{{ linha.nf.pk }}"
+                        aria-expanded="false"
+                        aria-controls="relFornecedorLinha{{ linha.nf.pk }}">
+                    <div><span class="badge {{ linha.status_badge_class }}">{{ linha.status_label }}</span></div>
+                    <div class="financeiro-supplier-main">{{ linha.nf.data_emissao|date:"d/m/Y" }}</div>
+                    <div>
+                        <span class="financeiro-supplier-main">{{ linha.nf.fornecedor.nome }}</span>
+                        <span class="financeiro-supplier-note">{{ linha.nf.fornecedor.cpf_cnpj_formatado }}</span>
+                    </div>
+                    <div class="small fw-semibold text-muted">{{ linha.categoria_label }}</div>
+                    <div class="financeiro-supplier-main">{{ linha.nf.numero_nf }}</div>
+                    <div>
+                        <span class="financeiro-supplier-main">{{ linha.tipo_pagamento_label }}</span>
+                        {% if linha.parcelas_label %}
+                            <span class="financeiro-supplier-note">{{ linha.parcelas_label }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-end financeiro-supplier-main">R$ {{ linha.valor_total|moeda_br }}</div>
+                    <div class="text-end financeiro-supplier-main text-success">R$ {{ linha.valor_pago|moeda_br }}</div>
+                    <div class="text-end financeiro-supplier-main {% if linha.valor_a_pagar %}text-danger{% endif %}">R$ {{ linha.valor_a_pagar|moeda_br }}</div>
+                    <div class="small fw-semibold">
+                        {% if linha.data_pagamento %}{{ linha.data_pagamento|date:"d/m/Y" }}{% else %}—{% endif %}
+                    </div>
+                    <div class="text-end"><i class="bi bi-chevron-down"></i></div>
+                </a>
+                <div class="collapse" id="relFornecedorLinha{{ linha.nf.pk }}">
+                    <div class="financeiro-supplier-detail">
+                        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                            <div>
+                                <div class="fw-bold">Itens da nota</div>
+                                <div class="small text-muted">Composição vinculada à NF {{ linha.nf.numero_nf }}</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive rounded-3 overflow-hidden border bg-white mb-3">
+                            <table class="table table-sm table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">#</th>
+                                        <th>Caixa</th>
+                                        <th>Descrição</th>
+                                        <th>Categoria</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-end">Valor Unit</th>
+                                        <th class="text-center">Und</th>
+                                        <th class="text-end pe-3">Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in linha.itens %}
+                                        <tr>
+                                            <td class="ps-3 small fw-semibold">{{ forloop.counter }}</td>
+                                            <td class="small">{{ item.caixa.nome }}</td>
+                                            <td class="small">{{ item.descricao }}</td>
+                                            <td class="small text-muted">{% if item.categoria_id %}{{ item.categoria.nome }}{% else %}—{% endif %}</td>
+                                            <td class="text-center small fw-semibold">{{ item.quantidade|moeda_br:4 }}</td>
+                                            <td class="text-end small fw-semibold">R$ {{ item.valor_unitario|moeda_br }}</td>
+                                            <td class="text-center small">{{ item.unidade|default:"—" }}</td>
+                                            <td class="text-end pe-3 small fw-semibold">R$ {{ item.valor_total|moeda_br }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="8" class="py-4 text-center text-muted small">Sem itens vinculados.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="financeiro-supplier-description">
+                            <div class="financeiro-metric-label mb-1">Descrição da nota</div>
+                            <div class="small fw-semibold text-break">{{ linha.nf.descricao|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="text-center text-muted py-4">
+                Nenhuma nota fiscal encontrada para os filtros informados.
+            </div>
+        {% endfor %}
+    </div>
+    <div class="financeiro-supplier-totals">
+        <div class="d-flex flex-wrap gap-2">
+            <div class="financeiro-supplier-total-item">
+                <div class="financeiro-metric-label">Quantidade de Notas</div>
+                <div class="financeiro-metric-value">{{ relatorio_fornecedor.totais.quantidade }}</div>
+            </div>
+            <div class="financeiro-supplier-total-item">
+                <div class="financeiro-metric-label">Valor Total da Nota</div>
+                <div class="financeiro-metric-value">R$ {{ relatorio_fornecedor.totais.valor_total|moeda_br }}</div>
+            </div>
+            <div class="financeiro-supplier-total-item">
+                <div class="financeiro-metric-label">Valor Pago</div>
+                <div class="financeiro-metric-value text-success">R$ {{ relatorio_fornecedor.totais.valor_pago|moeda_br }}</div>
+            </div>
+            <div class="financeiro-supplier-total-item">
+                <div class="financeiro-metric-label">À Pagar</div>
+                <div class="financeiro-metric-value {% if relatorio_fornecedor.totais.valor_a_pagar %}text-danger{% endif %}">R$ {{ relatorio_fornecedor.totais.valor_a_pagar|moeda_br }}</div>
+            </div>
+        </div>
+        <div class="financeiro-supplier-export-actions">
+            <a href="{% url 'financeiro:relatorio_fornecedor_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+               class="financeiro-top-btn financeiro-supplier-action-btn"
+               style="background:#0f172a;color:#fff;">
+                <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+            </a>
+            <button type="button"
+                    class="financeiro-top-btn financeiro-top-btn-light financeiro-supplier-action-btn"
+                    id="relFornecedorPrintBtn">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+        </div>
     </div>
 </div>
 
@@ -341,6 +684,13 @@
         if (filtroCaixa) {
             filtroCaixa.addEventListener('change', function () {
                 atualizarFaturamento(filtroCaixa.value);
+            });
+        }
+
+        const printBtn = document.getElementById('relFornecedorPrintBtn');
+        if (printBtn) {
+            printBtn.addEventListener('click', function () {
+                window.print();
             });
         }
     })();
