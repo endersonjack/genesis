@@ -176,10 +176,54 @@
     }
     .financeiro-clickable-row {
         cursor: pointer;
+        border-left: 4px solid transparent;
+    }
+    .financeiro-clickable-row[aria-expanded="true"] {
+        background: #eef6ff;
+        border-left-color: {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        box-shadow: inset 0 1px 0 #bfdbfe, inset 0 -1px 0 #bfdbfe;
+    }
+    .financeiro-clickable-row[aria-expanded="true"] + tr .financeiro-result-detail {
+        background: #eef6ff;
+    }
+    .financeiro-clickable-row[aria-expanded="true"] td {
+        border-bottom-color: transparent;
     }
     .financeiro-clickable-row:focus-visible {
         outline: 3px solid rgba(37, 99, 235, 0.35);
         outline-offset: -3px;
+    }
+    .financeiro-highlight-match {
+        background: #fef3c7;
+        border-radius: .45rem;
+        box-shadow: inset 0 0 0 1px #fde68a;
+        padding: .22rem .35rem;
+        display: inline-block;
+    }
+    .financeiro-result-detail {
+        background: #eef6ff;
+        border-left: 4px solid {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %};
+        border-top: 1px solid #bfdbfe;
+        border-bottom: 1px solid #dbeafe;
+        padding: .9rem 1rem 1rem;
+        box-shadow: inset 0 10px 18px rgba(15, 23, 42, 0.03);
+    }
+    .financeiro-result-detail-title {
+        font-weight: 800;
+        font-size: .82rem;
+        color: #0f172a;
+        margin-bottom: .45rem;
+    }
+    .financeiro-result-detail-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        flex-wrap: wrap;
+        margin-bottom: .55rem;
+    }
+    .financeiro-result-detail-head .financeiro-result-detail-title {
+        margin-bottom: 0;
     }
     .financeiro-search-totals {
         border-top: 1px solid #e5edf5;
@@ -442,57 +486,188 @@
     <div class="table-responsive">
         <table class="table table-hover fin-table mb-0 align-middle">
             <thead class="table-light">
-                <tr>
-                    <th>Status</th>
-                    <th class="text-nowrap">Data Emissão</th>
-                    <th>Fornecedor / Funcionário / Entidade</th>
-                    <th class="text-nowrap">Tipo de Saída</th>
-                    <th>Categoria</th>
-                    <th class="text-nowrap">Nº Doc</th>
-                    <th class="text-nowrap">Tipo Pagamento</th>
-                    <th class="text-nowrap">Vencimento</th>
-                    <th class="text-end text-nowrap">Valor</th>
-                    <th class="text-nowrap">Data de Pagamento</th>
-                </tr>
+	                <tr>
+	                    <th>Status</th>
+	                    <th class="text-nowrap">Data Emissão</th>
+	                    <th>Nome</th>
+	                    <th class="text-nowrap">Tipo de Saída</th>
+	                    <th>Categoria</th>
+	                    <th class="text-nowrap">Nº NF</th>
+	                    <th class="text-nowrap">Tipo Pagamento</th>
+	                    <th class="text-end text-nowrap">R$ Total</th>
+	                    <th class="text-end text-nowrap">R$ Pago</th>
+	                    <th class="text-end text-nowrap">R$ à Pagar</th>
+	                    <th class="text-nowrap">Data de Pagamento</th>
+	                </tr>
             </thead>
             <tbody>
                 {% for item in resultados %}
-                <tr class="financeiro-clickable-row"
-                    data-row-href="{{ item.url }}"
-                    tabindex="0"
-                    role="link">
-                    <td class="small">
-                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
-                    </td>
-                    <td class="small text-muted text-nowrap">{{ item.data|date:"d/m/Y" }}</td>
-                    <td class="small fw-semibold">{{ item.entidade }}</td>
-                    <td class="small text-muted text-nowrap">{{ item.tipo_registro }}</td>
-                    <td class="small text-muted">{{ item.categoria_label }}</td>
-                    <td class="small text-muted text-nowrap">
-                        {{ item.numero_doc|default:"—" }}
-                    </td>
-                    <td class="small text-muted text-nowrap">
-                        {{ item.forma_pagamento }}
+	                <tr class="financeiro-clickable-row"
+	                    data-bs-toggle="collapse"
+	                    data-bs-target="#resultadoDetalhe{{ forloop.counter }}"
+	                    aria-expanded="false"
+	                    aria-controls="resultadoDetalhe{{ forloop.counter }}"
+	                    tabindex="0"
+	                    role="button">
+	                    <td class="small">
+	                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
+	                    </td>
+	                    <td class="small text-muted text-nowrap">{{ item.data|date:"d/m/Y" }}</td>
+	                    <td class="small fw-semibold">
+	                        <span class="{% if item.highlight_entidade %}financeiro-highlight-match{% endif %}">{{ item.entidade }}</span>
+	                    </td>
+	                    <td class="small text-muted text-nowrap">{{ item.tipo_registro }}</td>
+	                    <td class="small text-muted">{{ item.categoria_label }}</td>
+	                    <td class="small text-muted text-nowrap">
+	                        <span class="{% if item.highlight_numero_doc %}financeiro-highlight-match{% endif %}">
+	                            {{ item.numero_doc|default:"—" }}
+	                            {% if item.doc_match_label %}
+	                                <span class="financeiro-cell-note">Doc: {{ item.doc_match_label }}</span>
+	                            {% endif %}
+	                        </span>
+	                    </td>
+	                    <td class="small text-muted text-nowrap">
+	                        {{ item.forma_pagamento }}
                         {% if item.forma_detalhe %}
-                            <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="small text-nowrap">{{ item.vencimento|date:"d/m/Y" }}</td>
-                    <td class="text-end small fw-semibold text-nowrap">
-                        R$ {{ item.valor_linha|moeda_br }}
-                        {% if item.parcela_label %}
-                            <span class="financeiro-cell-note">Parcela nº: {{ item.parcela_label }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="small text-nowrap">
-                        {% if item.data_pagamento %}
+	                            <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
+	                        {% endif %}
+	                    </td>
+	                    <td class="text-end small fw-semibold text-nowrap">
+	                        <span class="{% if item.highlight_valor_total %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_total|moeda_br }}</span>
+	                    </td>
+	                    <td class="text-end small fw-semibold text-success text-nowrap">
+	                        <span class="{% if item.highlight_valor_pago %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_pago|moeda_br }}</span>
+	                    </td>
+	                    <td class="text-end small fw-semibold {% if item.valor_a_pagar %}text-danger{% endif %} text-nowrap">
+	                        <span class="{% if item.highlight_valor_a_pagar %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_a_pagar|moeda_br }}</span>
+	                    </td>
+	                    <td class="small text-nowrap">
+	                        {% if item.data_pagamento %}
                             {{ item.data_pagamento|date:"d/m/Y" }}
                         {% else %}
                             —
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+	                    </td>
+	                </tr>
+	                <tr>
+	                    <td colspan="11" class="p-0 border-0">
+	                        <div class="collapse" id="resultadoDetalhe{{ forloop.counter }}">
+	                            <div class="financeiro-result-detail">
+	                                {% if item.detalhes_avista %}
+	                                <div class="financeiro-result-detail-head">
+	                                    <div class="financeiro-result-detail-title">Pagamentos à vista / crédito</div>
+	                                    <a href="{{ item.url }}"
+	                                       class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
+	                                       target="_blank"
+	                                       rel="noopener">
+	                                        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
+	                                    </a>
+	                                </div>
+	                                <div class="table-responsive rounded-3 overflow-hidden border bg-white mb-3">
+	                                    <table class="table table-sm mb-0 align-middle">
+	                                        <thead class="table-light">
+	                                            <tr>
+	                                                <th>Situação</th>
+	                                                <th>Data</th>
+	                                                <th class="text-end">Valor</th>
+	                                                <th class="text-end">Acréscimos</th>
+	                                                <th class="text-end">Descontos</th>
+	                                                <th>Pagamento realizado em</th>
+	                                                <th>Observação</th>
+	                                            </tr>
+	                                        </thead>
+	                                        <tbody>
+	                                            {% for detalhe in item.detalhes_avista %}
+	                                            <tr>
+	                                                <td class="small"><span class="badge text-bg-success">{{ detalhe.situacao }}</span></td>
+	                                                <td class="small text-nowrap">{{ detalhe.data|date:"d/m/Y" }}</td>
+	                                                <td class="small fw-semibold text-end text-nowrap">
+	                                                    <span class="{% if detalhe.highlight_valor %}financeiro-highlight-match{% endif %}">R$ {{ detalhe.valor|moeda_br }}</span>
+	                                                </td>
+	                                                <td class="small text-end text-nowrap">R$ {{ detalhe.acrescimos|moeda_br }}</td>
+	                                                <td class="small text-end text-nowrap">R$ {{ detalhe.descontos|moeda_br }}</td>
+	                                                <td class="small">{{ detalhe.pagamento_realizado_em }}</td>
+	                                                <td class="small text-muted">
+	                                                    <span class="{% if detalhe.highlight_observacao %}financeiro-highlight-match{% endif %}">{{ detalhe.observacao }}</span>
+	                                                </td>
+	                                            </tr>
+	                                            {% endfor %}
+	                                        </tbody>
+	                                    </table>
+	                                </div>
+	                                {% endif %}
+	                                {% if item.detalhes_boletos %}
+	                                <div class="financeiro-result-detail-head">
+	                                    <div class="financeiro-result-detail-title">Boletos</div>
+	                                    {% if not item.detalhes_avista %}
+	                                    <a href="{{ item.url }}"
+	                                       class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
+	                                       target="_blank"
+	                                       rel="noopener">
+	                                        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
+	                                    </a>
+	                                    {% endif %}
+	                                </div>
+	                                <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+	                                    <table class="table table-sm mb-0 align-middle">
+	                                        <thead class="table-light">
+	                                            <tr>
+	                                                <th>Situação</th>
+	                                                <th>Doc</th>
+	                                                <th>Vencimento</th>
+	                                                <th class="text-end">Valor</th>
+	                                                <th class="text-end">Valor pago</th>
+	                                                <th>Data de pagamento</th>
+	                                                <th>Pagamento realizado em</th>
+	                                                <th>Observação</th>
+	                                            </tr>
+	                                        </thead>
+	                                        <tbody>
+	                                            {% for detalhe in item.detalhes_boletos %}
+	                                            <tr>
+	                                                <td class="small"><span class="badge {{ detalhe.situacao_badge_class }}">{{ detalhe.situacao_label }}</span></td>
+	                                                <td class="small fw-semibold">
+	                                                    <span class="{% if detalhe.highlight_doc %}financeiro-highlight-match{% endif %}">{{ detalhe.doc }}</span>
+	                                                </td>
+	                                                <td class="small text-nowrap">{{ detalhe.vencimento|date:"d/m/Y" }}</td>
+	                                                <td class="small fw-semibold text-end text-nowrap">
+	                                                    <span class="{% if detalhe.highlight_valor %}financeiro-highlight-match{% endif %}">R$ {{ detalhe.valor|moeda_br }}</span>
+	                                                </td>
+	                                                <td class="small fw-semibold text-end text-nowrap">
+	                                                    {% if detalhe.valor_pago %}
+	                                                        <span class="{% if detalhe.highlight_valor_pago %}financeiro-highlight-match{% endif %}">R$ {{ detalhe.valor_pago|moeda_br }}</span>
+	                                                    {% else %}
+	                                                        —
+	                                                    {% endif %}
+	                                                </td>
+	                                                <td class="small text-nowrap">{% if detalhe.data_pagamento %}{{ detalhe.data_pagamento|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+	                                                <td class="small">{{ detalhe.pagamento_realizado_em }}</td>
+	                                                <td class="small text-muted">
+	                                                    <span class="{% if detalhe.highlight_observacao %}financeiro-highlight-match{% endif %}">{{ detalhe.observacao }}</span>
+	                                                </td>
+	                                            </tr>
+	                                            {% endfor %}
+	                                        </tbody>
+	                                    </table>
+	                                </div>
+	                                {% endif %}
+	                                {% if not item.detalhes_avista and not item.detalhes_boletos %}
+	                                    <div class="financeiro-result-detail-head">
+	                                        <div class="financeiro-result-detail-title">Detalhes</div>
+	                                        <a href="{{ item.url }}"
+	                                           class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
+	                                           target="_blank"
+	                                           rel="noopener">
+	                                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
+	                                        </a>
+	                                    </div>
+	                                    <div class="text-muted small">Nenhum pagamento registrado para este resultado.</div>
+	                                {% endif %}
+	                            </div>
+	                        </div>
+	                    </td>
+	                </tr>
+	                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -580,20 +755,14 @@
             </div>
         </div>
     </div>
-</div>
-<script>
-document.addEventListener('click', (event) => {
-    const row = event.target.closest('[data-row-href]');
-    if (!row) return;
-    window.open(row.dataset.rowHref, '_blank', 'noopener');
-});
-
-document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const row = event.target.closest('[data-row-href]');
-    if (!row) return;
-    event.preventDefault();
-    window.open(row.dataset.rowHref, '_blank', 'noopener');
-});
-</script>
+	</div>
+	<script>
+	document.addEventListener('keydown', (event) => {
+	    if (event.key !== 'Enter' && event.key !== ' ') return;
+	    const row = event.target.closest('.financeiro-clickable-row');
+	    if (!row) return;
+	    event.preventDefault();
+	    row.click();
+	});
+	</script>
 {% endblock %}

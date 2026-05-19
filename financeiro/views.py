@@ -2365,11 +2365,78 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     Q(total_itens_calc=valor) | Q(boletos__valor=valor)
                 )
 
+        def conta_pagamento_label(conta_bancaria) -> str:
+            if conta_bancaria:
+                banco = getattr(conta_bancaria, 'banco', '') or ''
+                return f'{conta_bancaria.nome} — {banco}' if banco else conta_bancaria.nome
+            return 'DINHEIRO'
+
+        def detalhes_pagamentos_diretos(pagamentos_lista, valor_filtro=None):
+            detalhes = []
+            for pagamento in pagamentos_lista:
+                total_pagamento = pagamento.total_a_pagar()
+                detalhes.append(
+                    {
+                        'situacao': 'Pago',
+                        'data': pagamento.data,
+                        'valor': pagamento.valor,
+                        'acrescimos': pagamento.acrescimos,
+                        'descontos': pagamento.descontos,
+                        'pagamento_realizado_em': conta_pagamento_label(pagamento.conta_bancaria),
+                        'observacao': pagamento.observacao or '-',
+                        'highlight_observacao': bool(
+                            query and query.lower() in (pagamento.observacao or '').lower()
+                        ),
+                        'highlight_valor': bool(valor_filtro is not None and total_pagamento == valor_filtro),
+                    }
+                )
+            return detalhes
+
+        def detalhes_boletos(boletos_lista, valor_filtro=None):
+            detalhes = []
+            for boleto in boletos_lista:
+                _aplicar_situacao_boleto(boleto, hoje=hoje)
+                boleto_doc = boleto.numero_doc or f'Parcela {boleto.parcela}'
+                detalhes.append(
+                    {
+                        'situacao_label': boleto.situacao_label,
+                        'situacao_badge_class': boleto.situacao_badge_class,
+                        'doc': boleto_doc,
+                        'vencimento': boleto.vencimento,
+                        'valor': boleto.valor,
+                        'valor_pago': boleto.valor_pago,
+                        'data_pagamento': boleto.data_pagamento,
+                        'pagamento_realizado_em': (
+                            conta_pagamento_label(boleto.conta_bancaria)
+                            if boleto.valor_pago
+                            else '-'
+                        ),
+                        'observacao': boleto.observacao or '-',
+                        'highlight_doc': bool(query and query.lower() in boleto_doc.lower()),
+                        'highlight_observacao': bool(
+                            query and query.lower() in (boleto.observacao or '').lower()
+                        ),
+                        'highlight_valor': bool(valor_filtro is not None and boleto.valor == valor_filtro),
+                        'highlight_valor_pago': bool(
+                            valor_filtro is not None and (boleto.valor_pago or Decimal('0')) == valor_filtro
+                        ),
+                    }
+                )
+            return detalhes
+
+        def datas_nf_para_filtro(nf, pagamentos_lista, boletos_lista):
+            datas = [nf.data_emissao]
+            datas.extend(p.data for p in pagamentos_lista if p.data)
+            datas.extend(b.vencimento for b in boletos_lista if b.vencimento)
+            datas.extend(b.data_pagamento for b in boletos_lista if b.data_pagamento)
+            return datas
+
         for nf in nfs_qs.distinct():
             origens = set()
-            pagamentos = list(nf.pagamentos.all().order_by('data', 'pk'))
+            pagamentos = list(
+                nf.pagamentos.select_related('conta_bancaria').all().order_by('data', 'pk')
+            )
             boletos_all = list(nf.boletos.all().order_by('vencimento', 'parcela', 'pk'))
-            boletos_relacionados = list(boletos_all)
             boletos_vencidos = [
                 boleto for boleto in boletos_all
                 if (
@@ -2384,7 +2451,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 nf.total_itens_calc,
                 hoje,
             )
-            status_labels = [resumo['situacao_label']]
             status_linha = _status_busca_pagamento_nf(
                 resumo,
                 boletos_all,
@@ -2409,17 +2475,18 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 )
                 if not corresponde_status:
                     continue
+            boletos_match_doc = []
             if query:
                 if query.lower() in (nf.numero_nf or '').lower():
                     origens.add('nota_fiscal')
-                boletos_relacionados = [
-                    boleto for boleto in boletos_relacionados
+                boletos_match_doc = [
+                    boleto for boleto in boletos_all
                     if query.lower() in (boleto.numero_doc or '').lower()
                 ]
-                if boletos_relacionados:
+                if boletos_match_doc:
                     origens.add('numero_doc')
             elif status_vencido and not status_aberto and not status_pago_parcial and not status_sem_pagamento and not status_pago:
-                boletos_relacionados = boletos_vencidos
+                boletos_match_doc = boletos_vencidos
             if valor_raw and not erro_valor and valor is not None:
                 if nf.total_itens_calc == valor:
                     origens.add('valor_nf')
@@ -2429,8 +2496,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 ]
                 if boletos_por_valor:
                     origens.add('valor_doc')
-                    if not query:
-                        boletos_relacionados = boletos_por_valor
 
             url_nf = reverse_empresa(
                 request,
@@ -2446,11 +2511,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     }
                 )
             ) or '-'
-            boletos_validos = [
-                boleto for boleto in boletos_all
-                if boleto.status != BoletoPagamento.Status.CANCELADO
-            ]
-            total_parcelas = len(boletos_validos)
             pagamentos_diretos = [
                 pagamento for pagamento in pagamentos
                 if pagamento.tipo
@@ -2459,104 +2519,77 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO,
                 )
             ]
+            boletos_validos = [
+                boleto for boleto in boletos_all
+                if boleto.status != BoletoPagamento.Status.CANCELADO
+            ]
+            if (data_inicio_dt or data_fim_dt) and not any(
+                data_no_periodo(data_ref)
+                for data_ref in datas_nf_para_filtro(nf, pagamentos_diretos, boletos_validos)
+            ):
+                continue
+            tipos_pagamento = []
+            forma_total_key = ''
             for pagamento in pagamentos_diretos:
-                data_pagamento_linha = pagamento.data or nf.data_emissao
-                if (
-                    status_vencido
-                    or status_aberto
-                    or status_pago_parcial
-                    or status_sem_pagamento
-                    or status_pago
-                ) and not (
-                    (status_pago_parcial and status_linha == 'Pago Parcial')
-                    or status_pago
-                ):
-                    continue
-                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(data_pagamento_linha):
-                    continue
-                resultados.append(
-                    {
-                        'kind': 'nf',
-                        'tipo_registro': 'Nota Fiscal',
-                        'forma_pagamento': pagamento.get_tipo_display(),
-                        'forma_total_key': pagamento.tipo,
-                        'forma_detalhe': '',
-                        'url': url_nf,
-                        'entidade': nf.fornecedor.nome,
-                        'documento': nf.numero_nf,
-                        'data': nf.data_emissao,
-                        'categoria_label': categoria_label,
-                        'nf': nf,
-                        'origens': origens,
-                        'numero_doc': nf.numero_nf,
-                        'parcela_label': '',
-                        'valor_linha': pagamento.total_a_pagar(),
-                        'valor_total': pagamento.total_a_pagar(),
-                        'vencimento': data_pagamento_linha,
-                        'data_pagamento': data_pagamento_linha,
-                        'status_label': status_linha,
-                        'status_badge_class': _badge_status_busca_pagamento(status_linha),
-                    }
-                )
-            for boleto in boletos_relacionados:
-                if not boleto_corresponde_status(boleto):
-                    continue
-                data_filtro_boleto = boleto.data_pagamento if status_pago else boleto.vencimento
-                if not data_filtro_boleto:
-                    data_filtro_boleto = boleto.vencimento
-                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(data_filtro_boleto):
-                    continue
-                resultados.append(
-                    {
-                        'kind': 'nf',
-                        'tipo_registro': 'Nota Fiscal',
-                        'forma_pagamento': 'Boletos',
-                        'forma_total_key': 'boletos',
-                        'forma_detalhe': f'Qtd de parcelas: {total_parcelas}',
-                        'url': url_nf,
-                        'entidade': nf.fornecedor.nome,
-                        'documento': nf.numero_nf,
-                        'data': nf.data_emissao,
-                        'categoria_label': categoria_label,
-                        'nf': nf,
-                        'origens': origens,
-                        'numero_doc': boleto.numero_doc or nf.numero_nf,
-                        'parcela_label': f'{boleto.parcela}/{total_parcelas or boleto.parcela}',
-                        'valor_linha': boleto.valor,
-                        'valor_total': boleto.valor,
-                        'vencimento': boleto.vencimento,
-                        'data_pagamento': boleto.data_pagamento,
-                        'status_label': status_linha,
-                        'status_badge_class': _badge_status_busca_pagamento(status_linha),
-                    }
-                )
-            if not pagamentos_diretos and not boletos_relacionados:
-                if (data_inicio_dt or data_fim_dt) and not data_no_periodo(nf.data_emissao):
-                    continue
-                resultados.append(
-                    {
-                        'kind': 'nf',
-                        'tipo_registro': 'Nota Fiscal',
-                        'forma_pagamento': 'Sem pagamento',
-                        'forma_total_key': '',
-                        'forma_detalhe': '',
-                        'url': url_nf,
-                        'entidade': nf.fornecedor.nome,
-                        'documento': nf.numero_nf,
-                        'data': nf.data_emissao,
-                        'categoria_label': categoria_label,
-                        'nf': nf,
-                        'origens': origens,
-                        'numero_doc': nf.numero_nf,
-                        'parcela_label': '',
-                        'valor_linha': nf.total_itens_calc,
-                        'valor_total': nf.total_itens_calc,
-                        'vencimento': nf.data_emissao,
-                        'data_pagamento': None,
-                        'status_label': status_linha,
-                        'status_badge_class': _badge_status_busca_pagamento(status_linha),
-                    }
-                )
+                label = pagamento.get_tipo_display()
+                if label not in tipos_pagamento:
+                    tipos_pagamento.append(label)
+                forma_total_key = forma_total_key or pagamento.tipo
+            tem_boletos = bool(boletos_validos) or any(
+                pagamento.tipo == PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS
+                for pagamento in pagamentos
+            )
+            if tem_boletos:
+                tipos_pagamento.append('Boletos')
+                forma_total_key = 'boletos' if not forma_total_key else forma_total_key
+            forma_pagamento_label = ' + '.join(tipos_pagamento) if tipos_pagamento else 'Sem pagamento'
+            total_parcelas = len(boletos_validos)
+            parcelas_pagas = sum(
+                1 for boleto in boletos_validos
+                if boleto.status == BoletoPagamento.Status.PAGO
+            )
+            forma_detalhe = (
+                f'{parcelas_pagas}/{total_parcelas} parcelas pagas'
+                if tem_boletos and total_parcelas
+                else ''
+            )
+            doc_match_label = ', '.join(
+                boleto.numero_doc for boleto in boletos_match_doc if boleto.numero_doc
+            )
+            resultados.append(
+                {
+                    'kind': 'nf',
+                    'tipo_registro': 'Nota Fiscal',
+                    'forma_pagamento': forma_pagamento_label,
+                    'forma_total_key': forma_total_key,
+                    'forma_detalhe': forma_detalhe,
+                    'url': url_nf,
+                    'entidade': nf.fornecedor.nome,
+                    'documento': nf.numero_nf,
+                    'data': nf.data_emissao,
+                    'categoria_label': categoria_label,
+                    'nf': nf,
+                    'origens': origens,
+                    'numero_doc': nf.numero_nf,
+                    'doc_match_label': doc_match_label,
+                    'parcela_label': '',
+                    'valor_linha': nf.total_itens_calc,
+                    'valor_total': nf.total_itens_calc,
+                    'valor_pago': resumo['valor_pago'],
+                    'valor_a_pagar': resumo['valor_em_aberto'],
+                    'vencimento': nf.data_emissao,
+                    'data_pagamento': _data_ultimo_pagamento_nf(pagamentos_diretos, boletos_validos),
+                    'status_label': status_linha,
+                    'status_badge_class': _badge_status_busca_pagamento(status_linha),
+                    'detalhes_avista': detalhes_pagamentos_diretos(pagamentos_diretos, valor),
+                    'detalhes_boletos': detalhes_boletos(boletos_validos, valor),
+                    'highlight_numero_doc': bool(query and ('nota_fiscal' in origens or 'numero_doc' in origens)),
+                    'highlight_entidade': bool(fornecedor and fornecedor.lower() in nf.fornecedor.nome.lower()),
+                    'highlight_valor_total': bool(valor is not None and nf.total_itens_calc == valor),
+                    'highlight_valor_pago': bool(valor is not None and resumo['valor_pago'] == valor),
+                    'highlight_valor_a_pagar': bool(valor is not None and resumo['valor_em_aberto'] == valor),
+                }
+            )
 
         pessoal_qs = (
             PagamentoPessoal.objects.filter(empresa=empresa)
@@ -2625,10 +2658,35 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     'parcela_label': '',
                     'valor_linha': total,
                     'valor_total': total,
+                    'valor_pago': total,
+                    'valor_a_pagar': Decimal('0'),
                     'vencimento': pagamento.data_pagamento,
                     'data_pagamento': pagamento.data_pagamento,
                     'status_label': 'Pago Completo',
                     'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
+                    'detalhes_avista': [
+                        {
+                            'situacao': 'Pago',
+                            'data': pagamento.data_pagamento,
+                            'valor': total,
+                            'acrescimos': Decimal('0'),
+                            'descontos': Decimal('0'),
+                            'pagamento_realizado_em': pagamento.caixa.nome,
+                            'observacao': pagamento.descricao or '-',
+                            'highlight_observacao': bool(
+                                query and query.lower() in (pagamento.descricao or '').lower()
+                            ),
+                            'highlight_valor': bool(valor is not None and total == valor),
+                        }
+                    ],
+                    'detalhes_boletos': [],
+                    'highlight_numero_doc': bool(
+                        query and query.lower() in (pagamento.descricao or '').lower()
+                    ),
+                    'highlight_entidade': bool(fornecedor and fornecedor.lower() in entidade.lower()),
+                    'highlight_valor_total': bool(valor is not None and total == valor),
+                    'highlight_valor_pago': bool(valor is not None and total == valor),
+                    'highlight_valor_a_pagar': False,
                 }
             )
 
@@ -2665,6 +2723,9 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             categorias = sorted(
                 {item.categoria.nome for item in pagamento.itens.all() if item.categoria_id}
             )
+            descricao_imposto = ', '.join(
+                item.descricao for item in pagamento.itens.all() if item.descricao
+            )
             resultados.append(
                 {
                     'kind': 'imposto',
@@ -2685,10 +2746,37 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     'parcela_label': '',
                     'valor_linha': total,
                     'valor_total': total,
+                    'valor_pago': total,
+                    'valor_a_pagar': Decimal('0'),
                     'vencimento': pagamento.data_pagamento,
                     'data_pagamento': pagamento.data_pagamento,
                     'status_label': 'Pago Completo',
                     'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
+                    'detalhes_avista': [
+                        {
+                            'situacao': 'Pago',
+                            'data': pagamento.data_pagamento,
+                            'valor': total,
+                            'acrescimos': Decimal('0'),
+                            'descontos': Decimal('0'),
+                            'pagamento_realizado_em': pagamento.caixa.nome,
+                            'observacao': descricao_imposto or pagamento.periodo_apuracao or '-',
+                            'highlight_observacao': bool(
+                                query and query.lower()
+                                in (descricao_imposto or pagamento.periodo_apuracao or '').lower()
+                            ),
+                            'highlight_valor': bool(valor is not None and total == valor),
+                        }
+                    ],
+                    'detalhes_boletos': [],
+                    'highlight_numero_doc': bool(query and (
+                        query.lower() in 'pagamento de imposto'
+                        or query.lower() in (pagamento.periodo_apuracao or '').lower()
+                    )),
+                    'highlight_entidade': bool(fornecedor and fornecedor.lower() in pagamento.autoridade.nome.lower()),
+                    'highlight_valor_total': bool(valor is not None and total == valor),
+                    'highlight_valor_pago': bool(valor is not None and total == valor),
+                    'highlight_valor_a_pagar': False,
                 }
             )
 
@@ -2703,6 +2791,8 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
     totais_busca = {
         'quantidade': len(resultados),
         'valor_total': sum((item.get('valor_total') or Decimal('0') for item in resultados), Decimal('0')),
+        'valor_pago': sum((item.get('valor_pago') or Decimal('0') for item in resultados), Decimal('0')),
+        'valor_a_pagar': sum((item.get('valor_a_pagar') or Decimal('0') for item in resultados), Decimal('0')),
         'boletos_qtd': sum(1 for item in resultados if item.get('forma_total_key') == 'boletos'),
         'boletos_total': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('forma_total_key') == 'boletos'), Decimal('0')),
         'avista_qtd': sum(1 for item in resultados if item.get('forma_total_key') == PagamentoNotaFiscalPagamento.TipoPagamento.AVISTA),
