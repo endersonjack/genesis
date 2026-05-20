@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_POST
 
 from core.urlutils import reverse_empresa
 
@@ -31,7 +32,7 @@ def banco_curriculos(request):
     curriculos = (
         Curriculo.objects.filter(empresa=empresa_ativa)
         .select_related('funcao')
-        .prefetch_related('anexos')
+        .prefetch_related('funcoes', 'anexos')
     )
 
     q = request.GET.get('q', '').strip()
@@ -45,10 +46,13 @@ def banco_curriculos(request):
             | Q(email__icontains=q)
             | Q(indicacao__icontains=q)
             | Q(endereco__icontains=q)
+            | Q(cat_cnh__icontains=q)
         )
 
     if funcao_id:
-        curriculos = curriculos.filter(funcao_id=funcao_id)
+        curriculos = curriculos.filter(
+            Q(funcao_id=funcao_id) | Q(funcoes__id=funcao_id)
+        ).distinct()
 
     if status:
         curriculos = curriculos.filter(status=status)
@@ -56,8 +60,14 @@ def banco_curriculos(request):
     cargos = Cargo.objects.filter(empresa=empresa_ativa).order_by('nome')
     total_curriculos = Curriculo.objects.filter(empresa=empresa_ativa).count()
     contagem_por_funcao = (
-        Cargo.objects.filter(empresa=empresa_ativa, curriculos__isnull=False)
-        .annotate(total_curriculos=Count('curriculos', filter=Q(curriculos__empresa=empresa_ativa)))
+        Cargo.objects.filter(empresa=empresa_ativa, curriculos_multiplos__isnull=False)
+        .annotate(
+            total_curriculos=Count(
+                'curriculos_multiplos',
+                filter=Q(curriculos_multiplos__empresa=empresa_ativa),
+                distinct=True,
+            )
+        )
         .filter(total_curriculos__gt=0)
         .order_by('nome')
     )
@@ -72,6 +82,28 @@ def banco_curriculos(request):
         'filtros_ativos': any([q, funcao_id, status]),
     }
     return render(request, 'rh/curriculos/banco.html', context)
+
+
+def detalhe_curriculo(request, pk):
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa para visualizar o currículo.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    curriculo = get_object_or_404(
+        Curriculo.objects.select_related('funcao').prefetch_related('funcoes', 'anexos'),
+        pk=pk,
+        empresa=empresa_ativa,
+    )
+    return render(
+        request,
+        'rh/curriculos/detalhe.html',
+        {
+            'curriculo': curriculo,
+        },
+    )
 
 
 def adicionar_curriculo(request):
@@ -93,6 +125,7 @@ def adicionar_curriculo(request):
             curriculo = form.save(commit=False)
             curriculo.empresa = empresa_ativa
             curriculo.save()
+            form.save_m2m()
 
             for arquivo in request.FILES.getlist('anexos'):
                 CurriculoAnexo.objects.create(
@@ -139,6 +172,7 @@ def editar_curriculo(request, pk):
             empresa_ativa=empresa_ativa,
         )
         return_q = (request.POST.get('return_q') or '').strip()
+        return_to = (request.POST.get('return_to') or '').strip()
         if form.is_valid():
             curriculo = form.save()
 
@@ -150,10 +184,19 @@ def editar_curriculo(request, pk):
                 )
 
             messages.success(request, 'Currículo atualizado com sucesso.')
+            if return_to == 'detail':
+                response = HttpResponse(status=204)
+                response['HX-Redirect'] = reverse_empresa(
+                    request,
+                    'rh:detalhe_curriculo',
+                    kwargs={'pk': curriculo.pk},
+                )
+                return response
             return _hx_redirect_banco_curriculos(request, return_q=return_q)
     else:
         form = CurriculoForm(instance=curriculo, empresa_ativa=empresa_ativa)
         return_q = (request.GET.get('return_q') or '').strip()
+        return_to = (request.GET.get('return_to') or '').strip()
 
     return render(
         request,
@@ -165,6 +208,7 @@ def editar_curriculo(request, pk):
             'modo': 'editar',
             'curriculo': curriculo,
             'return_q': return_q,
+            'return_to': return_to,
         },
     )
 
@@ -192,5 +236,38 @@ def excluir_curriculo(request, pk):
         {
             'curriculo': curriculo,
             'return_q': (request.GET.get('return_q') or '').strip(),
+            'return_to': (request.GET.get('return_to') or '').strip(),
+        },
+    )
+
+
+@require_POST
+def excluir_curriculo_anexo(request, pk, anexo_pk):
+    empresa_ativa, redirect_response = _empresa_ativa_or_redirect(
+        request,
+        'Selecione uma empresa antes de excluir anexos de currículos.',
+    )
+    if redirect_response:
+        return redirect_response
+
+    curriculo = get_object_or_404(Curriculo, pk=pk, empresa=empresa_ativa)
+    anexo = get_object_or_404(CurriculoAnexo, pk=anexo_pk, curriculo=curriculo)
+    return_q = (request.POST.get('return_q') or request.GET.get('return_q') or '').strip()
+
+    if anexo.arquivo:
+        anexo.arquivo.delete(save=False)
+    anexo.delete()
+
+    curriculo = (
+        Curriculo.objects.filter(pk=curriculo.pk, empresa=empresa_ativa)
+        .prefetch_related('anexos')
+        .get()
+    )
+    return render(
+        request,
+        'rh/curriculos/modals/_curriculo_anexos_atuais.html',
+        {
+            'curriculo': curriculo,
+            'return_q': return_q,
         },
     )

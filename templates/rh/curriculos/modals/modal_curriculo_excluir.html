@@ -31,16 +31,23 @@
     </div>
 
     <div class="modal-footer">
-        <button
-            type="button"
-            class="rh-top-btn rh-top-btn-light"
-            hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% if return_q %}?return_q={{ return_q|urlencode }}{% endif %}"
-            hx-target="#modal-content"
-            hx-swap="innerHTML"
-            data-no-global-loading>
-            <i class="bi bi-arrow-left"></i>
-            <span>Voltar</span>
-        </button>
+        {% if return_to == 'detail' %}
+            <button type="button" class="rh-top-btn rh-top-btn-light" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
+        {% else %}
+            <button
+                type="button"
+                class="rh-top-btn rh-top-btn-light"
+                hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% if return_q %}?return_q={{ return_q|urlencode }}{% endif %}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading>
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
+        {% endif %}
         <button type="button" class="rh-top-btn rh-top-btn-light" data-bs-dismiss="modal">
             <i class="bi bi-x-circle"></i>
             <span>Cancelar</span>

@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ curriculo.nome }} | Banco de Currículos | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .curriculo-detail-page {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .curriculo-detail-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .curriculo-detail-actions {
+        display: flex;
+        gap: .75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .curriculo-detail-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, .9fr) minmax(0, 1.6fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .curriculo-detail-card {
+        background: #fff;
+        border: 1px solid #dbe3ee;
+        border-radius: 8px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+        padding: 1rem;
+    }
+
+    .curriculo-info-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .85rem;
+    }
+
+    .curriculo-info-item {
+        min-width: 0;
+    }
+
+    .curriculo-info-label {
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 800;
+        margin-bottom: .2rem;
+        text-transform: uppercase;
+    }
+
+    .curriculo-info-value {
+        color: #0f172a;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .curriculo-status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: .28rem .65rem;
+        font-size: .78rem;
+        font-weight: 800;
+    }
+
+    .curriculo-status--novo { background: #dbeafe; color: #1d4ed8; }
+    .curriculo-status--em_analise { background: #fef3c7; color: #92400e; }
+    .curriculo-status--aprovado { background: #dcfce7; color: #166534; }
+    .curriculo-status--descartado { background: #e5e7eb; color: #374151; }
+
+    .curriculo-media-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .curriculo-media-link {
+        width: 92px;
+        text-decoration: none;
+        color: #0f172a;
+    }
+
+    .curriculo-media-thumb {
+        width: 92px;
+        height: 92px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        object-fit: cover;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        font-size: 1.6rem;
+    }
+
+    .curriculo-media-name {
+        display: block;
+        margin-top: .35rem;
+        font-size: .78rem;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rh-top-btn {
+        border: none;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        min-height: 46px;
+        padding: .78rem 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .rh-top-btn-light {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe4ee;
+    }
+
+    .rh-top-btn-light:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+
+    .rh-top-btn-primary {
+        color: #fff;
+        border: 1px solid transparent;
+        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
+            background: {{ request.empresa_ativa.cor_tema }};
+        {% else %}
+            background: #2563eb;
+        {% endif %}
+    }
+
+    .rh-top-btn-primary:hover {
+        color: #fff;
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+    }
+
+    .rh-top-btn-danger {
+        background: #dc2626;
+        color: #fff;
+        border: 1px solid transparent;
+    }
+
+    .rh-top-btn-danger:hover {
+        background: #b91c1c;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 991.98px) {
+        .curriculo-detail-grid,
+        .curriculo-info-list {
+            grid-template-columns: 1fr;
+        }
+
+        .curriculo-detail-actions,
+        .curriculo-detail-actions .rh-top-btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="curriculo-detail-page">
+    <div class="curriculo-detail-top">
+        <div>
+            <h2 class="fw-bold mb-1">{{ curriculo.nome }}</h2>
+            <p class="text-muted mb-0">Detalhes do currículo cadastrado em {{ curriculo.data|date:"d/m/Y" }}.</p>
+        </div>
+        <div class="curriculo-detail-actions">
+            <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </a>
+            <button
+                type="button"
+                class="rh-top-btn rh-top-btn-primary"
+                hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-pencil-square"></i>
+                <span>Editar</span>
+            </button>
+            <button
+                type="button"
+                class="rh-top-btn rh-top-btn-danger"
+                hx-get="{% url 'rh:excluir_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                data-no-global-loading
+                data-bs-toggle="modal"
+                data-bs-target="#modalPadrao">
+                <i class="bi bi-trash"></i>
+                <span>Excluir</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="curriculo-detail-grid">
+        <div class="curriculo-detail-card">
+            <h5 class="fw-bold mb-3">Arquivos</h5>
+            <div class="curriculo-media-grid">
+                {% if curriculo.foto %}
+                    <a href="{{ curriculo.foto.url }}" target="_blank" rel="noopener" class="curriculo-media-link" title="Abrir foto em nova aba">
+                        <img src="{{ curriculo.foto.url }}" alt="" class="curriculo-media-thumb" decoding="async" loading="lazy">
+                        <span class="curriculo-media-name">Foto</span>
+                    </a>
+                {% endif %}
+                {% for anexo in curriculo.anexos.all %}
+                    <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="curriculo-media-link" title="Abrir anexo em nova aba">
+                        {% if anexo.is_image %}
+                            <img src="{{ anexo.arquivo.url }}" alt="" class="curriculo-media-thumb" decoding="async" loading="lazy">
+                        {% else %}
+                            <span class="curriculo-media-thumb"><i class="bi bi-paperclip"></i></span>
+                        {% endif %}
+                        <span class="curriculo-media-name">{{ anexo.descricao|default:"Anexo" }}</span>
+                    </a>
+                {% endfor %}
+                {% if not curriculo.foto and not curriculo.anexos.exists %}
+                    <div class="text-muted small">Nenhuma foto ou anexo cadastrado.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="curriculo-detail-card">
+            <h5 class="fw-bold mb-3">Dados do candidato</h5>
+            <div class="curriculo-info-list">
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Status</div>
+                    <span class="curriculo-status curriculo-status--{{ curriculo.status }}">{{ curriculo.get_status_display }}</span>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Funções</div>
+                    <div class="curriculo-info-value">
+                        {% for funcao in curriculo.funcoes.all %}
+                            <span class="badge text-bg-light border fw-semibold me-1 mb-1">{{ funcao.nome }}</span>
+                        {% empty %}
+                            {{ curriculo.funcao.nome|default:"—" }}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Telefone</div>
+                    <div class="curriculo-info-value">{{ curriculo.telefone|default:"—" }}</div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">E-mail</div>
+                    <div class="curriculo-info-value">{{ curriculo.email|default:"—" }}</div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Endereço</div>
+                    <div class="curriculo-info-value">{{ curriculo.endereco|default:"—" }}</div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Cat. CNH</div>
+                    <div class="curriculo-info-value">{{ curriculo.cat_cnh|default:"—" }}</div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Indicação</div>
+                    <div class="curriculo-info-value">{{ curriculo.indicacao|default:"—" }}</div>
+                </div>
+                <div class="curriculo-info-item">
+                    <div class="curriculo-info-label">Data</div>
+                    <div class="curriculo-info-value">{{ curriculo.data|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="curriculo-info-label">Observações</div>
+                <div class="curriculo-info-value">{{ curriculo.observacoes|linebreaksbr|default:"—" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content" id="modal-content"></div>
+    </div>
+</div>
+{% endblock %}

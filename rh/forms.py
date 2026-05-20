@@ -69,6 +69,11 @@ class MultipleFileField(forms.FileField):
 
 
 class CurriculoForm(BaseStyledModelForm):
+    funcoes = forms.ModelMultipleChoiceField(
+        queryset=Cargo.objects.none(),
+        required=False,
+        label='Funções',
+    )
     anexos = MultipleFileField(
         required=False,
         widget=MultipleFileInput(attrs={'multiple': True}),
@@ -80,11 +85,13 @@ class CurriculoForm(BaseStyledModelForm):
         model = Curriculo
         fields = [
             'data',
+            'foto',
             'nome',
-            'funcao',
+            'funcoes',
             'telefone',
             'email',
             'endereco',
+            'cat_cnh',
             'indicacao',
             'status',
             'observacoes',
@@ -98,7 +105,48 @@ class CurriculoForm(BaseStyledModelForm):
         super().__init__(*args, **kwargs)
         self.apply_bootstrap_classes()
         self.filter_empresa_queryset(empresa_ativa)
-        self.fields['funcao'].label = 'Função'
+        if empresa_ativa:
+            self.fields['funcoes'].queryset = Cargo.objects.filter(
+                empresa=empresa_ativa
+            ).order_by('nome')
+        self.fields['foto'].help_text = 'Imagem usada na listagem do banco de curriculos.'
+        self.fields['foto'].widget.attrs['accept'] = 'image/*'
+        self.funcoes_queryset = self.fields['funcoes'].queryset
+        self.funcoes_rows = self._build_funcoes_rows()
+
+    def _build_funcoes_rows(self):
+        field_name = self.add_prefix('funcoes')
+        if self.is_bound:
+            if hasattr(self.data, 'getlist'):
+                values = self.data.getlist(field_name)
+            else:
+                raw_values = self.data.get(field_name, [])
+                values = raw_values if isinstance(raw_values, (list, tuple)) else [raw_values]
+            values = [str(value) for value in values if value]
+        elif self.instance and self.instance.pk:
+            values = [str(pk) for pk in self.instance.funcoes.values_list('pk', flat=True)]
+            if not values and self.instance.funcao_id:
+                values = [str(self.instance.funcao_id)]
+        else:
+            values = []
+        return values or ['']
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        funcoes = list(self.cleaned_data.get('funcoes') or [])
+        principal = funcoes[0] if funcoes else None
+        if self.is_bound and funcoes:
+            posted_ids = self._build_funcoes_rows()
+            funcoes_por_id = {str(funcao.pk): funcao for funcao in funcoes}
+            principal = next(
+                (funcoes_por_id[posted_id] for posted_id in posted_ids if posted_id in funcoes_por_id),
+                principal,
+            )
+        instance.funcao = principal
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class FuncionarioForm(BaseStyledModelForm):

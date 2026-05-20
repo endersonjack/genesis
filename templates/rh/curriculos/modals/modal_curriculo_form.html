@@ -7,6 +7,7 @@
     data-no-global-loading>
     {% csrf_token %}
     <input type="hidden" name="return_q" value="{{ return_q|default:'' }}">
+    <input type="hidden" name="return_to" value="{{ return_to|default:'' }}">
 
     <div class="modal-header">
         <div>
@@ -16,80 +17,225 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
     </div>
 
+    <style>
+        .curriculo-form-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        .curriculo-form-block {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            background: #fff;
+        }
+
+        .curriculo-funcao-row,
+        .curriculo-anexo-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 34px;
+            gap: .35rem;
+            align-items: center;
+        }
+
+        .curriculo-mini-icon-btn {
+            width: 34px;
+            height: 34px;
+            min-height: 34px;
+            padding: 0;
+            border-radius: 8px;
+            gap: 0;
+            box-shadow: none;
+            font-size: .9rem;
+        }
+
+        .curriculo-mini-icon-btn i {
+            font-size: .9rem;
+        }
+
+        .curriculo-row-remove-placeholder,
+        .curriculo-row-remove-hidden {
+            width: 34px;
+            height: 34px;
+        }
+
+        .curriculo-row-remove-hidden {
+            display: none !important;
+        }
+
+        .curriculo-anexos-atuais-list {
+            display: grid;
+            gap: .5rem;
+        }
+
+        .curriculo-anexo-atual-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 34px;
+            gap: .5rem;
+            align-items: center;
+        }
+
+        .curriculo-anexo-atual-link {
+            min-width: 0;
+            justify-content: flex-start;
+            max-width: 100%;
+        }
+
+        .curriculo-anexo-atual-link span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 991.98px) {
+            .curriculo-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
     <div class="modal-body" style="max-height: calc(100vh - 220px); overflow-y: auto;">
         {% if form.non_field_errors %}
             <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
 
-        <div class="row g-3">
-            <div class="col-12 col-md-4">
-                <label class="form-label fw-semibold" for="{{ form.data.id_for_label }}">{{ form.data.label }}</label>
-                {{ form.data }}
-                {% if form.data.errors %}<div class="text-danger small mt-1">{{ form.data.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12 col-md-8">
-                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }} <span class="text-danger">*</span></label>
-                {{ form.nome }}
-                {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">{{ form.funcao.label }}</label>
-                {{ form.funcao }}
-                {% if form.funcao.errors %}<div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
-                {{ form.status }}
-                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.telefone.id_for_label }}">{{ form.telefone.label }}</label>
-                {{ form.telefone }}
-                {% if form.telefone.errors %}<div class="text-danger small mt-1">{{ form.telefone.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12 col-md-6">
-                <label class="form-label fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-                {{ form.email }}
-                {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
-                {{ form.endereco }}
-                {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.indicacao.id_for_label }}">{{ form.indicacao.label }}</label>
-                {{ form.indicacao }}
-                {% if form.indicacao.errors %}<div class="text-danger small mt-1">{{ form.indicacao.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
-                {{ form.observacoes }}
-                {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ form.anexos.id_for_label }}">{{ form.anexos.label }}</label>
-                {{ form.anexos }}
-                {% if form.anexos.help_text %}<div class="text-muted small mt-1">{{ form.anexos.help_text }}</div>{% endif %}
-                {% if form.anexos.errors %}<div class="text-danger small mt-1">{{ form.anexos.errors|join:", " }}</div>{% endif %}
-            </div>
-
-            {% if curriculo and curriculo.anexos.exists %}
-                <div class="col-12">
-                    <div class="border rounded-3 p-3 bg-light">
-                        <div class="fw-semibold mb-2">Anexos atuais</div>
-                        <div class="d-flex flex-wrap gap-2">
-                            {% for anexo in curriculo.anexos.all %}
-                                <a href="{{ anexo.arquivo.url }}" target="_blank" class="rh-top-btn rh-top-btn-light rh-top-btn-compact">
-                                    <i class="bi bi-paperclip"></i>
-                                    <span>{{ anexo.descricao|default:"Anexo" }}</span>
-                                </a>
-                            {% endfor %}
-                        </div>
+        <div class="curriculo-form-grid">
+            <div class="curriculo-form-block">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold" for="{{ form.data.id_for_label }}">{{ form.data.label }}</label>
+                        {{ form.data }}
+                        {% if form.data.errors %}<div class="text-danger small mt-1">{{ form.data.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }} <span class="text-danger">*</span></label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-7">
+                        <label class="form-label fw-semibold" for="{{ form.foto.id_for_label }}">{{ form.foto.label }}</label>
+                        {% if curriculo and curriculo.foto %}
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span class="estoque-item-thumb-wrap" role="img" title="Passe o mouse para ampliar a foto">
+                                    <img src="{{ curriculo.foto.url }}" alt="" class="item-thumb curriculo-foto-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                </span>
+                                <span class="small text-muted">Foto atual</span>
+                            </div>
+                        {% endif %}
+                        {{ form.foto }}
+                        {% if form.foto.help_text %}<div class="text-muted small mt-1">{{ form.foto.help_text }}</div>{% endif %}
+                        {% if form.foto.errors %}<div class="text-danger small mt-1">{{ form.foto.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label fw-semibold" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold" for="{{ form.telefone.id_for_label }}">{{ form.telefone.label }}</label>
+                        {{ form.telefone }}
+                        {% if form.telefone.errors %}<div class="text-danger small mt-1">{{ form.telefone.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <label class="form-label fw-semibold" for="{{ form.endereco.id_for_label }}">{{ form.endereco.label }}</label>
+                        {{ form.endereco }}
+                        {% if form.endereco.errors %}<div class="text-danger small mt-1">{{ form.endereco.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold" for="{{ form.cat_cnh.id_for_label }}">{{ form.cat_cnh.label }}</label>
+                        {{ form.cat_cnh }}
+                        {% if form.cat_cnh.errors %}<div class="text-danger small mt-1">{{ form.cat_cnh.errors|join:", " }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" for="{{ form.indicacao.id_for_label }}">{{ form.indicacao.label }}</label>
+                        {{ form.indicacao }}
+                        {% if form.indicacao.errors %}<div class="text-danger small mt-1">{{ form.indicacao.errors|join:", " }}</div>{% endif %}
                     </div>
                 </div>
-            {% endif %}
+            </div>
+
+            <div class="curriculo-form-block">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <label class="form-label fw-semibold mb-0">{{ form.funcoes.label }}</label>
+                    <button type="button" class="rh-top-btn rh-top-btn-light curriculo-mini-icon-btn" data-add-funcao title="Adicionar função" aria-label="Adicionar função">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                <div id="curriculo-funcoes-list" class="d-grid gap-2 mb-3">
+                    {% for row in form.funcoes_rows %}
+                        <div class="curriculo-funcao-row">
+                            <select name="{{ form.funcoes.html_name }}" class="form-select">
+                                <option value="">Selecione uma função</option>
+                                {% for cargo in form.funcoes_queryset %}
+                                    {% with cargo_pk=cargo.pk|stringformat:"s" %}
+                                        <option value="{{ cargo.pk }}" {% if row == cargo_pk %}selected{% endif %}>{{ cargo.nome }}</option>
+                                    {% endwith %}
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="rh-top-btn rh-top-btn-danger curriculo-mini-icon-btn{% if forloop.first %} curriculo-row-remove-hidden{% endif %}" data-remove-funcao title="Remover função" aria-label="Remover função">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if form.funcoes.errors %}<div class="text-danger small mt-1 mb-3">{{ form.funcoes.errors|join:", " }}</div>{% endif %}
+
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <label class="form-label fw-semibold mb-0" for="{{ form.anexos.id_for_label }}">{{ form.anexos.label }}</label>
+                    <button type="button" class="rh-top-btn rh-top-btn-light curriculo-mini-icon-btn" data-add-anexo title="Adicionar anexo" aria-label="Adicionar anexo">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                <div id="curriculo-anexos-list" class="d-grid gap-2 mb-2">
+                    <div class="curriculo-anexo-row">
+                        {{ form.anexos }}
+                        <button type="button" class="rh-top-btn rh-top-btn-danger curriculo-mini-icon-btn curriculo-row-remove-hidden" data-remove-anexo title="Remover anexo" aria-label="Remover anexo">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% if form.anexos.help_text %}<div class="text-muted small mt-1">{{ form.anexos.help_text }}</div>{% endif %}
+                {% if form.anexos.errors %}<div class="text-danger small mt-1">{{ form.anexos.errors|join:", " }}</div>{% endif %}
+
+                {% include 'rh/curriculos/modals/_curriculo_anexos_atuais.html' %}
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold" for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                    {{ form.observacoes }}
+                    {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
         </div>
+
+        <template id="curriculo-funcao-template">
+            <div class="curriculo-funcao-row">
+                <select name="{{ form.funcoes.html_name }}" class="form-select">
+                    <option value="">Selecione uma função</option>
+                    {% for cargo in form.funcoes_queryset %}
+                        <option value="{{ cargo.pk }}">{{ cargo.nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="rh-top-btn rh-top-btn-danger curriculo-mini-icon-btn" data-remove-funcao title="Remover função" aria-label="Remover função">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </template>
+
+        <template id="curriculo-anexo-template">
+            <div class="curriculo-anexo-row">
+                <input type="file" name="{{ form.anexos.html_name }}" class="form-control" multiple>
+                <button type="button" class="rh-top-btn rh-top-btn-danger curriculo-mini-icon-btn" data-remove-anexo title="Remover anexo" aria-label="Remover anexo">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </template>
     </div>
 
     <div class="modal-footer">
@@ -120,4 +266,72 @@
             </span>
         </button>
     </div>
+
+    <script>
+    (function () {
+        var form = document.currentScript.closest('form');
+        if (!form || form.dataset.curriculoDynamicBound) return;
+        form.dataset.curriculoDynamicBound = '1';
+
+        function appendTemplate(listId, templateId) {
+            var list = form.querySelector('#' + listId);
+            var template = form.querySelector('#' + templateId);
+            if (!list || !template) return;
+            list.appendChild(template.content.cloneNode(true));
+            refreshRemoveButtons(listId);
+        }
+
+        function removeRow(button, selector, listId) {
+            var list = form.querySelector('#' + listId);
+            var row = button.closest(selector);
+            if (!list || !row) return;
+            if (list.querySelectorAll(selector).length > 1) {
+                row.remove();
+                refreshRemoveButtons(listId);
+                return;
+            }
+            var field = row.querySelector('select, input');
+            if (field) field.value = '';
+            refreshRemoveButtons(listId);
+        }
+
+        function refreshRemoveButtons(listId) {
+            var list = form.querySelector('#' + listId);
+            if (!list) return;
+            var rowSelector = listId === 'curriculo-funcoes-list' ? '.curriculo-funcao-row' : '.curriculo-anexo-row';
+            list.querySelectorAll(rowSelector).forEach(function (row, index) {
+                var button = row.querySelector('[data-remove-funcao], [data-remove-anexo]');
+                if (!button) return;
+                button.classList.toggle('curriculo-row-remove-hidden', index === 0);
+            });
+        }
+
+        form.addEventListener('click', function (event) {
+            var addFuncao = event.target.closest('[data-add-funcao]');
+            if (addFuncao) {
+                appendTemplate('curriculo-funcoes-list', 'curriculo-funcao-template');
+                return;
+            }
+
+            var removeFuncao = event.target.closest('[data-remove-funcao]');
+            if (removeFuncao) {
+                removeRow(removeFuncao, '.curriculo-funcao-row', 'curriculo-funcoes-list');
+                return;
+            }
+
+            var addAnexo = event.target.closest('[data-add-anexo]');
+            if (addAnexo) {
+                appendTemplate('curriculo-anexos-list', 'curriculo-anexo-template');
+                return;
+            }
+
+            var removeAnexo = event.target.closest('[data-remove-anexo]');
+            if (removeAnexo) {
+                removeRow(removeAnexo, '.curriculo-anexo-row', 'curriculo-anexos-list');
+            }
+        });
+        refreshRemoveButtons('curriculo-funcoes-list');
+        refreshRemoveButtons('curriculo-anexos-list');
+    })();
+    </script>
 </form>

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Banco de Currículos | Genesis ERP{% endblock %}
 
@@ -239,6 +240,83 @@
         flex-wrap: wrap;
     }
 
+    .curriculo-nome-cell {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        min-width: 18rem;
+    }
+
+    .curriculo-nome-cell .min-w-0 {
+        min-width: 0;
+    }
+
+    .curriculo-foto-empty,
+    .item-thumb.curriculo-foto-thumb {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border-radius: .5rem;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .item-thumb.curriculo-foto-thumb {
+        object-fit: cover;
+    }
+
+    .curriculo-foto-empty {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 1.05rem;
+    }
+
+    .curriculo-row-link {
+        cursor: pointer;
+    }
+
+    .curriculo-row-link:hover td {
+        background: #f8fafc;
+    }
+
+    .estoque-item-thumb-wrap {
+        display: inline-block;
+        line-height: 0;
+        vertical-align: middle;
+        cursor: zoom-in;
+    }
+
+    .curriculo-mini-link:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.18);
+        border-radius: .6rem;
+    }
+
+    .estoque-item-thumb-preview-float {
+        position: fixed;
+        z-index: 10050;
+        display: none;
+        padding: 8px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
+        border: 1px solid #e2e8f0;
+        max-width: min(360px, calc(100vw - 24px));
+        max-height: min(360px, calc(100vh - 24px));
+        pointer-events: auto;
+    }
+
+    .estoque-item-thumb-preview-float img {
+        display: block;
+        max-width: 100%;
+        max-height: min(320px, calc(100vh - 48px));
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+
     .curriculo-status {
         display: inline-flex;
         align-items: center;
@@ -389,25 +467,41 @@
                     <tr>
                         <th class="ps-4">Data</th>
                         <th>Nome</th>
-                        <th>Função</th>
+                        <th>Funções</th>
                         <th>Contato</th>
                         <th>Indicação</th>
                         <th>Status</th>
                         <th>Anexos</th>
-                        <th class="text-end pe-4">Editar</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for curriculo in curriculos %}
-                        <tr>
+                        <tr class="curriculo-row-link" data-detail-url="{% url 'rh:detalhe_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}" tabindex="0" aria-label="Abrir detalhes do currículo de {{ curriculo.nome }}">
                             <td class="ps-4 small text-muted">{{ curriculo.data|date:"d/m/Y" }}</td>
                             <td>
-                                <div class="fw-semibold">{{ curriculo.nome }}</div>
-                                {% if curriculo.endereco %}
-                                    <div class="small text-muted text-truncate" style="max-width: 22rem;">{{ curriculo.endereco }}</div>
-                                {% endif %}
+                                <div class="curriculo-nome-cell">
+                                    {% if curriculo.foto %}
+                                        <a href="{{ curriculo.foto.url }}" target="_blank" rel="noopener" class="estoque-item-thumb-wrap curriculo-mini-link" title="Abrir foto em nova aba" aria-label="Abrir foto de {{ curriculo.nome }} em nova aba">
+                                            <img src="{{ curriculo.foto.url }}" alt="" class="item-thumb curriculo-foto-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                        </a>
+                                    {% else %}
+                                        <span class="curriculo-foto-empty" aria-hidden="true"><i class="bi bi-person"></i></span>
+                                    {% endif %}
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold">{{ curriculo.nome }}</div>
+                                        {% if curriculo.endereco %}
+                                            <div class="small text-muted text-truncate" style="max-width: 22rem;">{{ curriculo.endereco }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ curriculo.funcao.nome|default:"—" }}</td>
+                            <td>
+                                {% for funcao in curriculo.funcoes.all %}
+                                    <span class="badge text-bg-light border fw-semibold mb-1">{{ funcao.nome }}</span>
+                                {% empty %}
+                                    {{ curriculo.funcao.nome|default:"—" }}
+                                {% endfor %}
+                            </td>
                             <td>
                                 <div class="small">{{ curriculo.telefone|default:"—" }}</div>
                                 {% if curriculo.email %}
@@ -422,35 +516,23 @@
                             </td>
                             <td>
                                 {% for anexo in curriculo.anexos.all %}
-                                        <a href="{{ anexo.arquivo.url }}" target="_blank" class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only me-1 mb-1">
+                                    {% if anexo.is_image %}
+                                        <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="estoque-item-thumb-wrap curriculo-mini-link me-1 mb-1" title="Abrir anexo em nova aba">
+                                            <img src="{{ anexo.arquivo.url }}" alt="" class="item-thumb curriculo-foto-thumb" width="44" height="44" decoding="async" loading="lazy">
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only me-1 mb-1" title="Abrir anexo em nova aba">
                                             <i class="bi bi-paperclip"></i>
                                         </a>
+                                    {% endif %}
                                 {% empty %}
                                     <span class="text-muted small">—</span>
                                 {% endfor %}
                             </td>
-                            <td class="text-end pe-4">
-                                <button
-                                    type="button"
-                                        class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only"
-                                    title="Editar currículo"
-                                    aria-label="Editar currículo de {{ curriculo.nome }}"
-                                    hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}{% if request.GET.urlencode %}?return_q={{ request.GET.urlencode|urlencode }}{% endif %}"
-                                    hx-target="#modal-content"
-                                    hx-swap="innerHTML"
-                                    data-no-global-loading
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#modalPadrao">
-                                    <span class="rh-btn-idle"><i class="bi bi-pencil-square"></i></span>
-                                    <span class="rh-btn-loading">
-                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                    </span>
-                                </button>
-                            </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">Nenhum currículo encontrado.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Nenhum currículo encontrado.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -461,8 +543,34 @@
 </div>
 
 <div class="modal fade" id="modalPadrao" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content" id="modal-content"></div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/estoque-item-thumb-preview.js' %}"></script>
+<script>
+(function () {
+    document.addEventListener('click', function (event) {
+        var row = event.target.closest('.curriculo-row-link');
+        if (!row || event.target.closest('a, button, input, select, textarea, label')) return;
+        var url = row.getAttribute('data-detail-url');
+        if (url) window.location.href = url;
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        var row = event.target.closest('.curriculo-row-link');
+        if (!row || event.target.closest('a, button, input, select, textarea, label')) return;
+        var url = row.getAttribute('data-detail-url');
+        if (!url) return;
+        event.preventDefault();
+        window.location.href = url;
+    });
+})();
+</script>
 {% endblock %}

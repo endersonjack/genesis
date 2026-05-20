@@ -393,6 +393,7 @@ class Curriculo(TimeStampedModel):
         related_name='curriculos',
     )
     data = models.DateField('Data', default=timezone.localdate, db_index=True)
+    foto = models.ImageField('Foto', upload_to='rh/curriculos/fotos/', null=True, blank=True)
     nome = models.CharField(max_length=200)
     funcao = models.ForeignKey(
         Cargo,
@@ -402,7 +403,14 @@ class Curriculo(TimeStampedModel):
         related_name='curriculos',
         verbose_name='Função',
     )
+    funcoes = models.ManyToManyField(
+        Cargo,
+        blank=True,
+        related_name='curriculos_multiplos',
+        verbose_name='Funções',
+    )
     endereco = models.CharField('Endereço', max_length=255, blank=True)
+    cat_cnh = models.CharField('Cat. CNH', max_length=20, blank=True)
     telefone = models.CharField(max_length=20, blank=True)
     email = models.EmailField('E-mail', blank=True)
     indicacao = models.CharField('Indicação', max_length=200, blank=True)
@@ -439,6 +447,11 @@ class CurriculoAnexo(TimeStampedModel):
 
     def __str__(self):
         return self.descricao or self.arquivo.name
+
+    @property
+    def is_image(self):
+        name = (self.arquivo.name or '').lower()
+        return name.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'))
 
 
 class FeriasFuncionario(TimeStampedModel):

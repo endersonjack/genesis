@@ -188,9 +188,11 @@ class BancoAdmin(admin.ModelAdmin):
 @admin.register(Curriculo)
 class CurriculoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'funcao', 'telefone', 'email', 'indicacao', 'status', 'data', 'empresa')
+    fields = ('empresa', 'data', 'foto', 'nome', 'funcoes', 'endereco', 'cat_cnh', 'telefone', 'email', 'indicacao', 'status', 'observacoes')
     search_fields = ('nome', 'telefone', 'email', 'indicacao', 'endereco')
     list_filter = ('empresa', 'funcao', 'status', 'data')
-    autocomplete_fields = ('empresa', 'funcao')
+    autocomplete_fields = ('empresa',)
+    filter_horizontal = ('funcoes',)
     inlines = [CurriculoAnexoInline]
 
 

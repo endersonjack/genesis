@@ -108,6 +108,7 @@
     }
 
     function init() {
+        scan(document);
         var inner = document.getElementById('estoque-list-inner');
         if (inner) scan(inner);
         var mov = document.getElementById('movimentar-list-inner');
@@ -124,6 +125,7 @@
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         var t = evt.detail.target;
         if (!t) return;
+        scan(t);
         if (
             t.id === 'estoque-list-inner' ||
             t.id === 'movimentar-list-inner' ||

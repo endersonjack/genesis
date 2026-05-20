@@ -1,0 +1,30 @@
+<div id="curriculo-anexos-atuais" class="col-12">
+    {% if curriculo and curriculo.anexos.exists %}
+        <div class="border rounded-3 p-3 bg-light">
+            <div class="fw-semibold mb-2">Anexos atuais</div>
+            <div class="curriculo-anexos-atuais-list">
+                {% for anexo in curriculo.anexos.all %}
+                    <div class="curriculo-anexo-atual-row">
+                        <a href="{{ anexo.arquivo.url }}" target="_blank" class="rh-top-btn rh-top-btn-light rh-top-btn-compact curriculo-anexo-atual-link" title="{{ anexo.descricao|default:'Anexo' }}">
+                            <i class="bi bi-paperclip"></i>
+                            <span>{{ anexo.descricao|default:"Anexo" }}</span>
+                        </a>
+                        <button
+                            type="button"
+                            class="rh-top-btn rh-top-btn-danger curriculo-mini-icon-btn"
+                            title="Excluir anexo"
+                            aria-label="Excluir anexo {{ anexo.descricao|default:'Anexo' }}"
+                            hx-post="{% url 'rh:excluir_curriculo_anexo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk anexo_pk=anexo.pk %}{% if return_q %}?return_q={{ return_q|urlencode }}{% endif %}"
+                            hx-include="[name='csrfmiddlewaretoken']"
+                            hx-target="#curriculo-anexos-atuais"
+                            hx-swap="outerHTML"
+                            hx-confirm="Excluir este anexo?"
+                            data-no-global-loading>
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
