@@ -9,51 +9,130 @@
         gap: 1rem;
     }
 
-    .curriculo-detail-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
     .curriculo-detail-actions {
         display: flex;
+        justify-content: flex-end;
         gap: .75rem;
-        align-items: center;
         flex-wrap: wrap;
     }
 
-    .curriculo-detail-grid {
+    .curriculo-layout {
         display: grid;
-        grid-template-columns: minmax(260px, .9fr) minmax(0, 1.6fr);
+        grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
         gap: 1rem;
         align-items: start;
     }
 
-    .curriculo-detail-card {
+    .curriculo-paper,
+    .curriculo-attachments {
         background: #fff;
         border: 1px solid #dbe3ee;
         border-radius: 8px;
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-        padding: 1rem;
+        overflow: hidden;
     }
 
+    .curriculo-hero {
+        display: grid;
+        grid-template-columns: 132px minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: center;
+        padding: 1.75rem 2rem;
+        background: #38516e;
+        color: #fff;
+    }
+
+    .curriculo-hero-photo,
+    .curriculo-hero-photo-empty {
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, .75);
+        background: #eef2f7;
+    }
+
+    .curriculo-hero-photo {
+        object-fit: cover;
+    }
+
+    .curriculo-hero-photo-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        font-size: 3rem;
+    }
+
+    .curriculo-hero-name {
+        font-size: clamp(2rem, 4vw, 3.3rem);
+        font-weight: 300;
+        line-height: 1.05;
+        margin: 0 0 .65rem;
+        overflow-wrap: anywhere;
+    }
+
+    .curriculo-hero-role {
+        color: rgba(255, 255, 255, .72);
+        font-size: 1.05rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .curriculo-paper-body {
+        display: grid;
+        grid-template-columns: minmax(220px, .85fr) minmax(0, 1.55fr);
+        min-height: 520px;
+    }
+
+    .curriculo-side {
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+    }
+
+    .curriculo-main {
+        padding: 1.5rem 1.75rem;
+    }
+
+    .curriculo-section + .curriculo-section {
+        margin-top: 1.6rem;
+    }
+
+    .curriculo-section-title {
+        color: #111827;
+        font-size: 1.05rem;
+        font-weight: 900;
+        margin: 0 0 .85rem;
+        padding-bottom: .35rem;
+        border-bottom: 2px solid #111827;
+        text-transform: uppercase;
+    }
+
+    .curriculo-contact-list,
     .curriculo-info-list {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: .85rem;
+        gap: .65rem;
     }
 
-    .curriculo-info-item {
-        min-width: 0;
+    .curriculo-contact-row {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        gap: .5rem;
+        align-items: start;
+        color: #0f172a;
+        font-size: .95rem;
+    }
+
+    .curriculo-contact-row i {
+        color: #111827;
+        line-height: 1.35;
     }
 
     .curriculo-info-label {
         color: #64748b;
-        font-size: .78rem;
+        font-size: .76rem;
         font-weight: 800;
-        margin-bottom: .2rem;
+        margin-bottom: .15rem;
         text-transform: uppercase;
     }
 
@@ -77,40 +156,77 @@
     .curriculo-status--aprovado { background: #dcfce7; color: #166534; }
     .curriculo-status--descartado { background: #e5e7eb; color: #374151; }
 
-    .curriculo-media-grid {
+    .curriculo-function-list {
         display: flex;
         flex-wrap: wrap;
-        gap: .75rem;
+        gap: .45rem;
     }
 
-    .curriculo-media-link {
-        width: 92px;
-        text-decoration: none;
+    .curriculo-attachments {
+        position: sticky;
+        top: 82px;
+        padding: 1rem;
+    }
+
+    .curriculo-attachment-list {
+        display: grid;
+        gap: .65rem;
+    }
+
+    .curriculo-attachment-link {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: .65rem;
+        align-items: center;
+        padding: .55rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
         color: #0f172a;
+        text-decoration: none;
     }
 
-    .curriculo-media-thumb {
-        width: 92px;
-        height: 92px;
+    .curriculo-attachment-link:hover {
+        color: #0f172a;
+        border-color: #cbd5e1;
+        background: #fff;
+    }
+
+    .curriculo-attachment-thumb,
+    .curriculo-attachment-icon {
+        width: 54px;
+        height: 54px;
         border-radius: 8px;
         border: 1px solid #e2e8f0;
-        background: #f8fafc;
+        background: #fff;
+    }
+
+    .curriculo-attachment-thumb {
         object-fit: cover;
+    }
+
+    .curriculo-attachment-icon {
         display: flex;
         align-items: center;
         justify-content: center;
         color: #64748b;
-        font-size: 1.6rem;
+        font-size: 1.35rem;
     }
 
-    .curriculo-media-name {
+    .curriculo-attachment-name {
         display: block;
-        margin-top: .35rem;
-        font-size: .78rem;
-        font-weight: 700;
+        min-width: 0;
+        font-weight: 800;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .curriculo-attachment-meta {
+        display: block;
+        color: #64748b;
+        font-size: .78rem;
+        margin-top: .15rem;
     }
 
     .rh-top-btn {
@@ -119,15 +235,20 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: .55rem;
-        min-height: 46px;
-        padding: .78rem 1.1rem;
+        gap: .42rem;
+        min-height: 36px;
+        padding: .55rem .85rem;
         border-radius: 999px;
         font-weight: 700;
-        font-size: .95rem;
+        font-size: .86rem;
         line-height: 1;
         transition: all .2s ease;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    .rh-top-btn i {
+        font-size: .9rem;
+        line-height: 1;
     }
 
     .rh-top-btn-light {
@@ -172,128 +293,243 @@
     }
 
     @media (max-width: 991.98px) {
-        .curriculo-detail-grid,
-        .curriculo-info-list {
+        .curriculo-layout,
+        .curriculo-paper-body {
             grid-template-columns: 1fr;
         }
 
+        .curriculo-attachments {
+            position: static;
+        }
+
+        .curriculo-side {
+            border-right: 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+    }
+
+    @media (max-width: 575.98px) {
         .curriculo-detail-actions,
         .curriculo-detail-actions .rh-top-btn {
             width: 100%;
         }
+
+        .curriculo-hero {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .curriculo-main,
+        .curriculo-side {
+            padding: 1.1rem;
+        }
+    }
+
+    @media print {
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        body * {
+            visibility: hidden;
+        }
+
+        .curriculo-print-area,
+        .curriculo-print-area * {
+            visibility: visible;
+        }
+
+        .curriculo-print-area {
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+        }
+
+        .curriculo-detail-actions,
+        .curriculo-attachments,
+        #modalPadrao {
+            display: none !important;
+        }
+
+        .curriculo-layout,
+        .curriculo-paper-body {
+            display: block;
+        }
+
+        .curriculo-paper {
+            border: 0;
+            box-shadow: none;
+            border-radius: 0;
+            overflow: visible;
+        }
+
+        .curriculo-hero {
+            color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .curriculo-side,
+        .curriculo-main {
+            border: 0;
+            background: #fff;
+            padding: 1rem 0 0;
+        }
+
     }
 </style>
 
 <div class="curriculo-detail-page">
-    <div class="curriculo-detail-top">
-        <div>
-            <h2 class="fw-bold mb-1">{{ curriculo.nome }}</h2>
-            <p class="text-muted mb-0">Detalhes do currículo cadastrado em {{ curriculo.data|date:"d/m/Y" }}.</p>
-        </div>
-        <div class="curriculo-detail-actions">
-            <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light">
-                <i class="bi bi-arrow-left"></i>
-                <span>Voltar</span>
-            </a>
-            <button
-                type="button"
-                class="rh-top-btn rh-top-btn-primary"
-                hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
-                hx-target="#modal-content"
-                hx-swap="innerHTML"
-                data-no-global-loading
-                data-bs-toggle="modal"
-                data-bs-target="#modalPadrao">
-                <i class="bi bi-pencil-square"></i>
-                <span>Editar</span>
-            </button>
-            <button
-                type="button"
-                class="rh-top-btn rh-top-btn-danger"
-                hx-get="{% url 'rh:excluir_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
-                hx-target="#modal-content"
-                hx-swap="innerHTML"
-                data-no-global-loading
-                data-bs-toggle="modal"
-                data-bs-target="#modalPadrao">
-                <i class="bi bi-trash"></i>
-                <span>Excluir</span>
-            </button>
-        </div>
+    <div class="curriculo-detail-actions">
+        <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}" class="rh-top-btn rh-top-btn-light">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+        <button type="button" class="rh-top-btn rh-top-btn-light" onclick="window.print()">
+            <i class="bi bi-printer"></i>
+            <span>Imprimir</span>
+        </button>
+        <button
+            type="button"
+            class="rh-top-btn rh-top-btn-primary"
+            hx-get="{% url 'rh:editar_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-pencil-square"></i>
+            <span>Editar</span>
+        </button>
+        <button
+            type="button"
+            class="rh-top-btn rh-top-btn-danger"
+            hx-get="{% url 'rh:excluir_curriculo' empresa_id=request.empresa_ativa.pk pk=curriculo.pk %}?return_to=detail"
+            hx-target="#modal-content"
+            hx-swap="innerHTML"
+            data-no-global-loading
+            data-bs-toggle="modal"
+            data-bs-target="#modalPadrao">
+            <i class="bi bi-trash"></i>
+            <span>Excluir</span>
+        </button>
     </div>
 
-    <div class="curriculo-detail-grid">
-        <div class="curriculo-detail-card">
-            <h5 class="fw-bold mb-3">Arquivos</h5>
-            <div class="curriculo-media-grid">
-                {% if curriculo.foto %}
-                    <a href="{{ curriculo.foto.url }}" target="_blank" rel="noopener" class="curriculo-media-link" title="Abrir foto em nova aba">
-                        <img src="{{ curriculo.foto.url }}" alt="" class="curriculo-media-thumb" decoding="async" loading="lazy">
-                        <span class="curriculo-media-name">Foto</span>
-                    </a>
-                {% endif %}
-                {% for anexo in curriculo.anexos.all %}
-                    <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="curriculo-media-link" title="Abrir anexo em nova aba">
-                        {% if anexo.is_image %}
-                            <img src="{{ anexo.arquivo.url }}" alt="" class="curriculo-media-thumb" decoding="async" loading="lazy">
-                        {% else %}
-                            <span class="curriculo-media-thumb"><i class="bi bi-paperclip"></i></span>
-                        {% endif %}
-                        <span class="curriculo-media-name">{{ anexo.descricao|default:"Anexo" }}</span>
-                    </a>
-                {% endfor %}
-                {% if not curriculo.foto and not curriculo.anexos.exists %}
-                    <div class="text-muted small">Nenhuma foto ou anexo cadastrado.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="curriculo-detail-card">
-            <h5 class="fw-bold mb-3">Dados do candidato</h5>
-            <div class="curriculo-info-list">
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Status</div>
-                    <span class="curriculo-status curriculo-status--{{ curriculo.status }}">{{ curriculo.get_status_display }}</span>
-                </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Funções</div>
-                    <div class="curriculo-info-value">
-                        {% for funcao in curriculo.funcoes.all %}
-                            <span class="badge text-bg-light border fw-semibold me-1 mb-1">{{ funcao.nome }}</span>
-                        {% empty %}
-                            {{ curriculo.funcao.nome|default:"—" }}
-                        {% endfor %}
+    <div class="curriculo-print-area">
+        <div class="curriculo-layout">
+            <article class="curriculo-paper">
+                <header class="curriculo-hero">
+                    {% if curriculo.foto %}
+                        <a href="{{ curriculo.foto.url }}" target="_blank" rel="noopener" title="Abrir foto em nova aba">
+                            <img src="{{ curriculo.foto.url }}" alt="" class="curriculo-hero-photo" decoding="async" loading="lazy">
+                        </a>
+                    {% else %}
+                        <div class="curriculo-hero-photo-empty" aria-hidden="true"><i class="bi bi-person"></i></div>
+                    {% endif %}
+                    <div>
+                        <h1 class="curriculo-hero-name">{{ curriculo.nome }}</h1>
+                        <div class="curriculo-hero-role">
+                            {% for funcao in curriculo.funcoes.all %}
+                                {{ funcao.nome }}{% if not forloop.last %} / {% endif %}
+                            {% empty %}
+                                {{ curriculo.funcao.nome|default:"Currículo" }}
+                            {% endfor %}
+                        </div>
                     </div>
+                </header>
+
+                <div class="curriculo-paper-body">
+                    <aside class="curriculo-side">
+                        <section class="curriculo-section">
+                            <h2 class="curriculo-section-title">Contato</h2>
+                            <div class="curriculo-contact-list">
+                                <div class="curriculo-contact-row">
+                                    <i class="bi bi-telephone-fill"></i>
+                                    <span>{{ curriculo.telefone|default:"—" }}</span>
+                                </div>
+                                <div class="curriculo-contact-row">
+                                    <i class="bi bi-envelope"></i>
+                                    <span>{{ curriculo.email|default:"—" }}</span>
+                                </div>
+                                <div class="curriculo-contact-row">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    <span>{{ curriculo.endereco|default:"—" }}</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="curriculo-section">
+                            <h2 class="curriculo-section-title">Dados</h2>
+                            <div class="curriculo-info-list">
+                                <div>
+                                    <div class="curriculo-info-label">Status</div>
+                                    <span class="curriculo-status curriculo-status--{{ curriculo.status }}">{{ curriculo.get_status_display }}</span>
+                                </div>
+                                <div>
+                                    <div class="curriculo-info-label">Cat. CNH</div>
+                                    <div class="curriculo-info-value">{{ curriculo.cat_cnh|default:"—" }}</div>
+                                </div>
+                                <div>
+                                    <div class="curriculo-info-label">Indicação</div>
+                                    <div class="curriculo-info-value">{{ curriculo.indicacao|default:"—" }}</div>
+                                </div>
+                                <div>
+                                    <div class="curriculo-info-label">Cadastro</div>
+                                    <div class="curriculo-info-value">{{ curriculo.data|date:"d/m/Y" }}</div>
+                                </div>
+                            </div>
+                        </section>
+                    </aside>
+
+                    <main class="curriculo-main">
+                        <section class="curriculo-section">
+                            <h2 class="curriculo-section-title">Observações</h2>
+                            <p class="mb-0">
+                                {% if curriculo.observacoes %}
+                                    {{ curriculo.observacoes|linebreaksbr }}
+                                {% else %}
+                                    Nenhuma observação cadastrada.
+                                {% endif %}
+                            </p>
+                        </section>
+
+                        <section class="curriculo-section">
+                            <h2 class="curriculo-section-title">Funções de Interesse</h2>
+                            <div class="curriculo-function-list">
+                                {% for funcao in curriculo.funcoes.all %}
+                                    <span class="badge text-bg-light border fw-semibold px-3 py-2">{{ funcao.nome }}</span>
+                                {% empty %}
+                                    <span class="text-muted">{{ curriculo.funcao.nome|default:"Nenhuma função cadastrada." }}</span>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    </main>
                 </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Telefone</div>
-                    <div class="curriculo-info-value">{{ curriculo.telefone|default:"—" }}</div>
+            </article>
+
+            <aside class="curriculo-attachments">
+                <h2 class="curriculo-section-title">Anexos</h2>
+                <div class="curriculo-attachment-list">
+                    {% for anexo in curriculo.anexos.all %}
+                        <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="curriculo-attachment-link" title="Abrir anexo em nova aba">
+                            {% if anexo.is_image %}
+                                <img src="{{ anexo.arquivo.url }}" alt="" class="curriculo-attachment-thumb" decoding="async" loading="lazy">
+                            {% else %}
+                                <span class="curriculo-attachment-icon"><i class="bi bi-paperclip"></i></span>
+                            {% endif %}
+                            <span>
+                                <span class="curriculo-attachment-name">{{ anexo.descricao|default:"Anexo" }}</span>
+                                <span class="curriculo-attachment-meta">Abrir em nova aba</span>
+                            </span>
+                        </a>
+                    {% empty %}
+                        <div class="text-muted small">Nenhum anexo cadastrado.</div>
+                    {% endfor %}
                 </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">E-mail</div>
-                    <div class="curriculo-info-value">{{ curriculo.email|default:"—" }}</div>
-                </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Endereço</div>
-                    <div class="curriculo-info-value">{{ curriculo.endereco|default:"—" }}</div>
-                </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Cat. CNH</div>
-                    <div class="curriculo-info-value">{{ curriculo.cat_cnh|default:"—" }}</div>
-                </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Indicação</div>
-                    <div class="curriculo-info-value">{{ curriculo.indicacao|default:"—" }}</div>
-                </div>
-                <div class="curriculo-info-item">
-                    <div class="curriculo-info-label">Data</div>
-                    <div class="curriculo-info-value">{{ curriculo.data|date:"d/m/Y" }}</div>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="curriculo-info-label">Observações</div>
-                <div class="curriculo-info-value">{{ curriculo.observacoes|linebreaksbr|default:"—" }}</div>
-            </div>
+            </aside>
         </div>
     </div>
 </div>

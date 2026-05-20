@@ -331,6 +331,20 @@
     .curriculo-status--aprovado { background: #dcfce7; color: #166534; }
     .curriculo-status--descartado { background: #e5e7eb; color: #374151; }
 
+    .curriculo-anexos-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        min-height: 30px;
+        padding: .25rem .6rem;
+        border-radius: 999px;
+        border: 1px solid #dbe4ee;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: .82rem;
+        font-weight: 800;
+    }
+
     @media (max-width: 767.98px) {
         .curriculos-actions,
         .curriculos-search {
@@ -515,19 +529,14 @@
                                 </span>
                             </td>
                             <td>
-                                {% for anexo in curriculo.anexos.all %}
-                                    {% if anexo.is_image %}
-                                        <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="estoque-item-thumb-wrap curriculo-mini-link me-1 mb-1" title="Abrir anexo em nova aba">
-                                            <img src="{{ anexo.arquivo.url }}" alt="" class="item-thumb curriculo-foto-thumb" width="44" height="44" decoding="async" loading="lazy">
-                                        </a>
-                                    {% else %}
-                                        <a href="{{ anexo.arquivo.url }}" target="_blank" rel="noopener" class="rh-top-btn rh-top-btn-light rh-top-btn-compact rh-top-btn-icon-only me-1 mb-1" title="Abrir anexo em nova aba">
-                                            <i class="bi bi-paperclip"></i>
-                                        </a>
-                                    {% endif %}
-                                {% empty %}
+                                {% if curriculo.anexos.count %}
+                                    <span class="curriculo-anexos-badge" title="{{ curriculo.anexos.count }} anexo{{ curriculo.anexos.count|pluralize }}">
+                                        <i class="bi bi-paperclip"></i>
+                                        <span>{{ curriculo.anexos.count }}</span>
+                                    </span>
+                                {% else %}
                                     <span class="text-muted small">—</span>
-                                {% endfor %}
+                                {% endif %}
                             </td>
                         </tr>
                     {% empty %}
