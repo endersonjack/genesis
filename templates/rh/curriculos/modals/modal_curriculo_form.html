@@ -89,6 +89,28 @@
             white-space: nowrap;
         }
 
+        .rh-btn-loading {
+            display: none;
+        }
+
+        .rh-top-btn.htmx-request,
+        form.htmx-request .rh-top-btn[type="submit"] {
+            pointer-events: none;
+            opacity: .82;
+        }
+
+        .rh-top-btn.htmx-request .rh-btn-idle,
+        form.htmx-request .rh-top-btn[type="submit"] .rh-btn-idle {
+            display: none !important;
+        }
+
+        .rh-top-btn.htmx-request .rh-btn-loading,
+        form.htmx-request .rh-top-btn[type="submit"] .rh-btn-loading {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+        }
+
         @media (max-width: 991.98px) {
             .curriculo-form-grid {
                 grid-template-columns: 1fr;
