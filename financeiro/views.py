@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 import re
@@ -531,6 +531,19 @@ def _decimal_audit(valor) -> str:
 
 def _date_audit(valor) -> str:
     return valor.isoformat() if valor else ''
+
+
+def _parse_data_pagamento_modal(raw: str):
+    raw = (raw or '').strip()
+    if not raw:
+        return None
+    parsed = parse_date(raw)
+    if parsed:
+        return parsed
+    try:
+        return datetime.strptime(raw, '%d/%m/%Y').date()
+    except ValueError:
+        return None
 
 
 def _snapshot_pagamento_nf(nf: PagamentoNotaFiscal) -> dict:
@@ -7935,7 +7948,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 erros.append('Conta bancária inválida para esta empresa.')
         for boleto in boletos_selecionados:
             data_raw = request.POST.get(f'data_pagamento_{boleto.pk}')
-            data_pagamento = parse_date(data_raw or '')
+            data_pagamento = _parse_data_pagamento_modal(data_raw)
             if not data_pagamento:
                 erros.append(f'Informe a data de pagamento do boleto {boleto.numero_doc or boleto.parcela}.')
             else:

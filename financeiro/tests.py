@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from empresas.models import Empresa
 from fornecedores.models import Fornecedor
+from usuarios.models import UsuarioEmpresa
 
 from .models import (
     AutoridadeTributaria,
@@ -389,3 +390,58 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
         self.assertIn('pagar-boleto/', content)
         self.assertIn(f'?boleto={boleto.pk}', content)
         self.assertIn('hx-target="#modal-content"', content)
+
+    def test_pagamento_multiplo_de_boletos_salva_e_redireciona(self):
+        UsuarioEmpresa.objects.create(
+            usuario=self.user,
+            empresa=self.empresa,
+            ativo=True,
+            financeiro=True,
+        )
+        self.client.force_login(self.user)
+        nf = self._criar_nf()
+        PagamentoNotaFiscalPagamento.objects.create(
+            pagamento_nf=nf,
+            tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
+            data=date(2026, 6, 1),
+            valor=Decimal('200.00'),
+        )
+        boleto_1 = BoletoPagamento.objects.create(
+            pagamento_nf=nf,
+            numero_doc='BOL-201',
+            parcela=1,
+            vencimento=date(2026, 6, 10),
+            valor=Decimal('100.00'),
+            status=BoletoPagamento.Status.EMITIDO,
+        )
+        boleto_2 = BoletoPagamento.objects.create(
+            pagamento_nf=nf,
+            numero_doc='BOL-202',
+            parcela=2,
+            vencimento=date(2026, 6, 20),
+            valor=Decimal('100.00'),
+            status=BoletoPagamento.Status.EMITIDO,
+        )
+
+        response = self.client.post(
+            f'/empresa/{self.empresa.pk}/financeiro/pagamentos/nf/{nf.pk}/pagar-boleto/',
+            {
+                'action': 'salvar_multiplos',
+                'boletos': [str(boleto_1.pk), str(boleto_2.pk)],
+                f'data_pagamento_{boleto_1.pk}': '10/06/2026',
+                f'data_pagamento_{boleto_2.pk}': '20/06/2026',
+            },
+            HTTP_HX_REQUEST='true',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['HX-Redirect'],
+            f'/empresa/{self.empresa.pk}/financeiro/pagamentos/nf/{nf.pk}/',
+        )
+        boleto_1.refresh_from_db()
+        boleto_2.refresh_from_db()
+        self.assertEqual(boleto_1.status, BoletoPagamento.Status.PAGO)
+        self.assertEqual(boleto_2.status, BoletoPagamento.Status.PAGO)
+        self.assertEqual(boleto_1.valor_pago, Decimal('100.00'))
+        self.assertEqual(boleto_2.valor_pago, Decimal('100.00'))

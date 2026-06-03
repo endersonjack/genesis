@@ -158,6 +158,7 @@
     var form = document.getElementById('boleto-pagamentos-multiplos-form');
     var button = document.getElementById('btnConfirmarPagamentosMultiplos');
     if (!form || !button) return;
+    var buttonDefaultHtml = button.innerHTML;
 
     function syncBoletoRows() {
         var hasSelected = false;
@@ -175,9 +176,28 @@
     });
     syncBoletoRows();
 
-    form.addEventListener('submit', function () {
+    function setSubmitting() {
         button.disabled = true;
         button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Confirmando...';
+    }
+
+    function resetSubmitting() {
+        button.innerHTML = buttonDefaultHtml;
+        syncBoletoRows();
+    }
+
+    form.addEventListener('htmx:beforeRequest', function () {
+        setSubmitting();
     });
+
+    form.addEventListener('htmx:afterRequest', function (event) {
+        if (!event.detail.successful) {
+            resetSubmitting();
+        }
+    });
+
+    form.addEventListener('htmx:sendError', resetSubmitting);
+    form.addEventListener('htmx:responseError', resetSubmitting);
+    form.addEventListener('htmx:timeout', resetSubmitting);
 })();
 </script>
