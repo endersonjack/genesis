@@ -26,11 +26,13 @@ class EmpresaAtivaMiddleware:
         request.usuario_mod_editar_empresas = False
         request.usuario_mod_rh = False
         request.usuario_mod_estoque = False
+        request.usuario_estoque_funcionarios_empresas_acessiveis = False
         request.usuario_mod_financeiro = False
         request.usuario_mod_clientes = False
         request.usuario_mod_fornecedores = False
         request.usuario_mod_locais = False
         request.usuario_mod_obras = False
+        request.usuario_obras_empresas_acessiveis = False
         request.usuario_mod_auditoria_total = False
         request.usuario_mod_auditoria_sua = False
         response = self.get_response(request)
@@ -67,11 +69,17 @@ class EmpresaAtivaMiddleware:
         request.usuario_mod_editar_empresas = bool(getattr(vinculo, 'editar_empresas', False))
         request.usuario_mod_rh = bool(getattr(vinculo, 'rh', False))
         request.usuario_mod_estoque = bool(getattr(vinculo, 'estoque', False))
+        request.usuario_estoque_funcionarios_empresas_acessiveis = bool(
+            getattr(vinculo, 'estoque_funcionarios_empresas_acessiveis', False)
+        )
         request.usuario_mod_financeiro = bool(getattr(vinculo, 'financeiro', False))
         request.usuario_mod_clientes = bool(getattr(vinculo, 'clientes', False))
         request.usuario_mod_fornecedores = bool(getattr(vinculo, 'fornecedores', False))
         request.usuario_mod_locais = bool(getattr(vinculo, 'locais', False))
         request.usuario_mod_obras = bool(getattr(vinculo, 'obras', False))
+        request.usuario_obras_empresas_acessiveis = bool(
+            getattr(vinculo, 'obras_empresas_acessiveis', False)
+        )
         request.usuario_mod_auditoria_total = bool(getattr(vinculo, 'auditoria_total', False))
         request.usuario_mod_auditoria_sua = bool(getattr(vinculo, 'auditoria_sua', False))
         # Mesmo critério do link «Apontamento» no sidebar (apontador / admin empresa / superuser).

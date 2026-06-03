@@ -14,11 +14,16 @@ from auditoria.models import RegistroAuditoria
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
-from rh.models import Funcionario
+from obras.scope import aplicar_obra_labels_em_objetos, obra_label
 
 from .item_views import (
     _enriquecer_logs_movimentacao,
     _MOVIMENTAR_LOG_OPERACOES_EXCLUIDAS,
+)
+from .funcionarios_scope import (
+    aplicar_autocomplete_labels,
+    funcionario_estoque_label,
+    funcionarios_estoque_queryset,
 )
 from .models import (
     Cautela,
@@ -155,11 +160,11 @@ def autocomplete_funcionarios_relatorio(request):
             {'items': [], 'hint': 'Digite pelo menos 2 caracteres.'},
         )
     items = list(
-        Funcionario.objects.filter(empresa=empresa)
-        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        funcionarios_estoque_queryset(request, empresa)
         .filter(nome__icontains=q)
         .order_by('nome')[:25]
     )
+    aplicar_autocomplete_labels(items, empresa)
     return render(
         request,
         'estoque/requisicoes/_autocomplete_lista.html',
@@ -259,11 +264,14 @@ def _relatorios_build_context(
     fferr_ferramenta_filter_id = None
     fferr_ferramenta_filter = None
     if func_id:
-        funcionario = Funcionario.objects.filter(
-            pk=func_id, empresa=empresa
+        funcionario = funcionarios_estoque_queryset(
+            request,
+            empresa,
+        ).filter(
+            pk=func_id,
         ).first()
         if not funcionario:
-            messages.warning(request, 'Funcionário não encontrado nesta empresa.')
+            messages.warning(request, 'Funcionário não encontrado no escopo permitido.')
             func_id = None
         else:
             rq = (
@@ -286,6 +294,7 @@ def _relatorios_build_context(
                 requisicoes_func_page = rp.page(1)
             except EmptyPage:
                 requisicoes_func_page = rp.page(rp.num_pages)
+            aplicar_obra_labels_em_objetos(requisicoes_func_page.object_list, empresa)
             requisicoes_func_query = _rel_page_query(
                 request, 'funcionario', 'req_func_page'
             )
@@ -308,6 +317,7 @@ def _relatorios_build_context(
                 cautelas_func_page = cp.page(1)
             except EmptyPage:
                 cautelas_func_page = cp.page(cp.num_pages)
+            aplicar_obra_labels_em_objetos(cautelas_func_page.object_list, empresa)
             cautelas_func_query = _rel_page_query(
                 request, 'funcionario', 'caut_func_page'
             )
@@ -362,6 +372,7 @@ def _relatorios_build_context(
                 freq_det_page = fdp.page(1)
             except EmptyPage:
                 freq_det_page = fdp.page(fdp.num_pages)
+            aplicar_obra_labels_em_objetos(freq_det_page.object_list, empresa)
             freq_det_query = _rel_page_query(
                 request, 'funcionario_requisicao', 'freq_det_page'
             )
@@ -452,6 +463,13 @@ def _relatorios_build_context(
                 func_ff_page = ffp.page(1)
             except EmptyPage:
                 func_ff_page = ffp.page(ffp.num_pages)
+            for row in func_ff_page.object_list:
+                cautela = row.get('cautela')
+                if cautela and cautela.obra:
+                    cautela.obra.autocomplete_label = obra_label(
+                        cautela.obra,
+                        empresa,
+                    )
             func_ff_query = _rel_page_query(
                 request, 'funcionario_ferramenta', 'fferr_page'
             )
@@ -580,6 +598,13 @@ def _relatorios_build_context(
                 ferramenta_linhas_page = fp.page(1)
             except EmptyPage:
                 ferramenta_linhas_page = fp.page(fp.num_pages)
+            for row in ferramenta_linhas_page.object_list:
+                cautela = row.get('cautela')
+                if cautela and cautela.obra:
+                    cautela.obra.autocomplete_label = obra_label(
+                        cautela.obra,
+                        empresa,
+                    )
             ferr_linhas_query = _rel_page_query(
                 request, 'ferramenta', 'ferr_linhas_page'
             )
@@ -724,6 +749,9 @@ def _relatorios_build_context(
         'rel_page': page_size,
         'rel_page_auditoria': REL_PAGE_AUDITORIA,
         'funcionario': funcionario,
+        'funcionario_label': funcionario_estoque_label(funcionario, empresa)
+        if funcionario
+        else '',
         'funcionario_id': func_id,
         'func_data_ini': request.GET.get('func_data_ini') or '',
         'func_data_fim': request.GET.get('func_data_fim') or '',

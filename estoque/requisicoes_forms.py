@@ -1,21 +1,34 @@
 from __future__ import annotations
 
 from django import forms
-from django.db.models import Q
 from django.forms import inlineformset_factory
-from django.utils import timezone
 
 from local.models import Local
-from obras.models import Obra
+from obras.scope import ObraEmpresaChoiceField, obras_ativas_queryset, obras_queryset
 from rh.models import Funcionario
 
+from .funcionarios_scope import (
+    EstoqueFuncionarioChoiceField,
+    funcionarios_estoque_queryset,
+)
 from .models import Item, RequisicaoEstoque, RequisicaoEstoqueItem
 
 
 class RequisicaoEstoqueForm(forms.ModelForm):
     # Inputs de busca (UI) + hidden com IDs (validação real)
+    solicitante = EstoqueFuncionarioChoiceField(
+        queryset=Funcionario.objects.none(),
+        widget=forms.HiddenInput(),
+        label='Solicitante',
+    )
     solicitante_nome = forms.CharField(required=False)
     local_nome = forms.CharField(required=False)
+    obra = ObraEmpresaChoiceField(
+        queryset=obras_queryset(None, None),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+        label='Obra',
+    )
 
     class Meta:
         model = RequisicaoEstoque
@@ -31,19 +44,18 @@ class RequisicaoEstoqueForm(forms.ModelForm):
             'obra': 'Obra',
         }
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(self, *args, empresa=None, request=None, **kwargs):
         self.empresa = empresa
         super().__init__(*args, **kwargs)
+        self.fields['solicitante'].empresa_ativa = empresa
         if empresa:
-            self.fields['solicitante'].queryset = Funcionario.objects.filter(
-                empresa=empresa
-            ).exclude(situacao_atual__in=['demitido', 'inativo']).order_by('nome')
+            self.fields['solicitante'].queryset = funcionarios_estoque_queryset(
+                request,
+                empresa,
+            )
             self.fields['local'].queryset = Local.objects.filter(empresa=empresa).order_by('nome')
 
-            hoje = timezone.localdate()
-            qs_ativas = Obra.objects.filter(empresa=empresa).filter(
-                Q(data_fim__isnull=True) | Q(data_fim__gte=hoje)
-            )
+            qs_ativas = obras_ativas_queryset(request, empresa)
             # Se houver uma obra selecionada no POST, garanta que ela esteja no queryset,
             # mesmo se não passar pelo filtro de "ativa" (evita o campo zerar e invalidar o form).
             obra_sel = None
@@ -56,7 +68,10 @@ class RequisicaoEstoqueForm(forms.ModelForm):
             except Exception:
                 obra_sel = None
             if obra_sel:
-                qs_ativas = (qs_ativas | Obra.objects.filter(empresa=empresa, pk=obra_sel)).distinct()
+                qs_ativas = (
+                    qs_ativas | obras_queryset(request, empresa).filter(pk=obra_sel)
+                ).distinct()
+            self.fields['obra'].empresa_ativa = empresa
             self.fields['obra'].queryset = qs_ativas.order_by('nome')
 
         self.fields['local'].required = False

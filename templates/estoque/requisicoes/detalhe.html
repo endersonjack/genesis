@@ -107,7 +107,7 @@
             </div>
             <div class="col-md-6">
                 <div class="text-muted text-uppercase" style="font-size:.65rem;">Obra</div>
-                <div>{{ requisicao.obra|default:"—" }}</div>
+                <div>{% if requisicao.obra %}{{ requisicao.obra.autocomplete_label|default:requisicao.obra }}{% else %}—{% endif %}</div>
             </div>
         </div>
     </div>

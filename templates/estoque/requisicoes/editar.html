@@ -49,7 +49,7 @@
                                autocomplete="off"
                                spellcheck="false"
                                placeholder="Digite..."
-                               value="{{ requisicao.solicitante.nome }}"
+                               value="{{ solicitante_label }}"
                                hx-get="{% url 'estoque:autocomplete_solicitantes' empresa_id=request.empresa_ativa.pk %}"
                                hx-trigger="input delay:280ms"
                                hx-target="#req-solicitante-resultados"

@@ -49,6 +49,14 @@ class UsuarioEmpresa(models.Model):
         default=False,
         help_text='Libera acesso ao módulo de Estoque nesta empresa.',
     )
+    estoque_funcionarios_empresas_acessiveis = models.BooleanField(
+        'Estoque: funcionários de empresas acessíveis',
+        default=False,
+        help_text=(
+            'No Estoque desta empresa, permite selecionar funcionários de outras '
+            'empresas ativas às quais o usuário também tem acesso.'
+        ),
+    )
     financeiro = models.BooleanField(
         'Financeiro',
         default=False,
@@ -73,6 +81,14 @@ class UsuarioEmpresa(models.Model):
         'Obras',
         default=True,
         help_text='Libera acesso ao cadastro de Obras nesta empresa.',
+    )
+    obras_empresas_acessiveis = models.BooleanField(
+        'Obras: empresas acessíveis',
+        default=False,
+        help_text=(
+            'No módulo Obras desta empresa, permite acessar obras de outras '
+            'empresas ativas às quais o usuário também tem acesso.'
+        ),
     )
     auditoria_total = models.BooleanField(
         'Auditoria total',
@@ -101,6 +117,10 @@ class UsuarioEmpresa(models.Model):
             self.rh = False
         if self.estoque is None:
             self.estoque = False
+        if self.estoque_funcionarios_empresas_acessiveis is None:
+            self.estoque_funcionarios_empresas_acessiveis = False
+        if not self.estoque:
+            self.estoque_funcionarios_empresas_acessiveis = False
         if self.financeiro is None:
             self.financeiro = False
         if self.clientes is None:
@@ -111,6 +131,10 @@ class UsuarioEmpresa(models.Model):
             self.locais = True
         if self.obras is None:
             self.obras = True
+        if self.obras_empresas_acessiveis is None:
+            self.obras_empresas_acessiveis = False
+        if not self.obras:
+            self.obras_empresas_acessiveis = False
         if self.auditoria_total is None:
             self.auditoria_total = False
         if self.auditoria_sua is None:

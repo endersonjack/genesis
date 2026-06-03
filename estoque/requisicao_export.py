@@ -248,7 +248,11 @@ def _story_via(
         u = requisicao.almoxarife
         alm = (u.nome_completo or u.username or '—') if u else '—'
     loc = str(requisicao.local) if requisicao.local_id else '—'
-    obr = str(requisicao.obra) if requisicao.obra_id else '—'
+    obr = (
+        getattr(requisicao.obra, 'autocomplete_label', None) or str(requisicao.obra)
+        if requisicao.obra_id
+        else '—'
+    )
 
     lab_st = ParagraphStyle(
         'req_lab',

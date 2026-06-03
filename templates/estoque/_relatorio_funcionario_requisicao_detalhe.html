@@ -128,7 +128,7 @@
                             </td>
                             <td class="small text-muted" style="max-width: 14rem;">
                                 {% if req.local %}<span class="d-block text-truncate" title="{{ req.local }}">{{ req.local }}</span>{% endif %}
-                                {% if req.obra %}<span class="d-block text-truncate" title="{{ req.obra }}">{{ req.obra }}</span>{% endif %}
+                                {% if req.obra %}<span class="d-block text-truncate" title="{{ req.obra.autocomplete_label|default:req.obra }}">{{ req.obra.autocomplete_label|default:req.obra }}</span>{% endif %}
                                 {% if not req.local and not req.obra %}—{% endif %}
                             </td>
                             <td class="pe-3 small text-nowrap">
@@ -142,7 +142,7 @@
                                 <div class="px-3 py-3 border-top">
                                     <div class="small text-muted border-bottom pb-2 mb-3">
                                         {% if req.local %}<span class="me-3"><strong>Local:</strong> {{ req.local }}</span>{% endif %}
-                                        {% if req.obra %}<span class="me-3"><strong>Obra:</strong> {{ req.obra }}</span>{% endif %}
+                                        {% if req.obra %}<span class="me-3"><strong>Obra:</strong> {{ req.obra.autocomplete_label|default:req.obra }}</span>{% endif %}
                                         {% if req.almoxarife %}
                                         <span class="me-3"><strong>Almoxarife:</strong> {{ req.almoxarife.nome_completo|default:req.almoxarife.username }}</span>
                                         {% endif %}

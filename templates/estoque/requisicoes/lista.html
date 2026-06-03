@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize static %}
+{% load humanize static l10n %}
 
 {% block title %}Requisições | Estoque | Genesis ERP{% endblock %}
 
@@ -111,7 +111,7 @@
                 <select name="solicitante" id="req-filtro-solicitante" class="form-select form-select-sm rounded-3 req-filtro-select js-req-filtro-auto">
                     <option value="">Todos</option>
                     {% for f in solicitantes_opts %}
-                        <option value="{{ f.pk }}"{% if solicitante_sel == f.pk %} selected{% endif %}>{{ f.nome }}</option>
+                        <option value="{{ f.pk|unlocalize }}"{% if solicitante_sel == f.pk %} selected{% endif %}>{{ f.autocomplete_label|default:f.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -129,7 +129,7 @@
                 <select name="obra" id="req-filtro-obra" class="form-select form-select-sm rounded-3 req-filtro-select req-filtro-select--obra js-req-filtro-auto w-100">
                     <option value="">Todas</option>
                     {% for ob in obras_opts %}
-                        <option value="{{ ob.pk }}"{% if obra_sel == ob.pk %} selected{% endif %}>{{ ob.nome }}</option>
+                        <option value="{{ ob.pk|unlocalize }}"{% if obra_sel == ob.pk %} selected{% endif %}>{{ ob.autocomplete_label|default:ob.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -191,7 +191,7 @@
                         {% endif %}
                         <td class="fw-semibold">{{ r.solicitante }}</td>
                         <td>{{ r.local|default:"—" }}</td>
-                        <td>{{ r.obra|default:"—" }}</td>
+                        <td>{% if r.obra %}{{ r.obra.autocomplete_label|default:r.obra }}{% else %}—{% endif %}</td>
                         <td>
                             {% if r.almoxarife %}
                                 {{ r.almoxarife.nome_completo|default:r.almoxarife.username }}
@@ -288,4 +288,3 @@
 </script>
 
 {% endblock %}
-

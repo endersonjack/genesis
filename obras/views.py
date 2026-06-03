@@ -15,7 +15,7 @@ from core.cadastro_copia import (
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from .forms import ObraForm
-from .models import Obra
+from .scope import obra_empresa_label, obras_queryset
 
 
 def _empresa(request):
@@ -33,7 +33,7 @@ def lista(request):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
-    itens = Obra.objects.filter(empresa=empresa).select_related('contratante')
+    itens = obras_queryset(request, empresa)
     busca_q = (request.GET.get('q') or '').strip()
     if busca_q:
         digitos = ''.join(c for c in busca_q if c.isdigit())
@@ -47,7 +47,6 @@ def lista(request):
         if digitos:
             filtro |= Q(cno__icontains=digitos)
         itens = itens.filter(filtro)
-    itens = itens.order_by('nome')
     return render(
         request,
         'obras/lista.html',
@@ -55,6 +54,11 @@ def lista(request):
             'page_title': 'Obras',
             'obras': itens,
             'busca_q': busca_q,
+            'mostra_empresa_obras': getattr(
+                request,
+                'usuario_obras_empresas_acessiveis',
+                False,
+            ),
         },
     )
 
@@ -67,9 +71,8 @@ def detalhe(request, pk):
         return redirect('selecionar_empresa')
 
     item = get_object_or_404(
-        Obra.objects.select_related('contratante'),
+        obras_queryset(request, empresa),
         pk=pk,
-        empresa=empresa,
     )
     return render(
         request,
@@ -77,6 +80,7 @@ def detalhe(request, pk):
         {
             'page_title': item.nome,
             'obra': item,
+            'obra_empresa_label': obra_empresa_label(item, empresa),
         },
     )
 
@@ -92,7 +96,7 @@ def modal_editar(request, pk):
     if not empresa:
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
-    item = get_object_or_404(Obra, pk=pk, empresa=empresa)
+    item = get_object_or_404(obras_queryset(request, empresa), pk=pk)
     return _modal_obra_form(request, item=item)
 
 
@@ -103,7 +107,7 @@ def modal_excluir_confirm(request, pk):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
-    item = get_object_or_404(Obra, pk=pk, empresa=empresa)
+    item = get_object_or_404(obras_queryset(request, empresa), pk=pk)
 
     if not _is_htmx(request):
         return redirect_empresa(request, 'obras:excluir', pk=pk)
@@ -127,7 +131,9 @@ def _modal_obra_form(request, item):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
-    if not empresa.clientes.exists():
+    form_empresa = item.empresa if item is not None else empresa
+
+    if item is None and not empresa.clientes.exists():
         messages.warning(
             request,
             'Cadastre ao menos um cliente antes de registrar uma obra.',
@@ -146,21 +152,24 @@ def _modal_obra_form(request, item):
         titulo_modal = 'Nova obra'
     else:
         post_url = reverse_empresa(request, 'obras:modal_editar', kwargs={'pk': item.pk})
+        empresa_label = obra_empresa_label(item, empresa)
         titulo_modal = f'Editar — {item.nome}'
+        if empresa_label:
+            titulo_modal = f'{titulo_modal} · {empresa_label}'
 
     if request.method == 'POST':
         if item is not None:
             form = ObraForm(
                 request.POST,
                 instance=item,
-                empresa=empresa,
+                empresa=form_empresa,
                 can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
                 or request.user.is_superuser,
             )
         else:
             form = ObraForm(
                 request.POST,
-                empresa=empresa,
+                empresa=form_empresa,
                 can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
                 or request.user.is_superuser,
             )
@@ -192,13 +201,13 @@ def _modal_obra_form(request, item):
         if item is not None:
             form = ObraForm(
                 instance=item,
-                empresa=empresa,
+                empresa=form_empresa,
                 can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
                 or request.user.is_superuser,
             )
         else:
             form = ObraForm(
-                empresa=empresa,
+                empresa=form_empresa,
                 can_edit_valor=getattr(request, 'usuario_admin_empresa', False)
                 or request.user.is_superuser,
             )
@@ -232,7 +241,7 @@ def excluir(request, pk):
         messages.error(request, 'Selecione uma empresa ativa.')
         return redirect('selecionar_empresa')
 
-    item = get_object_or_404(Obra, pk=pk, empresa=empresa)
+    item = get_object_or_404(obras_queryset(request, empresa), pk=pk)
     if request.method == 'POST':
         nome = item.nome
         item.delete()
@@ -260,8 +269,8 @@ def excluir(request, pk):
 
 
 def _ctx_modal_copiar_obra(request, item, pk, form=None, erro_copia=None):
-    empresa = _empresa(request)
-    qs_dest = empresas_destino_para_copia(request.user, empresa)
+    empresa_origem = item.empresa
+    qs_dest = empresas_destino_para_copia(request.user, empresa_origem)
     sem_destino = not qs_dest.exists()
     pode_ver_valor = getattr(request, 'usuario_admin_empresa', False) or request.user.is_superuser
     valor_txt = '—'
@@ -277,7 +286,7 @@ def _ctx_modal_copiar_obra(request, item, pk, form=None, erro_copia=None):
         resumo.append({'label': 'Valor', 'valor': valor_txt})
     return {
         'cadastro_label': 'Obra',
-        'empresa_origem': empresa,
+        'empresa_origem': empresa_origem,
         'resumo_linhas': resumo,
         'copiar_post_url': reverse_empresa(request, 'obras:copiar', kwargs={'pk': pk}),
         'form': form,
@@ -297,11 +306,14 @@ def obra_modal_copiar(request, pk):
         return redirect_empresa(request, 'obras:detalhe', pk=pk)
 
     item = get_object_or_404(
-        Obra.objects.select_related('contratante'), pk=pk, empresa=empresa
+        obras_queryset(request, empresa), pk=pk
     )
     form = None
-    if empresas_destino_para_copia(request.user, empresa).exists():
-        form = EscolherEmpresaDestinoForm(user=request.user, empresa_origem=empresa)
+    if empresas_destino_para_copia(request.user, item.empresa).exists():
+        form = EscolherEmpresaDestinoForm(
+            user=request.user,
+            empresa_origem=item.empresa,
+        )
     return render(
         request,
         'includes/cadastro_copiar_modal_inner.html',
@@ -320,12 +332,12 @@ def obra_copiar_executar(request, pk):
         return redirect_empresa(request, 'obras:detalhe', pk=pk)
 
     item = get_object_or_404(
-        Obra.objects.select_related('contratante'), pk=pk, empresa=empresa
+        obras_queryset(request, empresa), pk=pk
     )
     form = EscolherEmpresaDestinoForm(
         request.POST,
         user=request.user,
-        empresa_origem=empresa,
+        empresa_origem=item.empresa,
     )
     if not form.is_valid():
         return render(

@@ -131,7 +131,7 @@
                         {% endif %}
                     </dd>
                     <dt class="col-sm-5 text-muted small fw-semibold">Obra</dt>
-                    <dd class="col-sm-7 mb-3">{% if cautela.obra %}{{ cautela.obra }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dd class="col-sm-7 mb-3">{% if cautela.obra %}{{ cautela.obra.autocomplete_label|default:cautela.obra }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
                     <dt class="col-sm-5 text-muted small fw-semibold">Local</dt>
                     <dd class="col-sm-7 mb-3">{% if cautela.local %}{{ cautela.local }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
                     <dt class="col-sm-5 text-muted small fw-semibold">Almoxarife</dt>

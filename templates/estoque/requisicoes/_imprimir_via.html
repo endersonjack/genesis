@@ -28,7 +28,7 @@
             </tr>
             <tr>
                 <td class="lab">OBRA</td>
-                <td class="val val-span" colspan="3">{{ requisicao.obra|default:"—" }}</td>
+                <td class="val val-span" colspan="3">{% if requisicao.obra %}{{ requisicao.obra.autocomplete_label|default:requisicao.obra }}{% else %}—{% endif %}</td>
             </tr>
             <tr>
                 <td class="lab">ALMOXARIFE</td>

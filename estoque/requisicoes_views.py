@@ -19,9 +19,18 @@ from core.urlutils import is_safe_internal_path, redirect_empresa, reverse_empre
 
 from .item_views import _empresa  # reaproveita helper do módulo
 from local.models import Local
-from obras.models import Obra
-from rh.models import Funcionario
+from obras.scope import (
+    aplicar_obra_labels,
+    aplicar_obra_labels_em_objetos,
+    obra_label,
+    obras_ativas_queryset,
+)
 
+from .funcionarios_scope import (
+    aplicar_autocomplete_labels,
+    funcionario_estoque_label,
+    funcionarios_estoque_queryset,
+)
 from .models import CategoriaItem, Item, RequisicaoEstoque, RequisicaoEstoqueItem
 from .requisicao_export import build_requisicao_pdf_bytes
 from .requisicoes_forms import (
@@ -185,22 +194,17 @@ def lista_requisicoes(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
+    aplicar_obra_labels_em_objetos(page_obj.object_list, empresa)
 
     qparams = request.GET.copy()
     qparams.pop('page', None)
     query_sem_page = qparams.urlencode()
 
-    solicitantes_opts = (
-        Funcionario.objects.filter(empresa=empresa)
-        .exclude(situacao_atual__in=['demitido', 'inativo'])
-        .order_by('nome')
-    )
+    solicitantes_opts = list(funcionarios_estoque_queryset(request, empresa))
+    aplicar_autocomplete_labels(solicitantes_opts, empresa)
     locais_opts = Local.objects.filter(empresa=empresa).order_by('nome')
-    obras_opts = (
-        Obra.objects.filter(empresa=empresa)
-        .filter(Q(data_fim__isnull=True) | Q(data_fim__gte=hoje))
-        .order_by('nome')
-    )
+    obras_opts = list(obras_ativas_queryset(request, empresa).order_by('nome'))
+    aplicar_obra_labels(obras_opts, empresa)
 
     buscar_anteriores_query = urlencode(
         {
@@ -245,6 +249,8 @@ def modal_requisicao_itens(request, pk: int):
     if not _requisicoes_lista_inclui_canceladas(request):
         req_qs = req_qs.filter(status=RequisicaoEstoque.Status.ATIVA)
     req = get_object_or_404(req_qs, pk=pk, empresa=empresa)
+    if req.obra:
+        req.obra.autocomplete_label = obra_label(req.obra, empresa)
     itens = list(
         req.itens.select_related('item', 'item__unidade_medida')
         .prefetch_related('item__imagens')
@@ -279,6 +285,8 @@ def detalhe_requisicao(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if req.obra:
+        req.obra.autocomplete_label = obra_label(req.obra, empresa)
     itens = list(req.itens.all())
     historico_regs = list(_historico_requisicao_qs(empresa, req.pk)[:150])
     historico_requisicao = [
@@ -322,7 +330,12 @@ def editar_requisicao(request, pk: int):
     clear_key = f'genesis:estoque:editar_requisicao:{req.pk}:clear_next'
 
     if request.method == 'POST':
-        form = RequisicaoEstoqueForm(request.POST, instance=req, empresa=empresa)
+        form = RequisicaoEstoqueForm(
+            request.POST,
+            instance=req,
+            empresa=empresa,
+            request=request,
+        )
         formset = RequisicaoEstoqueItemFormSetEdit(
             request.POST,
             instance=req,
@@ -488,7 +501,7 @@ def editar_requisicao(request, pk: int):
                         messages.error(request, 'Não foi possível salvar a requisição.')
 
     else:
-        form = RequisicaoEstoqueForm(instance=req, empresa=empresa)
+        form = RequisicaoEstoqueForm(instance=req, empresa=empresa, request=request)
         formset = RequisicaoEstoqueItemFormSetEdit(instance=req, prefix='itens')
         _bind_formset_empresa(formset, empresa)
 
@@ -498,6 +511,7 @@ def editar_requisicao(request, pk: int):
         {
             'page_title': f'Editar requisição #{req.pk}',
             'requisicao': req,
+            'solicitante_label': funcionario_estoque_label(req.solicitante, empresa),
             'form': form,
             'formset': formset,
             'requisicao_draft_key': draft_key,
@@ -525,6 +539,8 @@ def imprimir_requisicao(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if req.obra:
+        req.obra.autocomplete_label = obra_label(req.obra, empresa)
     itens = list(
         req.itens.select_related('item', 'item__unidade_medida')
         .prefetch_related('item__imagens')
@@ -555,6 +571,8 @@ def imprimir_requisicao_pdf(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if req.obra:
+        req.obra.autocomplete_label = obra_label(req.obra, empresa)
     itens = list(
         req.itens.select_related('item', 'item__unidade_medida')
         .prefetch_related('item__imagens')
@@ -657,7 +675,7 @@ def nova_requisicao(request):
     almoxarife_label = (request.user.nome_completo or request.user.username)
 
     if request.method == 'POST':
-        form = RequisicaoEstoqueForm(request.POST, empresa=empresa)
+        form = RequisicaoEstoqueForm(request.POST, empresa=empresa, request=request)
         formset = RequisicaoEstoqueItemFormSet(request.POST, prefix='itens')
         _bind_formset_empresa(formset, empresa)
         if form.is_valid():
@@ -765,7 +783,7 @@ def nova_requisicao(request):
         else:
             messages.error(request, 'Revise os campos e itens informados.')
     else:
-        form = RequisicaoEstoqueForm(empresa=empresa)
+        form = RequisicaoEstoqueForm(empresa=empresa, request=request)
         formset = RequisicaoEstoqueItemFormSet(prefix='itens')
         _bind_formset_empresa(formset, empresa)
 
@@ -802,11 +820,11 @@ def autocomplete_solicitantes(request):
             {'items': [], 'hint': 'Digite pelo menos 2 caracteres.'},
         )
     items = list(
-        Funcionario.objects.filter(empresa=empresa)
-        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        funcionarios_estoque_queryset(request, empresa)
         .filter(nome__icontains=q)
         .order_by('nome')[:25]
     )
+    aplicar_autocomplete_labels(items, empresa)
     return render(
         request,
         'estoque/requisicoes/_autocomplete_lista.html',
@@ -855,12 +873,12 @@ def autocomplete_obras(request):
             'estoque/requisicoes/_autocomplete_lista.html',
             {'items': [], 'hint': 'Digite pelo menos 2 caracteres.'},
         )
-    hoje = timezone.localdate()
     items = list(
-        Obra.objects.filter(empresa=empresa, nome__icontains=q)
-        .filter(Q(data_fim__isnull=True) | Q(data_fim__gte=hoje))
+        obras_ativas_queryset(request, empresa)
+        .filter(nome__icontains=q)
         .order_by('nome')[:25]
     )
+    aplicar_obra_labels(items, empresa)
     return render(
         request,
         'estoque/requisicoes/_autocomplete_lista.html',
@@ -1196,4 +1214,3 @@ def devolver_item_requisicao(request, pk: int):
     if retorno_next:
         return _htmx_redirect(resp, retorno_next)
     return resp
-

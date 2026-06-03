@@ -48,6 +48,9 @@
                 <thead class="table-light">
                     <tr>
                         <th>Obra</th>
+                        {% if mostra_empresa_obras %}
+                            <th>Empresa</th>
+                        {% endif %}
                         <th>Contratante</th>
                         <th>Início</th>
                         <th>Fim</th>
@@ -62,6 +65,9 @@
                         hx-target="#obraModalSwapTarget"
                         hx-swap="innerHTML">
                         <td class="fw-semibold">{{ o.nome }}</td>
+                        {% if mostra_empresa_obras %}
+                            <td class="text-muted">{{ o.empresa.nome_fantasia|default:o.empresa.razao_social }}</td>
+                        {% endif %}
                         <td>{{ o.contratante.nome }}</td>
                         <td class="text-nowrap">{{ o.data_inicio|date:"d/m/Y"|default:"—" }}</td>
                         <td class="text-nowrap">{{ o.data_fim|date:"d/m/Y"|default:"—" }}</td>

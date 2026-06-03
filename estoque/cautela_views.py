@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 
 from auditoria.registry import registrar_auditoria
 from core.urlutils import redirect_empresa, reverse_empresa
+from obras.scope import aplicar_obra_labels_em_objetos, obra_label
 
 from .cautela_forms import (
     CautelaForm,
@@ -222,6 +223,8 @@ def cautela_ferramentas(request):
         .annotate(quantidade_ferramentas=Count('ferramentas', distinct=True))
         .order_by('-criado_em')
     )
+    cautelas = list(cautelas)
+    aplicar_obra_labels_em_objetos(cautelas, empresa)
 
     return render(
         request,
@@ -271,6 +274,8 @@ def detalhe_cautela(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if cautela.obra:
+        cautela.obra.autocomplete_label = obra_label(cautela.obra, empresa)
     pode_registrar_devolucao = (
         cautela.situacao != Cautela.Situacao.INATIVA
         and cautela.entrega != Cautela.Entrega.TOTAL
@@ -467,12 +472,15 @@ def editar_cautela_staff(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if cautela.obra:
+        cautela.obra.autocomplete_label = obra_label(cautela.obra, empresa)
 
     if request.method == 'POST':
         form = CautelaStaffEditForm(
             request.POST,
             instance=cautela,
             empresa=empresa,
+            request=request,
         )
         if form.is_valid():
             with transaction.atomic():
@@ -505,7 +513,7 @@ def editar_cautela_staff(request, pk: int):
             )
         messages.error(request, 'Corrija os erros abaixo.')
     else:
-        form = CautelaStaffEditForm(instance=cautela, empresa=empresa)
+        form = CautelaStaffEditForm(instance=cautela, empresa=empresa, request=request)
 
     return render(
         request,
@@ -577,7 +585,7 @@ def nova_cautela(request):
         _excluir_rascunho_nova_cautela(empresa, request.user)
 
     if request.method == 'POST':
-        form = CautelaForm(request.POST, empresa=empresa)
+        form = CautelaForm(request.POST, empresa=empresa, request=request)
         raw_ids = request.POST.getlist('ferramentas_ids')
         ids: list[int] = []
         for r in raw_ids:
@@ -660,7 +668,7 @@ def nova_cautela(request):
         else:
             messages.error(request, 'Corrija os erros abaixo.')
     else:
-        form = CautelaForm(empresa=empresa)
+        form = CautelaForm(empresa=empresa, request=request)
 
     almoxarife_label = request.user.nome_completo or request.user.username
 
@@ -817,6 +825,8 @@ def modal_entrega_cautela(request, pk: int):
         pk=pk,
         empresa=empresa,
     )
+    if cautela.obra:
+        cautela.obra.autocomplete_label = obra_label(cautela.obra, empresa)
 
     if not _is_htmx(request):
         return redirect_empresa(

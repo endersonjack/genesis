@@ -7,6 +7,9 @@
     <div>
         <h2 class="fw-bold mb-1">{{ obra.nome }}</h2>
         <p class="text-muted mb-0">Contratante: {{ obra.contratante.nome }}</p>
+        {% if obra_empresa_label %}
+            <p class="text-muted small mb-0">Empresa: {{ obra_empresa_label }}</p>
+        {% endif %}
     </div>
     <div class="d-flex flex-wrap gap-2">
         <button type="button"

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.utils import timezone
 
 from local.models import Local
-from obras.models import Obra
+from obras.scope import ObraEmpresaChoiceField, obras_ativas_queryset, obras_queryset
 from rh.models import Funcionario
 
+from .funcionarios_scope import (
+    EstoqueFuncionarioChoiceField,
+    funcionarios_estoque_queryset,
+)
 from .models import (
     Cautela,
     Entrega_Cautela,
@@ -19,6 +21,18 @@ from .models import (
 
 class CautelaStaffEditForm(forms.ModelForm):
     """Edição administrativa (is_staff): inclui situação e andamento da entrega."""
+
+    funcionario = EstoqueFuncionarioChoiceField(
+        queryset=Funcionario.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+        label='Funcionário',
+    )
+    obra = ObraEmpresaChoiceField(
+        queryset=obras_queryset(None, None),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+        label='Obra',
+    )
 
     class Meta:
         model = Cautela
@@ -61,25 +75,27 @@ class CautelaStaffEditForm(forms.ModelForm):
             'observacoes': 'Observações',
         }
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(self, *args, empresa=None, request=None, **kwargs):
         self.empresa = empresa
         super().__init__(*args, **kwargs)
+        self.fields['funcionario'].empresa_ativa = empresa
         # HTML5 type="date" só exibe valor em ISO; sem format/input_formats o Django
         # formata com DATE_INPUT_FORMATS (ex.: dd/mm/yyyy) e o campo aparece vazio.
         _date_in = ['%Y-%m-%d', '%d/%m/%Y']
         self.fields['data_inicio_cautela'].input_formats = _date_in
         self.fields['data_fim'].input_formats = _date_in
         if empresa:
-            self.fields['funcionario'].queryset = Funcionario.objects.filter(
-                empresa=empresa
-            ).order_by('nome')
+            self.fields['funcionario'].queryset = funcionarios_estoque_queryset(
+                request,
+                empresa,
+                somente_ativos=False,
+            )
             self.fields['local'].queryset = Local.objects.filter(
                 empresa=empresa
             ).order_by('nome')
             self.fields['local'].required = False
-            self.fields['obra'].queryset = Obra.objects.filter(empresa=empresa).order_by(
-                'nome'
-            )
+            self.fields['obra'].empresa_ativa = empresa
+            self.fields['obra'].queryset = obras_queryset(request, empresa).order_by('nome')
             self.fields['obra'].required = False
 
     def clean(self):
@@ -94,6 +110,18 @@ class CautelaStaffEditForm(forms.ModelForm):
 
 
 class CautelaForm(forms.ModelForm):
+    funcionario = EstoqueFuncionarioChoiceField(
+        queryset=Funcionario.objects.none(),
+        widget=forms.HiddenInput(),
+        label='Funcionário solicitante',
+    )
+    obra = ObraEmpresaChoiceField(
+        queryset=obras_queryset(None, None),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+        label='Obra',
+    )
+
     class Meta:
         model = Cautela
         fields = (
@@ -129,27 +157,27 @@ class CautelaForm(forms.ModelForm):
             'observacoes': 'Obs.',
         }
 
-    def __init__(self, *args, empresa=None, **kwargs):
+    def __init__(self, *args, empresa=None, request=None, **kwargs):
         self.empresa = empresa
         super().__init__(*args, **kwargs)
+        self.fields['funcionario'].empresa_ativa = empresa
 
         _date_in = ['%Y-%m-%d', '%d/%m/%Y']
         self.fields['data_inicio_cautela'].input_formats = _date_in
         self.fields['data_fim'].input_formats = _date_in
 
         if empresa:
-            hoje = timezone.localdate()
-            self.fields['funcionario'].queryset = Funcionario.objects.filter(
-                empresa=empresa
-            ).exclude(situacao_atual__in=['demitido', 'inativo']).order_by('nome')
+            self.fields['funcionario'].queryset = funcionarios_estoque_queryset(
+                request,
+                empresa,
+            )
 
             self.fields['local'].queryset = Local.objects.filter(empresa=empresa).order_by(
                 'nome'
             )
             # Considera "ativa" igual ao padrão do módulo de requisições.
-            qs_obras = Obra.objects.filter(empresa=empresa).filter(
-                Q(data_fim__isnull=True) | Q(data_fim__gte=hoje)
-            )
+            qs_obras = obras_ativas_queryset(request, empresa)
+            self.fields['obra'].empresa_ativa = empresa
             self.fields['obra'].queryset = qs_obras.order_by('nome')
 
     def clean(self):

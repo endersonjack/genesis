@@ -47,7 +47,7 @@
                                 </td>
                                 <td>
                                     <div class="fw-semibold">
-                                        {% if c.obra %}{{ c.obra }}{% else %}<span class="text-muted">—</span>{% endif %}
+                                        {% if c.obra %}{{ c.obra.autocomplete_label|default:c.obra }}{% else %}<span class="text-muted">—</span>{% endif %}
                                     </div>
                                     <div class="small text-muted">
                                         {% if c.local %}Local: {{ c.local }}{% else %}Local: —{% endif %}

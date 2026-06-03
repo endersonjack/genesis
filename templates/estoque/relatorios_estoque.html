@@ -256,7 +256,7 @@
                                            class="form-control form-control-sm rounded-3"
                                            autocomplete="off"
                                            placeholder="Digite para buscar…"
-                                           value="{% if funcionario %}{{ funcionario }}{% endif %}"
+                                           value="{{ funcionario_label|default:'' }}"
                                            hx-get="{{ funcionario_ac_url }}"
                                            hx-trigger="input delay:280ms"
                                            hx-target="#rel-func-resultados"
