@@ -85,14 +85,6 @@
     <input type="hidden" name="action" value="salvar_multiplos">
 
     <div class="modal-body overflow-auto flex-grow-1 py-3">
-        {% if erros %}
-        <div class="alert alert-danger rounded-3 small">
-            {% for erro in erros %}
-                <div>{{ erro }}</div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
         <div class="rounded-4 border bg-light p-3 mb-3">
             <label class="form-label fw-semibold small mb-1" for="conta_bancaria_multiplos">Pagamento realizado em</label>
             <select class="form-select rounded-3" id="conta_bancaria_multiplos" name="conta_bancaria">
@@ -143,7 +135,14 @@
         </div>
     </div>
 
-    <div class="modal-footer flex-shrink-0 bg-white justify-content-end">
+    <div class="modal-footer flex-shrink-0 bg-white justify-content-between gap-3">
+        <div class="text-danger small fw-semibold flex-grow-1">
+            {% if erros %}
+                {% for erro in erros %}
+                    <div>{{ erro }}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
         <div class="d-flex gap-2">
             <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary" id="btnConfirmarPagamentosMultiplos">
