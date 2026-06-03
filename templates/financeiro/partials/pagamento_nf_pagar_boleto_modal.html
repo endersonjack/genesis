@@ -49,7 +49,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+    hx-post="{{ post_url }}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
     data-no-global-loading

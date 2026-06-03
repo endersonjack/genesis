@@ -263,8 +263,8 @@
             <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
         {% if pode_pagar_boletos %}
-        <button
-            type="button"
+        <a
+            href="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
             class="financeiro-top-btn financeiro-top-btn-primary"
             hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
             hx-target="#modal-content"
@@ -273,7 +273,13 @@
             data-bs-toggle="modal"
             data-bs-target="#modalPadrao">
             <i class="bi bi-cash-coin me-1"></i> Pagar
-        </button>
+        </a>
+        {% elif resumo_pagamento.valor_em_aberto %}
+        <a
+            href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento"
+            class="financeiro-top-btn financeiro-top-btn-primary">
+            <i class="bi bi-cash-coin me-1"></i> Pagar
+        </a>
         {% endif %}
         <a href="{% url 'financeiro:pagamento_nf_novo' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Nova Nota Fiscal
@@ -312,8 +318,8 @@
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                    <button
-                        type="button"
+                    <a
+                        href="{% url 'financeiro:pagamento_nf_excluir' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
                         class="dropdown-item text-danger"
                         hx-get="{% url 'financeiro:pagamento_nf_excluir' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
                         hx-target="#modal-content"
@@ -322,7 +328,7 @@
                         data-bs-toggle="modal"
                         data-bs-target="#modalPadrao">
                         <i class="bi bi-trash me-2"></i> Excluir
-                    </button>
+                    </a>
                 </li>
             </ul>
         </div>
@@ -407,8 +413,8 @@
                     </div>
                     {% if resumo_pagamento.valor_em_aberto %}
                     {% if pode_pagar_boletos %}
-                    <button
-                        type="button"
+                    <a
+                        href="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?multi=1"
                         class="financeiro-top-btn financeiro-summary-pay-action"
                         hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?multi=1"
                         hx-target="#modal-content"
@@ -417,7 +423,7 @@
                         data-bs-toggle="modal"
                         data-bs-target="#modalPadrao">
                         <i class="bi bi-cash-coin"></i> Pagar
-                    </button>
+                    </a>
                     {% else %}
                     <a href="{% url 'financeiro:pagamento_nf_editar' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?tab=pagamento" class="financeiro-top-btn financeiro-summary-pay-action">
                         <i class="bi bi-cash-coin"></i> Pagar
@@ -574,8 +580,8 @@
                             <td class="small">{% if b.valor_pago %}{% if b.conta_bancaria_id %}{{ b.conta_bancaria.nome }} — {{ b.conta_bancaria.banco }}{% else %}DINHEIRO{% endif %}{% else %}—{% endif %}</td>
                             <td class="text-end pe-4 small">
                                 {% if b.status == 'pago' %}
-                                <button
-                                    type="button"
+                                <a
+                                    href="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
                                     class="btn btn-sm btn-outline-primary rounded-3 fw-semibold"
                                     hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
                                     hx-target="#modal-content"
@@ -586,10 +592,10 @@
                                     title="Editar pagamento do boleto"
                                     aria-label="Editar pagamento do boleto {{ b.numero_doc }}">
                                     <i class="bi bi-pencil-square"></i>
-                                </button>
+                                </a>
                                 {% elif b.status != 'cancelado' %}
-                                <button
-                                    type="button"
+                                <a
+                                    href="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
                                     class="btn btn-sm btn-success rounded-3 fw-semibold"
                                     hx-get="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}?boleto={{ b.pk }}"
                                     hx-target="#modal-content"
@@ -600,7 +606,7 @@
                                     title="Pagar boleto"
                                     aria-label="Pagar boleto {{ b.numero_doc }}">
                                     <i class="bi bi-cash-coin"></i>
-                                </button>
+                                </a>
                                 {% else %}
                                 —
                                 {% endif %}

@@ -19,6 +19,7 @@ from .models import (
     PagamentoImposto,
     PagamentoImpostoItem,
     PagamentoNotaFiscal,
+    PagamentoNotaFiscalPagamento,
     PagamentoNotaFiscalItem,
 )
 from .views import (
@@ -27,6 +28,7 @@ from .views import (
     relatorios,
     relatorio_fornecedor_pdf,
     _status_busca_pagamento_nf,
+    pagamento_nf_detalhe,
     pagamento_nf_fornecedor_info,
 )
 
@@ -305,3 +307,85 @@ class PagamentoNotaFiscalFornecedorInfoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(response.content.startswith(b'%PDF'))
+
+
+class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = get_user_model().objects.create_user(
+            username='financeiro-acoes',
+            password='senha-teste',
+        )
+        self.empresa = Empresa.objects.create(
+            razao_social='Empresa Ações',
+            nome_fantasia='Empresa Ações',
+            cnpj='33.333.333/0001-33',
+        )
+        self.caixa = Caixa.objects.get(
+            empresa=self.empresa,
+            tipo=Caixa.Tipo.GERAL,
+        )
+        self.fornecedor = Fornecedor.objects.create(
+            empresa=self.empresa,
+            tipo='PJ',
+            cpf_cnpj='44444444000144',
+            nome='Fornecedor Ações',
+        )
+
+    def _request(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.empresa_ativa = self.empresa
+        return request
+
+    def _criar_nf(self, numero='101'):
+        nf = PagamentoNotaFiscal.objects.create(
+            empresa=self.empresa,
+            fornecedor=self.fornecedor,
+            numero_nf=numero,
+            data_emissao=date(2026, 6, 1),
+            caixa=self.caixa,
+        )
+        PagamentoNotaFiscalItem.objects.create(
+            pagamento_nf=nf,
+            tipo=PagamentoNotaFiscalItem.TipoItem.PRODUTO,
+            descricao='Material',
+            quantidade=Decimal('1'),
+            valor_unitario=Decimal('100.00'),
+            valor_total=Decimal('100.00'),
+            caixa=self.caixa,
+        )
+        return nf
+
+    def test_nf_sem_boleto_mostra_pagar_para_aba_pagamento(self):
+        nf = self._criar_nf()
+
+        response = pagamento_nf_detalhe(self._request(), nf.pk)
+
+        content = response.content.decode()
+        self.assertIn('?tab=pagamento', content)
+        self.assertNotIn('pagar-boleto', content)
+
+    def test_nf_com_boleto_aberto_mostra_acoes_de_modal_para_boleto(self):
+        nf = self._criar_nf()
+        PagamentoNotaFiscalPagamento.objects.create(
+            pagamento_nf=nf,
+            tipo=PagamentoNotaFiscalPagamento.TipoPagamento.BOLETOS,
+            data=date(2026, 6, 1),
+            valor=Decimal('100.00'),
+        )
+        boleto = BoletoPagamento.objects.create(
+            pagamento_nf=nf,
+            numero_doc='BOL-101',
+            parcela=1,
+            vencimento=date(2026, 6, 10),
+            valor=Decimal('100.00'),
+            status=BoletoPagamento.Status.EMITIDO,
+        )
+
+        response = pagamento_nf_detalhe(self._request(), nf.pk)
+
+        content = response.content.decode()
+        self.assertIn('pagar-boleto/', content)
+        self.assertIn(f'?boleto={boleto.pk}', content)
+        self.assertIn('hx-target="#modal-content"', content)

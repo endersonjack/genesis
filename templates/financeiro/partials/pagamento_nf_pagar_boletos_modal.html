@@ -74,7 +74,7 @@
 
 <form
     method="post"
-    hx-post="{% url 'financeiro:pagamento_nf_pagar_boleto' empresa_id=request.empresa_ativa.pk pk=nf.pk %}"
+    hx-post="{{ post_url }}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
     data-no-global-loading
@@ -98,7 +98,7 @@
             <select class="form-select rounded-3" id="conta_bancaria_multiplos" name="conta_bancaria">
                 <option value="">DINHEIRO</option>
                 {% for conta in contas_bancarias_pagamento %}
-                <option value="{{ conta.pk }}">{{ conta.nome }} — {{ conta.banco }}</option>
+                <option value="{{ conta.pk }}"{% if selected_conta_bancaria_id == conta.pk|stringformat:"s" %} selected{% endif %}>{{ conta.nome }} — {{ conta.banco }}</option>
                 {% endfor %}
             </select>
         </div>

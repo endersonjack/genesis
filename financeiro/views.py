@@ -7873,6 +7873,11 @@ def pagamento_nf_pagar_boleto(request, pk: int):
         'financeiro:pagamento_nf_detalhe',
         kwargs={'pk': nf.pk},
     )
+    pagar_boleto_url = reverse_empresa(
+        request,
+        'financeiro:pagamento_nf_pagar_boleto',
+        kwargs={'pk': nf.pk},
+    )
     boletos_qs = nf.boletos.exclude(status=BoletoPagamento.Status.CANCELADO).order_by(
         'vencimento', 'parcela', 'pk'
     )
@@ -7898,6 +7903,8 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 'nf': nf,
                 'boletos': boletos_abertos,
                 'hoje': timezone.localdate(),
+                'post_url': pagar_boleto_url,
+                'selected_conta_bancaria_id': '',
                 'contas_bancarias_pagamento': ContaBancaria.objects.filter(
                     empresa=empresa,
                     ativo=True,
@@ -7992,6 +7999,8 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 'boletos': boletos_abertos,
                 'hoje': timezone.localdate(),
                 'erros': erros,
+                'post_url': pagar_boleto_url,
+                'selected_conta_bancaria_id': str(conta_bancaria_id or ''),
                 'contas_bancarias_pagamento': ContaBancaria.objects.filter(
                     empresa=empresa,
                     ativo=True,
@@ -8138,6 +8147,7 @@ def pagamento_nf_pagar_boleto(request, pk: int):
             'selected_boleto_id': selected_boleto_id,
             'selected_boleto': selected_boleto,
             'modo': modo,
+            'post_url': pagar_boleto_url,
         },
     )
 
