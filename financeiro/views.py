@@ -546,6 +546,16 @@ def _parse_data_pagamento_modal(raw: str):
         return None
 
 
+def _parse_int_modal(raw):
+    raw = str(raw or '').strip()
+    if not raw:
+        return None
+    normalized = raw.replace('.', '')
+    if normalized.isdigit():
+        return int(normalized)
+    return None
+
+
 def _snapshot_pagamento_nf(nf: PagamentoNotaFiscal) -> dict:
     nf = (
         PagamentoNotaFiscal.objects.filter(pk=nf.pk)
@@ -7926,18 +7936,25 @@ def pagamento_nf_pagar_boleto(request, pk: int):
         )
 
     if request.method == 'POST' and request.POST.get('action') == 'salvar_multiplos':
-        boleto_ids = request.POST.getlist('boletos')
+        boleto_ids_raw = request.POST.getlist('boletos')
+        boleto_id_raw_by_pk = {}
+        boleto_ids = []
+        for boleto_id_raw in boleto_ids_raw:
+            boleto_id = _parse_int_modal(boleto_id_raw)
+            if boleto_id is None:
+                continue
+            boleto_ids.append(boleto_id)
+            boleto_id_raw_by_pk[boleto_id] = boleto_id_raw
         boletos_selecionados = list(boletos_para_pagamento.filter(pk__in=boleto_ids))
         erros = []
+        if boleto_ids_raw and len(boleto_ids) != len(boleto_ids_raw):
+            erros.append('Seleção de boleto inválida. Reabra o modal e tente novamente.')
         if not boletos_selecionados:
             erros.append('Selecione pelo menos um boleto para pagar.')
 
         datas_pagamento = {}
         conta_bancaria = None
-        try:
-            conta_bancaria_id = int(request.POST.get('conta_bancaria') or '')
-        except (TypeError, ValueError):
-            conta_bancaria_id = None
+        conta_bancaria_id = _parse_int_modal(request.POST.get('conta_bancaria'))
         if conta_bancaria_id:
             conta_bancaria = ContaBancaria.objects.filter(
                 empresa=empresa,
@@ -7948,6 +7965,10 @@ def pagamento_nf_pagar_boleto(request, pk: int):
                 erros.append('Conta bancária inválida para esta empresa.')
         for boleto in boletos_selecionados:
             data_raw = request.POST.get(f'data_pagamento_{boleto.pk}')
+            if data_raw is None:
+                data_raw = request.POST.get(
+                    f'data_pagamento_{boleto_id_raw_by_pk.get(boleto.pk, "")}'
+                )
             data_pagamento = _parse_data_pagamento_modal(data_raw)
             if not data_pagamento:
                 erros.append(f'Informe a data de pagamento do boleto {boleto.numero_doc or boleto.parcela}.')
@@ -8001,8 +8022,16 @@ def pagamento_nf_pagar_boleto(request, pk: int):
             boleto.is_selected = str(boleto.pk) in selected_ids
             boleto.data_pagamento_valor = request.POST.get(
                 f'data_pagamento_{boleto.pk}',
-                timezone.localdate().isoformat(),
             )
+            if boleto.data_pagamento_valor is None:
+                boleto.data_pagamento_valor = request.POST.get(
+                    f'data_pagamento_{boleto_id_raw_by_pk.get(boleto.pk, "")}',
+                    timezone.localdate().isoformat(),
+                )
+            else:
+                boleto.data_pagamento_valor = boleto.data_pagamento_valor or (
+                    timezone.localdate().isoformat()
+                )
             boletos_abertos.append(boleto)
         return render(
             request,
@@ -8022,10 +8051,11 @@ def pagamento_nf_pagar_boleto(request, pk: int):
         )
 
     selected_boleto = None
-    selected_boleto_id = (
+    selected_boleto_id_raw = (
         request.POST.get('boleto')
         or request.GET.get('boleto')
     )
+    selected_boleto_id = _parse_int_modal(selected_boleto_id_raw)
     if selected_boleto_id:
         selected_boleto = boletos_qs.filter(pk=selected_boleto_id).first()
     if not selected_boleto:
@@ -8039,14 +8069,17 @@ def pagamento_nf_pagar_boleto(request, pk: int):
 
     if request.method == 'POST':
         action = request.POST.get('action') or 'salvar'
+        form_data = request.POST.copy()
+        if selected_boleto_id:
+            form_data['boleto'] = str(selected_boleto_id)
         form = BoletoPagamentoForm(
-            request.POST,
+            form_data,
             boletos=boletos_qs,
             selected_boleto=selected_boleto,
             empresa=empresa,
         )
         if action == 'excluir_pagamento':
-            boleto = get_object_or_404(boletos_qs, pk=request.POST.get('boleto'))
+            boleto = get_object_or_404(boletos_qs, pk=selected_boleto_id)
             with transaction.atomic():
                 boleto.status = BoletoPagamento.Status.RASCUNHO
                 boleto.data_pagamento = None

@@ -1,4 +1,4 @@
-{% load moeda %}
+{% load moeda l10n %}
 <style>
     .financeiro-modal-btn {
         border: none;
@@ -90,13 +90,16 @@
             <select class="form-select rounded-3" id="conta_bancaria_multiplos" name="conta_bancaria">
                 <option value="">DINHEIRO</option>
                 {% for conta in contas_bancarias_pagamento %}
-                <option value="{{ conta.pk }}"{% if selected_conta_bancaria_id == conta.pk|stringformat:"s" %} selected{% endif %}>{{ conta.nome }} — {{ conta.banco }}</option>
+                {% with conta_pk=conta.pk|unlocalize %}
+                <option value="{{ conta_pk }}"{% if selected_conta_bancaria_id == conta_pk %} selected{% endif %}>{{ conta.nome }} — {{ conta.banco }}</option>
+                {% endwith %}
                 {% endfor %}
             </select>
         </div>
 
         <div class="d-grid gap-2">
             {% for boleto in boletos %}
+            {% with boleto_pk=boleto.pk|unlocalize %}
             <div class="financeiro-boleto-pay-row p-3{% if boleto.is_selected %} is-selected{% endif %}">
                 <div class="row g-3 align-items-center">
                     <div class="col-12 col-lg-7">
@@ -105,7 +108,7 @@
                                 class="form-check-input financeiro-boleto-pay-check mt-1 js-boleto-pay-check"
                                 type="checkbox"
                                 name="boletos"
-                                value="{{ boleto.pk }}"
+                                value="{{ boleto_pk }}"
                                 {% if boleto.is_selected %}checked{% endif %}>
                             <span class="flex-grow-1">
                                 <span class="d-flex flex-wrap justify-content-between gap-2">
@@ -121,16 +124,17 @@
                         </label>
                     </div>
                     <div class="col-12 col-lg-5">
-                        <label class="form-label fw-semibold small mb-1" for="data_pagamento_{{ boleto.pk }}">Data de pagamento</label>
+                        <label class="form-label fw-semibold small mb-1" for="data_pagamento_{{ boleto_pk }}">Data de pagamento</label>
                         <input
                             type="date"
-                            id="data_pagamento_{{ boleto.pk }}"
-                            name="data_pagamento_{{ boleto.pk }}"
+                            id="data_pagamento_{{ boleto_pk }}"
+                            name="data_pagamento_{{ boleto_pk }}"
                             class="form-control rounded-3"
                             value="{{ boleto.data_pagamento_valor }}">
                     </div>
                 </div>
             </div>
+            {% endwith %}
             {% endfor %}
         </div>
     </div>

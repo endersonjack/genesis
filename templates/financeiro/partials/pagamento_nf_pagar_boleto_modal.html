@@ -1,4 +1,4 @@
-{% load moeda %}
+{% load moeda l10n %}
 <style>
     .financeiro-modal-btn {
         border: none;
@@ -67,12 +67,13 @@
         <div class="fw-bold mb-2">Boletos</div>
         <div class="d-grid gap-2 mb-3">
             {% for boleto in boletos %}
+            {% with boleto_pk=boleto.pk|unlocalize %}
             <label class="financeiro-modal-choice p-2 d-flex gap-3 align-items-start">
                 <input
                     class="form-check-input mt-1 js-boleto-opcao"
                     type="radio"
                     name="boleto"
-                    value="{{ boleto.pk }}"
+                    value="{{ boleto_pk }}"
                     data-valor="{{ boleto.valor }}"
                     {% if boleto.is_selected %}checked{% endif %}>
                 <span class="flex-grow-1">
@@ -87,6 +88,7 @@
                     </span>
                 </span>
             </label>
+            {% endwith %}
             {% endfor %}
         </div>
         {% if form.boleto.errors %}

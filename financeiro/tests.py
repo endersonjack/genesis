@@ -407,6 +407,7 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
             valor=Decimal('200.00'),
         )
         boleto_1 = BoletoPagamento.objects.create(
+            pk=1025,
             pagamento_nf=nf,
             numero_doc='BOL-201',
             parcela=1,
@@ -415,6 +416,7 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
             status=BoletoPagamento.Status.EMITIDO,
         )
         boleto_2 = BoletoPagamento.objects.create(
+            pk=1026,
             pagamento_nf=nf,
             numero_doc='BOL-202',
             parcela=2,
@@ -427,9 +429,9 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
             f'/empresa/{self.empresa.pk}/financeiro/pagamentos/nf/{nf.pk}/pagar-boleto/',
             {
                 'action': 'salvar_multiplos',
-                'boletos': [str(boleto_1.pk), str(boleto_2.pk)],
-                f'data_pagamento_{boleto_1.pk}': '10/06/2026',
-                f'data_pagamento_{boleto_2.pk}': '20/06/2026',
+                'boletos': ['1.025', '1.026'],
+                'data_pagamento_1.025': '10/06/2026',
+                'data_pagamento_1.026': '20/06/2026',
             },
             HTTP_HX_REQUEST='true',
         )
