@@ -1,0 +1,105 @@
+<style>
+    #modalPadrao .modal-dialog:has(.anexo-diverso-modal) {
+        max-width: 560px;
+    }
+
+    .anexo-diverso-modal .modal-header,
+    .anexo-diverso-modal .modal-footer {
+        padding: .75rem 1rem;
+    }
+
+    .anexo-diverso-modal .modal-body {
+        padding: .85rem 1rem;
+    }
+
+    .anexo-diverso-modal .modal-title {
+        font-size: 1.05rem;
+    }
+
+    .anexo-diverso-modal .form-label {
+        margin-bottom: .25rem;
+        font-size: .9rem;
+    }
+
+    .anexo-diverso-modal .form-control {
+        padding-top: .45rem;
+        padding-bottom: .45rem;
+    }
+
+    .anexo-diverso-modal textarea.form-control {
+        min-height: 68px;
+    }
+</style>
+
+<div class="anexo-diverso-modal">
+<div class="modal-header">
+    <h5 class="modal-title fw-bold mb-0">Novo Anexo Diverso</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    enctype="multipart/form-data"
+    hx-encoding="multipart/form-data"
+    data-no-global-loading
+    hx-post="{% url 'controles_rh:criar_anexo_diverso' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="small text-muted mb-2">
+            <span class="fw-semibold text-dark">Competência:</span>
+            {{ competencia.referencia }} — {{ competencia.empresa }}
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
+                    {{ form.nome.label }}
+                </label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.descricao.id_for_label }}">
+                    {{ form.descricao.label }}
+                </label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <div class="text-danger small mt-1">{{ form.descricao.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.arquivo.id_for_label }}">
+                    {{ form.arquivo.label }}
+                </label>
+                {{ form.arquivo }}
+                {% if form.arquivo.help_text %}
+                    <div class="form-text">{{ form.arquivo.help_text }}</div>
+                {% endif %}
+                {% if form.arquivo.errors %}
+                    <div class="text-danger small mt-1">{{ form.arquivo.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Salvar
+        </button>
+    </div>
+</form>
+</div>

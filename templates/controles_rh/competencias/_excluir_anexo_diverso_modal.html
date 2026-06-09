@@ -1,0 +1,42 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Excluir Anexo Diverso</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    method="post"
+    hx-post="{% url 'controles_rh:excluir_anexo_diverso' empresa_id=request.empresa_ativa.pk pk=anexo.pk %}"
+    hx-target="#modal-content"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="alert alert-warning mb-3">
+            <strong>Atenção:</strong> esta ação removerá o anexo desta competência.
+        </div>
+
+        <p class="mb-2">Deseja realmente excluir este anexo?</p>
+
+        <div class="border rounded-4 p-3 bg-light small">
+            <div><strong>Nome:</strong> {{ anexo.nome }}</div>
+            <div><strong>Arquivo:</strong> {{ anexo.arquivo_nome }}</div>
+            <div><strong>Competência:</strong> {{ competencia.referencia }}</div>
+            <div>
+                <strong>Anexado em:</strong>
+                {{ anexo.data_criacao|date:"d/m/Y H:i" }}
+                {% if anexo.usuario %}
+                    por {{ anexo.usuario.nome_completo|default:anexo.usuario.username }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir
+        </button>
+    </div>
+</form>

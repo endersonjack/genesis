@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F
 
@@ -715,6 +715,53 @@ class AlteracaoFolhaControle(models.Model):
 
     def __str__(self):
         return f'Alteração de folha — {self.competencia.referencia}'
+
+
+class AnexoDiversoCompetencia(models.Model):
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='anexos_diversos',
+    )
+    usuario = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='anexos_diversos_controles_rh',
+        verbose_name='Usuário',
+    )
+    nome = models.CharField(max_length=150, verbose_name='Nome')
+    descricao = models.TextField(blank=True, verbose_name='Descrição')
+    arquivo = models.FileField(
+        upload_to='controles_rh/anexos_diversos/',
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=[
+                    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp',
+                    'pdf',
+                    'doc', 'docx',
+                    'xls', 'xlsx', 'xlsm', 'xlsb',
+                ],
+                message='Envie imagem, PDF, Word ou Excel.',
+            )
+        ],
+        verbose_name='Anexar',
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Anexo diverso da competência'
+        verbose_name_plural = 'Anexos diversos da competência'
+        ordering = ['-data_criacao', '-id']
+
+    def __str__(self):
+        return f'{self.nome} — {self.competencia.referencia}'
+
+    @property
+    def arquivo_nome(self):
+        return self.arquivo.name.rsplit('/', 1)[-1] if self.arquivo else ''
 
 
 class AlteracaoFolhaLinha(models.Model):

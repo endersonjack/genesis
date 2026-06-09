@@ -196,7 +196,8 @@
         color: #4338ca;
     }
 
-    .controle-icon.tabelas {
+    .controle-icon.tabelas,
+    .controle-icon.anexos {
         background: #fef3c7;
         color: #b45309;
     }
@@ -539,12 +540,22 @@
                         <div class="add-mini-card">
                             <div class="add-mini-card-top">
                                 <div class="add-mini-title-wrap">
-                                    <span class="controle-icon tabelas" aria-hidden="true">
-                                        <i class="bi bi-table"></i>
+                                    <span class="controle-icon anexos" aria-hidden="true">
+                                        <i class="bi bi-paperclip"></i>
                                     </span>
-                                    <p class="add-mini-title mb-0">Tabelas diversas</p>
+                                    <p class="add-mini-title mb-0">Anexos Diversos</p>
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm btn-add-inline" disabled title="Em breve" aria-label="Adicionar Tabelas diversas (em breve)">
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm btn-add-inline"
+                                    title="Adicionar"
+                                    aria-label="Adicionar Anexos Diversos"
+                                    data-no-global-loading
+                                    hx-get="{% url 'controles_rh:criar_anexo_diverso' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
                                     <i class="bi bi-plus-lg" aria-hidden="true"></i>
                                 </button>
                             </div>

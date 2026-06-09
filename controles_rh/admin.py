@@ -3,12 +3,22 @@ from django.contrib import admin
 from .models import (
     AlteracaoFolhaControle,
     AlteracaoFolhaLinha,
+    AnexoDiversoCompetencia,
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
     ValeTransporteItem,
     ValeTransporteTabela,
 )
+
+
+@admin.register(AnexoDiversoCompetencia)
+class AnexoDiversoCompetenciaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nome', 'competencia', 'usuario', 'data_criacao')
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
+    search_fields = ('nome', 'descricao', 'usuario__username', 'usuario__nome_completo')
+    autocomplete_fields = ('competencia', 'usuario')
+    ordering = ('-data_criacao', '-id')
 
 
 @admin.register(AlteracaoFolhaControle)

@@ -120,7 +120,56 @@
             </div>
         </a>
     {% endif %}
+    {% for anexo in anexos_diversos %}
+        <div class="controle-list-item controle-list-item-link position-relative">
+            <a href="{{ anexo.arquivo.url }}"
+               class="stretched-link"
+               target="_blank"
+               rel="noopener"
+               aria-label="Abrir anexo {{ anexo.nome }}"></a>
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                    <span class="controle-icon anexos" title="Anexo Diverso" aria-hidden="true">
+                        <i class="bi bi-paperclip"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="fw-bold text-dark">{{ anexo.nome }}</div>
+                        <small class="text-muted d-block mt-1">
+                            {% if anexo.descricao %}
+                                {{ anexo.descricao|truncatechars:72 }}
+                            {% else %}
+                                {{ anexo.arquivo_nome }}
+                            {% endif %}
+                        </small>
+                        <small class="text-muted d-block mt-1">
+                            Anexado em {{ anexo.data_criacao|date:"d/m/Y H:i" }}
+                            {% if anexo.usuario %}
+                                por {{ anexo.usuario.nome_completo|default:anexo.usuario.username }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span class="btn btn-outline-secondary btn-sm" title="Abrir anexo" aria-hidden="true">
+                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                    </span>
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm position-relative z-1"
+                        title="Excluir anexo"
+                        aria-label="Excluir anexo {{ anexo.nome }}"
+                        hx-get="{% url 'controles_rh:excluir_anexo_diverso' empresa_id=request.empresa_ativa.pk pk=anexo.pk %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPadrao">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
 </div>
-{% if not tabelas_vt and not listas_cesta_basica and not faltas_registros_count %}
-    <p class="controle-empty controle-empty--solo mb-0 mt-2">Nenhum outro controle cadastrado (VT, cesta ou faltas) nesta competência.</p>
+{% if not tabelas_vt and not listas_cesta_basica and not faltas_registros_count and not anexos_diversos %}
+    <p class="controle-empty controle-empty--solo mb-0 mt-2">Nenhum outro controle cadastrado (VT, cesta, faltas ou anexos) nesta competência.</p>
 {% endif %}

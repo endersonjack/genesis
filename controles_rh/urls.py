@@ -17,6 +17,7 @@ from controles_rh.views.competencias import (
     lista_competencias,
 )
 from controles_rh.views.home import home_controles_rh
+from controles_rh.views.tabelas import criar_anexo_diverso, excluir_anexo_diverso
 from controles_rh.views.vale_transporte import (
     adicionar_item_vt,
     criar_tabela_vt,
@@ -90,6 +91,16 @@ urlpatterns = [
     ),
     path('competencias/<int:pk>/editar/', empresa_scoped(editar_competencia), name='editar_competencia'),
     path('competencias/<int:pk>/excluir/', empresa_scoped(excluir_competencia), name='excluir_competencia'),
+    path(
+        'competencias/<int:competencia_pk>/anexos-diversos/novo/',
+        empresa_scoped(criar_anexo_diverso),
+        name='criar_anexo_diverso',
+    ),
+    path(
+        'anexos-diversos/<int:pk>/excluir/',
+        empresa_scoped(excluir_anexo_diverso),
+        name='excluir_anexo_diverso',
+    ),
 
     path(
         'competencias/<int:competencia_pk>/vt/modal-opcoes/',

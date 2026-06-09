@@ -5,6 +5,7 @@ from django.db.models import Q
 from rh.models import Funcionario
 from .models import (
     AlteracaoFolhaLinha,
+    AnexoDiversoCompetencia,
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
@@ -12,6 +13,14 @@ from .models import (
     ValeTransporteItem,
     ValeTransporteTabela,
 )
+
+
+ALLOWED_ANEXO_DIVERSO_EXTENSIONS = {
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp',
+    'pdf',
+    'doc', 'docx',
+    'xls', 'xlsx', 'xlsm', 'xlsb',
+}
 
 
 class BaseStyledModelForm(forms.ModelForm):
@@ -476,6 +485,55 @@ class CestaBasicaItemForm(BaseStyledModelForm):
         instance = super().save(commit=False)
         if self.lista and not instance.pk:
             instance.lista = self.lista
+        if commit:
+            instance.save()
+        return instance
+
+
+class AnexoDiversoCompetenciaForm(BaseStyledModelForm):
+    class Meta:
+        model = AnexoDiversoCompetencia
+        fields = ['nome', 'descricao', 'arquivo']
+        widgets = {
+            'nome': forms.TextInput(attrs={'maxlength': 150}),
+            'descricao': forms.Textarea(attrs={'rows': 2}),
+            'arquivo': forms.FileInput(attrs={
+                'accept': (
+                    'image/*,.pdf,.doc,.docx,'
+                    '.xls,.xlsx,.xlsm,.xlsb'
+                ),
+            }),
+        }
+        labels = {
+            'nome': 'Nome',
+            'descricao': 'Descrição',
+            'arquivo': 'Anexar',
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.competencia = kwargs.pop('competencia', None)
+        self.usuario = kwargs.pop('usuario', None)
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['descricao'].required = False
+        self.fields['arquivo'].help_text = 'Imagem, PDF, Word ou Excel.'
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data.get('arquivo')
+        if not arquivo:
+            return arquivo
+        nome = getattr(arquivo, 'name', '') or ''
+        ext = nome.rsplit('.', 1)[-1].lower() if '.' in nome else ''
+        if ext not in ALLOWED_ANEXO_DIVERSO_EXTENSIONS:
+            raise ValidationError('Envie imagem, PDF, Word ou Excel.')
+        return arquivo
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.competencia and not instance.pk:
+            instance.competencia = self.competencia
+        if self.usuario and not instance.pk:
+            instance.usuario = self.usuario
         if commit:
             instance.save()
         return instance

@@ -11,6 +11,7 @@ from core.urlutils import redirect_empresa, reverse_empresa
 from controles_rh.forms import CompetenciaForm
 from controles_rh.models import (
     AlteracaoFolhaControle,
+    AnexoDiversoCompetencia,
     CestaBasicaLista,
     Competencia,
     ValeTransporteTabela,
@@ -206,17 +207,22 @@ def _context_controles_da_competencia(competencia: Competencia, empresa):
         competencia_id=competencia.pk
     ).exists()
 
+    anexos_diversos = AnexoDiversoCompetencia.objects.filter(
+        competencia=competencia
+    ).order_by('-data_criacao', '-id')
+
     return {
         'competencia': competencia,
         'alteracao_folha_gerada': alteracao_folha_gerada,
         'tabelas_vt': tabelas_vt,
         'total_tabelas_vt': tabelas_vt.count(),
         'listas_cesta_basica': listas_cesta_basica,
+        'anexos_diversos': anexos_diversos,
+        'total_anexos_diversos': anexos_diversos.count(),
         'faltas_registros_count': faltas_registros_count,
         'faltas_colaboradores_count': faltas_colaboradores_count,
         'total_faltas': faltas_registros_count,
         'total_pagamentos': 0,
-        'total_tabelas_diversas': 0,
     }
 
 
