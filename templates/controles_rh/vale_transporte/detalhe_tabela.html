@@ -179,6 +179,27 @@
         text-transform: uppercase;
     }
 
+    .vt-table .vt-nome-wrap {
+        min-width: 0;
+    }
+
+    .vt-table .vt-nome-text,
+    .vt-table .vt-cpf-text {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .vt-table .vt-cpf-text {
+        margin-top: .12rem;
+        font-size: .74rem;
+        line-height: 1.05;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: none;
+    }
+
     .vt-table tbody td.col-funcao,
     .vt-table tbody td.col-endereco,
     .vt-table tbody td.col-valor,
@@ -318,7 +339,12 @@
     }
 
     .vt-row-pago-completo td:not(.col-drag):not(.col-num) {
-        background: #ecfdf5;
+        background: #bbf7d0;
+    }
+
+    .vt-row-pago-completo td.col-drag,
+    .vt-row-pago-completo td.col-num {
+        background: #dcfce7;
     }
 
     .vt-row-pago-parcial td:not(.col-drag):not(.col-num) {
@@ -582,8 +608,15 @@
                                         <i class="bi bi-grip-vertical"></i>
                                     </span>
                                 </td>
-                                <td class="col-nome ellipsis-cell" title="{{ item.nome_exibicao|upper }}">
-                                    {{ item.nome_exibicao }}
+                                <td
+                                    class="col-nome"
+                                    title="{{ item.nome_exibicao|upper }}{% if item.funcionario and item.funcionario.cpf %} — CPF {{ item.funcionario.cpf }}{% endif %}">
+                                    <span class="vt-nome-wrap">
+                                        <span class="vt-nome-text">{{ item.nome_exibicao }}</span>
+                                        {% if item.funcionario and item.funcionario.cpf %}
+                                            <span class="vt-cpf-text">CPF {{ item.funcionario.cpf }}</span>
+                                        {% endif %}
+                                    </span>
                                 </td>
                                 <td class="col-funcao ellipsis-cell" title="{{ item.funcao|default:'-'|upper }}">
                                     {{ item.funcao|default:"-" }}

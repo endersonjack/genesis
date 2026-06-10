@@ -306,6 +306,7 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             self.funcionarios_data = {
                 str(func.pk): {
                     'nome': getattr(func, 'nome', '') or '',
+                    'cpf': getattr(func, 'cpf', '') or '',
                     'funcao': str(getattr(func, 'cargo', '') or ''),
                     'endereco': getattr(func, 'endereco_completo', '') or '',
                     'valor_unitario': str(getattr(func, 'valor_vale_transporte', '') or ''),

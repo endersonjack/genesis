@@ -104,12 +104,21 @@
                                 <div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 col-md-5">
                             <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
                             {{ form.nome }}
                             {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>{% endif %}
                         </div>
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold" for="vt-funcionario-cpf">CPF</label>
+                            <input
+                                type="text"
+                                id="vt-funcionario-cpf"
+                                class="form-control"
+                                value="{% if item and item.funcionario %}{{ item.funcionario.cpf }}{% endif %}"
+                                readonly>
+                        </div>
+                        <div class="col-12 col-md-4">
                             <label class="form-label fw-semibold" for="{{ form.funcao.id_for_label }}">{{ form.funcao.label }}</label>
                             {{ form.funcao }}
                             {% if form.funcao.errors %}<div class="text-danger small mt-1">{{ form.funcao.errors|join:", " }}</div>{% endif %}
@@ -244,6 +253,7 @@
 (function () {
     const funcionarioSelect = document.getElementById("{{ form.funcionario.id_for_label }}");
     const nomeInput = document.getElementById("{{ form.nome.id_for_label }}");
+    const cpfInput = document.getElementById("vt-funcionario-cpf");
     const funcaoInput = document.getElementById("{{ form.funcao.id_for_label }}");
     const enderecoInput = document.getElementById("{{ form.endereco.id_for_label }}");
     const valorUnitarioInput = document.getElementById("{{ form.valor_unitario.id_for_label }}");
@@ -295,6 +305,7 @@
         const dados = funcionariosData[selectedId];
 
         if (nomeInput) nomeInput.value = dados.nome || "";
+        if (cpfInput) cpfInput.value = dados.cpf || "";
         if (funcaoInput) funcaoInput.value = dados.funcao || "";
         if (enderecoInput) enderecoInput.value = dados.endereco || "";
         if (valorUnitarioInput && dados.valor_unitario !== undefined) valorUnitarioInput.value = dados.valor_unitario || "";
