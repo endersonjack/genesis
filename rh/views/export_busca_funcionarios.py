@@ -3,8 +3,9 @@ Exportação PDF e Excel dos resultados da busca avançada de funcionários.
 Cabeçalho alinhado ao padrão Vale Transporte (logo + bloco de texto da empresa).
 
 Parâmetro GET opcional ``relatorio`` (relatórios pré-definidos na página de Relatórios):
-situação (ativos, experiencia, demitidos, aviso_previo, ferias) e saúde
-(pcmso_vencimentos, aso_ultimo) — altera título, colunas e critério de listagem.
+situação (ativos, experiencia, demitidos, aviso_previo, ferias), funcionários
+(funcionarios_contato, funcionarios_pix) e saúde (pcmso_vencimentos, aso_ultimo)
+— altera título, colunas e critério de listagem.
 """
 import re
 from datetime import date
@@ -46,6 +47,7 @@ from .funcionarios import queryset_funcionarios_busca_avancada
 
 RELATORIOS_SAUDE = frozenset({'pcmso_vencimentos', 'aso_ultimo'})
 RELATORIOS_LOCAIS = frozenset({'funcionarios_local_trabalho', 'locais_trabalho_ativos'})
+RELATORIOS_FUNCIONARIOS = frozenset({'funcionarios_contato', 'funcionarios_pix'})
 
 
 def _safe_filename_part(text):
@@ -127,6 +129,15 @@ def _queryset_ativos_saude_export(empresa_ativa):
     )
 
 
+def _queryset_ativos_funcionarios_export(empresa_ativa):
+    return (
+        Funcionario.objects.filter(empresa=empresa_ativa)
+        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        .select_related('cargo')
+        .order_by('nome')
+    )
+
+
 def _queryset_funcionarios_com_local_trabalho(empresa_ativa):
     return (
         Funcionario.objects.filter(
@@ -169,9 +180,32 @@ def _relatorio_key(request) -> Optional[str]:
             'aso_ultimo',
             'funcionarios_local_trabalho',
             'locais_trabalho_ativos',
+            'funcionarios_contato',
+            'funcionarios_pix',
         }
     )
     return key if key in allowed else None
+
+
+def _contato_funcionario(f) -> str:
+    contatos = []
+    tel1 = (f.telefone_1 or '').strip()
+    tel2 = (f.telefone_2 or '').strip()
+    if tel1:
+        contatos.append(tel1)
+    if tel2:
+        contatos.append(tel2)
+    return ' / '.join(contatos) if contatos else '—'
+
+
+def _pix_funcionario(f) -> str:
+    pix = (f.pix or '').strip()
+    tipo = f.get_tipo_pix_display() if getattr(f, 'tipo_pix', None) else ''
+    if pix and tipo:
+        return f'{tipo}: {pix}'
+    if pix:
+        return pix
+    return '—'
 
 
 def _pdf_widths_from_weights(weights):
@@ -613,6 +647,74 @@ def build_export_table(
                     str(qtd),
                 ]
             )
+    elif rk == 'funcionarios_contato':
+        headers = [
+            '#',
+            'Nome',
+            'Cargo',
+            'CPF',
+            'Contato',
+        ]
+        headers_pdf = [
+            '#',
+            'NOME',
+            'CARGO',
+            'CPF',
+            'CONTATO',
+        ]
+        weights = [0.32, 2.05, 1.45, 1.05, 1.55]
+        titulo = 'LISTAGEM — CONTATO DE FUNCIONÁRIOS'
+        subtitulo_ctx = f'Funcionários · Contatos · Emitido em {emit}'
+        xlsx_head = f'Contato de funcionários — Emitido em {emit}'
+        filename_slug = 'Relatorio_contato_funcionarios'
+        sheet_title = 'Contatos'
+        pdf_doc_title = 'Contato de funcionários'
+        body_font = 7
+        rows = []
+        for n, f in enumerate(funcionarios, start=1):
+            rows.append(
+                [
+                    str(n),
+                    _nome_maiusculo(f),
+                    (f.cargo.nome if f.cargo else '—'),
+                    (f.cpf or '—').strip(),
+                    _contato_funcionario(f),
+                ]
+            )
+    elif rk == 'funcionarios_pix':
+        headers = [
+            '#',
+            'Nome',
+            'Cargo',
+            'CPF',
+            'Dados de PIX',
+        ]
+        headers_pdf = [
+            '#',
+            'NOME',
+            'CARGO',
+            'CPF',
+            'DADOS DE PIX',
+        ]
+        weights = [0.32, 2.05, 1.35, 1.05, 1.75]
+        titulo = 'LISTAGEM — PIX DE FUNCIONÁRIOS'
+        subtitulo_ctx = f'Funcionários · Dados de PIX · Emitido em {emit}'
+        xlsx_head = f'PIX de funcionários — Emitido em {emit}'
+        filename_slug = 'Relatorio_pix_funcionarios'
+        sheet_title = 'PIX'
+        pdf_doc_title = 'PIX de funcionários'
+        body_font = 7
+        rows = []
+        for n, f in enumerate(funcionarios, start=1):
+            rows.append(
+                [
+                    str(n),
+                    _nome_maiusculo(f),
+                    (f.cargo.nome if f.cargo else '—'),
+                    (f.cpf or '—').strip(),
+                    _pix_funcionario(f),
+                ]
+            )
     else:
         raise ValueError(f'Layout de relatório não tratado: {rk!r}')
 
@@ -652,6 +754,8 @@ def exportar_busca_funcionarios_pdf(request):
     rk = _relatorio_key(request)
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
+    elif rk in RELATORIOS_FUNCIONARIOS:
+        funcionarios = list(_queryset_ativos_funcionarios_export(empresa_ativa))
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
     elif rk == 'locais_trabalho_ativos':
@@ -772,6 +876,8 @@ def exportar_busca_funcionarios_xlsx(request):
     rk = _relatorio_key(request)
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
+    elif rk in RELATORIOS_FUNCIONARIOS:
+        funcionarios = list(_queryset_ativos_funcionarios_export(empresa_ativa))
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
     elif rk == 'locais_trabalho_ativos':

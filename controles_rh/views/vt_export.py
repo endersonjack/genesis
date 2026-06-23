@@ -126,8 +126,27 @@ def _col_widths_vt_pdf_mm(tabela):
 
 def _vt_pdf_nome_funcao_texto(item) -> str:
     nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
+    cpf_p = ''
+    if item.funcionario_id and getattr(item.funcionario, 'cpf', None):
+        cpf_p = f'CPF {item.funcionario.cpf}'
     func_p = (item.funcao or '').strip().upper() or '—'
-    return f'{nome_p} - {func_p}'
+    partes = [nome_p]
+    if cpf_p:
+        partes.append(cpf_p)
+    partes.append(func_p)
+    return ' - '.join(partes)
+
+
+def _vt_pdf_nome_funcao_html(item) -> str:
+    nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
+    func_p = (item.funcao or '').strip().upper() or '—'
+    meta = [func_p]
+    if item.funcionario_id and getattr(item.funcionario, 'cpf', None):
+        meta.insert(0, f'CPF {item.funcionario.cpf}')
+    return (
+        f'<b>{xml_escape(nome_p)}</b>'
+        f'<br/><font size="6">{xml_escape(" - ".join(meta))}</font>'
+    )
 
 
 def _vt_pdf_pix_tipo_banco_texto(item) -> str:
@@ -147,6 +166,7 @@ def exportar_tabela_vt_xlsx(request, pk):
     headers = [
         '#',
         'Nome',
+        'CPF',
         'Função',
         'Endereço',
         'Valor a pagar',
@@ -230,6 +250,7 @@ def exportar_tabela_vt_xlsx(request, pk):
         valores = [
             n,
             item.nome_exibicao,
+            item.funcionario.cpf if item.funcionario_id and item.funcionario else '',
             item.funcao or '',
             item.endereco or '',
             float(item.valor_pagar or 0),
@@ -245,9 +266,9 @@ def exportar_tabela_vt_xlsx(request, pk):
         row += 1
 
     ws.cell(row=row, column=1, value='TOTAIS').font = Font(bold=True)
-    ws.cell(row=row, column=5, value=float(resumo['total_a_pagar'])).font = Font(bold=True)
-    ws.cell(row=row, column=6, value=float(resumo['total_valor_pago'])).font = Font(bold=True)
-    ws.cell(row=row, column=7, value=float(resumo['saldo_a_pagar'])).font = Font(bold=True)
+    ws.cell(row=row, column=6, value=float(resumo['total_a_pagar'])).font = Font(bold=True)
+    ws.cell(row=row, column=7, value=float(resumo['total_valor_pago'])).font = Font(bold=True)
+    ws.cell(row=row, column=8, value=float(resumo['saldo_a_pagar'])).font = Font(bold=True)
 
     buf = BytesIO()
     wb.save(buf)
@@ -298,7 +319,7 @@ def exportar_tabela_vt_pdf(request, pk):
     # Uma linha por item: NOME inclui função; PIX inclui tipo e banco; coluna de data.
     headers = [
         '#',
-        'NOME',
+        'NOME / CPF / FUNÇÃO',
         'VLR PAGAR',
         'VLR PAGO',
         'SALDO',
@@ -362,8 +383,7 @@ def exportar_tabela_vt_pdf(request, pk):
             xml_escape(_vt_pdf_pix_tipo_banco_texto(item)),
             pix_para_style,
         )
-        nome_txt = _vt_pdf_nome_funcao_texto(item)
-        nome_cell = Paragraph(xml_escape(nome_txt), nome_vt_style)
+        nome_cell = Paragraph(_vt_pdf_nome_funcao_html(item), nome_vt_style)
         data_txt = _row_data_pagamento(item).upper()
         data_cell = Paragraph(xml_escape(data_txt), data_dt_style)
 
