@@ -4,6 +4,7 @@ from datetime import date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch
@@ -15,8 +16,7 @@ from django.views.decorators.http import require_POST
 from auditoria.registry import audit_controles_rh
 
 from controles_rh.forms import CestaBasicaItemForm, CestaBasicaListaForm
-from controles_rh.models import CestaBasicaItem, CestaBasicaLista
-from controles_rh.views.competencias import _get_competencia_empresa
+from controles_rh.models import Competencia, CestaBasicaItem, CestaBasicaLista
 from rh.models import Funcionario
 
 
@@ -26,6 +26,16 @@ def _is_htmx(request):
 
 def _get_empresa_ativa(request):
     return getattr(request, 'empresa_ativa', None)
+
+
+def _get_competencia_empresa(request, competencia_pk):
+    empresa_ativa = _get_empresa_ativa(request)
+    queryset = Competencia.objects.select_related('empresa')
+    if empresa_ativa:
+        queryset = queryset.filter(empresa=empresa_ativa)
+    else:
+        queryset = queryset.none()
+    return get_object_or_404(queryset, pk=competencia_pk)
 
 
 def _get_lista_cesta_empresa(request, pk):
@@ -67,20 +77,256 @@ def _get_item_cesta_empresa(request, pk):
     return get_object_or_404(qs, pk=pk)
 
 
+def _titulo_padrao_cesta(competencia):
+    n = CestaBasicaLista.objects.filter(competencia=competencia).count() + 1
+    return 'Cesta Básica' if n == 1 else f'Cesta Básica {n}'
+
+
+def _modo_criacao_cesta(request):
+    if request.method == 'POST':
+        return (request.POST.get('criacao_modo') or '').strip()
+    return (request.GET.get('modo') or '').strip()
+
+
+def _origem_lista_cesta_pk(request):
+    if request.method == 'POST':
+        return (request.POST.get('origem_lista') or '').strip()
+    return (request.GET.get('origem_lista') or '').strip()
+
+
+def _competencias_anteriores_cesta_qs(competencia):
+    return (
+        Competencia.objects.filter(empresa_id=competencia.empresa_id)
+        .filter(
+            Q(ano__lt=competencia.ano)
+            | Q(ano=competencia.ano, mes__lt=competencia.mes)
+        )
+        .order_by('-ano', '-mes', '-id')
+    )
+
+
+def _listas_cesta_anteriores(competencia):
+    return (
+        CestaBasicaLista.objects.filter(
+            competencia__in=_competencias_anteriores_cesta_qs(competencia)
+        )
+        .select_related('competencia')
+        .order_by('-competencia__ano', '-competencia__mes', 'titulo', 'id')
+    )
+
+
+def _get_lista_cesta_origem_clone(request, competencia, origem_lista_pk):
+    if not str(origem_lista_pk).isdigit():
+        return None
+    return (
+        _listas_cesta_anteriores(competencia)
+        .filter(pk=int(origem_lista_pk))
+        .first()
+    )
+
+
+def _criar_itens_iniciais_cesta(lista):
+    funcs = (
+        Funcionario.objects.filter(empresa=lista.competencia.empresa)
+        .exclude(situacao_atual__in=['demitido', 'inativo'])
+        .select_related('cargo', 'lotacao')
+        .order_by('nome', 'id')
+    )
+
+    novos = []
+    for ordem, f in enumerate(funcs, start=1):
+        cargo = getattr(f, 'cargo', None)
+        lot = getattr(f, 'lotacao', None)
+        novos.append(
+            CestaBasicaItem(
+                lista=lista,
+                funcionario=f,
+                nome=getattr(f, 'nome', '') or '',
+                funcao=str(cargo) if cargo else '',
+                lotacao=(lot.nome if getattr(lot, 'nome', None) else ''),
+                ordem=ordem,
+                ativo=True,
+                recebido=False,
+                data_recebimento=None,
+            )
+        )
+    if novos:
+        CestaBasicaItem.objects.bulk_create(novos, batch_size=500)
+
+
+def _clonar_itens_cesta(destino, origem):
+    itens = origem.itens.select_related('funcionario').order_by('ordem', 'id')
+    novos = [
+        CestaBasicaItem(
+            lista=destino,
+            funcionario=it.funcionario,
+            nome=it.nome,
+            funcao=it.funcao,
+            lotacao=it.lotacao,
+            ordem=it.ordem,
+            ativo=it.ativo,
+            recebido=False,
+            data_recebimento=None,
+        )
+        for it in itens
+    ]
+    if novos:
+        CestaBasicaItem.objects.bulk_create(novos, batch_size=500)
+
+
+@login_required
+def modal_opcoes_criar_cesta_basica(request, competencia_pk):
+    competencia = _get_competencia_empresa(request, competencia_pk)
+    listas_origem = list(_listas_cesta_anteriores(competencia))
+    return render(
+        request,
+        'controles_rh/cesta_basica/_modal_opcoes_criar_lista.html',
+        {
+            'competencia': competencia,
+            'listas_origem': listas_origem,
+        },
+    )
+
+
 @login_required
 def criar_cesta_basica(request, competencia_pk):
-    """Cria uma nova lista de Cesta Básica na competência e abre o detalhe."""
+    """Cria uma nova lista de Cesta Básica conforme o modo escolhido."""
     competencia = _get_competencia_empresa(request, competencia_pk)
-    n = CestaBasicaLista.objects.filter(competencia=competencia).count() + 1
-    titulo = 'Cesta Básica' if n == 1 else f'Cesta Básica {n}'
-    lista = CestaBasicaLista.objects.create(competencia=competencia, titulo=titulo)
-    audit_controles_rh(
-        request,
-        'create',
-        f'Lista de cesta básica criada: {titulo} ({competencia.referencia}).',
-        {'cesta_lista_id': lista.pk, 'competencia_id': competencia.pk},
+
+    criacao_modo = _modo_criacao_cesta(request)
+    origem_lista_pk = _origem_lista_cesta_pk(request)
+
+    if request.method == 'GET':
+        if not criacao_modo or criacao_modo not in ('vazio', 'funcionarios', 'clonar'):
+            return redirect_empresa(
+                request,
+                'controles_rh:modal_opcoes_criar_cesta_basica',
+                competencia_pk=competencia_pk,
+            )
+        if criacao_modo == 'clonar' and not _get_lista_cesta_origem_clone(
+            request,
+            competencia,
+            origem_lista_pk,
+        ):
+            messages.error(request, 'Selecione uma lista de cesta básica anterior para clonar.')
+            return redirect_empresa(
+                request,
+                'controles_rh:modal_opcoes_criar_cesta_basica',
+                competencia_pk=competencia_pk,
+            )
+
+    origem_lista = (
+        _get_lista_cesta_origem_clone(request, competencia, origem_lista_pk)
+        if criacao_modo == 'clonar'
+        else None
     )
-    return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
+
+    initial = {'titulo': _titulo_padrao_cesta(competencia)}
+    if origem_lista:
+        initial.update(
+            {
+                'texto_declaracao': origem_lista.texto_declaracao,
+                'local_emissao': origem_lista.local_emissao,
+                'recibo_altura_linha_pct': origem_lista.recibo_altura_linha_pct,
+                'observacao': origem_lista.observacao,
+                'cb_calculo_automatico': origem_lista.cb_calculo_automatico,
+                'cb_status_manual': origem_lista.cb_status_manual,
+            }
+        )
+
+    form = CestaBasicaListaForm(request.POST or None, initial=initial)
+
+    if request.method == 'POST':
+        if not criacao_modo:
+            criacao_modo = 'funcionarios'
+        if form.is_valid():
+            modo = (
+                criacao_modo
+                if criacao_modo in ('vazio', 'funcionarios', 'clonar')
+                else 'funcionarios'
+            )
+            if modo == 'clonar':
+                origem_lista = _get_lista_cesta_origem_clone(
+                    request,
+                    competencia,
+                    origem_lista_pk,
+                )
+                if not origem_lista:
+                    messages.error(
+                        request,
+                        'Selecione uma lista de cesta básica anterior para clonar.',
+                    )
+                    context = {
+                        'lista': None,
+                        'competencia': competencia,
+                        'form': form,
+                        'modo': 'criar',
+                        'criacao_modo': criacao_modo,
+                        'origem_lista_pk': origem_lista_pk,
+                        'modo_resumo': '',
+                    }
+                    return render(
+                        request,
+                        'controles_rh/cesta_basica/_form_lista_modal.html',
+                        context,
+                    )
+
+            with transaction.atomic():
+                lista = form.save(commit=False)
+                lista.competencia = competencia
+                lista.save()
+                if modo == 'funcionarios':
+                    _criar_itens_iniciais_cesta(lista)
+                elif modo == 'clonar':
+                    _clonar_itens_cesta(lista, origem_lista)
+
+            audit_controles_rh(
+                request,
+                'create',
+                f'Lista de cesta básica criada: {lista.titulo} ({competencia.referencia}) — modo: {modo}.',
+                {
+                    'cesta_lista_id': lista.pk,
+                    'competencia_id': competencia.pk,
+                    'modo_criacao': modo,
+                    'origem_lista_id': origem_lista.pk if origem_lista else None,
+                },
+            )
+            messages.success(request, f'Lista "{lista.nome_exibicao}" criada com sucesso.')
+
+            if _is_htmx(request):
+                url = reverse_empresa(
+                    request,
+                    'controles_rh:detalhe_cesta_basica',
+                    kwargs={'pk': lista.pk},
+                )
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = url
+                return response
+            return redirect_empresa(request, 'controles_rh:detalhe_cesta_basica', pk=lista.pk)
+
+        messages.error(request, 'Não foi possível criar a cesta básica. Revise os campos.')
+
+    modo_resumo = ''
+    if criacao_modo == 'vazio':
+        modo_resumo = 'Será criado o controle sem linhas. Você inclui funcionários depois.'
+    elif criacao_modo == 'funcionarios':
+        modo_resumo = 'Serão criadas linhas para todos os funcionários ativos da empresa.'
+    elif criacao_modo == 'clonar' and origem_lista:
+        modo_resumo = (
+            f'As linhas serão copiadas de {origem_lista.competencia.referencia} — '
+            f'{origem_lista.nome_exibicao}. Recebimentos e datas serão zerados.'
+        )
+
+    context = {
+        'lista': None,
+        'competencia': competencia,
+        'form': form,
+        'modo': 'criar',
+        'criacao_modo': criacao_modo,
+        'origem_lista_pk': origem_lista_pk,
+        'modo_resumo': modo_resumo,
+    }
+    return render(request, 'controles_rh/cesta_basica/_form_lista_modal.html', context)
 
 
 @login_required

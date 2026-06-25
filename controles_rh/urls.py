@@ -43,6 +43,7 @@ from controles_rh.views.cesta_basica import (
     excluir_cesta_basica_lista,
     excluir_item_cesta_basica,
     limpar_recebido_cesta_basica,
+    modal_opcoes_criar_cesta_basica,
     receber_todos_cesta_basica,
     reordenar_itens_cesta_basica,
 )
@@ -133,6 +134,11 @@ urlpatterns = [
     path('vt/itens/<int:pk>/pagamento/', empresa_scoped(modal_pagamento_item_vt), name='modal_pagamento_item_vt'),
     path('vt/itens/<int:pk>/excluir/', empresa_scoped(excluir_item_vt), name='excluir_item_vt'),
 
+    path(
+        'competencias/<int:competencia_pk>/cesta-basica/modal-opcoes/',
+        empresa_scoped(modal_opcoes_criar_cesta_basica),
+        name='modal_opcoes_criar_cesta_basica',
+    ),
     path('competencias/<int:competencia_pk>/cesta-basica/nova/', empresa_scoped(criar_cesta_basica), name='criar_cesta_basica'),
     path('cesta-basica/<int:pk>/', empresa_scoped(detalhe_cesta_basica), name='detalhe_cesta_basica'),
     path('cesta-basica/<int:pk>/editar/', empresa_scoped(editar_cesta_basica_lista), name='editar_cesta_basica_lista'),

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -152,6 +152,33 @@ def _origem_clone_para_competencia(competencia):
     return ant, tab
 
 
+def _tabelas_vt_anteriores(competencia):
+    return (
+        ValeTransporteTabela.objects.filter(
+            Q(competencia__ano__lt=competencia.ano)
+            | Q(
+                competencia__ano=competencia.ano,
+                competencia__mes__lt=competencia.mes,
+            ),
+            competencia__empresa_id=competencia.empresa_id,
+        )
+        .select_related('competencia')
+        .order_by('-competencia__ano', '-competencia__mes', 'ordem', 'nome', 'id')
+    )
+
+
+def _origem_tabela_vt_pk(request):
+    if request.method == 'POST':
+        return (request.POST.get('origem_tabela') or '').strip()
+    return (request.GET.get('origem_tabela') or '').strip()
+
+
+def _get_tabela_vt_origem_clone(competencia, origem_tabela_pk):
+    if not str(origem_tabela_pk).isdigit():
+        return None
+    return _tabelas_vt_anteriores(competencia).filter(pk=int(origem_tabela_pk)).first()
+
+
 def _modo_criacao_vt(request):
     """Lê ?modo= (GET) ou criacao_modo (POST), normalizado (strip)."""
     if request.method == 'POST':
@@ -186,23 +213,16 @@ def _clonar_itens_vt_de_tabela(destino, origem):
 @login_required
 def modal_opcoes_criar_tabela_vt(request, competencia_pk):
     """
-    Modal inicial: tabela vazia, com funcionários, ou clonar da competência anterior.
+    Modal inicial: tabela vazia, com funcionários, ou clonar de competência anterior.
     """
     competencia = _get_competencia_empresa(request, competencia_pk)
-    comp_ant, t_origem = _origem_clone_para_competencia(competencia)
-    pode_clonar = t_origem is not None
-    label_clonar = ''
-    if comp_ant and t_origem:
-        label_clonar = f'{comp_ant.referencia} — {t_origem.nome}'
+    tabelas_origem = list(_tabelas_vt_anteriores(competencia))
     return render(
         request,
         'controles_rh/vale_transporte/_modal_opcoes_criar_tabela.html',
         {
             'competencia': competencia,
-            'pode_clonar': pode_clonar,
-            'competencia_anterior': comp_ant,
-            'tabela_origem_clone': t_origem,
-            'label_clonar': label_clonar,
+            'tabelas_origem': tabelas_origem,
         },
     )
 
@@ -215,6 +235,7 @@ def criar_tabela_vt(request, competencia_pk):
     competencia = _get_competencia_empresa(request, competencia_pk)
 
     criacao_modo_ctx = _modo_criacao_vt(request)
+    origem_tabela_pk = _origem_tabela_vt_pk(request)
 
     if request.method == 'GET':
         if not criacao_modo_ctx:
@@ -230,11 +251,11 @@ def criar_tabela_vt(request, competencia_pk):
                 competencia_pk=competencia_pk,
             )
         if criacao_modo_ctx == 'clonar':
-            _, origem = _origem_clone_para_competencia(competencia)
+            origem = _get_tabela_vt_origem_clone(competencia, origem_tabela_pk)
             if not origem:
                 messages.error(
                     request,
-                    'Não há tabela de VT na competência anterior para clonar.',
+                    'Selecione uma tabela de VT de competência anterior para clonar.',
                 )
                 return redirect_empresa(
                     request,
@@ -250,19 +271,22 @@ def criar_tabela_vt(request, competencia_pk):
     if request.method == 'POST' and not criacao_modo_ctx:
         criacao_modo_ctx = 'funcionarios'
     modo_resumo = ''
+    origem_tabela = (
+        _get_tabela_vt_origem_clone(competencia, origem_tabela_pk)
+        if criacao_modo_ctx == 'clonar'
+        else None
+    )
     if criacao_modo_ctx == 'vazio':
         modo_resumo = 'Será criada uma tabela sem linhas (você adiciona depois).'
     elif criacao_modo_ctx == 'funcionarios':
         modo_resumo = (
-            'Serão criadas linhas para todos os funcionários admitidos da empresa.'
+            'Serão criadas linhas para todos os funcionários ativos da empresa.'
         )
-    elif criacao_modo_ctx == 'clonar':
-        ca, ta = _origem_clone_para_competencia(competencia)
-        if ca and ta:
-            modo_resumo = (
-                f'As linhas serão copiadas de {ca.referencia} — tabela «{ta.nome}». '
-                'Valores pagos não são copiados.'
-            )
+    elif criacao_modo_ctx == 'clonar' and origem_tabela:
+        modo_resumo = (
+            f'As linhas serão copiadas de {origem_tabela.competencia.referencia} — tabela «{origem_tabela.nome}». '
+            'Valores pagos não são copiados.'
+        )
 
     if request.method == 'POST':
         if form.is_valid():
@@ -271,32 +295,37 @@ def criar_tabela_vt(request, competencia_pk):
                 if criacao_modo_ctx in ('vazio', 'funcionarios', 'clonar')
                 else 'funcionarios'
             )
+            if modo == 'clonar':
+                origem_tabela = _get_tabela_vt_origem_clone(
+                    competencia,
+                    origem_tabela_pk,
+                )
+                if not origem_tabela:
+                    messages.error(
+                        request,
+                        'Selecione uma tabela de VT de competência anterior para clonar.',
+                    )
+                    context = {
+                        'competencia': competencia,
+                        'tabela': None,
+                        'form': form,
+                        'modo': 'criar',
+                        'criacao_modo': criacao_modo_ctx,
+                        'origem_tabela_pk': origem_tabela_pk,
+                        'modo_resumo': '',
+                    }
+                    return render(
+                        request,
+                        'controles_rh/vale_transporte/_form_tabela_modal.html',
+                        context,
+                    )
 
             with transaction.atomic():
                 tabela = form.save()
                 if modo == 'funcionarios':
                     _criar_itens_iniciais_vt(tabela)
                 elif modo == 'clonar':
-                    _, origem = _origem_clone_para_competencia(competencia)
-                    if not origem:
-                        messages.error(
-                            request,
-                            'Não há tabela na competência anterior para clonar.',
-                        )
-                        context = {
-                            'competencia': competencia,
-                            'tabela': None,
-                            'form': form,
-                            'modo': 'criar',
-                            'criacao_modo': criacao_modo_ctx,
-                            'modo_resumo': modo_resumo,
-                        }
-                        return render(
-                            request,
-                            'controles_rh/vale_transporte/_form_tabela_modal.html',
-                            context,
-                        )
-                    _clonar_itens_vt_de_tabela(tabela, origem)
+                    _clonar_itens_vt_de_tabela(tabela, origem_tabela)
                 # modo == 'vazio': sem linhas
 
             audit_controles_rh(
@@ -307,6 +336,7 @@ def criar_tabela_vt(request, competencia_pk):
                     'tabela_vt_id': tabela.pk,
                     'competencia_id': competencia.pk,
                     'modo_criacao': modo,
+                    'origem_tabela_id': origem_tabela.pk if origem_tabela else None,
                 },
             )
             messages.success(request, f'Tabela "{tabela.nome}" criada com sucesso.')
@@ -333,6 +363,7 @@ def criar_tabela_vt(request, competencia_pk):
         'form': form,
         'modo': 'criar',
         'criacao_modo': criacao_modo_ctx,
+        'origem_tabela_pk': origem_tabela_pk,
         'modo_resumo': modo_resumo,
     }
     return render(request, 'controles_rh/vale_transporte/_form_tabela_modal.html', context)

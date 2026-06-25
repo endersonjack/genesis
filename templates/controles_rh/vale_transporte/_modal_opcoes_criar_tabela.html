@@ -34,44 +34,50 @@
             <span class="fs-4"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
             <span class="flex-grow-1">
                 <span class="fw-bold d-block text-dark">Com todos os funcionários</span>
-                <span class="small text-muted">Uma linha por funcionário admitido, com dados e VT do cadastro.</span>
+                <span class="small text-muted">Uma linha por funcionário ativo, com dados e VT do cadastro.</span>
             </span>
         </button>
 
-        {% if pode_clonar %}
-            <button
-                type="button"
-                class="btn btn-outline-success text-start py-3 d-flex align-items-start gap-3 rounded-3"
-                data-no-global-loading
-                hx-get="{% url 'controles_rh:criar_tabela_vt' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}?modo=clonar"
-                hx-target="#modal-content"
-                hx-swap="innerHTML">
-                <span class="fs-4"><i class="bi bi-copy" aria-hidden="true"></i></span>
-                <span class="flex-grow-1">
-                    <span class="fw-bold d-block text-dark">Clonar da competência anterior</span>
-                    <span class="small text-muted">
-                        Origem: <strong>{{ label_clonar }}</strong>.
-                        Copia linhas e valores a pagar; zera pagamentos e datas.
-                    </span>
-                </span>
-            </button>
-        {% else %}
-            <div class="border rounded-3 p-3 bg-light text-muted">
-                <div class="d-flex align-items-start gap-2">
-                    <i class="bi bi-copy fs-5 flex-shrink-0 mt-1" aria-hidden="true"></i>
-                    <div>
-                        <div class="fw-bold text-secondary">Clonar da competência anterior</div>
-                        <div class="small">
-                            {% if competencia_anterior %}
-                                Existe a competência {{ competencia_anterior.referencia }}, mas não há tabela de VT para copiar.
-                            {% else %}
-                                Não há competência imediatamente anterior cadastrada para esta empresa (ex.: primeiro mês).
-                            {% endif %}
-                        </div>
+        <form
+            class="border rounded-3 p-3"
+            data-no-global-loading
+            hx-get="{% url 'controles_rh:criar_tabela_vt' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+            hx-target="#modal-content"
+            hx-swap="innerHTML">
+            <input type="hidden" name="modo" value="clonar">
+            <div class="d-flex align-items-start gap-3">
+                <span class="fs-4 text-success"><i class="bi bi-copy" aria-hidden="true"></i></span>
+                <div class="flex-grow-1">
+                    <div class="fw-bold text-dark">Clonar de outra competência</div>
+                    <div class="small text-muted mb-2">
+                        Escolha uma tabela de Vale Transporte de competências anteriores.
                     </div>
+                    <select name="origem_tabela"
+                            class="form-select form-select-sm"
+                            {% if tabelas_origem %}required{% endif %}
+                            {% if not tabelas_origem %}disabled{% endif %}>
+                        <option value="">Selecione uma competência anterior</option>
+                        {% for tabela in tabelas_origem %}
+                            <option value="{{ tabela.pk }}">
+                                {{ tabela.competencia.referencia }} — {{ tabela.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if not tabelas_origem %}
+                        <div class="small text-muted mt-2">
+                            Não há tabelas de VT em competências anteriores para clonar.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
-        {% endif %}
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit"
+                        class="btn btn-outline-success btn-sm"
+                        {% if not tabelas_origem %}disabled{% endif %}>
+                    <i class="bi bi-arrow-right me-1"></i> Continuar
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

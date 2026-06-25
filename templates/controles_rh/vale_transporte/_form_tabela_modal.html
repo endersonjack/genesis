@@ -19,6 +19,7 @@
 
     {% if modo == 'criar' %}
         <input type="hidden" name="criacao_modo" value="{{ criacao_modo }}">
+        <input type="hidden" name="origem_tabela" value="{{ origem_tabela_pk }}">
     {% endif %}
 
     <div class="modal-body">

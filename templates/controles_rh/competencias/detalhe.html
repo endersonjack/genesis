@@ -461,12 +461,19 @@
                                     </span>
                                     <p class="add-mini-title mb-0">Cesta Básica</p>
                                 </div>
-                                <a href="{% url 'controles_rh:criar_cesta_basica' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                <button
+                                   type="button"
                                    class="btn btn-primary btn-sm btn-add-inline"
                                    title="Adicionar"
-                                   aria-label="Adicionar Cesta Básica">
+                                   aria-label="Adicionar Cesta Básica"
+                                   data-no-global-loading
+                                   hx-get="{% url 'controles_rh:modal_opcoes_criar_cesta_basica' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                   hx-target="#modal-content"
+                                   hx-swap="innerHTML"
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#modalPadrao">
                                     <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                </a>
+                                </button>
                             </div>
                         </div>
 
