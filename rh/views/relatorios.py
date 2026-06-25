@@ -4,6 +4,8 @@ Página hub de relatórios do RH (presets via export da busca + link para busca 
 
 from django.shortcuts import render
 
+from local.models import LocalTrabalhoAtivo
+
 from ..models import Lotacao
 from .base import _empresa_ativa_or_redirect
 
@@ -17,4 +19,17 @@ def relatorios_rh(request):
         return redirect_response
 
     lotacoes = Lotacao.objects.filter(empresa=empresa_ativa).order_by('nome')
-    return render(request, 'rh/relatorios.html', {'lotacoes': lotacoes})
+    locais_trabalho = [
+        ativo.local
+        for ativo in LocalTrabalhoAtivo.objects.filter(empresa=empresa_ativa)
+        .select_related('local')
+        .order_by('local__nome')
+    ]
+    return render(
+        request,
+        'rh/relatorios.html',
+        {
+            'lotacoes': lotacoes,
+            'locais_trabalho': locais_trabalho,
+        },
+    )

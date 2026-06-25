@@ -210,11 +210,7 @@ def _pix_funcionario(f) -> str:
     return '—'
 
 
-def _lotacao_funcionario(f) -> str:
-    if getattr(f, 'lotacao', None):
-        nome = (f.lotacao.nome or '').strip()
-        if nome:
-            return nome
+def _local_trabalho_funcionario(f) -> str:
     if getattr(f, 'local_trabalho', None):
         nome = (f.local_trabalho.nome or '').strip()
         if nome:
@@ -222,13 +218,18 @@ def _lotacao_funcionario(f) -> str:
     return '—'
 
 
-def _filtrar_lotacao_relatorio_fotos(qs, request, relatorio_key):
-    if relatorio_key != 'funcionarios_fotos':
+def _filtrar_relatorio_funcionarios(qs, request, relatorio_key):
+    if relatorio_key not in RELATORIOS_FUNCIONARIOS:
         return qs
 
     raw_lotacao = (request.GET.get('lotacao') or '').strip()
     if raw_lotacao.isdigit():
-        return qs.filter(lotacao_id=int(raw_lotacao))
+        qs = qs.filter(lotacao_id=int(raw_lotacao))
+
+    raw_local_trabalho = (request.GET.get('local_trabalho') or '').strip()
+    if raw_local_trabalho.isdigit():
+        qs = qs.filter(local_trabalho_id=int(raw_local_trabalho))
+
     return qs
 
 
@@ -316,7 +317,7 @@ def _card_relatorio_fotos(f, styles, card_width_mm):
             [_info_funcionario_paragraph('Nome', _nome_maiusculo(f), info_style)],
             [_info_funcionario_paragraph('Cargo', f.cargo.nome if f.cargo else '—', info_style)],
             [_info_funcionario_paragraph('Telefone', _contato_funcionario(f), info_style)],
-            [_info_funcionario_paragraph('Lotação', _lotacao_funcionario(f), info_style)],
+            [_info_funcionario_paragraph('Local de Trabalho', _local_trabalho_funcionario(f), info_style)],
         ],
         colWidths=[details_w_mm * mm],
     )
@@ -394,6 +395,60 @@ def _flowable_relatorio_fotos(funcionarios, styles):
         )
     )
     return table
+
+
+def _local_trabalho_filtro_label(request, empresa_ativa) -> str:
+    raw_local_trabalho = (request.GET.get('local_trabalho') or '').strip()
+    if not raw_local_trabalho.isdigit():
+        return 'Todos'
+
+    ativo = (
+        LocalTrabalhoAtivo.objects.filter(
+            empresa=empresa_ativa,
+            local_id=int(raw_local_trabalho),
+        )
+        .select_related('local')
+        .first()
+    )
+    if ativo and ativo.local:
+        nome = (ativo.local.nome or '').strip()
+        if nome:
+            return nome
+    return 'Todos'
+
+
+def _flowables_titulo_relatorio_fotos_pdf(titulo_doc, local_trabalho_label, styles):
+    titulo_style = ParagraphStyle(
+        'func_fotos_titulo_doc_pdf',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=14,
+        alignment=1,
+        spaceBefore=0,
+        spaceAfter=0,
+        textColor=colors.HexColor('#0f172a'),
+        fontName='Helvetica-Bold',
+    )
+    subtitulo_style = ParagraphStyle(
+        'func_fotos_local_doc_pdf',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=11,
+        alignment=1,
+        spaceBefore=1,
+        spaceAfter=0,
+        textColor=colors.HexColor('#334155'),
+        fontName='Helvetica',
+    )
+    return [
+        Spacer(1, 6 * mm),
+        Paragraph(f'<b>{xml_escape(titulo_doc)}</b>', titulo_style),
+        Paragraph(
+            f'Local de trabalho: {xml_escape(local_trabalho_label)}',
+            subtitulo_style,
+        ),
+        Spacer(1, 4 * mm),
+    ]
 
 
 def build_export_table(
@@ -903,7 +958,7 @@ def build_export_table(
             'Nome',
             'Cargo',
             'Telefone',
-            'Lotação',
+            'Local de trabalho',
             'Foto',
         ]
         headers_pdf = [
@@ -911,16 +966,16 @@ def build_export_table(
             'NOME',
             'CARGO',
             'TELEFONE',
-            'LOTAÇÃO',
+            'LOCAL DE TRABALHO',
             'FOTO',
         ]
         weights = [0.32, 1.75, 1.3, 1.2, 1.2, 0.95]
-        titulo = 'RELATÓRIO DE FOTOS'
+        titulo = 'RELATÓRIOS DE FUNCIONÁRIOS COM FOTO'
         subtitulo_ctx = f'Funcionários · Fotos · Emitido em {emit}'
-        xlsx_head = f'Relatório de fotos — Emitido em {emit}'
+        xlsx_head = f'Relatórios de funcionários com foto — Emitido em {emit}'
         filename_slug = 'Relatorio_fotos_funcionarios'
         sheet_title = 'Fotos'
-        pdf_doc_title = 'Relatório de fotos'
+        pdf_doc_title = 'Relatórios de funcionários com foto'
         body_font = 7
         rows = []
         for n, f in enumerate(funcionarios, start=1):
@@ -931,7 +986,7 @@ def build_export_table(
                     _nome_maiusculo(f),
                     (f.cargo.nome if f.cargo else '—'),
                     _contato_funcionario(f),
-                    _lotacao_funcionario(f),
+                    _local_trabalho_funcionario(f),
                     foto_nome,
                 ]
             )
@@ -976,7 +1031,7 @@ def exportar_busca_funcionarios_pdf(request):
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
     elif rk in RELATORIOS_FUNCIONARIOS:
         qs_funcionarios = _queryset_ativos_funcionarios_export(empresa_ativa)
-        qs_funcionarios = _filtrar_lotacao_relatorio_fotos(qs_funcionarios, request, rk)
+        qs_funcionarios = _filtrar_relatorio_funcionarios(qs_funcionarios, request, rk)
         funcionarios = list(qs_funcionarios)
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
@@ -1022,7 +1077,16 @@ def exportar_busca_funcionarios_pdf(request):
             temp_logo_paths,
         )
     )
-    story.extend(_flowables_titulo_pdf_centro(cfg.titulo, styles))
+    if cfg.relatorio == 'funcionarios_fotos':
+        story.extend(
+            _flowables_titulo_relatorio_fotos_pdf(
+                cfg.titulo,
+                _local_trabalho_filtro_label(request, empresa_ativa),
+                styles,
+            )
+        )
+    else:
+        story.extend(_flowables_titulo_pdf_centro(cfg.titulo, styles))
 
     meta_style = ParagraphStyle(
         'busca_meta',
@@ -1103,7 +1167,7 @@ def exportar_busca_funcionarios_xlsx(request):
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
     elif rk in RELATORIOS_FUNCIONARIOS:
         qs_funcionarios = _queryset_ativos_funcionarios_export(empresa_ativa)
-        qs_funcionarios = _filtrar_lotacao_relatorio_fotos(qs_funcionarios, request, rk)
+        qs_funcionarios = _filtrar_relatorio_funcionarios(qs_funcionarios, request, rk)
         funcionarios = list(qs_funcionarios)
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))

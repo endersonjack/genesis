@@ -166,18 +166,34 @@
                         <div class="fw-semibold">Relatório de Contato de Funcionário</div>
                         <div class="small text-muted">#, Nome, Cargo, CPF e Contato.</div>
                     </div>
-                    <div class="rh-report-actions d-flex flex-wrap gap-2">
-                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_contato"
-                           class="btn btn-sm btn-outline-danger"
-                           target="_blank" rel="noopener noreferrer">
+                    <form class="rh-report-actions d-flex flex-wrap align-items-center gap-2"
+                          method="get"
+                          action="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}"
+                          target="_blank">
+                        <input type="hidden" name="relatorio" value="funcionarios_contato">
+                        <select name="lotacao" class="form-select form-select-sm" style="width: 220px;">
+                            <option value="">Todas as lotações</option>
+                            {% for lotacao in lotacoes %}
+                                <option value="{{ lotacao.pk }}">{{ lotacao.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="local_trabalho" class="form-select form-select-sm" style="width: 230px;">
+                            <option value="">Todos os locais de trabalho</option>
+                            {% for local_trabalho in locais_trabalho %}
+                                <option value="{{ local_trabalho.pk }}">{{ local_trabalho.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}">
                             <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-                        </a>
-                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_contato"
-                           class="btn btn-sm btn-outline-success"
-                           target="_blank" rel="noopener noreferrer">
+                        </button>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-success"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}">
                             <i class="bi bi-file-earmark-excel me-1"></i> Excel
-                        </a>
-                    </div>
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -187,18 +203,34 @@
                         <div class="fw-semibold">Relatório de PIX de Funcionário</div>
                         <div class="small text-muted">#, Nome, Cargo, CPF e Dados de PIX.</div>
                     </div>
-                    <div class="rh-report-actions d-flex flex-wrap gap-2">
-                        <a href="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_pix"
-                           class="btn btn-sm btn-outline-danger"
-                           target="_blank" rel="noopener noreferrer">
+                    <form class="rh-report-actions d-flex flex-wrap align-items-center gap-2"
+                          method="get"
+                          action="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}"
+                          target="_blank">
+                        <input type="hidden" name="relatorio" value="funcionarios_pix">
+                        <select name="lotacao" class="form-select form-select-sm" style="width: 220px;">
+                            <option value="">Todas as lotações</option>
+                            {% for lotacao in lotacoes %}
+                                <option value="{{ lotacao.pk }}">{{ lotacao.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="local_trabalho" class="form-select form-select-sm" style="width: 230px;">
+                            <option value="">Todos os locais de trabalho</option>
+                            {% for local_trabalho in locais_trabalho %}
+                                <option value="{{ local_trabalho.pk }}">{{ local_trabalho.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}">
                             <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-                        </a>
-                        <a href="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}?relatorio=funcionarios_pix"
-                           class="btn btn-sm btn-outline-success"
-                           target="_blank" rel="noopener noreferrer">
+                        </button>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-success"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}">
                             <i class="bi bi-file-earmark-excel me-1"></i> Excel
-                        </a>
-                    </div>
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -206,7 +238,7 @@
                 <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
                     <div>
                         <div class="fw-semibold">Relatório de Fotos</div>
-                        <div class="small text-muted">Cards com foto, nome, cargo, telefone e lotação.</div>
+                        <div class="small text-muted">Cards com foto, nome, cargo, telefone e local de trabalho.</div>
                     </div>
                     <form class="rh-report-actions d-flex flex-wrap align-items-center gap-2"
                           method="get"
@@ -217,6 +249,12 @@
                             <option value="">Todas as lotações</option>
                             {% for lotacao in lotacoes %}
                                 <option value="{{ lotacao.pk }}">{{ lotacao.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="local_trabalho" class="form-select form-select-sm" style="width: 230px;">
+                            <option value="">Todos os locais de trabalho</option>
+                            {% for local_trabalho in locais_trabalho %}
+                                <option value="{{ local_trabalho.pk }}">{{ local_trabalho.nome }}</option>
                             {% endfor %}
                         </select>
                         <button type="submit"
