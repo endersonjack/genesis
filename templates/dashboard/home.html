@@ -92,6 +92,186 @@
         font-size: 0.875rem;
         vertical-align: middle;
     }
+    .sticky-notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 220px));
+        gap: 1rem;
+        align-items: start;
+    }
+    .sticky-note {
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 0.35rem;
+        padding: 1rem;
+        aspect-ratio: 1 / 1;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        position: relative;
+        width: 100%;
+        overflow-wrap: anywhere;
+        overflow: hidden;
+    }
+    .sticky-note-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+    .sticky-note.is-done {
+        opacity: 0.72;
+    }
+    .sticky-note-text {
+        font-size: 1.02rem;
+        line-height: 1.35;
+        font-weight: 800;
+        white-space: pre-wrap;
+        margin: 0;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 0.25rem;
+        scrollbar-width: thin;
+    }
+    .sticky-note-text::-webkit-scrollbar {
+        width: 0.35rem;
+    }
+    .sticky-note-text::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.45);
+        border-radius: 999px;
+    }
+    .sticky-note-company {
+        font-size: 0.78rem;
+        line-height: 1.25;
+        font-weight: 800;
+        text-transform: uppercase;
+        opacity: 0.9;
+    }
+    .sticky-note-meta {
+        font-size: 0.75rem;
+        line-height: 1.35;
+        opacity: 0.86;
+        min-width: 0;
+    }
+    .sticky-note-submeta {
+        font-size: 0.72rem;
+        line-height: 1.3;
+        opacity: 0.86;
+    }
+    .sticky-note-attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: fit-content;
+        max-width: 100%;
+        border-radius: 999px;
+        padding: 0.18rem 0.55rem;
+        background: rgba(255, 255, 255, 0.28);
+        color: inherit;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+    .sticky-note-attachment:hover {
+        color: inherit;
+        background: rgba(255, 255, 255, 0.38);
+    }
+    .sticky-note-footer {
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        gap: 0.75rem;
+        flex-shrink: 0;
+    }
+    .sticky-note-actions {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .sticky-note-actions form {
+        margin: 0;
+    }
+    .sticky-note-icon-btn {
+        border: 0;
+        background: rgba(255, 255, 255, 0.92);
+        width: 1.85rem;
+        height: 1.85rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+        padding: 0;
+    }
+    .sticky-note-icon-btn i {
+        font-size: 1rem;
+        line-height: 1;
+    }
+    .sticky-note-icon-btn.is-success {
+        color: #15803d;
+    }
+    .sticky-note-icon-btn.is-danger {
+        color: #dc2626;
+    }
+    .sticky-note-icon-btn.is-edit {
+        color: #2563eb;
+    }
+    .sticky-note-icon-btn.is-restore {
+        color: #2563eb;
+    }
+    .sticky-note-add-btn {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .sticky-note-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .people-picker-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    .people-picker-panel select {
+        min-height: 10rem;
+    }
+    .people-picker-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 7.5rem;
+    }
+    .people-picker-selected option[data-fixed="true"] {
+        font-weight: 700;
+    }
+    @media (max-width: 767.98px) {
+        .people-picker-panel {
+            grid-template-columns: 1fr;
+        }
+        .people-picker-actions {
+            min-width: 0;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .sticky-notes-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+    }
 
     /* Card empresa ativa — mesmo “shell” do hero Gestão de RH (rh/dashboard.html) */
     .dash-geral-empresa-shell {
@@ -201,144 +381,233 @@
 </div>
 
 <div class="card content-card">
-    <div class="card-header bg-white border-0 pb-0 pt-3 px-3 px-md-4">
-        <div class="dash-geral-card-top mb-1">
-            <span class="dash-geral-board-icon" aria-hidden="true"><i class="bi bi-lightning-charge-fill"></i></span>
+    <div class="card-header bg-white border-0 d-flex align-items-start justify-content-between gap-3 pb-0 pt-3 px-3 px-md-4">
+        <div class="dash-geral-card-top mb-1 min-w-0">
+            <span class="dash-geral-board-icon" aria-hidden="true"><i class="bi bi-sticky-fill"></i></span>
             <div class="min-w-0">
-                <h3 class="dash-geral-board-heading text-uppercase">Acesso rápido</h3>
-                <p class="text-muted small mb-0">Atalhos para as telas mais usadas nesta empresa.</p>
+                <h3 class="dash-geral-board-heading text-uppercase">Notas e tarefas</h3>
+                <p class="text-muted small mb-0">Lembretes pessoais e tarefas delegadas, reunindo as empresas às quais você tem acesso.</p>
             </div>
+        </div>
+        <div class="sticky-note-header-actions">
+            <a href="{% url 'dashboard_notas_concluidas' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary btn-sm fw-semibold">
+                <i class="bi bi-check2-circle me-1"></i>Notas concluídas
+            </a>
+            <button type="button" class="btn btn-primary sticky-note-add-btn" data-bs-toggle="modal" data-bs-target="#modalNotaAutoadesiva" aria-label="Adicionar nota">
+                <i class="bi bi-plus-lg"></i>
+            </button>
         </div>
     </div>
     <div class="card-body pt-3 px-3 px-md-4 pb-4">
-
-        {% if request.usuario_mod_rh or request.usuario_admin_empresa or request.user.is_superuser %}
-        <p class="quick-access-section-title">RH</p>
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-search"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Buscar funcionários</div>
-                            <p class="quick-access-tile-desc">Pesquisa entre os cadastros</p>
+        {% if notas_abertas %}
+            <div class="sticky-notes-grid">
+                {% for nota in notas_abertas %}
+                    <article class="sticky-note" style="background: linear-gradient(135deg, {{ nota.bg_color }} 0%, {{ nota.bg_color_end }} 100%); color: {{ nota.text_color }};">
+                        <div class="sticky-note-header">
+                            <div class="sticky-note-company">{{ nota.empresa }}</div>
+                            <div class="sticky-note-submeta">
+                                Criado por: {{ nota.autor.nome_completo|default:nota.autor.username }}<br>
+                                {{ nota.criada_em|date:"d/m/Y" }} - {{ nota.criada_em|naturaltime }}
+                                {% if nota.responsaveis_display %}
+                                    <br>Para: {{ nota.responsaveis_display }}
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-map"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Ver mapa de locais de trabalho</div>
-                            <p class="quick-access-tile-desc">Visão geral dos funcionários por local</p>
+                        <p class="sticky-note-text">{{ nota.texto }}</p>
+                        {% if nota.anexo %}
+                            <a href="{{ nota.anexo.url }}" class="sticky-note-attachment" target="_blank" rel="noopener">
+                                <i class="bi bi-paperclip"></i> Anexo
+                            </a>
+                        {% endif %}
+                        <div class="sticky-note-footer">
+                            <div class="sticky-note-actions">
+                                {% if nota.autor_id == request.user.pk or request.user.is_superuser %}
+                                    <button type="button" class="sticky-note-icon-btn is-edit" data-bs-toggle="modal" data-bs-target="#modalEditarNota{{ nota.pk }}" aria-label="Editar nota" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                {% endif %}
+                                <form method="post" action="{% url 'dashboard_alternar_nota' empresa_id=request.empresa_ativa.pk pk=nota.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="sticky-note-icon-btn is-success" aria-label="Concluir nota" title="Concluir">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </form>
+                                {% if nota.autor_id == request.user.pk or request.user.is_superuser %}
+                                    <form method="post" action="{% url 'dashboard_excluir_nota' empresa_id=request.empresa_ativa.pk pk=nota.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="sticky-note-icon-btn is-danger" aria-label="Excluir nota" title="Excluir">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                </a>
+                    </article>
+                {% endfor %}
             </div>
-        </div>
-        {% endif %}
-
-        {% if request.usuario_mod_financeiro or request.usuario_admin_empresa or request.user.is_superuser %}
-        <p class="quick-access-section-title">Financeiro</p>
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-cash-stack"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Dashboard financeiro</div>
-                            <p class="quick-access-tile-desc">Caixas, saldos e lançamentos</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if request.usuario_mod_estoque or request.usuario_admin_empresa or request.user.is_superuser %}
-        <p class="quick-access-section-title">Estoque</p>
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'estoque:nova_requisicao' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-clipboard-plus"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Nova requisição</div>
-                            <p class="quick-access-tile-desc">Abrir uma nova requisição de estoque</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if request.usuario_mod_locais or request.usuario_mod_auditoria_total or request.usuario_mod_auditoria_sua or request.usuario_mod_editar_empresas or request.usuario_admin_empresa or request.user.is_superuser %}
-        <p class="quick-access-section-title">Empresa</p>
-        <div class="row g-3">
-            {% if request.usuario_mod_locais or request.usuario_admin_empresa or request.user.is_superuser %}
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'local:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
-                            <i class="bi bi-geo-alt"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Locais</div>
-                            <p class="quick-access-tile-desc">Unidades e endereços</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            {% endif %}
-            {% if request.usuario_mod_auditoria_total or request.usuario_mod_auditoria_sua or request.usuario_admin_empresa or request.user.is_superuser %}
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'auditoria:lista' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
-                            <i class="bi bi-journal-text"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Auditoria</div>
-                            <p class="quick-access-tile-desc">Histórico de ações na empresa</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            {% endif %}
-            {% if request.usuario_mod_editar_empresas or request.usuario_admin_empresa or request.user.is_superuser %}
-            <div class="col-12 col-sm-6 col-xl-4">
-                <a href="{% url 'empresa_preferencias' empresa_id=request.empresa_ativa.pk %}" class="text-decoration-none">
-                    <div class="quick-access-tile">
-                        <span class="quick-access-tile-icon bg-secondary-subtle text-secondary-emphasis">
-                            <i class="bi bi-sliders"></i>
-                        </span>
-                        <div>
-                            <div class="quick-access-tile-title">Preferências</div>
-                            <p class="quick-access-tile-desc">Dados e tema da empresa</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if not request.usuario_mod_rh and not request.usuario_mod_financeiro and not request.usuario_mod_estoque and not request.usuario_mod_locais and not request.usuario_mod_auditoria_total and not request.usuario_mod_auditoria_sua and not request.usuario_mod_editar_empresas and not request.usuario_admin_empresa and not request.user.is_superuser %}
-        <p class="text-muted small mb-0">Nenhum atalho disponível para o seu perfil nesta empresa.</p>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhuma nota aberta.</p>
         {% endif %}
 
     </div>
 </div>
+
+<div class="modal fade" id="modalNotaAutoadesiva" tabindex="-1" aria-labelledby="modalNotaAutoadesivaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'dashboard_criar_nota' empresa_id=request.empresa_ativa.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalNotaAutoadesivaLabel">Adicionar nota</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-10">
+                            <label class="form-label fw-semibold" for="{{ nota_form.texto.id_for_label }}">{{ nota_form.texto.label }}</label>
+                            {{ nota_form.texto }}
+                            {% if nota_form.texto.errors %}<div class="text-danger small mt-1">{{ nota_form.texto.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-lg-2">
+                            <label class="form-label fw-semibold" for="{{ nota_form.cor.id_for_label }}">{{ nota_form.cor.label }}</label>
+                            {{ nota_form.cor }}
+                            {% if nota_form.cor.errors %}<div class="text-danger small mt-1">{{ nota_form.cor.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Responsáveis</label>
+                            <div class="people-picker-panel" data-people-picker>
+                                <div>
+                                    <div class="form-text mb-1">Pessoas disponíveis</div>
+                                    <select class="form-select people-picker-available" multiple size="7" aria-label="Pessoas disponíveis">
+                                        {% for usuario in usuarios_responsaveis %}
+                                            {% if usuario.pk != request.user.pk %}
+                                                <option value="{{ usuario.pk }}">{{ usuario.nome_completo|default:usuario.username }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="people-picker-actions">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-people-add>Adicionar &gt;&gt;</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-people-remove>&lt;&lt; Remover</button>
+                                </div>
+                                <div>
+                                    <div class="form-text mb-1">Pessoas vinculadas</div>
+                                    <select name="responsaveis" class="form-select people-picker-selected" multiple size="7" aria-label="Pessoas vinculadas">
+                                        <option value="{{ request.user.pk }}" data-fixed="true" selected>{{ request.user.nome_completo|default:request.user.username }} (fixo)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-text">Deixe vazio para criar um lembrete pessoal.</div>
+                            {% if nota_form.responsaveis.errors %}<div class="text-danger small mt-1">{{ nota_form.responsaveis.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="{{ nota_form.empresa.id_for_label }}">{{ nota_form.empresa.label }}</label>
+                            {{ nota_form.empresa }}
+                            {% if nota_form.empresa.errors %}<div class="text-danger small mt-1">{{ nota_form.empresa.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="{{ nota_form.anexo.id_for_label }}">{{ nota_form.anexo.label }}</label>
+                            {{ nota_form.anexo }}
+                            {% if nota_form.anexo.errors %}<div class="text-danger small mt-1">{{ nota_form.anexo.errors|join:", " }}</div>{% endif %}
+                        </div>
+                    </div>
+                    {% if nota_form.non_field_errors %}
+                        <div class="alert alert-danger small mt-3 mb-0">{{ nota_form.non_field_errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-semibold">
+                        <i class="bi bi-plus-lg me-1"></i>Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for nota in notas_abertas %}
+    {% if nota.autor_id == request.user.pk or request.user.is_superuser %}
+        <div class="modal fade" id="modalEditarNota{{ nota.pk }}" tabindex="-1" aria-labelledby="modalEditarNota{{ nota.pk }}Label" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" action="{% url 'dashboard_editar_nota' empresa_id=request.empresa_ativa.pk pk=nota.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="empresa" value="{{ nota.empresa_id }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold" id="modalEditarNota{{ nota.pk }}Label">Editar nota</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-12 col-lg-10">
+                                    <label class="form-label fw-semibold" for="editar-nota-texto-{{ nota.pk }}">Nota</label>
+                                    <textarea name="texto" id="editar-nota-texto-{{ nota.pk }}" rows="3" class="form-control" required>{{ nota.texto }}</textarea>
+                                </div>
+                                <div class="col-12 col-lg-2">
+                                    <label class="form-label fw-semibold" for="editar-nota-cor-{{ nota.pk }}">Cor da nota</label>
+                                    <input type="color" name="cor" id="editar-nota-cor-{{ nota.pk }}" class="form-control form-control-color" value="{{ nota.cor|default:'#facc15' }}" title="Escolha a cor da nota">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Responsáveis</label>
+                                    <div class="people-picker-panel" data-people-picker>
+                                        <div>
+                                            <div class="form-text mb-1">Pessoas disponíveis</div>
+                                            <select class="form-select people-picker-available" multiple size="7" aria-label="Pessoas disponíveis">
+                                                {% for usuario in usuarios_responsaveis %}
+                                                    {% if usuario.pk not in nota.responsaveis_ids and usuario.pk != nota.autor_id %}
+                                                        <option value="{{ usuario.pk }}">{{ usuario.nome_completo|default:usuario.username }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="people-picker-actions">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-people-add>Adicionar &gt;&gt;</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-people-remove>&lt;&lt; Remover</button>
+                                        </div>
+                                        <div>
+                                            <div class="form-text mb-1">Pessoas vinculadas</div>
+                                            <select name="responsaveis" class="form-select people-picker-selected" multiple size="7" aria-label="Pessoas vinculadas">
+                                                {% for usuario in usuarios_responsaveis %}
+                                                    {% if usuario.pk == nota.autor_id %}
+                                                        <option value="{{ usuario.pk }}" data-fixed="true" selected>{{ usuario.nome_completo|default:usuario.username }} (fixo)</option>
+                                                    {% elif usuario.pk in nota.responsaveis_ids %}
+                                                        <option value="{{ usuario.pk }}">{{ usuario.nome_completo|default:usuario.username }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Deixe vazio para criar um lembrete pessoal.</div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold" for="editar-nota-empresa-{{ nota.pk }}">Empresa</label>
+                                    <input type="text" id="editar-nota-empresa-{{ nota.pk }}" class="form-control" value="{{ nota.empresa }}" disabled>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold" for="editar-nota-anexo-{{ nota.pk }}">Anexo</label>
+                                    <input type="file" name="anexo" id="editar-nota-anexo-{{ nota.pk }}" class="form-control">
+                                    {% if nota.anexo %}
+                                        <div class="form-text">
+                                            Anexo atual:
+                                            <a href="{{ nota.anexo.url }}" target="_blank" rel="noopener">abrir arquivo</a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary fw-semibold">
+                                <i class="bi bi-check2 me-1"></i>Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
 
 <div class="card content-card dashboard-audit-card mt-4">
     <div class="card-header bg-white border-0 d-flex flex-wrap align-items-start justify-content-between gap-3 pb-0 pt-3 px-3 px-md-4">
@@ -428,4 +697,66 @@
     Nenhuma empresa ativa. Selecione uma empresa para ver o dashboard.
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function sortOptions(select) {
+        var options = Array.from(select.options);
+        options.sort(function (a, b) {
+            if (a.dataset.fixed === 'true' && b.dataset.fixed !== 'true') return -1;
+            if (a.dataset.fixed !== 'true' && b.dataset.fixed === 'true') return 1;
+            return a.text.localeCompare(b.text, 'pt-BR', { sensitivity: 'base' });
+        });
+        options.forEach(function (option) {
+            select.appendChild(option);
+        });
+    }
+
+    function moveSelected(from, to) {
+        Array.from(from.selectedOptions).forEach(function (option) {
+            if (option.dataset.fixed === 'true') {
+                return;
+            }
+            option.selected = false;
+            to.appendChild(option);
+        });
+        sortOptions(to);
+    }
+
+    document.querySelectorAll('[data-people-picker]').forEach(function (picker) {
+        var available = picker.querySelector('.people-picker-available');
+        var selected = picker.querySelector('.people-picker-selected');
+        var addButton = picker.querySelector('[data-people-add]');
+        var removeButton = picker.querySelector('[data-people-remove]');
+        var form = picker.closest('form');
+
+        if (!available || !selected || !addButton || !removeButton || !form) {
+            return;
+        }
+
+        sortOptions(available);
+        sortOptions(selected);
+
+        addButton.addEventListener('click', function () {
+            moveSelected(available, selected);
+        });
+        removeButton.addEventListener('click', function () {
+            moveSelected(selected, available);
+        });
+        available.addEventListener('dblclick', function () {
+            moveSelected(available, selected);
+        });
+        selected.addEventListener('dblclick', function () {
+            moveSelected(selected, available);
+        });
+        form.addEventListener('submit', function () {
+            Array.from(selected.options).forEach(function (option) {
+                option.selected = true;
+            });
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Notas Concluídas | Genesis ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sticky-notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 220px));
+        gap: 1rem;
+        align-items: start;
+    }
+    .sticky-note {
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 0.35rem;
+        padding: 1rem;
+        aspect-ratio: 1 / 1;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+    }
+    .sticky-note-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+    .sticky-note-company {
+        font-size: 0.78rem;
+        line-height: 1.25;
+        font-weight: 800;
+        text-transform: uppercase;
+        opacity: 0.9;
+    }
+    .sticky-note-submeta {
+        font-size: 0.72rem;
+        line-height: 1.3;
+        opacity: 0.86;
+    }
+    .sticky-note-attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: fit-content;
+        max-width: 100%;
+        border-radius: 999px;
+        padding: 0.18rem 0.55rem;
+        background: rgba(255, 255, 255, 0.28);
+        color: inherit;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+    .sticky-note-attachment:hover {
+        color: inherit;
+        background: rgba(255, 255, 255, 0.38);
+    }
+    .sticky-note-text {
+        font-size: 1.02rem;
+        line-height: 1.35;
+        font-weight: 800;
+        white-space: pre-wrap;
+        margin: 0;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 0.25rem;
+        scrollbar-width: thin;
+    }
+    .sticky-note-text::-webkit-scrollbar {
+        width: 0.35rem;
+    }
+    .sticky-note-text::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.45);
+        border-radius: 999px;
+    }
+    .sticky-note-footer {
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        flex-shrink: 0;
+    }
+    .sticky-note-actions {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+    }
+    .sticky-note-actions form {
+        margin: 0;
+    }
+    .sticky-note-icon-btn {
+        border: 0;
+        background: rgba(255, 255, 255, 0.92);
+        width: 1.85rem;
+        height: 1.85rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+        padding: 0;
+        color: #2563eb;
+    }
+    @media (max-width: 575.98px) {
+        .sticky-notes-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Notas concluídas</h2>
+        <p class="text-muted mb-0">Notas concluídas no mês selecionado.</p>
+    </div>
+    {% if request.empresa_ativa %}
+        <a href="{% url 'dashboard_home' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    {% endif %}
+</div>
+
+<div class="card content-card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-12 col-md-4 col-lg-3">
+                <label for="filtro-mes" class="form-label fw-semibold">Mês</label>
+                <select name="mes" id="filtro-mes" class="form-select">
+                    {% for numero, nome in meses %}
+                        <option value="{{ numero }}"{% if numero == mes %} selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-2">
+                <label for="filtro-ano" class="form-label fw-semibold">Ano</label>
+                <select name="ano" id="filtro-ano" class="form-select">
+                    {% for item in anos %}
+                        <option value="{{ item }}"{% if item == ano %} selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-2 d-grid">
+                <button type="submit" class="btn btn-primary fw-semibold">
+                    <i class="bi bi-funnel me-1"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card content-card">
+    <div class="card-body">
+        {% if notas %}
+            <div class="sticky-notes-grid">
+                {% for nota in notas %}
+                    <article class="sticky-note" style="background: linear-gradient(135deg, {{ nota.bg_color }} 0%, {{ nota.bg_color_end }} 100%); color: {{ nota.text_color }};">
+                        <div class="sticky-note-header">
+                            <div class="sticky-note-company">{{ nota.empresa }}</div>
+                            <div class="sticky-note-submeta">
+                                Criado por: {{ nota.autor.nome_completo|default:nota.autor.username }}<br>
+                                {{ nota.criada_em|date:"d/m/Y" }} - {{ nota.criada_em|naturaltime }}
+                                {% if nota.responsaveis_display %}
+                                    <br>Para: {{ nota.responsaveis_display }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <p class="sticky-note-text">{{ nota.texto }}</p>
+                        {% if nota.anexo %}
+                            <a href="{{ nota.anexo.url }}" class="sticky-note-attachment" target="_blank" rel="noopener">
+                                <i class="bi bi-paperclip"></i> Anexo
+                            </a>
+                        {% endif %}
+                        <div class="sticky-note-footer">
+                            <div class="sticky-note-actions">
+                                <form method="post" action="{% url 'dashboard_alternar_nota' empresa_id=request.empresa_ativa.pk pk=nota.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="sticky-note-icon-btn" aria-label="Reabrir nota" title="Reabrir">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhuma nota concluída neste período.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
