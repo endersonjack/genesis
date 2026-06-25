@@ -4,7 +4,7 @@ Cabeçalho alinhado ao padrão Vale Transporte (logo + bloco de texto da empresa
 
 Parâmetro GET opcional ``relatorio`` (relatórios pré-definidos na página de Relatórios):
 situação (ativos, experiencia, demitidos, aviso_previo, ferias), funcionários
-(funcionarios_contato, funcionarios_pix) e saúde (pcmso_vencimentos, aso_ultimo)
+(funcionarios_contato, funcionarios_pix, funcionarios_fotos) e saúde (pcmso_vencimentos, aso_ultimo)
 — altera título, colunas e critério de listagem.
 """
 import re
@@ -24,6 +24,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from empresas.models import Empresa
@@ -47,7 +48,7 @@ from .funcionarios import queryset_funcionarios_busca_avancada
 
 RELATORIOS_SAUDE = frozenset({'pcmso_vencimentos', 'aso_ultimo'})
 RELATORIOS_LOCAIS = frozenset({'funcionarios_local_trabalho', 'locais_trabalho_ativos'})
-RELATORIOS_FUNCIONARIOS = frozenset({'funcionarios_contato', 'funcionarios_pix'})
+RELATORIOS_FUNCIONARIOS = frozenset({'funcionarios_contato', 'funcionarios_pix', 'funcionarios_fotos'})
 
 
 def _safe_filename_part(text):
@@ -133,7 +134,7 @@ def _queryset_ativos_funcionarios_export(empresa_ativa):
     return (
         Funcionario.objects.filter(empresa=empresa_ativa)
         .exclude(situacao_atual__in=['demitido', 'inativo'])
-        .select_related('cargo')
+        .select_related('cargo', 'lotacao', 'local_trabalho')
         .order_by('nome')
     )
 
@@ -182,6 +183,7 @@ def _relatorio_key(request) -> Optional[str]:
             'locais_trabalho_ativos',
             'funcionarios_contato',
             'funcionarios_pix',
+            'funcionarios_fotos',
         }
     )
     return key if key in allowed else None
@@ -208,10 +210,190 @@ def _pix_funcionario(f) -> str:
     return '—'
 
 
+def _lotacao_funcionario(f) -> str:
+    if getattr(f, 'lotacao', None):
+        nome = (f.lotacao.nome or '').strip()
+        if nome:
+            return nome
+    if getattr(f, 'local_trabalho', None):
+        nome = (f.local_trabalho.nome or '').strip()
+        if nome:
+            return nome
+    return '—'
+
+
+def _filtrar_lotacao_relatorio_fotos(qs, request, relatorio_key):
+    if relatorio_key != 'funcionarios_fotos':
+        return qs
+
+    raw_lotacao = (request.GET.get('lotacao') or '').strip()
+    if raw_lotacao.isdigit():
+        return qs.filter(lotacao_id=int(raw_lotacao))
+    return qs
+
+
 def _pdf_widths_from_weights(weights):
     total = float(PDF_LANDSCAPE_CONTENT_MM)
     s = sum(weights)
     return [total * w / s for w in weights]
+
+
+def _foto_funcionario_box(f, styles, width_mm=36, height_mm=42):
+    max_w = (width_mm - 5) * mm
+    max_h = (height_mm - 5) * mm
+    content = None
+
+    foto = getattr(f, 'foto', None)
+    if foto:
+        try:
+            with foto.open('rb') as fp:
+                img_buf = BytesIO(fp.read())
+            img = RLImage(img_buf)
+            ratio = min(max_w / img.imageWidth, max_h / img.imageHeight)
+            img.drawWidth = img.imageWidth * ratio
+            img.drawHeight = img.imageHeight * ratio
+            img._genesis_img_buf = img_buf
+            content = img
+        except Exception:
+            content = None
+
+    if content is None:
+        placeholder_style = ParagraphStyle(
+            'foto_placeholder',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=8,
+            leading=10,
+            alignment=1,
+            textColor=colors.HexColor('#94a3b8'),
+        )
+        content = Paragraph('SEM<br/>FOTO', placeholder_style)
+
+    box = Table(
+        [[content]],
+        colWidths=[width_mm * mm],
+        rowHeights=[height_mm * mm],
+    )
+    box.setStyle(
+        TableStyle(
+            [
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+                ('BOX', (0, 0), (-1, -1), 0.6, colors.HexColor('#cbd5e1')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    return box
+
+
+def _info_funcionario_paragraph(label, value, style):
+    value = (value or '—').strip() or '—'
+    return Paragraph(
+        f'<b>{xml_escape(label)}:</b> {xml_escape(value)}',
+        style,
+    )
+
+
+def _card_relatorio_fotos(f, styles, card_width_mm):
+    photo_w_mm = 36
+    card_h_mm = 48
+    details_w_mm = card_width_mm - photo_w_mm - 7
+    info_style = ParagraphStyle(
+        'foto_card_info',
+        parent=styles['Normal'],
+        fontSize=10.5,
+        leading=13.5,
+        textColor=colors.HexColor('#0f172a'),
+    )
+
+    detalhes = Table(
+        [
+            [_info_funcionario_paragraph('Nome', _nome_maiusculo(f), info_style)],
+            [_info_funcionario_paragraph('Cargo', f.cargo.nome if f.cargo else '—', info_style)],
+            [_info_funcionario_paragraph('Telefone', _contato_funcionario(f), info_style)],
+            [_info_funcionario_paragraph('Lotação', _lotacao_funcionario(f), info_style)],
+        ],
+        colWidths=[details_w_mm * mm],
+    )
+    detalhes.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+
+    card = Table(
+        [[_foto_funcionario_box(f, styles, width_mm=photo_w_mm, height_mm=42), detalhes]],
+        colWidths=[photo_w_mm * mm, details_w_mm * mm],
+        rowHeights=[card_h_mm * mm],
+    )
+    card.setStyle(
+        TableStyle(
+            [
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor('#cbd5e1')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return card
+
+
+def _flowable_relatorio_fotos(funcionarios, styles):
+    gap_mm = 6
+    card_width_mm = (float(PDF_LANDSCAPE_CONTENT_MM) - gap_mm) / 2
+    rows = []
+    for i in range(0, len(funcionarios), 2):
+        left = _card_relatorio_fotos(funcionarios[i], styles, card_width_mm)
+        right = (
+            _card_relatorio_fotos(funcionarios[i + 1], styles, card_width_mm)
+            if i + 1 < len(funcionarios)
+            else ''
+        )
+        rows.append([left, '', right])
+
+    if not rows:
+        empty_style = ParagraphStyle(
+            'foto_empty',
+            parent=styles['Normal'],
+            fontSize=9,
+            leading=12,
+            textColor=colors.HexColor('#475569'),
+        )
+        return Paragraph('Nenhum funcionário encontrado.', empty_style)
+
+    table = Table(
+        rows,
+        colWidths=[card_width_mm * mm, gap_mm * mm, card_width_mm * mm],
+        hAlign='LEFT',
+        repeatRows=0,
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    return table
 
 
 def build_export_table(
@@ -715,6 +897,44 @@ def build_export_table(
                     _pix_funcionario(f),
                 ]
             )
+    elif rk == 'funcionarios_fotos':
+        headers = [
+            '#',
+            'Nome',
+            'Cargo',
+            'Telefone',
+            'Lotação',
+            'Foto',
+        ]
+        headers_pdf = [
+            '#',
+            'NOME',
+            'CARGO',
+            'TELEFONE',
+            'LOTAÇÃO',
+            'FOTO',
+        ]
+        weights = [0.32, 1.75, 1.3, 1.2, 1.2, 0.95]
+        titulo = 'RELATÓRIO DE FOTOS'
+        subtitulo_ctx = f'Funcionários · Fotos · Emitido em {emit}'
+        xlsx_head = f'Relatório de fotos — Emitido em {emit}'
+        filename_slug = 'Relatorio_fotos_funcionarios'
+        sheet_title = 'Fotos'
+        pdf_doc_title = 'Relatório de fotos'
+        body_font = 7
+        rows = []
+        for n, f in enumerate(funcionarios, start=1):
+            foto_nome = 'Sim' if getattr(f, 'foto', None) else 'Não'
+            rows.append(
+                [
+                    str(n),
+                    _nome_maiusculo(f),
+                    (f.cargo.nome if f.cargo else '—'),
+                    _contato_funcionario(f),
+                    _lotacao_funcionario(f),
+                    foto_nome,
+                ]
+            )
     else:
         raise ValueError(f'Layout de relatório não tratado: {rk!r}')
 
@@ -755,7 +975,9 @@ def exportar_busca_funcionarios_pdf(request):
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
     elif rk in RELATORIOS_FUNCIONARIOS:
-        funcionarios = list(_queryset_ativos_funcionarios_export(empresa_ativa))
+        qs_funcionarios = _queryset_ativos_funcionarios_export(empresa_ativa)
+        qs_funcionarios = _filtrar_lotacao_relatorio_fotos(qs_funcionarios, request, rk)
+        funcionarios = list(qs_funcionarios)
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
     elif rk == 'locais_trabalho_ativos':
@@ -818,37 +1040,40 @@ def exportar_busca_funcionarios_pdf(request):
     )
     story.append(Spacer(1, 2 * mm))
 
-    last_idx = len(data_rows) - 1
-    table = Table(
-        data_rows,
-        colWidths=[w * mm for w in cfg.col_widths_mm],
-        repeatRows=1,
-    )
-    pdf_style = [
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#dbeafe')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), cfg.body_font),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('LEFTPADDING', (0, 0), (-1, -1), 2),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#cbd5e1')),
-    ]
-    if last_idx >= 1:
-        pdf_style.append(
-            (
-                'ROWBACKGROUNDS',
-                (0, 1),
-                (-1, -1),
-                [colors.white, colors.HexColor('#f8fafc')],
-            )
+    if cfg.relatorio == 'funcionarios_fotos':
+        story.append(_flowable_relatorio_fotos(funcionarios, styles))
+    else:
+        last_idx = len(data_rows) - 1
+        table = Table(
+            data_rows,
+            colWidths=[w * mm for w in cfg.col_widths_mm],
+            repeatRows=1,
         )
-    table.setStyle(TableStyle(pdf_style))
-    story.append(table)
+        pdf_style = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#dbeafe')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), cfg.body_font),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 2),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#cbd5e1')),
+        ]
+        if last_idx >= 1:
+            pdf_style.append(
+                (
+                    'ROWBACKGROUNDS',
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor('#f8fafc')],
+                )
+            )
+        table.setStyle(TableStyle(pdf_style))
+        story.append(table)
     story.extend(flowables_rodape_impressao(request, styles, space_before_mm=3))
 
     doc.build(story)
@@ -877,7 +1102,9 @@ def exportar_busca_funcionarios_xlsx(request):
     if rk in RELATORIOS_SAUDE:
         funcionarios = list(_queryset_ativos_saude_export(empresa_ativa))
     elif rk in RELATORIOS_FUNCIONARIOS:
-        funcionarios = list(_queryset_ativos_funcionarios_export(empresa_ativa))
+        qs_funcionarios = _queryset_ativos_funcionarios_export(empresa_ativa)
+        qs_funcionarios = _filtrar_lotacao_relatorio_fotos(qs_funcionarios, request, rk)
+        funcionarios = list(qs_funcionarios)
     elif rk == 'funcionarios_local_trabalho':
         funcionarios = list(_queryset_funcionarios_com_local_trabalho(empresa_ativa))
     elif rk == 'locais_trabalho_ativos':

@@ -201,6 +201,37 @@
                     </div>
                 </div>
             </div>
+
+            <div class="rh-report-row">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+                    <div>
+                        <div class="fw-semibold">Relatório de Fotos</div>
+                        <div class="small text-muted">Cards com foto, nome, cargo, telefone e lotação.</div>
+                    </div>
+                    <form class="rh-report-actions d-flex flex-wrap align-items-center gap-2"
+                          method="get"
+                          action="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}"
+                          target="_blank">
+                        <input type="hidden" name="relatorio" value="funcionarios_fotos">
+                        <select name="lotacao" class="form-select form-select-sm" style="width: 220px;">
+                            <option value="">Todas as lotações</option>
+                            {% for lotacao in lotacoes %}
+                                <option value="{{ lotacao.pk }}">{{ lotacao.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_pdf' empresa_id=request.empresa_ativa.pk %}">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                        </button>
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-success"
+                                formaction="{% url 'rh:exportar_busca_funcionarios_xlsx' empresa_id=request.empresa_ativa.pk %}">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <div class="tab-pane fade" id="rel-pane-situacao" role="tabpanel" aria-labelledby="rel-tab-situacao" tabindex="0">

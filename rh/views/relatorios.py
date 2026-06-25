@@ -4,6 +4,7 @@ Página hub de relatórios do RH (presets via export da busca + link para busca 
 
 from django.shortcuts import render
 
+from ..models import Lotacao
 from .base import _empresa_ativa_or_redirect
 
 
@@ -15,4 +16,5 @@ def relatorios_rh(request):
     if redirect_response:
         return redirect_response
 
-    return render(request, 'rh/relatorios.html', {})
+    lotacoes = Lotacao.objects.filter(empresa=empresa_ativa).order_by('nome')
+    return render(request, 'rh/relatorios.html', {'lotacoes': lotacoes})
