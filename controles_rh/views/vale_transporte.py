@@ -1,11 +1,12 @@
 import json
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -76,7 +77,7 @@ def _get_funcionarios_para_vt(competencia):
     funcionarios = (
         Funcionario.objects.filter(empresa=competencia.empresa)
         .exclude(situacao_atual__in=['demitido', 'inativo'])
-        .select_related('cargo')
+        .select_related('cargo', 'lotacao')
         .order_by('nome')
     )
 
@@ -208,6 +209,67 @@ def _clonar_itens_vt_de_tabela(destino, origem):
             ordem=it.ordem,
             ativo=it.ativo,
         )
+
+
+def _ordenacao_itens_vt(valor: str | None) -> str:
+    if valor in {'cargo', 'lotacao', 'banco'}:
+        return valor
+    return 'nome'
+
+
+def _order_by_itens_vt(ordenacao: str):
+    orderings = {
+        'nome': ('nome', 'funcionario__nome', 'id'),
+        'cargo': ('funcao', 'nome', 'funcionario__nome', 'id'),
+        'lotacao': ('funcionario__lotacao__nome', 'nome', 'funcionario__nome', 'id'),
+        'banco': ('banco', 'nome', 'funcionario__nome', 'id'),
+    }
+    return orderings.get(ordenacao, orderings['nome'])
+
+
+def _filtros_itens_vt(params) -> dict[str, str]:
+    cargo = (params.get('cargo') or '').strip()
+    banco = (params.get('banco') or '').strip()
+    status = (params.get('status') or '').strip()
+    if status not in {'aberto', 'pago'}:
+        status = ''
+    return {
+        'cargo': cargo,
+        'status': status,
+        'banco': banco,
+    }
+
+
+def _filtrar_itens_vt(qs, filtros: dict[str, str]):
+    if filtros.get('cargo'):
+        qs = qs.filter(funcao=filtros['cargo'])
+    if filtros.get('banco'):
+        qs = qs.filter(banco=filtros['banco'])
+    if filtros.get('status') == 'aberto':
+        qs = qs.filter(ativo=True, valor_pagar__gt=0, valor_pago__lt=F('valor_pagar'))
+    elif filtros.get('status') == 'pago':
+        qs = qs.filter(ativo=True, valor_pagar__gt=0, valor_pago__gte=F('valor_pagar'))
+    return qs
+
+
+def _opcoes_filtros_itens_vt(tabela) -> dict[str, list[str]]:
+    base = tabela.itens.all()
+    cargos = list(
+        base.exclude(funcao='')
+        .order_by('funcao')
+        .values_list('funcao', flat=True)
+        .distinct()
+    )
+    bancos = list(
+        base.exclude(banco='')
+        .order_by('banco')
+        .values_list('banco', flat=True)
+        .distinct()
+    )
+    return {
+        'cargos': cargos,
+        'bancos': bancos,
+    }
 
 
 @login_required
@@ -375,8 +437,18 @@ def detalhe_tabela_vt(request, pk):
     Exibe os detalhes da tabela VT e seus itens.
     """
     tabela = _get_tabela_vt_empresa(request, pk)
+    ordenacao = _ordenacao_itens_vt(request.GET.get('ordenacao'))
+    filtros = _filtros_itens_vt(request.GET)
 
-    itens = tabela.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+    itens = (
+        _filtrar_itens_vt(
+            tabela.itens.select_related('funcionario', 'funcionario__lotacao'),
+            filtros,
+        )
+        .order_by(*_order_by_itens_vt(ordenacao))
+    )
+    query_params = {'ordenacao': ordenacao}
+    query_params.update({k: v for k, v in filtros.items() if v})
 
     total_valor_pago = _total_valor_pago_tabela(tabela)
     total_a_pagar = tabela.total_valor
@@ -393,6 +465,10 @@ def detalhe_tabela_vt(request, pk):
         'total_valor': total_a_pagar,
         'total_valor_pago': total_valor_pago,
         'saldo_a_pagar': saldo_a_pagar,
+        'ordenacao': ordenacao,
+        'filtros': filtros,
+        'opcoes_filtros': _opcoes_filtros_itens_vt(tabela),
+        'vt_query_string': urlencode(query_params),
     }
     return render(request, 'controles_rh/vale_transporte/detalhe_tabela.html', context)
 
@@ -497,6 +573,7 @@ def _get_item_vt_empresa(request, pk):
         'tabela__competencia',
         'tabela__competencia__empresa',
         'funcionario',
+        'funcionario__lotacao',
     )
 
     if empresa_ativa:

@@ -25,7 +25,14 @@ from controles_rh.views.cesta_export import (
     _unlink_temp_logo_paths,
 )
 from controles_rh.views.pdf_rodape import flowables_rodape_impressao
-from controles_rh.views.vale_transporte import _get_tabela_vt_empresa, _total_valor_pago_tabela
+from controles_rh.views.vale_transporte import (
+    _filtrar_itens_vt,
+    _filtros_itens_vt,
+    _get_tabela_vt_empresa,
+    _order_by_itens_vt,
+    _ordenacao_itens_vt,
+    _total_valor_pago_tabela,
+)
 
 
 def _safe_filename_part(text):
@@ -34,8 +41,11 @@ def _safe_filename_part(text):
     return (s[:60] or 'vt').strip('_')
 
 
-def _itens_export(tabela):
-    return tabela.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+def _itens_export(tabela, ordenacao='nome', filtros=None):
+    qs = tabela.itens.select_related('funcionario', 'funcionario__lotacao')
+    if filtros:
+        qs = _filtrar_itens_vt(qs, filtros)
+    return qs.order_by(*_order_by_itens_vt(ordenacao))
 
 
 def _resumo_tabela_export(tabela):
@@ -75,7 +85,7 @@ def _fmt_br_decimal(val):
 VT_PDF_TABLE_WIDTH_MM = 273
 
 
-def _col_widths_vt_pdf_mm(tabela):
+def _col_widths_vt_pdf_mm(tabela, ordenacao='nome', filtros=None):
     """
     # | NOME (nome-função) | valores | PIX | DT pag.
 
@@ -98,7 +108,7 @@ def _col_widths_vt_pdf_mm(tabela):
     # Padding lateral da célula (~6 pt) + pequena folga
     pad_pt = 10.0
 
-    itens = list(_itens_export(tabela))
+    itens = list(_itens_export(tabela, ordenacao, filtros))
     if not itens:
         w_nome = 70.0
         w_pix = total - fixed_rest - w_nome
@@ -126,26 +136,33 @@ def _col_widths_vt_pdf_mm(tabela):
 
 def _vt_pdf_nome_funcao_texto(item) -> str:
     nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
-    cpf_p = ''
-    if item.funcionario_id and getattr(item.funcionario, 'cpf', None):
-        cpf_p = f'CPF {item.funcionario.cpf}'
     func_p = (item.funcao or '').strip().upper() or '—'
-    partes = [nome_p]
+    cpf_p = ''
+    lotacao_p = 'LOTAÇÃO: —'
+    if item.funcionario_id:
+        if getattr(item.funcionario, 'cpf', None):
+            cpf_p = f'CPF {item.funcionario.cpf}'
+        if getattr(item.funcionario, 'lotacao', None):
+            lotacao_p = f'LOTAÇÃO: {item.funcionario.lotacao}'
+    partes = [nome_p, func_p]
     if cpf_p:
         partes.append(cpf_p)
-    partes.append(func_p)
+    partes.append(lotacao_p)
     return ' - '.join(partes)
 
 
 def _vt_pdf_nome_funcao_html(item) -> str:
     nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
     func_p = (item.funcao or '').strip().upper() or '—'
-    meta = [func_p]
+    cpf_p = ''
+    lotacao_p = 'Lotação: —'
     if item.funcionario_id and getattr(item.funcionario, 'cpf', None):
-        meta.insert(0, f'CPF {item.funcionario.cpf}')
+        cpf_p = f', CPF {item.funcionario.cpf}'
+    if item.funcionario_id and getattr(item.funcionario, 'lotacao', None):
+        lotacao_p = f'Lotação: {item.funcionario.lotacao}'
     return (
         f'<b>{xml_escape(nome_p)}</b>'
-        f'<br/><font size="6">{xml_escape(" - ".join(meta))}</font>'
+        f'<br/><font size="6">{xml_escape(func_p + cpf_p)}<br/>{xml_escape(lotacao_p)}</font>'
     )
 
 
@@ -162,12 +179,12 @@ def exportar_tabela_vt_xlsx(request, pk):
     comp = tabela.competencia
     empresa = comp.empresa
     resumo = _resumo_tabela_export(tabela)
+    ordenacao = _ordenacao_itens_vt(request.GET.get('ordenacao'))
+    filtros = _filtros_itens_vt(request.GET)
 
     headers = [
         '#',
-        'Nome',
-        'CPF',
-        'Função',
+        'Funcionário',
         'Endereço',
         'Valor a pagar',
         'Valor pago',
@@ -242,16 +259,20 @@ def exportar_tabela_vt_xlsx(request, pk):
         hc.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     row += 1
 
-    for n, item in enumerate(_itens_export(tabela), start=1):
+    for n, item in enumerate(_itens_export(tabela, ordenacao, filtros), start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_val = '—'
         else:
             saldo_val = float(item.saldo)
+        funcionario_txt = (
+            f'{item.nome_exibicao}\n'
+            f'{item.funcao or "-"}'
+            f'{", CPF " + item.funcionario.cpf if item.funcionario_id and item.funcionario and item.funcionario.cpf else ""}\n'
+            f'Lotação: {item.funcionario.lotacao if item.funcionario_id and item.funcionario and item.funcionario.lotacao else "—"}'
+        )
         valores = [
             n,
-            item.nome_exibicao,
-            item.funcionario.cpf if item.funcionario_id and item.funcionario else '',
-            item.funcao or '',
+            funcionario_txt,
             item.endereco or '',
             float(item.valor_pagar or 0),
             float(item.valor_pago or 0),
@@ -262,13 +283,16 @@ def exportar_tabela_vt_xlsx(request, pk):
             item.banco or '',
         ]
         for col, val in enumerate(valores, 1):
-            ws.cell(row=row, column=col, value=val)
+            cell = ws.cell(row=row, column=col, value=val)
+            if col == 2:
+                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+        ws.row_dimensions[row].height = 42
         row += 1
 
     ws.cell(row=row, column=1, value='TOTAIS').font = Font(bold=True)
-    ws.cell(row=row, column=6, value=float(resumo['total_a_pagar'])).font = Font(bold=True)
-    ws.cell(row=row, column=7, value=float(resumo['total_valor_pago'])).font = Font(bold=True)
-    ws.cell(row=row, column=8, value=float(resumo['saldo_a_pagar'])).font = Font(bold=True)
+    ws.cell(row=row, column=4, value=float(resumo['total_a_pagar'])).font = Font(bold=True)
+    ws.cell(row=row, column=5, value=float(resumo['total_valor_pago'])).font = Font(bold=True)
+    ws.cell(row=row, column=6, value=float(resumo['saldo_a_pagar'])).font = Font(bold=True)
 
     buf = BytesIO()
     wb.save(buf)
@@ -292,9 +316,11 @@ def exportar_tabela_vt_pdf(request, pk):
     comp = tabela.competencia
     empresa = Empresa.objects.get(pk=comp.empresa_id)
     resumo = _resumo_tabela_export(tabela)
+    ordenacao = _ordenacao_itens_vt(request.GET.get('ordenacao'))
+    filtros = _filtros_itens_vt(request.GET)
 
     styles = getSampleStyleSheet()
-    _cw = _col_widths_vt_pdf_mm(tabela)
+    _cw = _col_widths_vt_pdf_mm(tabela, ordenacao, filtros)
     # Nome/função: tamanho fixo para todos (sem reduzir fonte em nomes longos).
     nome_vt_style = ParagraphStyle(
         'vt_nome_fix',
@@ -319,7 +345,7 @@ def exportar_tabela_vt_pdf(request, pk):
     # Uma linha por item: NOME inclui função; PIX inclui tipo e banco; coluna de data.
     headers = [
         '#',
-        'NOME / CPF / FUNÇÃO',
+        'FUNCIONÁRIO',
         'VLR PAGAR',
         'VLR PAGO',
         'SALDO',
@@ -374,7 +400,7 @@ def exportar_tabela_vt_pdf(request, pk):
     )
     data_rows = [headers]
 
-    for n, item in enumerate(_itens_export(tabela), start=1):
+    for n, item in enumerate(_itens_export(tabela, ordenacao, filtros), start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_s = '—'
         else:
