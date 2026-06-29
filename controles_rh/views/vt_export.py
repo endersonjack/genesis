@@ -33,6 +33,7 @@ from controles_rh.views.vale_transporte import (
     _ordenacao_itens_vt,
     _total_valor_pago_tabela,
 )
+from controles_rh.views.pdf_avatar import AvatarFuncionario, _foto_funcionario_png
 
 
 def _safe_filename_part(text):
@@ -101,16 +102,16 @@ def _col_widths_vt_pdf_mm(tabela, ordenacao='nome', filtros=None):
     w_dt = 16.0
     fixed_rest = w_n + w_vp + w_vpg + w_saldo + w_dt
     min_pix = 50.0
-    min_nome = 40.0
+    min_nome = 52.0
 
     font = 'Helvetica-Bold'
     size = 7
-    # Padding lateral da célula (~6 pt) + pequena folga
-    pad_pt = 10.0
+    # Padding lateral + avatar circular à esquerda.
+    pad_pt = 42.0
 
     itens = list(_itens_export(tabela, ordenacao, filtros))
     if not itens:
-        w_nome = 70.0
+        w_nome = 82.0
         w_pix = total - fixed_rest - w_nome
         return (w_n, w_nome, w_vp, w_vpg, w_saldo, max(min_pix, w_pix), w_dt)
 
@@ -259,16 +260,19 @@ def exportar_tabela_vt_xlsx(request, pk):
         hc.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     row += 1
 
+    ws.column_dimensions['B'].width = 44
     for n, item in enumerate(_itens_export(tabela, ordenacao, filtros), start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_val = '—'
         else:
             saldo_val = float(item.saldo)
+        foto_png = _foto_funcionario_png(item.funcionario) if item.funcionario_id else None
+        prefixo_foto = '        ' if foto_png else ''
         funcionario_txt = (
-            f'{item.nome_exibicao}\n'
-            f'{item.funcao or "-"}'
+            f'{prefixo_foto}{item.nome_exibicao}\n'
+            f'{prefixo_foto}{item.funcao or "-"}'
             f'{", CPF " + item.funcionario.cpf if item.funcionario_id and item.funcionario and item.funcionario.cpf else ""}\n'
-            f'Lotação: {item.funcionario.lotacao if item.funcionario_id and item.funcionario and item.funcionario.lotacao else "—"}'
+            f'{prefixo_foto}Lotação: {item.funcionario.lotacao if item.funcionario_id and item.funcionario and item.funcionario.lotacao else "—"}'
         )
         valores = [
             n,
@@ -285,8 +289,21 @@ def exportar_tabela_vt_xlsx(request, pk):
         for col, val in enumerate(valores, 1):
             cell = ws.cell(row=row, column=col, value=val)
             if col == 2:
-                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
-        ws.row_dimensions[row].height = 42
+                cell.alignment = Alignment(
+                    horizontal='left',
+                    vertical='top',
+                    wrap_text=True,
+                    indent=4 if foto_png else 0,
+                )
+        if foto_png:
+            try:
+                funcionario_img = XLImage(BytesIO(foto_png))
+                funcionario_img.width = 36
+                funcionario_img.height = 36
+                ws.add_image(funcionario_img, f'B{row}')
+            except Exception:
+                pass
+        ws.row_dimensions[row].height = 46
         row += 1
 
     ws.cell(row=row, column=1, value='TOTAIS').font = Font(bold=True)
@@ -409,7 +426,24 @@ def exportar_tabela_vt_pdf(request, pk):
             xml_escape(_vt_pdf_pix_tipo_banco_texto(item)),
             pix_para_style,
         )
-        nome_cell = Paragraph(_vt_pdf_nome_funcao_html(item), nome_vt_style)
+        nome_text = Paragraph(_vt_pdf_nome_funcao_html(item), nome_vt_style)
+        avatar_col = 9 * mm
+        text_col = max(20 * mm, (_cw[1] * mm) - avatar_col - (2 * mm))
+        nome_cell = Table(
+            [[AvatarFuncionario(item.funcionario, 8 * mm), nome_text]],
+            colWidths=[avatar_col, text_col],
+        )
+        nome_cell.setStyle(
+            TableStyle(
+                [
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
         data_txt = _row_data_pagamento(item).upper()
         data_cell = Paragraph(xml_escape(data_txt), data_dt_style)
 

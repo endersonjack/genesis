@@ -219,8 +219,51 @@
         text-transform: uppercase;
     }
 
+    .vt-table .vt-func-cell {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        min-width: 0;
+        position: relative;
+    }
+
+    .vt-table .vt-func-avatar-wrap {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .vt-table .vt-func-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: grid;
+        place-items: center;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px #cbd5e1, 0 4px 12px rgba(15, 23, 42, 0.14);
+        background: #e0f2fe;
+        color: #075985;
+        font-size: .78rem;
+        font-weight: 800;
+        transition: transform .18s ease, box-shadow .18s ease;
+        transform-origin: left center;
+    }
+
+    .vt-table .vt-func-avatar-wrap:hover {
+        z-index: 40;
+    }
+
+    .vt-table .vt-func-avatar-wrap:hover .vt-func-avatar {
+        transform: scale(2.25);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+    }
+
     .vt-table .vt-nome-wrap {
         min-width: 0;
+        padding-left: .15rem;
     }
 
     .vt-table .vt-nome-text,
@@ -304,7 +347,7 @@
     }
 
     .vt-table th.col-nome,
-    .vt-table td.col-nome { width: 245px; }
+    .vt-table td.col-nome { width: 292px; }
     .vt-table th.col-endereco,
     .vt-table td.col-endereco { width: 180px; }
     .vt-table th.col-valor,
@@ -682,11 +725,25 @@
                                 <td
                                     class="col-nome"
                                     title="{{ item.nome_exibicao|upper }} — {{ item.funcao|default:'-'|upper }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}{% if item.funcionario and item.funcionario.lotacao %} — Lotação: {{ item.funcionario.lotacao }}{% endif %}">
-                                    <span class="vt-nome-wrap">
-                                        <span class="vt-nome-text">{{ item.nome_exibicao }}</span>
-                                        <span class="vt-meta-text">{{ item.funcao|default:"-" }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}</span>
-                                        <span class="vt-meta-text">Lotação: {% if item.funcionario and item.funcionario.lotacao %}{{ item.funcionario.lotacao }}{% else %}—{% endif %}</span>
+                        <span class="vt-func-cell">
+                            <span class="vt-func-avatar-wrap">
+                                {% if item.funcionario and item.funcionario.foto %}
+                                    <img
+                                        class="vt-func-avatar"
+                                        src="{{ item.funcionario.foto.url }}"
+                                        alt="Foto de {{ item.nome_exibicao }}">
+                                {% else %}
+                                    <span class="vt-func-avatar" aria-hidden="true">
+                                        {{ item.nome_exibicao|slice:":1" }}
                                     </span>
+                                {% endif %}
+                            </span>
+                            <span class="vt-nome-wrap">
+                                <span class="vt-nome-text">{{ item.nome_exibicao }}</span>
+                                <span class="vt-meta-text">{{ item.funcao|default:"-" }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}</span>
+                                <span class="vt-meta-text">Lotação: {% if item.funcionario and item.funcionario.lotacao %}{{ item.funcionario.lotacao }}{% else %}—{% endif %}</span>
+                            </span>
+                        </span>
                                 </td>
                                 <td class="col-endereco ellipsis-cell" title="{{ item.endereco|default:'-'|upper }}">
                                     {{ item.endereco|default:"-" }}

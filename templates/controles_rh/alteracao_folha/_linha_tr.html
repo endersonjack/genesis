@@ -10,15 +10,31 @@
     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
     <td class="af-readonly af-td-base text-muted">{{ row.seq }}</td>
     <td class="af-readonly af-td-base">
-        <div class="fw-semibold">{{ row.funcionario.nome }}</div>
-        <div class="af-func-meta">
-            {{ row.funcao }} · CPF: {{ row.funcionario.cpf|default:"—" }}
-        </div>
-        <div class="af-func-meta">
-            Lotação: {{ row.lotacao }}
-        </div>
-        <div class="af-func-meta">
-            Admissão: {{ row.data_admissao_fmt }} ({{ row.tempo_admissao_fmt }})
+        <div class="af-func-cell">
+            <div class="af-func-avatar-wrap">
+                {% if row.funcionario.foto %}
+                    <img
+                        class="af-func-avatar"
+                        src="{{ row.funcionario.foto.url }}"
+                        alt="Foto de {{ row.funcionario.nome }}">
+                {% else %}
+                    <div class="af-func-avatar af-func-avatar-fallback" aria-hidden="true">
+                        {{ row.funcionario_iniciais }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="af-func-info">
+                <div class="fw-semibold">{{ row.funcionario.nome }}</div>
+                <div class="af-func-meta">
+                    {{ row.funcao }} · CPF: {{ row.funcionario.cpf|default:"—" }}
+                </div>
+                <div class="af-func-meta">
+                    Lotação: {{ row.lotacao }}
+                </div>
+                <div class="af-func-meta">
+                    Admissão: {{ row.data_admissao_fmt }} ({{ row.tempo_admissao_fmt }})
+                </div>
+            </div>
         </div>
     </td>
     <td class="af-readonly af-td-base text-center">

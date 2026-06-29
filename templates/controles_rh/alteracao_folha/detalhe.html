@@ -89,6 +89,47 @@
     .af-th-premio-atual { background: #86efac !important; color: #14532d !important; }
     .af-th-desc { background: rgba(254, 205, 211, 0.45) !important; color: #334155 !important; }
     .af-table tbody td { vertical-align: middle; font-size: 0.875rem; }
+    .af-func-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 245px;
+        position: relative;
+    }
+    .af-func-avatar-wrap {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        position: relative;
+        z-index: 2;
+    }
+    .af-func-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: grid;
+        place-items: center;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px #cbd5e1, 0 4px 12px rgba(15, 23, 42, 0.14);
+        background: #e0f2fe;
+        color: #075985;
+        font-size: 0.78rem;
+        font-weight: 800;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        transform-origin: left center;
+    }
+    .af-func-avatar-wrap:hover {
+        z-index: 40;
+    }
+    .af-func-avatar-wrap:hover .af-func-avatar {
+        transform: scale(2.25);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+    }
+    .af-func-info {
+        min-width: 0;
+        padding-left: 0.15rem;
+    }
     .af-func-meta {
         color: #64748b;
         font-size: 0.75rem;

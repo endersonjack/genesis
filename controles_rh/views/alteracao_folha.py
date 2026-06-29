@@ -410,10 +410,12 @@ def _contexto_linha_tabela(
     data_referencia = _month_bounds(competencia.ano, competencia.mes)[1]
     data_admissao = func.data_admissao.strftime('%d/%m/%Y') if func.data_admissao else '—'
     tempo_admissao = _fmt_tempo_desde_admissao(func.data_admissao, data_referencia)
+    iniciais = ''.join(parte[0] for parte in (func.nome or '').split()[:2]).upper() or 'F'
     return {
         'linha': linha,
         'seq': seq,
         'funcionario': func,
+        'funcionario_iniciais': iniciais,
         'funcao': str(func.cargo) if func.cargo_id else '—',
         'lotacao': str(func.lotacao) if func.lotacao_id else '—',
         'data_admissao_fmt': data_admissao,

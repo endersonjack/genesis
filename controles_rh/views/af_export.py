@@ -36,6 +36,7 @@ from controles_rh.views.alteracao_folha import (
     _queryset_linhas,
     garantir_linhas_alteracao_folha,
 )
+from controles_rh.views.pdf_avatar import AvatarFuncionario
 from controles_rh.views.pdf_rodape import flowables_rodape_impressao
 
 # Mesma largura útil do PDF VT (paisagem A4, margens 12 mm)
@@ -235,13 +236,28 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         admissao = xml_escape(str(row['data_admissao_fmt'] or '—'))
         tempo_admissao = xml_escape(str(row['tempo_admissao_fmt'] or '—'))
         cpf = xml_escape(str(getattr(funcionario, 'cpf', '') or '—'))
-        nome_cell = Paragraph(
+        nome_text = Paragraph(
             (
                 f'<b>{nome}</b><br/>'
                 f'<font size="6">{cargo} · CPF: {cpf}<br/>'
                 f'Lotação: {lotacao}<br/>Admissão: {admissao} ({tempo_admissao})</font>'
             ),
             cell_style,
+        )
+        nome_cell = Table(
+            [[AvatarFuncionario(funcionario, 8 * mm), nome_text]],
+            colWidths=[9 * mm, 70 * mm],
+        )
+        nome_cell.setStyle(
+            TableStyle(
+                [
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]
+            )
         )
         data_rows.append(
             [
