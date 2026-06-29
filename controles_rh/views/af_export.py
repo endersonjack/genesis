@@ -233,12 +233,13 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         cargo = xml_escape(str(row['funcao'] or '—'))
         lotacao = xml_escape(str(row['lotacao'] or '—'))
         admissao = xml_escape(str(row['data_admissao_fmt'] or '—'))
+        tempo_admissao = xml_escape(str(row['tempo_admissao_fmt'] or '—'))
         cpf = xml_escape(str(getattr(funcionario, 'cpf', '') or '—'))
         nome_cell = Paragraph(
             (
                 f'<b>{nome}</b><br/>'
                 f'<font size="6">{cargo} · CPF: {cpf}<br/>'
-                f'Lotação: {lotacao}<br/>Admissão: {admissao}</font>'
+                f'Lotação: {lotacao}<br/>Admissão: {admissao} ({tempo_admissao})</font>'
             ),
             cell_style,
         )

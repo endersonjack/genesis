@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from calendar import monthrange
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -151,6 +152,39 @@ def _fmt_celula_faltas(info: dict[str, object]) -> str:
         else:
             partes.append(f'parcial ({inner_parcial})')
     return ' + '.join(partes)
+
+
+def _fmt_tempo_desde_admissao(data_admissao: date | None, data_referencia: date) -> str:
+    if not data_admissao:
+        return '—'
+    if data_admissao > data_referencia:
+        return '0 dias'
+
+    anos = data_referencia.year - data_admissao.year
+    meses = data_referencia.month - data_admissao.month
+    dias = data_referencia.day - data_admissao.day
+
+    if dias < 0:
+        meses -= 1
+        mes_anterior = data_referencia.month - 1
+        ano_mes_anterior = data_referencia.year
+        if mes_anterior == 0:
+            mes_anterior = 12
+            ano_mes_anterior -= 1
+        dias += monthrange(ano_mes_anterior, mes_anterior)[1]
+
+    if meses < 0:
+        anos -= 1
+        meses += 12
+
+    partes = []
+    if anos:
+        partes.append(f'{anos} ano' + ('' if anos == 1 else 's'))
+    if meses:
+        partes.append(f'{meses} mês' + ('' if meses == 1 else 'es'))
+    if dias or not partes:
+        partes.append(f'{dias} dia' + ('' if dias == 1 else 's'))
+    return ', '.join(partes)
 
 
 def _mapa_faltas_texto_por_funcionario(
@@ -373,7 +407,9 @@ def _contexto_linha_tabela(
         sf_txt = str(dep_qtd)
     else:
         sf_txt = '—'
+    data_referencia = _month_bounds(competencia.ano, competencia.mes)[1]
     data_admissao = func.data_admissao.strftime('%d/%m/%Y') if func.data_admissao else '—'
+    tempo_admissao = _fmt_tempo_desde_admissao(func.data_admissao, data_referencia)
     return {
         'linha': linha,
         'seq': seq,
@@ -381,6 +417,7 @@ def _contexto_linha_tabela(
         'funcao': str(func.cargo) if func.cargo_id else '—',
         'lotacao': str(func.lotacao) if func.lotacao_id else '—',
         'data_admissao_fmt': data_admissao,
+        'tempo_admissao_fmt': tempo_admissao,
         'passagem_sim': bool(getattr(func, 'recebe_vale_transporte', False)),
         'salario_familia_txt': sf_txt,
         'faltas_nj': faltas_nj,
