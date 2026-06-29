@@ -17,6 +17,9 @@
         <div class="af-func-meta">
             Lotação: {{ row.lotacao }}
         </div>
+        <div class="af-func-meta">
+            Admissão: {{ row.data_admissao_fmt }}
+        </div>
     </td>
     <td class="af-readonly af-td-base text-center">
         {% if row.passagem_sim %}
@@ -30,7 +33,7 @@
     <td class="af-readonly af-td-adicional text-end">{{ row.horas_feriado_fmt }}</td>
     <td class="af-readonly af-td-adicional text-end">{{ row.adicional_fmt }}</td>
     <td class="af-readonly af-td-adicional text-end">{{ row.outro_adicional_fmt }}</td>
-    <td class="af-readonly af-td-premiacao text-end">{{ row.premio_atual_fmt }}</td>
+    <td class="af-readonly af-td-premiacao af-td-premio-atual text-end">{{ row.premio_atual_fmt }}</td>
     <td class="af-readonly af-td-premiacao text-end">{{ row.premio_anterior_fmt }}</td>
     <td class="af-readonly af-td-premiacao text-end">{{ row.media_premiacao_fmt }}</td>
     <td class="af-readonly af-td-desconto text-end">{{ row.descontos_fmt }}</td>

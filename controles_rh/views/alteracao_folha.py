@@ -268,6 +268,21 @@ def _nova_premiacao_funcionario(
     )
 
 
+def _atualizar_premiacoes_automaticas(competencia: Competencia) -> None:
+    premiacoes = PremiacaoFuncionario.objects.filter(competencia=competencia)
+    for premiacao in premiacoes:
+        defaults = _defaults_premiacao_funcionario(competencia, premiacao.funcionario_id)
+        if (
+            premiacao.premio_anterior == defaults['premio_anterior']
+            and premiacao.media_premiacao == defaults['media_premiacao']
+        ):
+            continue
+        PremiacaoFuncionario.objects.filter(pk=premiacao.pk).update(
+            premio_anterior=defaults['premio_anterior'],
+            media_premiacao=defaults['media_premiacao'],
+        )
+
+
 def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
     funcionario_ids = set(_get_funcionarios_para_vt(competencia).values_list('pk', flat=True))
     existentes = set(
@@ -306,6 +321,7 @@ def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
         PremiacaoFuncionario.objects.filter(
             competencia=competencia, funcionario_id__in=orphan_premiacoes
         ).delete()
+    _atualizar_premiacoes_automaticas(competencia)
 
 
 def _ordenacao_linhas(valor: str | None) -> str:
@@ -357,12 +373,14 @@ def _contexto_linha_tabela(
         sf_txt = str(dep_qtd)
     else:
         sf_txt = '—'
+    data_admissao = func.data_admissao.strftime('%d/%m/%Y') if func.data_admissao else '—'
     return {
         'linha': linha,
         'seq': seq,
         'funcionario': func,
         'funcao': str(func.cargo) if func.cargo_id else '—',
         'lotacao': str(func.lotacao) if func.lotacao_id else '—',
+        'data_admissao_fmt': data_admissao,
         'passagem_sim': bool(getattr(func, 'recebe_vale_transporte', False)),
         'salario_familia_txt': sf_txt,
         'faltas_nj': faltas_nj,

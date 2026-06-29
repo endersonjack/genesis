@@ -51,10 +51,12 @@ AF_COL_LAST_DESC = 14
 AF_COLOR_HEADER_CAD = colors.HexColor('#f8fafc')
 AF_COLOR_HEADER_AD = colors.HexColor('#dbeafe')
 AF_COLOR_HEADER_PREM = colors.HexColor('#bbf7d0')
+AF_COLOR_HEADER_PREM_ATUAL = colors.HexColor('#86efac')
 AF_COLOR_HEADER_DESC = colors.HexColor('#fecdd3')
 AF_COLOR_BODY_CAD = colors.HexColor('#fafbfc')
 AF_COLOR_BODY_AD = colors.HexColor('#eef2ff')
 AF_COLOR_BODY_PREM = colors.HexColor('#f0fdf4')
+AF_COLOR_BODY_PREM_ATUAL = colors.HexColor('#dcfce7')
 AF_COLOR_BODY_DESC = colors.HexColor('#fff1f2')
 AF_COLOR_LEGEND_ROW_CAD = colors.HexColor('#f1f5f9')
 AF_COLOR_LEGEND_ROW_AD = colors.HexColor('#e8eeff')
@@ -230,9 +232,14 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         nome = xml_escape((funcionario.nome or '').upper())
         cargo = xml_escape(str(row['funcao'] or '—'))
         lotacao = xml_escape(str(row['lotacao'] or '—'))
+        admissao = xml_escape(str(row['data_admissao_fmt'] or '—'))
         cpf = xml_escape(str(getattr(funcionario, 'cpf', '') or '—'))
         nome_cell = Paragraph(
-            f'<b>{nome}</b><br/><font size="6">{cargo} · CPF: {cpf}<br/>Lotação: {lotacao}</font>',
+            (
+                f'<b>{nome}</b><br/>'
+                f'<font size="6">{cargo} · CPF: {cpf}<br/>'
+                f'Lotação: {lotacao}<br/>Admissão: {admissao}</font>'
+            ),
             cell_style,
         )
         data_rows.append(
@@ -313,6 +320,8 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         ('BACKGROUND', (0, 0), (AF_COL_LAST_CADASTRO, 0), AF_COLOR_HEADER_CAD),
         ('BACKGROUND', (4, 0), (AF_COL_LAST_ADICIONAIS, 0), AF_COLOR_HEADER_AD),
         ('BACKGROUND', (8, 0), (AF_COL_LAST_PREMIACAO, 0), AF_COLOR_HEADER_PREM),
+        ('BACKGROUND', (8, 0), (8, 0), AF_COLOR_HEADER_PREM_ATUAL),
+        ('TEXTCOLOR', (8, 0), (8, 0), colors.HexColor('#14532d')),
         ('BACKGROUND', (11, 0), (AF_COL_LAST_DESC, 0), AF_COLOR_HEADER_DESC),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -330,7 +339,9 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#cbd5e1')),
         # Linha de totais (última)
         ('BACKGROUND', (0, last_idx), (-1, last_idx), AF_COLOR_TOTALS_ROW),
+        ('BACKGROUND', (8, last_idx), (8, last_idx), AF_COLOR_BODY_PREM_ATUAL),
         ('FONTNAME', (0, last_idx), (-1, last_idx), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (8, last_idx), (8, last_idx), colors.HexColor('#166534')),
         ('FONTSIZE', (0, last_idx), (-1, last_idx), 7),
         ('ALIGN', (0, last_idx), (0, last_idx), 'CENTER'),
         ('ALIGN', (1, last_idx), (1, last_idx), 'LEFT'),
@@ -366,6 +377,14 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
                     (AF_COL_LAST_PREMIACAO, i_last_data),
                     AF_COLOR_BODY_PREM,
                 ),
+                (
+                    'BACKGROUND',
+                    (8, i_first_data),
+                    (8, i_last_data),
+                    AF_COLOR_BODY_PREM_ATUAL,
+                ),
+                ('FONTNAME', (8, i_first_data), (8, i_last_data), 'Helvetica-Bold'),
+                ('TEXTCOLOR', (8, i_first_data), (8, i_last_data), colors.HexColor('#166534')),
                 (
                     'BACKGROUND',
                     (11, i_first_data),
