@@ -18,7 +18,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from controles_rh.models import AlteracaoFolhaControle, AlteracaoFolhaLinha
+from controles_rh.models import AlteracaoFolhaControle, AlteracaoFolhaLinha, PremiacaoFuncionario
 from controles_rh.views.cesta_export import (
     _flowables_header_compact,
     _flowables_titulo_pdf_centro,
@@ -32,6 +32,7 @@ from controles_rh.views.alteracao_folha import (
     _fmt_af_moeda,
     _get_competencia_empresa,
     _monta_linhas_tabela,
+    _ordenacao_linhas,
     _queryset_linhas,
     garantir_linhas_alteracao_folha,
 )
@@ -40,17 +41,20 @@ from controles_rh.views.pdf_rodape import flowables_rodape_impressao
 # Mesma largura útil do PDF VT (paisagem A4, margens 12 mm)
 AF_PDF_TABLE_WIDTH_MM = 273
 
-# Blocos (alinhado ao detalhe HTML): cadastro | adicionais | descontos
-AF_COL_LAST_CADASTRO = 4
-AF_COL_LAST_ADICIONAIS = 9
-AF_COL_LAST_DESC = 13
+# Blocos (alinhado ao detalhe HTML): cadastro | adicionais | premiação | descontos
+AF_COL_LAST_CADASTRO = 3
+AF_COL_LAST_ADICIONAIS = 7
+AF_COL_LAST_PREMIACAO = 10
+AF_COL_LAST_DESC = 14
 
 # Cores próximas de templates/rh/alteracao_folha (af-th-ad / af-th-desc / fundos)
 AF_COLOR_HEADER_CAD = colors.HexColor('#f8fafc')
 AF_COLOR_HEADER_AD = colors.HexColor('#dbeafe')
+AF_COLOR_HEADER_PREM = colors.HexColor('#bbf7d0')
 AF_COLOR_HEADER_DESC = colors.HexColor('#fecdd3')
 AF_COLOR_BODY_CAD = colors.HexColor('#fafbfc')
 AF_COLOR_BODY_AD = colors.HexColor('#eef2ff')
+AF_COLOR_BODY_PREM = colors.HexColor('#f0fdf4')
 AF_COLOR_BODY_DESC = colors.HexColor('#fff1f2')
 AF_COLOR_LEGEND_ROW_CAD = colors.HexColor('#f1f5f9')
 AF_COLOR_LEGEND_ROW_AD = colors.HexColor('#e8eeff')
@@ -65,24 +69,30 @@ def _totais_formatados_por_coluna(competencia) -> dict[str, str]:
         th=Sum('hora_extra'),
         tf=Sum('horas_feriado'),
         ad=Sum('adicional'),
-        pr=Sum('premio'),
         oa=Sum('outro_adicional'),
         ds=Sum('descontos'),
         od=Sum('outro_desconto'),
+    )
+    agg_prem = PremiacaoFuncionario.objects.filter(competencia=competencia).aggregate(
+        pa=Sum('premio_atual'),
+        pan=Sum('premio_anterior'),
+        mp=Sum('media_premiacao'),
     )
 
     def nz(v):
         return v if v is not None else z
 
     th, tf = nz(agg['th']), nz(agg['tf'])
-    ad, pr, oa = nz(agg['ad']), nz(agg['pr']), nz(agg['oa'])
+    ad, oa = nz(agg['ad']), nz(agg['oa'])
     ds, od = nz(agg['ds']), nz(agg['od'])
     return {
         'he': _fmt_af_horas(th),
         'hf': _fmt_af_horas(tf),
         'ad': _fmt_af_moeda(ad),
-        'pr': _fmt_af_moeda(pr),
         'oa': _fmt_af_moeda(oa),
+        'pa': _fmt_af_moeda(nz(agg_prem['pa'])),
+        'pan': _fmt_af_moeda(nz(agg_prem['pan'])),
+        'mp': _fmt_af_moeda(nz(agg_prem['mp'])),
         'ds': _fmt_af_moeda(ds),
         'od': _fmt_af_moeda(od),
     }
@@ -113,24 +123,25 @@ def _header_text_html_af(empresa, comp, _controle):
 
 def _af_col_widths_mm() -> list[float]:
     """
-    Colunas de faltas (11–12) estreitas; o espaço sobra para nome e valores.
-    Índices: 0–4 cadastro, 5–9 adicionais, 10–13 descontos (10 desc $, 11–12 faltas, 13 out desc).
+    Colunas de faltas (12–13) estreitas; o espaço sobra para nome/cargo/CPF e valores.
+    Índices: 0–3 cadastro, 4–7 adicionais, 8–10 premiação, 11–14 descontos.
     """
     raw = [
         5.0,
-        52.0,
-        26.0,
+        58.0,
         8.0,
         8.0,
+        9.0,
+        9.0,
+        10.0,
+        10.0,
+        12.0,
+        12.0,
+        12.0,
         9.5,
-        9.5,
-        11.0,
-        11.0,
-        11.0,
-        11.0,
-        15.0,
-        15.0,
-        13.0,
+        14.0,
+        14.0,
+        12.0,
     ]
     s = sum(raw)
     return [w * (AF_PDF_TABLE_WIDTH_MM / s) for w in raw]
@@ -149,7 +160,8 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
     garantir_linhas_alteracao_folha(competencia)
     empresa = Empresa.objects.get(pk=competencia.empresa_id)
     controle = AlteracaoFolhaControle.objects.filter(competencia=competencia).first()
-    qs = _queryset_linhas(competencia)
+    ordenacao = _ordenacao_linhas(request.GET.get('ordenacao'))
+    qs = _queryset_linhas(competencia, ordenacao=ordenacao)
     linhas = _monta_linhas_tabela(competencia, qs)
     totais_cols = _totais_formatados_por_coluna(competencia)
 
@@ -195,14 +207,15 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
     headers = [
         'Nº',
         'FUNCIONÁRIO',
-        'FUNÇÃO',
         'VT',
         'SAL.\nFAM.',
         'H.EX.\n(h)',
         'H.FER.\n(h)',
         'ADIC.\n(R$)',
-        'PRÊM.\n(R$)',
         'OUT.\nADIC.',
+        'PRÊM.\nATUAL',
+        'PRÊM.\nANT.',
+        'MÉD.\nPRÊM.',
         'DESC.\n(R$)',
         'FALT.\nN.J.',
         'FALT.\nJ.',
@@ -213,20 +226,28 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
     data_rows = [headers]
     for row in linhas:
         vt_txt = 'Sim' if row['passagem_sim'] else 'Não'
-        nome_cell = Paragraph(xml_escape((row['funcionario'].nome or '').upper()), nome_style)
-        func_cell = Paragraph(xml_escape(str(row['funcao'] or '—')), cell_style)
+        funcionario = row['funcionario']
+        nome = xml_escape((funcionario.nome or '').upper())
+        cargo = xml_escape(str(row['funcao'] or '—'))
+        lotacao = xml_escape(str(row['lotacao'] or '—'))
+        cpf = xml_escape(str(getattr(funcionario, 'cpf', '') or '—'))
+        nome_cell = Paragraph(
+            f'<b>{nome}</b><br/><font size="6">{cargo} · CPF: {cpf}<br/>Lotação: {lotacao}</font>',
+            cell_style,
+        )
         data_rows.append(
             [
                 str(row['seq']),
                 nome_cell,
-                func_cell,
                 vt_txt,
                 xml_escape(str(row['salario_familia_txt'])),
                 xml_escape(row['hora_extra_fmt']),
                 xml_escape(row['horas_feriado_fmt']),
                 xml_escape(row['adicional_fmt']),
-                xml_escape(row['premio_fmt']),
                 xml_escape(row['outro_adicional_fmt']),
+                xml_escape(row['premio_atual_fmt']),
+                xml_escape(row['premio_anterior_fmt']),
+                xml_escape(row['media_premiacao_fmt']),
                 xml_escape(row['descontos_fmt']),
                 Paragraph(xml_escape(str(row['faltas_nj'])), falta_style),
                 Paragraph(xml_escape(str(row['faltas_j'])), falta_style),
@@ -239,12 +260,13 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         'TOTAIS',
         '',
         '',
-        '',
         xml_escape(totais_cols['he']),
         xml_escape(totais_cols['hf']),
         xml_escape(totais_cols['ad']),
-        xml_escape(totais_cols['pr']),
         xml_escape(totais_cols['oa']),
+        xml_escape(totais_cols['pa']),
+        xml_escape(totais_cols['pan']),
+        xml_escape(totais_cols['mp']),
         xml_escape(totais_cols['ds']),
         '—',
         '—',
@@ -289,16 +311,17 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
     pdf_style = [
         # Linha 0 — títulos abreviados (blocos)
         ('BACKGROUND', (0, 0), (AF_COL_LAST_CADASTRO, 0), AF_COLOR_HEADER_CAD),
-        ('BACKGROUND', (5, 0), (AF_COL_LAST_ADICIONAIS, 0), AF_COLOR_HEADER_AD),
-        ('BACKGROUND', (10, 0), (AF_COL_LAST_DESC, 0), AF_COLOR_HEADER_DESC),
+        ('BACKGROUND', (4, 0), (AF_COL_LAST_ADICIONAIS, 0), AF_COLOR_HEADER_AD),
+        ('BACKGROUND', (8, 0), (AF_COL_LAST_PREMIACAO, 0), AF_COLOR_HEADER_PREM),
+        ('BACKGROUND', (11, 0), (AF_COL_LAST_DESC, 0), AF_COLOR_HEADER_DESC),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-        ('ALIGN', (3, 0), (4, 0), 'CENTER'),
-        ('ALIGN', (5, 0), (-1, 0), 'CENTER'),
-        ('ALIGN', (5, 0), (10, 0), 'CENTER'),
+        ('ALIGN', (2, 0), (3, 0), 'CENTER'),
+        ('ALIGN', (4, 0), (-1, 0), 'CENTER'),
+        ('ALIGN', (4, 0), (11, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 2),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
@@ -311,20 +334,20 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         ('FONTSIZE', (0, last_idx), (-1, last_idx), 7),
         ('ALIGN', (0, last_idx), (0, last_idx), 'CENTER'),
         ('ALIGN', (1, last_idx), (1, last_idx), 'LEFT'),
-        ('ALIGN', (5, last_idx), (10, last_idx), 'RIGHT'),
-        ('ALIGN', (11, last_idx), (12, last_idx), 'CENTER'),
-        ('ALIGN', (13, last_idx), (13, last_idx), 'RIGHT'),
+        ('ALIGN', (4, last_idx), (11, last_idx), 'RIGHT'),
+        ('ALIGN', (12, last_idx), (13, last_idx), 'CENTER'),
+        ('ALIGN', (14, last_idx), (14, last_idx), 'RIGHT'),
         ('VALIGN', (0, last_idx), (-1, last_idx), 'MIDDLE'),
     ]
     # Dados (entre legenda e totais)
     if n_data >= 1:
         pdf_style.extend(
             [
-                ('ALIGN', (3, i_first_data), (4, i_last_data), 'CENTER'),
+                ('ALIGN', (2, i_first_data), (3, i_last_data), 'CENTER'),
                 ('ALIGN', (0, i_first_data), (0, i_last_data), 'CENTER'),
-                ('ALIGN', (5, i_first_data), (10, i_last_data), 'RIGHT'),
-                ('ALIGN', (11, i_first_data), (12, i_last_data), 'LEFT'),
-                ('ALIGN', (13, i_first_data), (13, i_last_data), 'RIGHT'),
+                ('ALIGN', (4, i_first_data), (11, i_last_data), 'RIGHT'),
+                ('ALIGN', (12, i_first_data), (13, i_last_data), 'LEFT'),
+                ('ALIGN', (14, i_first_data), (14, i_last_data), 'RIGHT'),
                 (
                     'BACKGROUND',
                     (0, i_first_data),
@@ -333,13 +356,19 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
                 ),
                 (
                     'BACKGROUND',
-                    (5, i_first_data),
+                    (4, i_first_data),
                     (AF_COL_LAST_ADICIONAIS, i_last_data),
                     AF_COLOR_BODY_AD,
                 ),
                 (
                     'BACKGROUND',
-                    (10, i_first_data),
+                    (8, i_first_data),
+                    (AF_COL_LAST_PREMIACAO, i_last_data),
+                    AF_COLOR_BODY_PREM,
+                ),
+                (
+                    'BACKGROUND',
+                    (11, i_first_data),
                     (AF_COL_LAST_DESC, i_last_data),
                     AF_COLOR_BODY_DESC,
                 ),
@@ -363,8 +392,10 @@ def exportar_alteracao_folha_pdf(request, competencia_pk):
         ('H.EX. (h)', 'Horas extras (horas)'),
         ('H.FER. (h)', 'Horas em feriado (horas)'),
         ('ADIC. (R$)', 'Adicionais (R$)'),
-        ('PRÊM. (R$)', 'Prêmio (R$)'),
         ('OUT. ADIC.', 'Outro adicional'),
+        ('PRÊM. ATUAL', 'Prêmio atual'),
+        ('PRÊM. ANT.', 'Prêmio anterior'),
+        ('MÉD. PRÊM.', 'Média premiação'),
         ('DESC. (R$)', 'Descontos (R$)'),
         ('FALT. N.J.', 'Faltas não justificadas (dias)'),
         ('FALT. J.', 'Faltas justificadas (dias)'),

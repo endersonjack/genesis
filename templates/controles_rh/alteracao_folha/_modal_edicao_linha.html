@@ -15,7 +15,6 @@
         hx-target="#modalAfLinhaContent"
         hx-swap="innerHTML">
         {% csrf_token %}
-        <p class="text-muted small mb-3">Horas usam <strong>ponto</strong> nos decimais (ex.: <span class="text-nowrap">12.50</span> h). Valores em reais usam <strong>vírgula</strong> nos centavos e ponto nos milhares (ex.: <span class="text-nowrap">1.234,56</span>). Dados de faltas são somente leitura (calculados a partir do controle de faltas nesta competência).</p>
 
         <div class="rounded-3 p-3 mb-3 af-bloco-adicionais">
             <h6 class="af-bloco-titulo-ad d-flex align-items-center gap-2 mb-3">
@@ -39,14 +38,33 @@
                     {{ form.adicional.errors }}
                 </div>
                 <div class="col-sm-6 col-md-4">
-                    <label class="form-label small mb-0" for="id_premio">{{ form.premio.label }}</label>
-                    {{ form.premio }}
-                    {{ form.premio.errors }}
-                </div>
-                <div class="col-sm-6 col-md-4">
                     <label class="form-label small mb-0" for="id_outro_adicional">{{ form.outro_adicional.label }}</label>
                     {{ form.outro_adicional }}
                     {{ form.outro_adicional.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-3 p-3 mb-3 af-bloco-premiacao">
+            <h6 class="af-bloco-titulo-prem d-flex align-items-center gap-2 mb-3">
+                <span class="af-bloco-ico"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+                Premiação
+            </h6>
+            <div class="row g-2">
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_premio_atual">{{ premiacao_form.premio_atual.label }}</label>
+                    {{ premiacao_form.premio_atual }}
+                    {{ premiacao_form.premio_atual.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_premio_anterior">{{ premiacao_form.premio_anterior.label }}</label>
+                    {{ premiacao_form.premio_anterior }}
+                    {{ premiacao_form.premio_anterior.errors }}
+                </div>
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label small mb-0" for="id_media_premiacao">{{ premiacao_form.media_premiacao.label }}</label>
+                    {{ premiacao_form.media_premiacao }}
+                    {{ premiacao_form.media_premiacao.errors }}
                 </div>
             </div>
         </div>

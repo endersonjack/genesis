@@ -3,7 +3,7 @@
  * Campos: data-mask="cpf" → 000.000.000-00
  *         data-mask="cnpj" → 00.000.000/0000-00
  *         data-mask="br-moeda" → digitação em centavos + formatação ao vivo (1.234,56) — envio 1234.56
- *         data-mask="br-hours" → ponto decimal, filtro ao vivo (12.50) — envio 12.50
+ *         data-mask="br-hours" → vírgula decimal, filtro ao vivo (12,50) — envio 12.50
  */
 (function () {
     function formatCpfFromDigits(digits) {
@@ -110,8 +110,6 @@
         else if (frac.length === 1) frac = frac + '0';
         else if (frac.length > 2) frac = frac.slice(0, 2);
 
-        // se for 0.00, tratamos como vazio (padrão do sistema)
-        if (intp === '0' && frac === '00') return '';
         return intp + '.' + frac;
     }
 
@@ -165,7 +163,7 @@
         if (isNaN(n) || n < 0) {
             return '';
         }
-        return n.toFixed(2);
+        return n.toFixed(2).replace('.', ',');
     }
 
     /**
@@ -197,22 +195,22 @@
     }
 
     /**
-     * Horas ao digitar: só dígitos e um ponto; até 2 casas decimais.
+     * Horas ao digitar: só dígitos e uma vírgula; até 2 casas decimais.
      */
     function formatBrHoursInputLive(raw) {
         var s = String(raw || '')
-            .replace(/,/g, '.')
-            .replace(/[^\d.]/g, '');
-        var dot = s.indexOf('.');
-        if (dot === -1) {
+            .replace(/\./g, ',')
+            .replace(/[^\d,]/g, '');
+        var comma = s.indexOf(',');
+        if (comma === -1) {
             return s.slice(0, 12);
         }
-        var intp = s.slice(0, dot).replace(/\./g, '');
+        var intp = s.slice(0, comma).replace(/,/g, '');
         var frac = s
-            .slice(dot + 1)
-            .replace(/\./g, '')
+            .slice(comma + 1)
+            .replace(/,/g, '')
             .slice(0, 2);
-        return intp + '.' + frac;
+        return intp + ',' + frac;
     }
 
     function bindBrMoeda(el) {
@@ -230,7 +228,7 @@
             /* raw pode vir já em pt-BR (1.234,56) via initial do Django.
                Normalizar primeiro para "python" (1234.56) e depois formatar para pt-BR. */
             var py = brMoedaToPython(raw);
-            if (!py || parseFloat(py) === 0) {
+            if (!py) {
                 el.value = '';
                 return;
             }
@@ -268,8 +266,7 @@
                 return;
             }
             var n = parseFloat(raw.replace(',', '.'));
-            if (isNaN(n) || n === 0) {
-                el.value = '';
+            if (isNaN(n)) {
                 return;
             }
             el.value = pythonToBrHours(raw);
@@ -281,8 +278,7 @@
 
         function onBlur() {
             var py = brHoursToPython(el.value);
-            if (py === '' || parseFloat(py) === 0) {
-                el.value = '';
+            if (py === '') {
                 return;
             }
             el.value = pythonToBrHours(py);

@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -9,6 +11,7 @@ from .models import (
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
+    PremiacaoFuncionario,
     STATUS_PAGAMENTO_VT_CHOICES,
     ValeTransporteItem,
     ValeTransporteTabela,
@@ -21,6 +24,14 @@ ALLOWED_ANEXO_DIVERSO_EXTENSIONS = {
     'doc', 'docx',
     'xls', 'xlsx', 'xlsm', 'xlsb',
 }
+
+
+def _decimal_input_ptbr(value) -> str:
+    try:
+        d = Decimal(str(value if value is not None else 0))
+    except (InvalidOperation, TypeError, ValueError):
+        d = Decimal('0')
+    return f'{d.quantize(Decimal("0.01")):.2f}'.replace('.', ',')
 
 
 class BaseStyledModelForm(forms.ModelForm):
@@ -547,7 +558,6 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
             'hora_extra',
             'horas_feriado',
             'adicional',
-            'premio',
             'outro_adicional',
             'descontos',
             'outro_desconto',
@@ -559,7 +569,7 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
                     'inputmode': 'decimal',
                     'autocomplete': 'off',
                     'maxlength': '16',
-                    'placeholder': '0.00',
+                    'placeholder': '0,00',
                     'class': 'text-end',
                 }
             ),
@@ -569,21 +579,11 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
                     'inputmode': 'decimal',
                     'autocomplete': 'off',
                     'maxlength': '16',
-                    'placeholder': '0.00',
-                    'class': 'text-end',
-                }
-            ),
-            'adicional': forms.TextInput(
-                attrs={
-                    'data-mask': 'br-moeda',
-                    'inputmode': 'decimal',
-                    'autocomplete': 'off',
-                    'maxlength': '20',
                     'placeholder': '0,00',
                     'class': 'text-end',
                 }
             ),
-            'premio': forms.TextInput(
+            'adicional': forms.TextInput(
                 attrs={
                     'data-mask': 'br-moeda',
                     'inputmode': 'decimal',
@@ -630,10 +630,72 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
         self.apply_bootstrap_classes()
         for name in self.fields:
             self.fields[name].required = False
+        if not self.is_bound and self.instance:
+            for name in self.Meta.fields:
+                self.initial[name] = _decimal_input_ptbr(getattr(self.instance, name, 0))
 
     def clean(self):
-        from decimal import Decimal
+        cleaned = super().clean()
+        z = Decimal('0')
+        for name in self.Meta.fields:
+            if name not in cleaned:
+                continue
+            if cleaned[name] is None:
+                cleaned[name] = z
+        return cleaned
 
+
+class PremiacaoFuncionarioForm(BaseStyledModelForm):
+    class Meta:
+        model = PremiacaoFuncionario
+        fields = [
+            'premio_atual',
+            'premio_anterior',
+            'media_premiacao',
+        ]
+        widgets = {
+            'premio_atual': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'premio_anterior': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'media_premiacao': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        for name in self.fields:
+            self.fields[name].required = False
+        if not self.is_bound and self.instance:
+            for name in self.Meta.fields:
+                self.initial[name] = _decimal_input_ptbr(getattr(self.instance, name, 0))
+
+    def clean(self):
         cleaned = super().clean()
         z = Decimal('0')
         for name in self.Meta.fields:

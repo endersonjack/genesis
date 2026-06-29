@@ -7,6 +7,7 @@ from .models import (
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
+    PremiacaoFuncionario,
     ValeTransporteItem,
     ValeTransporteTabela,
 )
@@ -39,12 +40,28 @@ class AlteracaoFolhaLinhaAdmin(admin.ModelAdmin):
         'hora_extra',
         'horas_feriado',
         'adicional',
-        'premio',
         'descontos',
         'data_atualizacao',
     )
     list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
     search_fields = ('funcionario__nome',)
+    autocomplete_fields = ('competencia', 'funcionario')
+    ordering = ('competencia__ano', 'competencia__mes', 'funcionario__nome')
+
+
+@admin.register(PremiacaoFuncionario)
+class PremiacaoFuncionarioAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'competencia',
+        'funcionario',
+        'premio_atual',
+        'premio_anterior',
+        'media_premiacao',
+        'data_atualizacao',
+    )
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
+    search_fields = ('funcionario__nome', 'funcionario__cpf')
     autocomplete_fields = ('competencia', 'funcionario')
     ordering = ('competencia__ano', 'competencia__mes', 'funcionario__nome')
 

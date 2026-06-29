@@ -9,8 +9,15 @@
     hx-on="htmx:afterRequest: if (event.detail.successful) { const m = document.getElementById('modalAfLinha'); if (m && window.bootstrap) { bootstrap.Modal.getOrCreateInstance(m).show(); } }"
     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
     <td class="af-readonly af-td-base text-muted">{{ row.seq }}</td>
-    <td class="af-readonly af-td-base fw-semibold">{{ row.funcionario.nome }}</td>
-    <td class="af-readonly af-td-base">{{ row.funcao }}</td>
+    <td class="af-readonly af-td-base">
+        <div class="fw-semibold">{{ row.funcionario.nome }}</div>
+        <div class="af-func-meta">
+            {{ row.funcao }} · CPF: {{ row.funcionario.cpf|default:"—" }}
+        </div>
+        <div class="af-func-meta">
+            Lotação: {{ row.lotacao }}
+        </div>
+    </td>
     <td class="af-readonly af-td-base text-center">
         {% if row.passagem_sim %}
             <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">Sim</span>
@@ -22,8 +29,10 @@
     <td class="af-readonly af-td-adicional text-end">{{ row.hora_extra_fmt }}</td>
     <td class="af-readonly af-td-adicional text-end">{{ row.horas_feriado_fmt }}</td>
     <td class="af-readonly af-td-adicional text-end">{{ row.adicional_fmt }}</td>
-    <td class="af-readonly af-td-adicional text-end">{{ row.premio_fmt }}</td>
     <td class="af-readonly af-td-adicional text-end">{{ row.outro_adicional_fmt }}</td>
+    <td class="af-readonly af-td-premiacao text-end">{{ row.premio_atual_fmt }}</td>
+    <td class="af-readonly af-td-premiacao text-end">{{ row.premio_anterior_fmt }}</td>
+    <td class="af-readonly af-td-premiacao text-end">{{ row.media_premiacao_fmt }}</td>
     <td class="af-readonly af-td-desconto text-end">{{ row.descontos_fmt }}</td>
     <td class="af-readonly af-td-desconto small">{{ row.faltas_nj }}</td>
     <td class="af-readonly af-td-desconto small">{{ row.faltas_j }}</td>

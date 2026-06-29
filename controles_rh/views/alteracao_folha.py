@@ -17,8 +17,13 @@ from auditoria.registry import audit_controles_rh
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
-from controles_rh.forms import AlteracaoFolhaLinhaForm
-from controles_rh.models import AlteracaoFolhaControle, AlteracaoFolhaLinha, Competencia
+from controles_rh.forms import AlteracaoFolhaLinhaForm, PremiacaoFuncionarioForm
+from controles_rh.models import (
+    AlteracaoFolhaControle,
+    AlteracaoFolhaLinha,
+    Competencia,
+    PremiacaoFuncionario,
+)
 from controles_rh.views.vale_transporte import _get_funcionarios_para_vt
 from rh.models import FaltaFuncionario, Funcionario
 
@@ -76,28 +81,26 @@ def _totais_alteracao_folha(competencia: Competencia) -> dict[str, str]:
     z = Decimal('0')
     qs = AlteracaoFolhaLinha.objects.filter(competencia=competencia)
     agg = qs.aggregate(
-        th=Sum('hora_extra'),
-        tf=Sum('horas_feriado'),
         ad=Sum('adicional'),
-        pr=Sum('premio'),
         oa=Sum('outro_adicional'),
         ds=Sum('descontos'),
         od=Sum('outro_desconto'),
+    )
+    agg_prem = PremiacaoFuncionario.objects.filter(competencia=competencia).aggregate(
+        pa=Sum('premio_atual'),
     )
 
     def nz(v):
         return v if v is not None else z
 
-    th, tf = nz(agg['th']), nz(agg['tf'])
-    ad, pr, oa = nz(agg['ad']), nz(agg['pr']), nz(agg['oa'])
+    ad, oa = nz(agg['ad']), nz(agg['oa'])
     ds, od = nz(agg['ds']), nz(agg['od'])
-    total_ad_rs = ad + pr + oa
+    total_ad_rs = ad + oa
     total_desc_rs = ds + od
 
     return {
-        'total_hora_extra_fmt': _fmt_af_horas(th),
-        'total_horas_feriado_fmt': _fmt_af_horas(tf),
         'total_adicionais_rs_fmt': _fmt_af_moeda(total_ad_rs),
+        'total_premiacao_atual_rs_fmt': _fmt_af_moeda(nz(agg_prem['pa'])),
         'total_descontos_rs_fmt': _fmt_af_moeda(total_desc_rs),
     }
 
@@ -207,6 +210,64 @@ def _mapa_faltas_texto_por_funcionario(
     return out
 
 
+def _queryset_competencias_anteriores(competencia: Competencia):
+    return Competencia.objects.filter(empresa=competencia.empresa).filter(
+        Q(ano__lt=competencia.ano) | Q(ano=competencia.ano, mes__lt=competencia.mes)
+    )
+
+
+def _defaults_premiacao_funcionario(
+    competencia: Competencia,
+    funcionario_id: int,
+) -> dict[str, Decimal]:
+    z = Decimal('0.00')
+    anteriores = _queryset_competencias_anteriores(competencia)
+    competencia_anterior = anteriores.order_by('-ano', '-mes', '-id').first()
+    premio_anterior = z
+    if competencia_anterior:
+        premio_anterior = (
+            PremiacaoFuncionario.objects.filter(
+                competencia=competencia_anterior,
+                funcionario_id=funcionario_id,
+            )
+            .values_list('premio_atual', flat=True)
+            .first()
+            or z
+        )
+
+    ultimos_premios = list(
+        PremiacaoFuncionario.objects.filter(
+            competencia__in=anteriores,
+            funcionario_id=funcionario_id,
+            premio_atual__gt=0,
+        )
+        .order_by('-competencia__ano', '-competencia__mes', '-competencia__id')
+        .values_list('premio_atual', flat=True)[:3]
+    )
+    if ultimos_premios:
+        media_premiacao = (sum(ultimos_premios, z) / Decimal(len(ultimos_premios))).quantize(
+            Decimal('0.01')
+        )
+    else:
+        media_premiacao = z
+
+    return {
+        'premio_anterior': premio_anterior,
+        'media_premiacao': media_premiacao,
+    }
+
+
+def _nova_premiacao_funcionario(
+    competencia: Competencia,
+    funcionario_id: int,
+) -> PremiacaoFuncionario:
+    return PremiacaoFuncionario(
+        competencia=competencia,
+        funcionario_id=funcionario_id,
+        **_defaults_premiacao_funcionario(competencia, funcionario_id),
+    )
+
+
 def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
     funcionario_ids = set(_get_funcionarios_para_vt(competencia).values_list('pk', flat=True))
     existentes = set(
@@ -222,19 +283,48 @@ def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
                 for fid in criar
             ]
         )
+    premiacoes_existentes = set(
+        PremiacaoFuncionario.objects.filter(competencia=competencia).values_list(
+            'funcionario_id', flat=True
+        )
+    )
+    criar_premiacoes = funcionario_ids - premiacoes_existentes
+    if criar_premiacoes:
+        PremiacaoFuncionario.objects.bulk_create(
+            [
+                _nova_premiacao_funcionario(competencia, fid)
+                for fid in criar_premiacoes
+            ]
+        )
     orphan = existentes - funcionario_ids
     if orphan:
         AlteracaoFolhaLinha.objects.filter(
             competencia=competencia, funcionario_id__in=orphan
         ).delete()
+    orphan_premiacoes = premiacoes_existentes - funcionario_ids
+    if orphan_premiacoes:
+        PremiacaoFuncionario.objects.filter(
+            competencia=competencia, funcionario_id__in=orphan_premiacoes
+        ).delete()
 
 
-def _queryset_linhas(competencia: Competencia):
+def _ordenacao_linhas(valor: str | None) -> str:
+    if valor in {'cargo', 'lotacao'}:
+        return valor
+    return 'nome'
+
+
+def _queryset_linhas(competencia: Competencia, *, ordenacao: str = 'nome'):
+    orderings = {
+        'nome': ('funcionario__nome', 'id'),
+        'cargo': ('funcionario__cargo__nome', 'funcionario__nome', 'id'),
+        'lotacao': ('funcionario__lotacao__nome', 'funcionario__nome', 'id'),
+    }
     return (
         AlteracaoFolhaLinha.objects.filter(competencia=competencia)
-        .select_related('funcionario', 'funcionario__cargo')
+        .select_related('funcionario', 'funcionario__cargo', 'funcionario__lotacao')
         .annotate(_dep_qtd=Count('funcionario__dependentes', distinct=True))
-        .order_by('funcionario__nome', 'id')
+        .order_by(*orderings.get(ordenacao, orderings['nome']))
     )
 
 
@@ -255,6 +345,7 @@ def _contexto_linha_tabela(
     competencia: Competencia,
     faltas_nj: str,
     faltas_j: str,
+    premiacao: PremiacaoFuncionario | None = None,
     dep_qtd: int | None = None,
 ) -> dict:
     func = linha.funcionario
@@ -271,6 +362,7 @@ def _contexto_linha_tabela(
         'seq': seq,
         'funcionario': func,
         'funcao': str(func.cargo) if func.cargo_id else '—',
+        'lotacao': str(func.lotacao) if func.lotacao_id else '—',
         'passagem_sim': bool(getattr(func, 'recebe_vale_transporte', False)),
         'salario_familia_txt': sf_txt,
         'faltas_nj': faltas_nj,
@@ -278,7 +370,9 @@ def _contexto_linha_tabela(
         'hora_extra_fmt': _fmt_af_horas(linha.hora_extra),
         'horas_feriado_fmt': _fmt_af_horas(linha.horas_feriado),
         'adicional_fmt': _fmt_af_moeda(linha.adicional),
-        'premio_fmt': _fmt_af_moeda(linha.premio),
+        'premio_atual_fmt': _fmt_af_moeda(premiacao.premio_atual if premiacao else 0),
+        'premio_anterior_fmt': _fmt_af_moeda(premiacao.premio_anterior if premiacao else 0),
+        'media_premiacao_fmt': _fmt_af_moeda(premiacao.media_premiacao if premiacao else 0),
         'outro_adicional_fmt': _fmt_af_moeda(linha.outro_adicional),
         'descontos_fmt': _fmt_af_moeda(linha.descontos),
         'outro_desconto_fmt': _fmt_af_moeda(linha.outro_desconto),
@@ -296,6 +390,13 @@ def _monta_linhas_tabela(competencia: Competencia, qs):
     f_ids = [l.funcionario_id for l in linhas_list]
     faltas_map = _mapa_faltas_texto_por_funcionario(competencia, f_ids)
     deps_map = _deps_map_fallback(f_ids)
+    premiacoes_map = {
+        p.funcionario_id: p
+        for p in PremiacaoFuncionario.objects.filter(
+            competencia=competencia,
+            funcionario_id__in=f_ids,
+        )
+    }
     out = []
     for n, linha in enumerate(linhas_list, start=1):
         dep_qtd = getattr(linha, '_dep_qtd', None)
@@ -310,6 +411,7 @@ def _monta_linhas_tabela(competencia: Competencia, qs):
                 dep_qtd=dep_qtd,
                 faltas_nj=fnj,
                 faltas_j=fj,
+                premiacao=premiacoes_map.get(linha.funcionario_id),
             )
         )
     return out
@@ -363,6 +465,7 @@ def excluir_alteracao_folha_competencia(request, competencia_pk):
 
     with transaction.atomic():
         tinha = AlteracaoFolhaControle.objects.filter(competencia=competencia).exists()
+        PremiacaoFuncionario.objects.filter(competencia=competencia).delete()
         AlteracaoFolhaLinha.objects.filter(competencia=competencia).delete()
         AlteracaoFolhaControle.objects.filter(competencia=competencia).delete()
 
@@ -397,10 +500,18 @@ def modal_alteracao_folha_linha(request, competencia_pk, linha_pk):
         pk=linha_pk,
         competencia=competencia,
     )
+    premiacao, _ = PremiacaoFuncionario.objects.get_or_create(
+        competencia=competencia,
+        funcionario=linha.funcionario,
+        defaults=_defaults_premiacao_funcionario(competencia, linha.funcionario_id),
+    )
 
     if request.method == 'POST':
         post = request.POST.copy()
-        for fname in AlteracaoFolhaLinhaForm.Meta.fields:
+        for fname in [
+            *AlteracaoFolhaLinhaForm.Meta.fields,
+            *PremiacaoFuncionarioForm.Meta.fields,
+        ]:
             raw = post.get(fname, '')
             s = raw.strip() if isinstance(raw, str) else str(raw or '').strip()
             if s == '':
@@ -411,8 +522,11 @@ def modal_alteracao_folha_linha(request, competencia_pk, linha_pk):
             else:
                 post[fname] = s
         form = AlteracaoFolhaLinhaForm(post, instance=linha)
-        if form.is_valid():
-            form.save()
+        premiacao_form = PremiacaoFuncionarioForm(post, instance=premiacao)
+        if form.is_valid() and premiacao_form.is_valid():
+            with transaction.atomic():
+                form.save()
+                premiacao_form.save()
             audit_controles_rh(
                 request,
                 'update',
@@ -430,16 +544,21 @@ def modal_alteracao_folha_linha(request, competencia_pk, linha_pk):
             return response
         ctx = {
             'form': form,
+            'premiacao_form': premiacao_form,
             'linha': linha,
+            'premiacao': premiacao,
             'competencia': competencia,
             **_faltas_texto_modal(linha, competencia),
         }
         return render(request, 'controles_rh/alteracao_folha/_modal_edicao_linha.html', ctx)
 
     form = AlteracaoFolhaLinhaForm(instance=linha)
+    premiacao_form = PremiacaoFuncionarioForm(instance=premiacao)
     ctx = {
         'form': form,
+        'premiacao_form': premiacao_form,
         'linha': linha,
+        'premiacao': premiacao,
         'competencia': competencia,
         **_faltas_texto_modal(linha, competencia),
     }
@@ -463,11 +582,12 @@ def alteracao_folha_competencia(request, competencia_pk):
         )
 
     partial = request.GET.get('partial')
+    ordenacao = _ordenacao_linhas(request.GET.get('ordenacao'))
 
     garantir_linhas_alteracao_folha(competencia)
 
     if partial == 'tabela':
-        qs = _queryset_linhas(competencia)
+        qs = _queryset_linhas(competencia, ordenacao=ordenacao)
         linhas = _monta_linhas_tabela(competencia, qs)
         return render(
             request,
@@ -475,6 +595,7 @@ def alteracao_folha_competencia(request, competencia_pk):
             {
                 'competencia': competencia,
                 'linhas': linhas,
+                'ordenacao': ordenacao,
             },
         )
 
@@ -482,6 +603,7 @@ def alteracao_folha_competencia(request, competencia_pk):
         'page_title': f'Alterações de folha — {competencia.referencia}',
         'competencia': competencia,
         'empresa': empresa,
+        'ordenacao': ordenacao,
         **_totais_alteracao_folha(competencia),
     }
     return render(request, 'controles_rh/alteracao_folha/detalhe.html', context)

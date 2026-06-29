@@ -37,7 +37,20 @@
     .af-th-funcionario {
         white-space: nowrap;
         max-width: none;
-        min-width: 7rem;
+        min-width: 11rem;
+    }
+    .af-th-funcionario-title {
+        margin-bottom: 0.25rem;
+    }
+    .af-order-select {
+        min-width: 8.5rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: 0;
+        color: #334155;
+        padding-top: 0.2rem;
+        padding-bottom: 0.2rem;
     }
     .af-th-sub {
         font-size: 0.62rem;
@@ -59,6 +72,11 @@
         color: #3730a3 !important;
         font-weight: 800 !important;
     }
+    .af-g-h-prem {
+        background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%) !important;
+        color: #166534 !important;
+        font-weight: 800 !important;
+    }
     .af-g-h-desc {
         background: linear-gradient(180deg, #ffe4e6 0%, #fecdd3 100%) !important;
         color: #9f1239 !important;
@@ -67,14 +85,24 @@
     .af-g-h-titulo { letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.72rem !important; }
     .af-th-base { background: #f8fafc !important; }
     .af-th-ad { background: rgba(224, 231, 255, 0.65) !important; color: #334155 !important; }
+    .af-th-prem { background: rgba(187, 247, 208, 0.65) !important; color: #334155 !important; }
     .af-th-desc { background: rgba(254, 205, 211, 0.45) !important; color: #334155 !important; }
     .af-table tbody td { vertical-align: middle; font-size: 0.875rem; }
+    .af-func-meta {
+        color: #64748b;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.25;
+        margin-top: 0.1rem;
+    }
     .af-table tbody td.af-readonly { color: #334155; }
     .af-table tbody td.af-td-base { background: #fafbfc !important; }
     .af-table tbody td.af-td-adicional { background: rgba(224, 231, 255, 0.35) !important; }
+    .af-table tbody td.af-td-premiacao { background: rgba(220, 252, 231, 0.45) !important; }
     .af-table tbody td.af-td-desconto { background: rgba(254, 205, 211, 0.3) !important; }
     tr.af-row-click:hover td.af-td-base { background: #f1f5f9 !important; }
     tr.af-row-click:hover td.af-td-adicional { background: rgba(199, 210, 254, 0.55) !important; }
+    tr.af-row-click:hover td.af-td-premiacao { background: rgba(187, 247, 208, 0.65) !important; }
     tr.af-row-click:hover td.af-td-desconto { background: rgba(251, 207, 213, 0.55) !important; }
 
     /* Modal — blocos adicionais / descontos */
@@ -110,7 +138,19 @@
         font-size: 1rem;
     }
     .af-bloco-adicionais .af-bloco-ico { background: rgba(99, 102, 241, 0.2); color: #4338ca; }
+    .af-bloco-premiacao .af-bloco-ico { background: rgba(22, 163, 74, 0.16); color: #15803d; }
     .af-bloco-descontos .af-bloco-ico { background: rgba(225, 29, 72, 0.15); color: #be123c; }
+    .af-bloco-premiacao {
+        background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 55%, #bbf7d0 100%);
+        border: 1px solid #86efac;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset;
+    }
+    .af-bloco-titulo-prem {
+        color: #166534;
+        font-weight: 800;
+        font-size: 0.95rem;
+        margin: 0;
+    }
     .af-info-faltas {
         background: rgba(255, 255, 255, 0.55);
         border: 1px dashed rgba(190, 18, 60, 0.35);
@@ -141,6 +181,10 @@
         background: linear-gradient(180deg, rgba(224, 231, 255, 0.5) 0%, rgba(219, 234, 254, 0.35) 100%);
         border: 1px solid #c7d2fe;
     }
+    .af-total-box--prem {
+        background: linear-gradient(180deg, rgba(220, 252, 231, 0.65) 0%, rgba(187, 247, 208, 0.45) 100%);
+        border: 1px solid #86efac;
+    }
     .af-total-box--desc {
         background: linear-gradient(180deg, rgba(254, 205, 211, 0.45) 0%, rgba(254, 202, 202, 0.3) 100%);
         border: 1px solid #fda4af;
@@ -155,6 +199,7 @@
     }
     .af-total-value { font-weight: 800; font-size: 1rem; }
     .af-total-box--ad .af-total-value { color: #3730a3; }
+    .af-total-box--prem .af-total-value { color: #166534; }
     .af-total-box--desc .af-total-value { color: #9f1239; }
 </style>
 
@@ -175,6 +220,8 @@
                     <i class="bi bi-arrow-left me-1"></i> Voltar à competência
                 </a>
                 <a href="{% url 'controles_rh:exportar_alteracao_folha_pdf' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                   id="af-export-pdf-link"
+                   data-base-href="{% url 'controles_rh:exportar_alteracao_folha_pdf' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
                    class="btn btn-outline-danger rounded-3 fw-semibold"
                    target="_blank"
                    rel="noopener noreferrer">
@@ -206,36 +253,48 @@
             </div>
         </div>
         <div class="af-totais-row row g-2 g-md-3">
-            <div class="col-6 col-lg-3">
+            <div class="col-md-4">
                 <div class="af-total-box af-total-box--ad h-100">
-                    <div class="af-total-label">Total H. extra (h)</div>
-                    <div class="af-total-value">{{ total_hora_extra_fmt }}</div>
-                </div>
-            </div>
-            <div class="col-6 col-lg-3">
-                <div class="af-total-box af-total-box--ad h-100">
-                    <div class="af-total-label">Total H. feriado (h)</div>
-                    <div class="af-total-value">{{ total_horas_feriado_fmt }}</div>
-                </div>
-            </div>
-            <div class="col-6 col-lg-3">
-                <div class="af-total-box af-total-box--ad h-100">
-                    <div class="af-total-label">Total adicionais (R$)</div>
+                    <div class="af-total-label">Total adicionais</div>
                     <div class="af-total-value">R$ {{ total_adicionais_rs_fmt }}</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
+            <div class="col-md-4">
+                <div class="af-total-box af-total-box--prem h-100">
+                    <div class="af-total-label">Total premiação atual</div>
+                    <div class="af-total-value">R$ {{ total_premiacao_atual_rs_fmt }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
                 <div class="af-total-box af-total-box--desc h-100">
-                    <div class="af-total-label">Total descontos (R$)</div>
+                    <div class="af-total-label">Total descontos</div>
                     <div class="af-total-value">R$ {{ total_descontos_rs_fmt }}</div>
                 </div>
             </div>
         </div>
-        <p class="af-legend mb-0 mt-3">
-            Clique em uma linha para editar adicionais e descontos. Função, vale transporte, salário família e faltas vêm do cadastro e do controle de faltas.
-        </p>
     </div>
 </div>
+
+<script>
+    (function () {
+        function syncAfExportOrdering() {
+            var link = document.getElementById('af-export-pdf-link');
+            var select = document.querySelector('#af-table-host select[name="ordenacao"]');
+            if (!link || !select) return;
+            var baseHref = link.getAttribute('data-base-href') || link.getAttribute('href');
+            var params = new URLSearchParams();
+            params.set('ordenacao', select.value || 'nome');
+            link.setAttribute('href', baseHref + '?' + params.toString());
+        }
+        document.addEventListener('change', function (evt) {
+            if (evt.target && evt.target.matches('#af-table-host select[name="ordenacao"]')) {
+                syncAfExportOrdering();
+            }
+        });
+        document.body.addEventListener('htmx:afterSettle', syncAfExportOrdering);
+        document.addEventListener('DOMContentLoaded', syncAfExportOrdering);
+    })();
+</script>
 
 <div id="af-table-host" class="mb-3">
     <div

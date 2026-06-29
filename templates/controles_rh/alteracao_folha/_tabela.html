@@ -3,21 +3,37 @@
     <table class="table table-bordered table-hover mb-0 af-table">
         <thead>
             <tr class="af-group">
-                <th colspan="5" class="af-g-h-base text-center text-muted small py-2">Cadastro</th>
-                <th colspan="5" class="af-g-h-ad text-center af-g-h-titulo">Adicionais</th>
+                <th colspan="4" class="af-g-h-base text-center text-muted small py-2">Cadastro</th>
+                <th colspan="4" class="af-g-h-ad text-center af-g-h-titulo">Adicionais</th>
+                <th colspan="3" class="af-g-h-prem text-center af-g-h-titulo">Premiação</th>
                 <th colspan="4" class="af-g-h-desc text-center af-g-h-titulo">Descontos</th>
             </tr>
             <tr>
                 <th scope="col" class="af-th-wrap af-th-base">#</th>
-                <th scope="col" class="af-th-wrap af-th-base af-th-funcionario">Funcionário</th>
-                <th scope="col" class="af-th-wrap af-th-base">Função</th>
+                <th scope="col" class="af-th-wrap af-th-base af-th-funcionario">
+                    <div class="af-th-funcionario-title">Funcionário</div>
+                    <select
+                        class="form-select form-select-sm af-order-select"
+                        name="ordenacao"
+                        aria-label="Ordenar funcionários"
+                        hx-get="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}?partial=tabela"
+                        hx-trigger="change"
+                        hx-target="#af-table-host"
+                        hx-swap="innerHTML">
+                        <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>Por Nome</option>
+                        <option value="cargo" {% if ordenacao == 'cargo' %}selected{% endif %}>Por Cargo</option>
+                        <option value="lotacao" {% if ordenacao == 'lotacao' %}selected{% endif %}>Por Lotação</option>
+                    </select>
+                </th>
                 <th scope="col" class="af-th-wrap af-th-base">Desc.<br>VT</th>
                 <th scope="col" class="af-th-wrap af-th-base">Sal.<br>fam.</th>
                 <th scope="col" class="af-th-wrap af-th-ad">H. extra<br><span class="af-th-sub">(h)</span></th>
                 <th scope="col" class="af-th-wrap af-th-ad">H. feriado<br><span class="af-th-sub">(h)</span></th>
                 <th scope="col" class="af-th-wrap af-th-ad">Adic.<br><span class="af-th-sub">(R$)</span></th>
-                <th scope="col" class="af-th-wrap af-th-ad">Prêmio<br><span class="af-th-sub">(R$)</span></th>
                 <th scope="col" class="af-th-wrap af-th-ad">Outro<br><span class="af-th-sub">adic.</span></th>
+                <th scope="col" class="af-th-wrap af-th-prem">Prêmio<br><span class="af-th-sub">atual</span></th>
+                <th scope="col" class="af-th-wrap af-th-prem">Prêmio<br><span class="af-th-sub">anterior</span></th>
+                <th scope="col" class="af-th-wrap af-th-prem">Média<br><span class="af-th-sub">premiação</span></th>
                 <th scope="col" class="af-th-wrap af-th-desc">Desc.<br><span class="af-th-sub">(R$)</span></th>
                 <th scope="col" class="af-th-wrap af-th-desc">Faltas<br>não just.</th>
                 <th scope="col" class="af-th-wrap af-th-desc">Faltas<br>justif.</th>
@@ -29,7 +45,7 @@
                 {% include 'controles_rh/alteracao_folha/_linha_tr.html' %}
             {% empty %}
                 <tr>
-                    <td colspan="14" class="text-center text-muted py-5">
+                    <td colspan="15" class="text-center text-muted py-5">
                         Nenhum funcionário ativo encontrado para esta empresa.
                     </td>
                 </tr>

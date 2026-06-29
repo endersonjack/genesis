@@ -799,12 +799,6 @@ class AlteracaoFolhaLinha(models.Model):
         default=0,
         verbose_name='Adicional (R$)',
     )
-    premio = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-        verbose_name='Prêmio (R$)',
-    )
     outro_adicional = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -840,6 +834,72 @@ class AlteracaoFolhaLinha(models.Model):
 
     def __str__(self):
         return f'{self.funcionario} — {self.competencia.referencia}'
+
+    def clean(self):
+        errors = {}
+        fe = getattr(self.funcionario, 'empresa_id', None)
+        ce = self.competencia.empresa_id
+        if fe and ce and fe != ce:
+            errors['funcionario'] = 'O funcionário deve pertencer à mesma empresa da competência.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class PremiacaoFuncionario(models.Model):
+    """
+    Valores de premiação por funcionário na competência.
+    Fica separado da linha de alteração para permitir um bloco próprio na tabela.
+    """
+
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='premiacoes_funcionarios',
+    )
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.CASCADE,
+        related_name='premiacoes_folha',
+    )
+    premio_atual = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Prêmio atual (R$)',
+    )
+    premio_anterior = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Prêmio anterior (R$)',
+    )
+    media_premiacao = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Média premiação (R$)',
+    )
+
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Premiação de funcionário'
+        verbose_name_plural = 'Premiações de funcionários'
+        ordering = ['funcionario__nome', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['competencia', 'funcionario'],
+                name='unique_premiacao_por_competencia_funcionario',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Premiação {self.funcionario} — {self.competencia.referencia}'
 
     def clean(self):
         errors = {}
