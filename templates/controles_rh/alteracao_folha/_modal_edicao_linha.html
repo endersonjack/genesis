@@ -1,6 +1,15 @@
 <div class="modal-header border-0 pb-0">
     <div>
-        <h5 class="modal-title fw-bold mb-0">Editar linha — {{ linha.funcionario.nome }}</h5>
+        <h5 class="modal-title fw-bold mb-0">
+            Editar linha —
+            <a
+                href="{% url 'rh:detalhes_funcionario' empresa_id=request.empresa_ativa.pk pk=linha.funcionario.pk %}"
+                class="text-reset text-decoration-underline"
+                target="_blank"
+                rel="noopener">
+                {{ linha.funcionario.nome }}
+            </a>
+        </h5>
         <p class="text-muted small mb-0 mt-1">Competência {{ competencia.referencia }} · {{ competencia.empresa }}</p>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -110,6 +119,14 @@
                             target="_blank"
                             rel="noopener">
                             <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i> Ver resumo
+                        </a>
+                    {% else %}
+                        <a
+                            href="{% url 'rh:faltas_funcionario_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=linha.funcionario.pk %}?nova=1"
+                            class="btn btn-sm btn-outline-danger rounded-3 fw-semibold"
+                            target="_blank"
+                            rel="noopener">
+                            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i> Adicionar falta
                         </a>
                     {% endif %}
                 </div>

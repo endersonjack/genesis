@@ -66,6 +66,7 @@
 
       <button
         type="button"
+        id="btnAdicionarFaltaCompetencia"
         class="btn btn-primary rounded-3 fw-semibold"
         hx-get="{% url 'rh:modal_adicionar_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk %}"
         hx-target="#modal-content"
@@ -101,5 +102,16 @@
     <div class="modal-content" id="modal-content"></div>
   </div>
 </div>
+
+{% if request.GET.nova == '1' %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('btnAdicionarFaltaCompetencia');
+    if (btn) {
+      window.setTimeout(function () { btn.click(); }, 0);
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}
 
