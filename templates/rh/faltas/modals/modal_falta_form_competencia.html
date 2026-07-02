@@ -12,10 +12,14 @@
   hx-post="{% if modo == 'editar' and falta %}{% url 'rh:modal_editar_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk falta_id=falta.pk %}{% else %}{% url 'rh:modal_adicionar_falta_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=funcionario.pk %}{% endif %}"
   hx-target="#modal-content"
   hx-swap="innerHTML"
+  class="d-flex flex-column"
+  style="max-height: calc(100vh - 8rem); min-height: 0;"
+  hx-on::before-request="var b=this.querySelector('[data-falta-submit]'); if(b){b.disabled=true; b.querySelector('[data-falta-submit-spinner]').classList.remove('d-none'); b.querySelector('[data-falta-submit-label]').textContent='Salvando...';}"
+  hx-on::after-request="var b=this.querySelector('[data-falta-submit]'); if(b){b.disabled=false; b.querySelector('[data-falta-submit-spinner]').classList.add('d-none'); b.querySelector('[data-falta-submit-label]').textContent='Salvar';}"
   >
   {% csrf_token %}
 
-  <div class="modal-body">
+  <div class="modal-body overflow-auto" style="min-height: 0;">
     <div class="row g-3">
       <div class="col-12">
         <label class="form-label fw-semibold">Tipo de falta</label>
@@ -78,10 +82,12 @@
     </div>
   </div>
 
-  <div class="modal-footer">
+  <div class="modal-footer flex-shrink-0 bg-white">
     <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
-    <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
-      <i class="bi bi-check2-circle me-1"></i> Salvar
+    <button type="submit" class="btn btn-primary rounded-3 fw-semibold" data-falta-submit>
+      <span class="spinner-border spinner-border-sm me-1 d-none" data-falta-submit-spinner role="status" aria-hidden="true"></span>
+      <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+      <span data-falta-submit-label>Salvar</span>
     </button>
   </div>
 </form>
