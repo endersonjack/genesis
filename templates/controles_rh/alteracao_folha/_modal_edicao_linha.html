@@ -56,7 +56,10 @@
                 </div>
                 <div class="col-sm-6 col-md-4">
                     <label class="form-label small mb-0" for="id_adicional">{{ form.adicional.label }}</label>
-                    {{ form.adicional }}
+                    <div class="input-group">
+                        {{ form.adicional }}
+                        <span class="input-group-text">%</span>
+                    </div>
                     {{ form.adicional.errors }}
                 </div>
                 <div class="col-sm-6 col-md-4">

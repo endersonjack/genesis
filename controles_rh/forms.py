@@ -709,6 +709,7 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
         self.apply_bootstrap_classes()
         for name in self.fields:
             self.fields[name].required = False
+        self.fields['adicional'].label = 'Adicional (%)'
         if not self.is_bound and self.instance:
             he_h, he_m = _horas_minutos_partes(getattr(self.instance, 'hora_extra', 0))
             hf_h, hf_m = _horas_minutos_partes(getattr(self.instance, 'horas_feriado', 0))

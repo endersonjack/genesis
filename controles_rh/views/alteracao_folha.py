@@ -80,6 +80,13 @@ def _fmt_af_moeda(v) -> str:
     return ('-' if neg else '') + _af_add_thousands_dot(int_s) + ',' + frac_s
 
 
+def _fmt_af_percentual(v) -> str:
+    valor = _fmt_af_moeda(v)
+    if valor == '—':
+        return valor
+    return f'{valor}%'
+
+
 def _totais_alteracao_folha(competencia: Competencia) -> dict[str, str]:
     """Somas de todas as linhas da competência (formatadas para o topo da página)."""
     z = Decimal('0')
@@ -99,15 +106,14 @@ def _totais_alteracao_folha(competencia: Competencia) -> dict[str, str]:
     def nz(v):
         return v if v is not None else z
 
-    ad, oa = nz(agg['ad']), nz(agg['oa'])
+    oa = nz(agg['oa'])
     ds, od = nz(agg['ds']), nz(agg['od'])
-    total_ad_rs = ad + oa
     total_desc_rs = ds + od
 
     return {
         'total_hora_extra_fmt': _fmt_af_horas(nz(agg['he'])),
         'total_horas_feriado_fmt': _fmt_af_horas(nz(agg['hf'])),
-        'total_adicionais_rs_fmt': _fmt_af_moeda(total_ad_rs),
+        'total_outro_adicional_rs_fmt': _fmt_af_moeda(oa),
         'total_premiacao_atual_rs_fmt': _fmt_af_moeda(nz(agg_prem['pa'])),
         'total_descontos_rs_fmt': _fmt_af_moeda(total_desc_rs),
     }
@@ -422,7 +428,7 @@ def _contexto_linha_tabela(
         'faltas_j': faltas_j,
         'hora_extra_fmt': _fmt_af_horas(linha.hora_extra),
         'horas_feriado_fmt': _fmt_af_horas(linha.horas_feriado),
-        'adicional_fmt': _fmt_af_moeda(linha.adicional),
+        'adicional_fmt': _fmt_af_percentual(linha.adicional),
         'premio_atual_fmt': _fmt_af_moeda(premiacao.premio_atual if premiacao else 0),
         'premio_anterior_fmt': _fmt_af_moeda(premiacao.premio_anterior if premiacao else 0),
         'media_premiacao_fmt': _fmt_af_moeda(premiacao.media_premiacao if premiacao else 0),
