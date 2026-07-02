@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from calendar import monthrange
 from datetime import date, timedelta
@@ -54,12 +53,16 @@ def _af_add_thousands_dot(int_digits: str) -> str:
 
 
 def _fmt_af_horas(v) -> str:
-    """Horas: sempre ponto decimal e 2 casas (ex.: 5.00)."""
+    """Horas em horas/minutos (ex.: 1h30m)."""
     try:
         d = Decimal(str(v))
     except (InvalidOperation, TypeError, ValueError):
         return '—'
-    return f'{d.quantize(Decimal("0.01")):.2f}'
+    if d < 0:
+        return '—'
+    total_minutos = int((d * Decimal('60')).quantize(Decimal('1')))
+    horas, minutos = divmod(total_minutos, 60)
+    return f'{horas}h{minutos:02d}m'
 
 
 def _fmt_af_moeda(v) -> str:
@@ -82,6 +85,8 @@ def _totais_alteracao_folha(competencia: Competencia) -> dict[str, str]:
     z = Decimal('0')
     qs = AlteracaoFolhaLinha.objects.filter(competencia=competencia)
     agg = qs.aggregate(
+        he=Sum('hora_extra'),
+        hf=Sum('horas_feriado'),
         ad=Sum('adicional'),
         oa=Sum('outro_adicional'),
         ds=Sum('descontos'),
@@ -100,6 +105,8 @@ def _totais_alteracao_folha(competencia: Competencia) -> dict[str, str]:
     total_desc_rs = ds + od
 
     return {
+        'total_hora_extra_fmt': _fmt_af_horas(nz(agg['he'])),
+        'total_horas_feriado_fmt': _fmt_af_horas(nz(agg['hf'])),
         'total_adicionais_rs_fmt': _fmt_af_moeda(total_ad_rs),
         'total_premiacao_atual_rs_fmt': _fmt_af_moeda(nz(agg_prem['pa'])),
         'total_descontos_rs_fmt': _fmt_af_moeda(total_desc_rs),
@@ -116,21 +123,6 @@ def _month_bounds(ano: int, mes: int) -> tuple[date, date]:
     return inicio, fim
 
 
-def _horas_falta_parcial(descricao: str) -> Decimal | None:
-    match = re.search(r'(\d+(?:[,.]\d+)?)', descricao or '')
-    if not match:
-        return None
-    try:
-        return Decimal(match.group(1).replace(',', '.'))
-    except (InvalidOperation, ValueError):
-        return None
-
-
-def _fmt_horas_falta_parcial(horas: Decimal) -> str:
-    texto = format(horas.quantize(Decimal('0.01')), 'f').rstrip('0').rstrip('.')
-    return f'{texto}h'
-
-
 def _fmt_celula_faltas(info: dict[str, object]) -> str:
     dias = sorted(info.get('dias', set()))
     parciais = list(info.get('parciais', []))
@@ -141,16 +133,20 @@ def _fmt_celula_faltas(info: dict[str, object]) -> str:
         inner = ','.join(str(d) for d in dias)
         partes.append(f'{len(dias)} ({inner})')
     if parciais:
-        horas = sum(
-            (p['horas'] for p in parciais if p.get('horas') is not None),
-            Decimal('0'),
-        )
-        dias_parciais = sorted({p['dia'] for p in parciais})
-        inner_parcial = ','.join(str(d) for d in dias_parciais)
-        if horas > 0:
-            partes.append(f'{_fmt_horas_falta_parcial(horas)} parcial ({inner_parcial})')
-        else:
-            partes.append(f'parcial ({inner_parcial})')
+        grupos_parciais: dict[str, set[int]] = defaultdict(set)
+        for parcial in parciais:
+            descricao = str(parcial.get('descricao') or '').strip()
+            grupos_parciais[descricao].add(parcial['dia'])
+
+        for descricao, dias_parciais in sorted(
+            grupos_parciais.items(),
+            key=lambda item: (min(item[1]), item[0]),
+        ):
+            inner_parcial = ','.join(str(d) for d in sorted(dias_parciais))
+            if descricao:
+                partes.append(f'{descricao} parcial ({inner_parcial})')
+            else:
+                partes.append(f'parcial ({inner_parcial})')
     return ' + '.join(partes)
 
 
@@ -227,7 +223,7 @@ def _mapa_faltas_texto_por_funcionario(
                 buckets[f.funcionario_id][chave]['parciais'].append(
                     {
                         'dia': cur.day,
-                        'horas': _horas_falta_parcial(f.ausencia_parcial_descricao),
+                        'descricao': f.ausencia_parcial_descricao,
                     }
                 )
             else:
@@ -436,10 +432,14 @@ def _contexto_linha_tabela(
     }
 
 
-def _faltas_texto_modal(linha: AlteracaoFolhaLinha, competencia: Competencia) -> dict[str, str]:
+def _faltas_texto_modal(linha: AlteracaoFolhaLinha, competencia: Competencia) -> dict[str, object]:
     m = _mapa_faltas_texto_por_funcionario(competencia, [linha.funcionario_id])
     nj, j = m.get(linha.funcionario_id, ('—', '—'))
-    return {'faltas_nj': nj, 'faltas_j': j}
+    return {
+        'faltas_nj': nj,
+        'faltas_j': j,
+        'tem_faltas_competencia': nj != '—' or j != '—',
+    }
 
 
 def _monta_linhas_tabela(competencia: Competencia, qs):

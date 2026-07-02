@@ -13,7 +13,9 @@
         action="{% url 'controles_rh:modal_alteracao_folha_linha' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk linha_pk=linha.pk %}"
         hx-post="{% url 'controles_rh:modal_alteracao_folha_linha' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk linha_pk=linha.pk %}"
         hx-target="#modalAfLinhaContent"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+        hx-on::before-request="var b=this.querySelector('[data-af-submit]'); if(b){b.disabled=true; b.querySelector('[data-af-submit-spinner]').classList.remove('d-none'); b.querySelector('[data-af-submit-label]').textContent='Salvando...';}"
+        hx-on::after-request="var b=this.querySelector('[data-af-submit]'); if(b){b.disabled=false; b.querySelector('[data-af-submit-spinner]').classList.add('d-none'); b.querySelector('[data-af-submit-label]').textContent='Salvar';}">
         {% csrf_token %}
 
         <div class="rounded-3 p-3 mb-3 af-bloco-adicionais">
@@ -23,14 +25,34 @@
             </h6>
             <div class="row g-2">
                 <div class="col-sm-6 col-md-4">
-                    <label class="form-label small mb-0" for="id_hora_extra">{{ form.hora_extra.label }}</label>
-                    {{ form.hora_extra }}
-                    {{ form.hora_extra.errors }}
+                    <div class="form-label small mb-1">Hora extra</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0" for="{{ form.hora_extra_horas.id_for_label }}">Horas</label>
+                            {{ form.hora_extra_horas }}
+                            {{ form.hora_extra_horas.errors }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0" for="{{ form.hora_extra_minutos.id_for_label }}">Minutos</label>
+                            {{ form.hora_extra_minutos }}
+                            {{ form.hora_extra_minutos.errors }}
+                        </div>
+                    </div>
                 </div>
                 <div class="col-sm-6 col-md-4">
-                    <label class="form-label small mb-0" for="id_horas_feriado">{{ form.horas_feriado.label }}</label>
-                    {{ form.horas_feriado }}
-                    {{ form.horas_feriado.errors }}
+                    <div class="form-label small mb-1">Horas feriado</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0" for="{{ form.horas_feriado_horas.id_for_label }}">Horas</label>
+                            {{ form.horas_feriado_horas }}
+                            {{ form.horas_feriado_horas.errors }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0" for="{{ form.horas_feriado_minutos.id_for_label }}">Minutos</label>
+                            {{ form.horas_feriado_minutos }}
+                            {{ form.horas_feriado_minutos.errors }}
+                        </div>
+                    </div>
                 </div>
                 <div class="col-sm-6 col-md-4">
                     <label class="form-label small mb-0" for="id_adicional">{{ form.adicional.label }}</label>
@@ -76,7 +98,18 @@
             </h6>
 
             <div class="af-info-faltas rounded-2 p-2 mb-3">
-                <p class="small fw-semibold mb-2 text-secondary">Descontos por falta <span class="fw-normal">(apenas informação)</span></p>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <p class="small fw-semibold mb-0 text-secondary">Descontos por falta <span class="fw-normal">(apenas informação)</span></p>
+                    {% if tem_faltas_competencia %}
+                        <a
+                            href="{% url 'rh:faltas_funcionario_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk pk=linha.funcionario.pk %}"
+                            class="btn btn-sm btn-outline-danger rounded-3 fw-semibold"
+                            target="_blank"
+                            rel="noopener">
+                            <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i> Ver resumo
+                        </a>
+                    {% endif %}
+                </div>
                 <dl class="row small mb-0 g-1">
                     <dt class="col-sm-4 col-lg-3 mb-0 text-muted">Não justificadas</dt>
                     <dd class="col-sm-8 col-lg-9 mb-0 fw-semibold">{{ faltas_nj }}</dd>
@@ -106,12 +139,14 @@
                 class="btn btn-outline-secondary rounded-3"
                 title="Zerar horas e valores em reais desta linha (não salva até clicar em Salvar)"
                 aria-label="Limpar formulário"
-                onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-mask=\'br-hours\'],[data-mask=\'br-moeda\']').forEach(function(i){i.value='';});})(this)">
+                onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-af-time-input]:not(:disabled),[data-mask=\'br-hours\']:not(:disabled),[data-mask=\'br-moeda\']:not(:disabled)').forEach(function(i){i.value='';});})(this)">
                 <i class="bi bi-eraser me-1" aria-hidden="true"></i> Limpar
             </button>
             <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
-                <i class="bi bi-check2-circle me-1"></i> Salvar
+            <button type="submit" class="btn btn-primary rounded-3 fw-semibold" data-af-submit>
+                <span class="spinner-border spinner-border-sm me-1 d-none" data-af-submit-spinner role="status" aria-hidden="true"></span>
+                <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+                <span data-af-submit-label>Salvar</span>
             </button>
         </div>
     </form>

@@ -34,6 +34,29 @@ def _decimal_input_ptbr(value) -> str:
     return f'{d.quantize(Decimal("0.01")):.2f}'.replace('.', ',')
 
 
+
+def _horas_minutos_partes(value) -> tuple[int, int]:
+    try:
+        horas_decimais = Decimal(str(value if value is not None else 0))
+    except (InvalidOperation, TypeError, ValueError):
+        horas_decimais = Decimal('0')
+    if horas_decimais < 0:
+        horas_decimais = Decimal('0')
+    total_minutos = int((horas_decimais * Decimal('60')).quantize(Decimal('1')))
+    return divmod(total_minutos, 60)
+
+
+def _decimal_de_horas_minutos(horas, minutos) -> Decimal:
+    try:
+        h = int(horas or 0)
+        m = int(minutos or 0)
+    except (TypeError, ValueError):
+        raise ValidationError('Informe horas e minutos válidos.')
+    if h < 0 or m < 0 or m > 59:
+        raise ValidationError('Informe minutos entre 0 e 59.')
+    return (Decimal(h) + (Decimal(m) / Decimal('60'))).quantize(Decimal('0.01'))
+
+
 class BaseStyledModelForm(forms.ModelForm):
     """
     Form base para aplicar classes padrão do Bootstrap.
@@ -566,20 +589,20 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
             'hora_extra': forms.TextInput(
                 attrs={
                     'data-mask': 'br-hours',
-                    'inputmode': 'decimal',
+                    'inputmode': 'numeric',
                     'autocomplete': 'off',
-                    'maxlength': '16',
-                    'placeholder': '0,00',
+                    'maxlength': '12',
+                    'placeholder': '0h00m',
                     'class': 'text-end',
                 }
             ),
             'horas_feriado': forms.TextInput(
                 attrs={
                     'data-mask': 'br-hours',
-                    'inputmode': 'decimal',
+                    'inputmode': 'numeric',
                     'autocomplete': 'off',
-                    'maxlength': '16',
-                    'placeholder': '0,00',
+                    'maxlength': '12',
+                    'placeholder': '0h00m',
                     'class': 'text-end',
                 }
             ),
@@ -627,16 +650,93 @@ class AlteracaoFolhaLinhaForm(BaseStyledModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['hora_extra_horas'] = forms.IntegerField(
+            label='Horas',
+            required=False,
+            min_value=0,
+            widget=forms.NumberInput(attrs={
+                'min': '0',
+                'step': '1',
+                'inputmode': 'numeric',
+                'placeholder': '0',
+                'data-af-time-input': '1',
+                'class': 'text-end',
+            }),
+        )
+        self.fields['hora_extra_minutos'] = forms.IntegerField(
+            label='Minutos',
+            required=False,
+            min_value=0,
+            max_value=59,
+            widget=forms.NumberInput(attrs={
+                'min': '0',
+                'max': '59',
+                'step': '1',
+                'inputmode': 'numeric',
+                'placeholder': '0',
+                'data-af-time-input': '1',
+                'class': 'text-end',
+            }),
+        )
+        self.fields['horas_feriado_horas'] = forms.IntegerField(
+            label='Horas',
+            required=False,
+            min_value=0,
+            widget=forms.NumberInput(attrs={
+                'min': '0',
+                'step': '1',
+                'inputmode': 'numeric',
+                'placeholder': '0',
+                'data-af-time-input': '1',
+                'class': 'text-end',
+            }),
+        )
+        self.fields['horas_feriado_minutos'] = forms.IntegerField(
+            label='Minutos',
+            required=False,
+            min_value=0,
+            max_value=59,
+            widget=forms.NumberInput(attrs={
+                'min': '0',
+                'max': '59',
+                'step': '1',
+                'inputmode': 'numeric',
+                'placeholder': '0',
+                'data-af-time-input': '1',
+                'class': 'text-end',
+            }),
+        )
         self.apply_bootstrap_classes()
         for name in self.fields:
             self.fields[name].required = False
         if not self.is_bound and self.instance:
+            he_h, he_m = _horas_minutos_partes(getattr(self.instance, 'hora_extra', 0))
+            hf_h, hf_m = _horas_minutos_partes(getattr(self.instance, 'horas_feriado', 0))
+            self.initial['hora_extra_horas'] = he_h
+            self.initial['hora_extra_minutos'] = he_m
+            self.initial['horas_feriado_horas'] = hf_h
+            self.initial['horas_feriado_minutos'] = hf_m
             for name in self.Meta.fields:
-                self.initial[name] = _decimal_input_ptbr(getattr(self.instance, name, 0))
+                if name not in ('hora_extra', 'horas_feriado'):
+                    self.initial[name] = _decimal_input_ptbr(getattr(self.instance, name, 0))
 
     def clean(self):
         cleaned = super().clean()
         z = Decimal('0')
+        try:
+            cleaned['hora_extra'] = _decimal_de_horas_minutos(
+                cleaned.get('hora_extra_horas'),
+                cleaned.get('hora_extra_minutos'),
+            )
+        except ValidationError as exc:
+            self.add_error('hora_extra_minutos', exc)
+        try:
+            cleaned['horas_feriado'] = _decimal_de_horas_minutos(
+                cleaned.get('horas_feriado_horas'),
+                cleaned.get('horas_feriado_minutos'),
+            )
+        except ValidationError as exc:
+            self.add_error('horas_feriado_minutos', exc)
         for name in self.Meta.fields:
             if name not in cleaned:
                 continue
@@ -691,6 +791,12 @@ class PremiacaoFuncionarioForm(BaseStyledModelForm):
         self.apply_bootstrap_classes()
         for name in self.fields:
             self.fields[name].required = False
+        for name in ('premio_anterior', 'media_premiacao'):
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update({
+                'disabled': 'disabled',
+                'title': 'Valor calculado automaticamente.',
+            })
         if not self.is_bound and self.instance:
             for name in self.Meta.fields:
                 self.initial[name] = _decimal_input_ptbr(getattr(self.instance, name, 0))
