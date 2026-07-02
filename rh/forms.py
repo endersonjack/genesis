@@ -921,8 +921,8 @@ class FaltaFuncionarioForm(BaseStyledModelForm):
                     'class': 'form-control',
                 }
             ),
-            'motivo_descrito': forms.Textarea(attrs={'rows': 3}),
-            'observacoes': forms.Textarea(attrs={'rows': 3}),
+            'motivo_descrito': forms.Textarea(attrs={'rows': 1}),
+            'observacoes': forms.Textarea(attrs={'rows': 1}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -12,7 +12,7 @@
                         <i class="bi bi-table"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="fw-bold text-dark">Alterações de folha</div>
+                        <div class="fw-bold text-dark">ALTERAÇÕES DE FOLHA</div>
                         <small class="text-muted d-block mt-1">
                             Tabela mensal com todos os funcionários — adicionais, descontos e referência de faltas.
                         </small>
@@ -35,7 +35,7 @@
                         <i class="bi bi-bus-front-fill"></i>
                     </span>
                     <div class="min-w-0">
-                    <div class="fw-bold text-dark">{{ tabela.nome }}</div>
+                    <div class="fw-bold text-dark">{{ tabela.nome|upper }}</div>
                     <div class="mt-1">
                         {% if tabela.vt_status_efetivo == 'pago_completo' %}
                             <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
@@ -69,7 +69,7 @@
                         <i class="bi bi-basket3-fill"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao }}</div>
+                        <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao|upper }}</div>
                         <div class="mt-1">
                             {% if lista_cb.cb_total_ativos == 0 %}
                                 <span class="badge rounded-pill bg-secondary">Vazio</span>
@@ -101,7 +101,7 @@
                         <i class="bi bi-x-circle-fill"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="fw-bold text-dark">Faltas</div>
+                        <div class="fw-bold text-dark">FALTAS</div>
                         <div class="mt-1">
                             <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
                                 {{ faltas_registros_count }} registro{% if faltas_registros_count != 1 %}s{% endif %}
@@ -133,7 +133,7 @@
                         <i class="bi bi-paperclip"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="fw-bold text-dark">{{ anexo.nome }}</div>
+                        <div class="fw-bold text-dark">{{ anexo.nome|upper }}</div>
                         <small class="text-muted d-block mt-1">
                             {% if anexo.descricao %}
                                 {{ anexo.descricao|truncatechars:72 }}
