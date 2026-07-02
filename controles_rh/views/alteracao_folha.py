@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -361,7 +361,7 @@ def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
 
 
 def _ordenacao_linhas(valor: str | None) -> str:
-    if valor in {'cargo', 'lotacao'}:
+    if valor in {'cargo', 'lotacao', 'tempo'}:
         return valor
     return 'nome'
 
@@ -371,6 +371,7 @@ def _queryset_linhas(competencia: Competencia, *, ordenacao: str = 'nome'):
         'nome': ('funcionario__nome', 'id'),
         'cargo': ('funcionario__cargo__nome', 'funcionario__nome', 'id'),
         'lotacao': ('funcionario__lotacao__nome', 'funcionario__nome', 'id'),
+        'tempo': (F('funcionario__data_admissao').asc(nulls_last=True), 'funcionario__nome', 'id'),
     }
     return (
         AlteracaoFolhaLinha.objects.filter(competencia=competencia)
