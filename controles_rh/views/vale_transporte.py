@@ -77,7 +77,7 @@ def _get_funcionarios_para_vt(competencia):
     funcionarios = (
         Funcionario.objects.filter(empresa=competencia.empresa)
         .exclude(situacao_atual__in=['demitido', 'inativo'])
-        .select_related('cargo', 'lotacao')
+        .select_related('cargo', 'local_trabalho')
         .order_by('nome')
     )
 
@@ -212,7 +212,9 @@ def _clonar_itens_vt_de_tabela(destino, origem):
 
 
 def _ordenacao_itens_vt(valor: str | None) -> str:
-    if valor in {'cargo', 'lotacao', 'banco'}:
+    if valor == 'lotacao':
+        return 'local_trabalho'
+    if valor in {'cargo', 'local_trabalho', 'banco'}:
         return valor
     return 'nome'
 
@@ -221,7 +223,7 @@ def _order_by_itens_vt(ordenacao: str):
     orderings = {
         'nome': ('nome', 'funcionario__nome', 'id'),
         'cargo': ('funcao', 'nome', 'funcionario__nome', 'id'),
-        'lotacao': ('funcionario__lotacao__nome', 'nome', 'funcionario__nome', 'id'),
+        'local_trabalho': ('funcionario__local_trabalho__nome', 'nome', 'funcionario__nome', 'id'),
         'banco': ('banco', 'nome', 'funcionario__nome', 'id'),
     }
     return orderings.get(ordenacao, orderings['nome'])
@@ -442,7 +444,7 @@ def detalhe_tabela_vt(request, pk):
 
     itens = (
         _filtrar_itens_vt(
-            tabela.itens.select_related('funcionario', 'funcionario__lotacao'),
+            tabela.itens.select_related('funcionario', 'funcionario__local_trabalho'),
             filtros,
         )
         .order_by(*_order_by_itens_vt(ordenacao))
@@ -573,7 +575,7 @@ def _get_item_vt_empresa(request, pk):
         'tabela__competencia',
         'tabela__competencia__empresa',
         'funcionario',
-        'funcionario__lotacao',
+        'funcionario__local_trabalho',
     )
 
     if empresa_ativa:

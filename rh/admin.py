@@ -75,6 +75,7 @@ class FuncionarioAdmin(admin.ModelAdmin):
         'tipo_contrato',
         'contribuinte_sindical',
         'recebe_vale_transporte',
+        'tipo_cesta_basica',
         'analfabeto',
     )
     autocomplete_fields = (
@@ -125,7 +126,7 @@ class FuncionarioAdmin(admin.ModelAdmin):
                 ('cargo', 'lotacao'),
                 ('salario', 'adicional'),
                 ('recebe_vale_transporte', 'valor_vale_transporte'),
-                'contribuinte_sindical',
+                ('contribuinte_sindical', 'tipo_cesta_basica'),
                 ('data_ultimo_exame', 'responsavel'),
             )
         }),

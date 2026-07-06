@@ -361,7 +361,9 @@ def garantir_linhas_alteracao_folha(competencia: Competencia) -> None:
 
 
 def _ordenacao_linhas(valor: str | None) -> str:
-    if valor in {'cargo', 'lotacao', 'tempo'}:
+    if valor == 'lotacao':
+        return 'local_trabalho'
+    if valor in {'cargo', 'local_trabalho', 'tempo'}:
         return valor
     return 'nome'
 
@@ -370,12 +372,12 @@ def _queryset_linhas(competencia: Competencia, *, ordenacao: str = 'nome'):
     orderings = {
         'nome': ('funcionario__nome', 'id'),
         'cargo': ('funcionario__cargo__nome', 'funcionario__nome', 'id'),
-        'lotacao': ('funcionario__lotacao__nome', 'funcionario__nome', 'id'),
+        'local_trabalho': ('funcionario__local_trabalho__nome', 'funcionario__nome', 'id'),
         'tempo': (F('funcionario__data_admissao').asc(nulls_last=True), 'funcionario__nome', 'id'),
     }
     return (
         AlteracaoFolhaLinha.objects.filter(competencia=competencia)
-        .select_related('funcionario', 'funcionario__cargo', 'funcionario__lotacao')
+        .select_related('funcionario', 'funcionario__cargo', 'funcionario__local_trabalho')
         .annotate(_dep_qtd=Count('funcionario__dependentes', distinct=True))
         .order_by(*orderings.get(ordenacao, orderings['nome']))
     )
@@ -420,7 +422,7 @@ def _contexto_linha_tabela(
         'funcionario': func,
         'funcionario_iniciais': iniciais,
         'funcao': str(func.cargo) if func.cargo_id else '—',
-        'lotacao': str(func.lotacao) if func.lotacao_id else '—',
+        'local_trabalho': str(func.local_trabalho) if func.local_trabalho_id else '—',
         'data_admissao_fmt': data_admissao,
         'tempo_admissao_fmt': tempo_admissao,
         'passagem_sim': bool(getattr(func, 'recebe_vale_transporte', False)),

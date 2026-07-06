@@ -11,6 +11,7 @@
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
     }
     .ps-summary-body { padding: 1.25rem; background: #f8fafc; }
+    .ps-summary-card .dropdown-menu { z-index: 1055; }
     .ps-title { font-size: 1.55rem; font-weight: 800; color: #0f172a; margin-bottom: .15rem; }
     .ps-sub { color: #64748b; margin: 0; }
     .ps-table-wrap {
@@ -140,6 +141,42 @@
     }
     .ps-total-value { font-weight: 800; font-size: 1rem; color: #0f172a; }
     .ps-total-box--money .ps-total-value { color: #166534; }
+    .ps-filter-bar {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        padding: .55rem .75rem;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+    .ps-filter-inner {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .65rem;
+        flex-wrap: wrap;
+    }
+    .ps-filter-label {
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-weight: 800;
+        color: #64748b;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+    .ps-filter-select {
+        width: min(100%, 280px);
+        border-radius: .75rem;
+        font-weight: 600;
+        padding-top: .35rem;
+        padding-bottom: .35rem;
+        font-size: .85rem;
+    }
+    .ps-filter-help {
+        font-size: .75rem;
+        color: #64748b;
+        white-space: nowrap;
+    }
 </style>
 
 <div class="ps-summary-card mb-4">
@@ -165,6 +202,14 @@
                    target="_blank"
                    rel="noopener noreferrer">
                     <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+                </a>
+                <a href="{% url 'controles_rh:exportar_pagamento_salario_por_banco_pdf' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                   id="ps-export-pdf-banco-link"
+                   data-base-href="{% url 'controles_rh:exportar_pagamento_salario_por_banco_pdf' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                   class="btn btn-outline-danger rounded-3 fw-semibold"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF por Banco
                 </a>
                 <div class="dropdown" data-bs-popper="static">
                     <button
@@ -232,7 +277,8 @@
     class="d-none"
     data-no-global-loading
     hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=totais"
-    hx-trigger="pagamentoSalarioTabelaAtualizada from:body"
+    hx-trigger="pagamentoSalarioTabelaAtualizada from:body, pagamentoSalarioFiltroAtualizado from:body"
+    hx-include="#ps-filtros-form, #ps-table-host select[name='ordenacao']"
     hx-target="#ps-totais-host"
     hx-swap="innerHTML"></div>
 
@@ -241,9 +287,38 @@
     data-no-global-loading
     hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
     hx-trigger="pagamentoSalarioTabelaAtualizada from:body"
+    hx-include="#ps-filtros-form, #ps-table-host select[name='ordenacao']"
     hx-target="#ps-table-host"
     hx-swap="innerHTML"
     hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"></div>
+
+<form id="ps-filtros-form" class="ps-filter-bar mb-2" data-no-global-loading>
+    <div class="ps-filter-inner">
+        <label class="ps-filter-label" for="ps-filter-banco-empresa">Banco Empresa</label>
+        <div>
+            <select
+                id="ps-filter-banco-empresa"
+                name="banco_empresa"
+                class="form-select ps-filter-select"
+                hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
+                hx-trigger="change"
+                hx-target="#ps-table-host"
+                hx-swap="innerHTML"
+                hx-include="#ps-filtros-form, #ps-table-host select[name='ordenacao']"
+                hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"
+                hx-on::after-request="document.body.dispatchEvent(new CustomEvent('pagamentoSalarioFiltroAtualizado')); if (typeof window.syncPagamentoSalarioExportLinks === 'function') { window.syncPagamentoSalarioExportLinks(); }">
+                <option value="" {% if not banco_empresa %}selected{% endif %}>Todos os bancos</option>
+                {% if tem_sem_banco %}
+                    <option value="sem_banco" {% if banco_empresa == 'sem_banco' %}selected{% endif %}>Sem banco empresa</option>
+                {% endif %}
+                {% for conta in contas %}
+                    <option value="{{ conta.pk }}" {% if banco_empresa == conta.pk|stringformat:"s" %}selected{% endif %}>{{ conta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="ps-filter-help">Afeta tabela e PDFs</div>
+    </div>
+</form>
 
 <div id="ps-table-host" class="mb-3">
     <div
@@ -251,6 +326,7 @@
         data-no-global-loading
         hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
         hx-trigger="load"
+        hx-include="#ps-filtros-form"
         hx-target="#ps-table-host"
         hx-swap="innerHTML">
         {% include 'controles_rh/pagamento_salario/_tabela_skeleton.html' %}
@@ -260,14 +336,25 @@
 <script>
     (function () {
         function syncPsExportOrdering() {
-            var link = document.getElementById('ps-export-pdf-link');
+            var links = [
+                document.getElementById('ps-export-pdf-link'),
+                document.getElementById('ps-export-pdf-banco-link')
+            ];
             var select = document.querySelector('#ps-table-host select[name="ordenacao"]');
-            if (!link || !select) return;
-            var baseHref = link.getAttribute('data-base-href') || link.getAttribute('href');
+            var banco = document.getElementById('ps-filter-banco-empresa');
             var params = new URLSearchParams();
-            params.set('ordenacao', select.value || 'nome');
-            link.setAttribute('href', baseHref + '?' + params.toString());
+            params.set('ordenacao', select ? (select.value || 'nome') : 'nome');
+            if (banco && banco.value) {
+                params.set('banco_empresa', banco.value);
+            }
+            links.forEach(function (link) {
+                if (!link) return;
+                var baseHref = link.getAttribute('data-base-href') || link.getAttribute('href');
+                var query = params.toString();
+                link.setAttribute('href', query ? baseHref + '?' + query : baseHref);
+            });
         }
+        window.syncPagamentoSalarioExportLinks = syncPsExportOrdering;
         document.addEventListener('change', function (evt) {
             if (evt.target && evt.target.matches('#ps-table-host select[name="ordenacao"]')) {
                 syncPsExportOrdering();

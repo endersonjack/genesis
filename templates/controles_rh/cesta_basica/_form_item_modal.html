@@ -35,6 +35,12 @@
                 {{ form.funcionario }}
                 {% if form.funcionario.errors %}<div class="text-danger small mt-1">{{ form.funcionario.errors|join:", " }}</div>{% endif %}
             </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.tipo_cesta_basica.id_for_label }}">{{ form.tipo_cesta_basica.label }}</label>
+                {{ form.tipo_cesta_basica }}
+                {% if form.tipo_cesta_basica.help_text %}<div class="form-text small">{{ form.tipo_cesta_basica.help_text }}</div>{% endif %}
+                {% if form.tipo_cesta_basica.errors %}<div class="text-danger small mt-1">{{ form.tipo_cesta_basica.errors|join:", " }}</div>{% endif %}
+            </div>
             <div class="col-12">
                 <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
                 {{ form.nome }}
@@ -104,6 +110,7 @@
     const nomeInput = document.getElementById("{{ form.nome.id_for_label }}");
     const funcaoInput = document.getElementById("{{ form.funcao.id_for_label }}");
     const lotacaoInput = document.getElementById("{{ form.lotacao.id_for_label }}");
+    const tipoCestaInput = document.getElementById("{{ form.tipo_cesta_basica.id_for_label }}");
     const dataEl = document.getElementById("cesta-funcionarios-data");
     if (!funcionarioSelect || !dataEl) return;
     const funcionariosData = JSON.parse(dataEl.textContent || "{}");
@@ -114,6 +121,7 @@
         if (nomeInput) nomeInput.value = dados.nome || "";
         if (funcaoInput) funcaoInput.value = dados.funcao || "";
         if (lotacaoInput) lotacaoInput.value = dados.lotacao || "";
+        if (tipoCestaInput) tipoCestaInput.value = dados.tipo_cesta_basica || "recebe";
     });
 })();
 </script>

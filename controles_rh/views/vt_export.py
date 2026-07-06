@@ -43,7 +43,7 @@ def _safe_filename_part(text):
 
 
 def _itens_export(tabela, ordenacao='nome', filtros=None):
-    qs = tabela.itens.select_related('funcionario', 'funcionario__lotacao')
+    qs = tabela.itens.select_related('funcionario', 'funcionario__local_trabalho')
     if filtros:
         qs = _filtrar_itens_vt(qs, filtros)
     return qs.order_by(*_order_by_itens_vt(ordenacao))
@@ -139,16 +139,16 @@ def _vt_pdf_nome_funcao_texto(item) -> str:
     nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
     func_p = (item.funcao or '').strip().upper() or '—'
     cpf_p = ''
-    lotacao_p = 'LOTAÇÃO: —'
+    local_p = 'LOCAL DE TRABALHO: —'
     if item.funcionario_id:
         if getattr(item.funcionario, 'cpf', None):
             cpf_p = f'CPF {item.funcionario.cpf}'
-        if getattr(item.funcionario, 'lotacao', None):
-            lotacao_p = f'LOTAÇÃO: {item.funcionario.lotacao}'
+        if getattr(item.funcionario, 'local_trabalho', None):
+            local_p = f'LOCAL DE TRABALHO: {item.funcionario.local_trabalho}'
     partes = [nome_p, func_p]
     if cpf_p:
         partes.append(cpf_p)
-    partes.append(lotacao_p)
+    partes.append(local_p)
     return ' - '.join(partes)
 
 
@@ -156,14 +156,14 @@ def _vt_pdf_nome_funcao_html(item) -> str:
     nome_p = ((item.nome_exibicao or '').strip() or '—').upper()
     func_p = (item.funcao or '').strip().upper() or '—'
     cpf_p = ''
-    lotacao_p = 'Lotação: —'
+    local_p = 'Local de Trabalho: —'
     if item.funcionario_id and getattr(item.funcionario, 'cpf', None):
         cpf_p = f', CPF {item.funcionario.cpf}'
-    if item.funcionario_id and getattr(item.funcionario, 'lotacao', None):
-        lotacao_p = f'Lotação: {item.funcionario.lotacao}'
+    if item.funcionario_id and getattr(item.funcionario, 'local_trabalho', None):
+        local_p = f'Local de Trabalho: {item.funcionario.local_trabalho}'
     return (
         f'<b>{xml_escape(nome_p)}</b>'
-        f'<br/><font size="6">{xml_escape(func_p + cpf_p)}<br/>{xml_escape(lotacao_p)}</font>'
+        f'<br/><font size="6">{xml_escape(func_p + cpf_p)}<br/>{xml_escape(local_p)}</font>'
     )
 
 
@@ -272,7 +272,7 @@ def exportar_tabela_vt_xlsx(request, pk):
             f'{prefixo_foto}{item.nome_exibicao}\n'
             f'{prefixo_foto}{item.funcao or "-"}'
             f'{", CPF " + item.funcionario.cpf if item.funcionario_id and item.funcionario and item.funcionario.cpf else ""}\n'
-            f'{prefixo_foto}Lotação: {item.funcionario.lotacao if item.funcionario_id and item.funcionario and item.funcionario.lotacao else "—"}'
+            f'{prefixo_foto}Local de Trabalho: {item.funcionario.local_trabalho if item.funcionario_id and item.funcionario and item.funcionario.local_trabalho else "—"}'
         )
         valores = [
             n,

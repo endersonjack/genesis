@@ -478,6 +478,57 @@ function initBootstrapDropdowns() {
     });
 }
 
+function getGenesisDropdownMenu(button) {
+    var parent = button ? button.closest('.dropdown, .btn-group') : null;
+    if (parent && parent.querySelector) {
+        return parent.querySelector('.dropdown-menu');
+    }
+    return null;
+}
+
+function setupBootstrapDropdownClickFallback() {
+    if (window.__genesisBootstrapDropdownClickFallback) return;
+    window.__genesisBootstrapDropdownClickFallback = true;
+
+    document.addEventListener('click', function (evt) {
+        var btn = evt.target.closest('[data-bs-toggle="dropdown"]');
+        if (!btn) return;
+
+        var menu = getGenesisDropdownMenu(btn);
+        btn.__genesisDropdownWasOpen = btn.getAttribute('aria-expanded') === 'true'
+            || (menu && menu.classList.contains('show'));
+    }, true);
+
+    document.addEventListener('click', function (evt) {
+        var btn = evt.target.closest('[data-bs-toggle="dropdown"]');
+        if (!btn || evt.defaultPrevented) return;
+        if (!window.bootstrap || !bootstrap.Dropdown) return;
+
+        var wasOpen = btn.__genesisDropdownWasOpen;
+        btn.__genesisDropdownWasOpen = false;
+        if (wasOpen) return;
+
+        window.setTimeout(function () {
+            if (!document.body || !document.body.contains(btn)) return;
+
+            var currentMenu = getGenesisDropdownMenu(btn);
+            var isOpen = btn.getAttribute('aria-expanded') === 'true'
+                || (currentMenu && currentMenu.classList.contains('show'));
+            if (isOpen) return;
+
+            try {
+                var oldInstance = bootstrap.Dropdown.getInstance(btn);
+                if (oldInstance) {
+                    oldInstance.dispose();
+                }
+                bootstrap.Dropdown.getOrCreateInstance(btn).show();
+            } catch (e) {
+                /* ignore */
+            }
+        }, 0);
+    });
+}
+
 /**
  * Cards de falta (Apontamento): o Collapse do Bootstrap quebra após navegação HTMX
  * (abre e não fecha). Usamos toggle delegado só com classes `.show` / `.collapsed`
@@ -523,6 +574,7 @@ if (document.readyState === 'loading') {
 
 document.body.addEventListener('htmx:afterSettle', runBootstrapHtmxReinit);
 
+setupBootstrapDropdownClickFallback();
 setupApontamentoFaltaCollapseDelegate();
 
 window.initBootstrapDropdowns = initBootstrapDropdowns;

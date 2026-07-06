@@ -605,7 +605,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: .75rem;
+    gap: .5rem;
     flex-wrap: wrap;
 }
 
@@ -615,15 +615,63 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: .55rem;
-    min-height: 46px;
-    padding: .78rem 1.1rem;
+    gap: .42rem;
+    min-height: 42px;
+    padding: .65rem .9rem;
     border-radius: 999px;
     font-weight: 700;
-    font-size: .95rem;
+    font-size: .88rem;
     line-height: 1;
     transition: all .2s ease;
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.rh-top-search {
+    width: min(300px, 100%);
+    min-width: min(240px, 100%);
+    min-height: 42px;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.rh-top-search .form-control,
+.rh-top-search .btn {
+    border-color: #dbe4ee;
+    min-height: 42px;
+}
+
+.rh-top-search .form-control {
+    border-top-left-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-right: 0;
+    font-weight: 600;
+    font-size: .9rem;
+    color: #0f172a;
+    padding-left: .95rem;
+    box-shadow: none;
+}
+
+.rh-top-search .form-control::placeholder {
+    color: #64748b;
+    opacity: 1;
+}
+
+.rh-top-search .btn {
+    border-top-right-radius: 999px;
+    border-bottom-right-radius: 999px;
+    background: #fff;
+    color: #0f172a;
+    border-left: 0;
+}
+
+.rh-top-search:focus-within {
+    box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.15);
+}
+
+.rh-top-search:focus-within .form-control,
+.rh-top-search:focus-within .btn {
+    border-color: #bfdbfe;
 }
 
 .rh-top-btn i {
@@ -666,13 +714,20 @@
 }
 
 .rh-top-btn-icon-only {
-    min-width: 46px;
-    padding-left: .85rem;
-    padding-right: .85rem;
+    min-width: 42px;
+    padding-left: .75rem;
+    padding-right: .75rem;
 }
 
 .rh-top-more-dropdown .dropdown-toggle::after {
     display: none;
+}
+
+@media (min-width: 768px) {
+    .rh-top-actions,
+    .rh-top-novo-wrap {
+        flex-wrap: nowrap !important;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -681,7 +736,8 @@
         justify-content: stretch;
     }
 
-    .rh-top-btn {
+    .rh-top-btn,
+    .rh-top-search {
         flex: 1 1 100%;
         width: 100%;
     }
@@ -797,33 +853,26 @@
 
 </style>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">Recursos Humanos</h2>
         <p class="text-muted mb-0">Visão geral da empresa selecionada.</p>
     </div>
 
     <div class="rh-top-actions">
-        <a href="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
-           class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-search"></i>
-            <span>Buscar</span>
-        </a>
-        <a href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}"
-           class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-folder2-open"></i>
-            <span>Banco de Currículos</span>
-        </a>
-        <a href="{% url 'rh:relatorios_rh' empresa_id=request.empresa_ativa.pk %}"
-           class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-file-earmark-bar-graph"></i>
-            <span>Relatórios</span>
-        </a>
-        <a href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}"
-           class="rh-top-btn rh-top-btn-light">
-            <i class="bi bi-geo-alt"></i>
-            <span>Locais de Trabalho</span>
-        </a>
+        <form method="get"
+              action="{% url 'rh:buscar_funcionarios' empresa_id=request.empresa_ativa.pk %}"
+              class="input-group rh-top-search"
+              role="search">
+            <input type="text"
+                   name="q"
+                   class="form-control"
+                   placeholder="nome do funcionário"
+                   aria-label="Buscar funcionário pelo nome">
+            <button type="submit" class="btn px-3 fw-semibold" aria-label="Buscar funcionário">
+                <i class="bi bi-search"></i>
+            </button>
+        </form>
 
         <div class="d-inline-flex align-items-stretch gap-2 flex-wrap rh-top-novo-wrap">
             <button
@@ -839,6 +888,12 @@
                 <span>Novo funcionário</span>
             </button>
 
+            <a href="{% url 'rh:relatorios_rh' empresa_id=request.empresa_ativa.pk %}"
+               class="rh-top-btn rh-top-btn-light">
+                <i class="bi bi-file-earmark-bar-graph"></i>
+                <span>Relatórios</span>
+            </a>
+
             <div class="dropdown rh-top-more-dropdown" data-bs-popper="static">
                 <button
                     type="button"
@@ -849,6 +904,21 @@
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2"
+                           href="{% url 'rh:banco_curriculos' empresa_id=request.empresa_ativa.pk %}">
+                            <i class="bi bi-folder2-open"></i>
+                            Banco de Currículos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2"
+                           href="{% url 'rh:locais_trabalho' empresa_id=request.empresa_ativa.pk %}">
+                            <i class="bi bi-geo-alt"></i>
+                            Locais de Trabalho
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item d-flex align-items-center gap-2"
                             href="{% url 'rh:locais_trabalho_mapa' empresa_id=request.empresa_ativa.pk %}">

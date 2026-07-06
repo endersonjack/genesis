@@ -81,6 +81,16 @@ class Banco(TimeStampedModel):
 
 
 class Funcionario(TimeStampedModel):
+    TIPO_CESTA_BASICA_NAO = 'nao'
+    TIPO_CESTA_BASICA_RECEBE = 'recebe'
+    TIPO_CESTA_BASICA_REFEITORIO = 'refeitorio'
+
+    TIPO_CESTA_BASICA_CHOICES = (
+        (TIPO_CESTA_BASICA_NAO, 'Não'),
+        (TIPO_CESTA_BASICA_RECEBE, 'Recebe Cesta Básica'),
+        (TIPO_CESTA_BASICA_REFEITORIO, 'Almoça no Refeitório'),
+    )
+
     SEXO_CHOICES = (
         ('M', 'Masculino'),
         ('F', 'Feminino'),
@@ -239,6 +249,12 @@ class Funcionario(TimeStampedModel):
         default=False,
         verbose_name='Recebe salário família',
         help_text='Salário família (INSS). Pode ser usado em relatórios e integrações futuras.',
+    )
+    tipo_cesta_basica = models.CharField(
+        max_length=20,
+        choices=TIPO_CESTA_BASICA_CHOICES,
+        default=TIPO_CESTA_BASICA_RECEBE,
+        verbose_name='Recebe cesta básica',
     )
 
     situacao_atual = models.CharField(

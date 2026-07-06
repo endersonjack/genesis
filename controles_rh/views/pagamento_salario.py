@@ -15,6 +15,8 @@ from auditoria.registry import audit_controles_rh
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
+from financeiro.models import ContaBancaria
+
 from controles_rh.forms import PagamentoSalarioControleForm, PagamentoSalarioLinhaForm
 from controles_rh.models import (
     Competencia,
@@ -57,9 +59,31 @@ def _get_controle_pagamento_empresa(request, controle_pk):
 
 
 def _ordenacao_linhas(valor: str | None) -> str:
-    if valor in {'cargo', 'lotacao', 'tempo'}:
+    if valor == 'lotacao':
+        return 'local_trabalho'
+    if valor in {'cargo', 'local_trabalho', 'tempo'}:
         return valor
     return 'nome'
+
+
+def _filtro_banco_empresa(valor: str | None) -> str:
+    valor = (valor or '').strip()
+    if valor == 'sem_banco' or valor.isdigit():
+        return valor
+    return ''
+
+
+def _opcoes_banco_empresa(controle: PagamentoSalarioControle) -> dict:
+    contas = (
+        ContaBancaria.objects.filter(empresa=controle.competencia.empresa)
+        .filter(Q(ativo=True) | Q(pagamentos_salario_linhas__controle=controle))
+        .distinct()
+        .order_by('banco', 'nome', 'id')
+    )
+    return {
+        'contas': contas,
+        'tem_sem_banco': controle.linhas.filter(conta_bancaria_empresa__isnull=True).exists(),
+    }
 
 
 def _titulo_padrao_pagamento_salario(competencia: Competencia) -> str:
@@ -103,24 +127,37 @@ def _get_pagamento_origem_clone(request, competencia: Competencia, origem_contro
     return _pagamentos_salario_anteriores(competencia).filter(pk=int(origem_controle_pk)).first()
 
 
-def _queryset_linhas(controle: PagamentoSalarioControle, *, ordenacao: str = 'nome'):
+def _queryset_linhas(
+    controle: PagamentoSalarioControle,
+    *,
+    ordenacao: str = 'nome',
+    banco_empresa: str = '',
+):
     orderings = {
         'nome': ('funcionario__nome', 'id'),
         'cargo': ('funcionario__cargo__nome', 'funcionario__nome', 'id'),
-        'lotacao': ('funcionario__lotacao__nome', 'funcionario__nome', 'id'),
+        'local_trabalho': ('funcionario__local_trabalho__nome', 'funcionario__nome', 'id'),
         'tempo': (F('funcionario__data_admissao').asc(nulls_last=True), 'funcionario__nome', 'id'),
     }
-    return (
+    qs = (
         PagamentoSalarioLinha.objects.filter(controle=controle)
         .select_related(
             'funcionario',
             'funcionario__cargo',
-            'funcionario__lotacao',
+            'funcionario__local_trabalho',
             'funcionario__banco',
             'conta_bancaria_empresa',
         )
-        .order_by(*orderings.get(ordenacao, orderings['nome']))
     )
+    banco_empresa = _filtro_banco_empresa(banco_empresa)
+    if banco_empresa == 'sem_banco':
+        qs = qs.filter(conta_bancaria_empresa__isnull=True)
+    elif banco_empresa:
+        qs = qs.filter(
+            conta_bancaria_empresa_id=int(banco_empresa),
+            conta_bancaria_empresa__empresa=controle.competencia.empresa,
+        )
+    return qs.order_by(*orderings.get(ordenacao, orderings['nome']))
 
 
 def garantir_linhas_pagamento_salario(controle: PagamentoSalarioControle) -> None:
@@ -205,7 +242,7 @@ def _contexto_linha_tabela(
         'funcionario': func,
         'funcionario_iniciais': iniciais,
         'funcao': str(func.cargo) if func.cargo_id else '—',
-        'lotacao': str(func.lotacao) if func.lotacao_id else '—',
+        'local_trabalho': str(func.local_trabalho) if func.local_trabalho_id else '—',
         'data_admissao_fmt': data_admissao,
         'tempo_admissao_fmt': tempo_admissao,
         'cpf': func.cpf or '—',
@@ -226,11 +263,12 @@ def _monta_linhas_tabela(competencia: Competencia, controle: PagamentoSalarioCon
     ]
 
 
-def _totais_pagamento_salario(controle: PagamentoSalarioControle) -> dict[str, str]:
-    agg = controle.linhas.aggregate(total=Sum('valor'))
+def _totais_pagamento_salario(controle: PagamentoSalarioControle, qs=None) -> dict[str, str]:
+    qs = qs if qs is not None else controle.linhas.all()
+    agg = qs.aggregate(total=Sum('valor'))
     total = agg['total'] if agg['total'] is not None else Decimal('0.00')
     return {
-        'total_funcionarios': controle.linhas.count(),
+        'total_funcionarios': qs.count(),
         'total_pagar_fmt': _fmt_af_moeda(total),
     }
 
@@ -605,9 +643,10 @@ def pagamento_salario_competencia(request, controle_pk):
 
     partial = request.GET.get('partial')
     ordenacao = _ordenacao_linhas(request.GET.get('ordenacao'))
+    banco_empresa = _filtro_banco_empresa(request.GET.get('banco_empresa'))
 
     if partial == 'tabela':
-        qs = _queryset_linhas(controle, ordenacao=ordenacao)
+        qs = _queryset_linhas(controle, ordenacao=ordenacao, banco_empresa=banco_empresa)
         linhas = _monta_linhas_tabela(competencia, controle, qs)
         return render(
             request,
@@ -617,21 +656,26 @@ def pagamento_salario_competencia(request, controle_pk):
                 'controle': controle,
                 'linhas': linhas,
                 'ordenacao': ordenacao,
+                'banco_empresa': banco_empresa,
             },
         )
     if partial == 'totais':
+        qs = _queryset_linhas(controle, ordenacao=ordenacao, banco_empresa=banco_empresa)
         return render(
             request,
             'controles_rh/pagamento_salario/_totais.html',
-            _totais_pagamento_salario(controle),
+            _totais_pagamento_salario(controle, qs),
         )
 
+    qs = _queryset_linhas(controle, ordenacao=ordenacao, banco_empresa=banco_empresa)
     context = {
         'page_title': f'{controle.nome_exibicao} — {competencia.referencia}',
         'competencia': competencia,
         'controle': controle,
         'empresa': empresa,
         'ordenacao': ordenacao,
-        **_totais_pagamento_salario(controle),
+        'banco_empresa': banco_empresa,
+        **_opcoes_banco_empresa(controle),
+        **_totais_pagamento_salario(controle, qs),
     }
     return render(request, 'controles_rh/pagamento_salario/detalhe.html', context)

@@ -449,6 +449,12 @@ class CestaBasicaListaForm(BaseStyledModelForm):
 
 
 class CestaBasicaItemForm(BaseStyledModelForm):
+    tipo_cesta_basica = forms.ChoiceField(
+        choices=Funcionario.TIPO_CESTA_BASICA_CHOICES,
+        label='Tipo Cesta Básica',
+        required=False,
+    )
+
     class Meta:
         model = CestaBasicaItem
         fields = ['funcionario', 'nome', 'funcao', 'lotacao', 'recebido', 'data_recebimento', 'ativo']
@@ -462,7 +468,7 @@ class CestaBasicaItemForm(BaseStyledModelForm):
             'funcionario': 'Funcionário',
             'nome': 'Empregado',
             'funcao': 'Função',
-            'lotacao': 'Lotação',
+            'lotacao': 'Local de Trabalho',
             'recebido': 'Já recebeu a cesta',
             'data_recebimento': 'Data de recebimento',
             'ativo': 'Ativo',
@@ -476,6 +482,15 @@ class CestaBasicaItemForm(BaseStyledModelForm):
         self.fields['nome'].required = False
         self.fields['funcao'].required = False
         self.fields['lotacao'].required = False
+        self.fields['tipo_cesta_basica'].required = False
+
+        if self.instance and self.instance.pk and self.instance.funcionario_id:
+            self.fields['tipo_cesta_basica'].initial = (
+                self.instance.funcionario.tipo_cesta_basica
+                or Funcionario.TIPO_CESTA_BASICA_RECEBE
+            )
+        else:
+            self.fields['tipo_cesta_basica'].initial = Funcionario.TIPO_CESTA_BASICA_RECEBE
 
         if self.lista:
             empresa = self.lista.competencia.empresa
@@ -484,7 +499,7 @@ class CestaBasicaItemForm(BaseStyledModelForm):
                 q_func |= Q(pk=self.instance.funcionario_id)
             funcionarios_qs = (
                 Funcionario.objects.filter(q_func)
-                .select_related('cargo', 'banco', 'lotacao')
+                .select_related('cargo', 'banco', 'local_trabalho')
                 .distinct()
                 .order_by('nome')
             )
@@ -495,9 +510,13 @@ class CestaBasicaItemForm(BaseStyledModelForm):
                     'nome': getattr(func, 'nome', '') or '',
                     'funcao': str(getattr(func, 'cargo', '') or ''),
                     'lotacao': (
-                        func.lotacao.nome
-                        if getattr(func, 'lotacao_id', None)
+                        func.local_trabalho.nome
+                        if getattr(func, 'local_trabalho_id', None)
                         else ''
+                    ),
+                    'tipo_cesta_basica': (
+                        getattr(func, 'tipo_cesta_basica', '')
+                        or Funcionario.TIPO_CESTA_BASICA_RECEBE
                     ),
                 }
                 for func in funcionarios_qs
@@ -508,7 +527,7 @@ class CestaBasicaItemForm(BaseStyledModelForm):
         self.fields['nome'].help_text = 'Pode ser preenchido ao escolher o funcionário ou digitado manualmente.'
         self.fields['funcao'].help_text = 'Pode vir do cargo do funcionário ou ser editada.'
         self.fields['lotacao'].help_text = (
-            'Preenchida automaticamente com a lotação do cadastro do funcionário; pode ser alterada.'
+            'Preenchido automaticamente com o local de trabalho do cadastro do funcionário; pode ser alterado.'
         )
         self.fields['data_recebimento'].required = False
         self.fields['data_recebimento'].help_text = (
@@ -522,6 +541,12 @@ class CestaBasicaItemForm(BaseStyledModelForm):
         instance = super().save(commit=False)
         if self.lista and not instance.pk:
             instance.lista = self.lista
+        tipo_cesta_basica = self.cleaned_data.get('tipo_cesta_basica')
+        if instance.funcionario_id and tipo_cesta_basica:
+            funcionario = instance.funcionario
+            if funcionario.tipo_cesta_basica != tipo_cesta_basica:
+                funcionario.tipo_cesta_basica = tipo_cesta_basica
+                funcionario.save(update_fields=['tipo_cesta_basica', 'atualizado_em'])
         if commit:
             instance.save()
         return instance

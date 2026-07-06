@@ -192,6 +192,7 @@ class FuncionarioForm(BaseStyledModelForm):
             'valor_vale_transporte',
             'contribuinte_sindical',
             'recebe_salario_familia',
+            'tipo_cesta_basica',
             'data_ultimo_exame',
             'responsavel',
 
@@ -309,6 +310,7 @@ class FuncionarioAdmissaoForm(BaseStyledModelForm):
             'valor_vale_transporte',
             'contribuinte_sindical',
             'recebe_salario_familia',
+            'tipo_cesta_basica',
             'data_ultimo_exame',
             'responsavel',
         ]

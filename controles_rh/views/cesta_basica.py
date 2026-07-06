@@ -129,21 +129,21 @@ def _criar_itens_iniciais_cesta(lista):
     funcs = (
         Funcionario.objects.filter(empresa=lista.competencia.empresa)
         .exclude(situacao_atual__in=['demitido', 'inativo'])
-        .select_related('cargo', 'lotacao')
+        .select_related('cargo', 'local_trabalho')
         .order_by('nome', 'id')
     )
 
     novos = []
     for ordem, f in enumerate(funcs, start=1):
         cargo = getattr(f, 'cargo', None)
-        lot = getattr(f, 'lotacao', None)
+        local_trabalho = getattr(f, 'local_trabalho', None)
         novos.append(
             CestaBasicaItem(
                 lista=lista,
                 funcionario=f,
                 nome=getattr(f, 'nome', '') or '',
                 funcao=str(cargo) if cargo else '',
-                lotacao=(lot.nome if getattr(lot, 'nome', None) else ''),
+                lotacao=(local_trabalho.nome if getattr(local_trabalho, 'nome', None) else ''),
                 ordem=ordem,
                 ativo=True,
                 recebido=False,
@@ -332,7 +332,11 @@ def criar_cesta_basica(request, competencia_pk):
 @login_required
 def detalhe_cesta_basica(request, pk):
     lista = _get_lista_cesta_empresa(request, pk)
-    itens_qs = lista.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+    itens_qs = lista.itens.select_related(
+        'funcionario',
+        'funcionario__cargo',
+        'funcionario__local_trabalho',
+    ).order_by('ordem', 'nome', 'id')
     ativos = itens_qs.filter(ativo=True)
     itens = list(itens_qs)
     for item in itens:
@@ -446,7 +450,7 @@ def adicionar_todos_funcionarios_cesta_basica(request, lista_pk):
     # Funcionários elegíveis (mesmo filtro do form)
     funcs = (
         Funcionario.objects.filter(empresa=empresa, situacao_atual='admitido')
-        .select_related('cargo', 'lotacao')
+        .select_related('cargo', 'local_trabalho')
         .order_by('nome', 'id')
     )
 
@@ -462,14 +466,14 @@ def adicionar_todos_funcionarios_cesta_basica(request, lista_pk):
             continue
         ordem += 1
         cargo = getattr(f, 'cargo', None)
-        lot = getattr(f, 'lotacao', None)
+        local_trabalho = getattr(f, 'local_trabalho', None)
         novos.append(
             CestaBasicaItem(
                 lista=lista,
                 funcionario=f,
                 nome=getattr(f, 'nome', '') or '',
                 funcao=str(cargo) if cargo else '',
-                lotacao=(lot.nome if getattr(lot, 'nome', None) else ''),
+                lotacao=(local_trabalho.nome if getattr(local_trabalho, 'nome', None) else ''),
                 ordem=ordem,
                 ativo=True,
                 recebido=False,

@@ -22,8 +22,12 @@ from controles_rh.views.alteracao_folha import _fmt_af_horas, _fmt_celula_faltas
 from controles_rh.views.pagamento_salario import (
     garantir_linhas_pagamento_salario,
     limpar_dados_pagamento_salario,
+    _queryset_linhas,
 )
-from controles_rh.views.ps_export import exportar_pagamento_salario_pdf
+from controles_rh.views.ps_export import (
+    exportar_pagamento_salario_pdf,
+    exportar_pagamento_salario_por_banco_pdf,
+)
 from rh.models import Funcionario
 
 
@@ -240,6 +244,43 @@ class PagamentoSalarioTests(TestCase):
         self.assertEqual(linha.valor, Decimal('0.00'))
         self.assertIsNone(linha.conta_bancaria_empresa)
 
+    def test_query_linhas_filtra_por_banco_empresa(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Filtro Banco', cnpj='00.000.000/0011-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        banco_a = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta A',
+            banco='Banco A',
+            agencia='0001',
+            conta='111',
+        )
+        banco_b = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta B',
+            banco='Banco B',
+            agencia='0002',
+            conta='222',
+        )
+        func_a = Funcionario.objects.create(empresa=empresa, nome='Funcionário A', cpf='000.000.000-11')
+        func_b = Funcionario.objects.create(empresa=empresa, nome='Funcionário B', cpf='000.000.000-12')
+        controle = PagamentoSalarioControle.objects.create(competencia=competencia)
+        PagamentoSalarioLinha.objects.create(
+            controle=controle,
+            funcionario=func_a,
+            valor=Decimal('100.00'),
+            conta_bancaria_empresa=banco_a,
+        )
+        PagamentoSalarioLinha.objects.create(
+            controle=controle,
+            funcionario=func_b,
+            valor=Decimal('200.00'),
+            conta_bancaria_empresa=banco_b,
+        )
+
+        qs = _queryset_linhas(controle, banco_empresa=str(banco_a.pk))
+
+        self.assertEqual(list(qs.values_list('funcionario_id', flat=True)), [func_a.pk])
+
     def test_exportar_pdf_pagamento_salario(self):
         empresa = Empresa.objects.create(razao_social='Empresa PDF', cnpj='00.000.000/0008-00')
         competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
@@ -262,6 +303,41 @@ class PagamentoSalarioTests(TestCase):
         request.user = SimpleNamespace(is_authenticated=False)
 
         response = exportar_pagamento_salario_pdf.__wrapped__(request, controle.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
+    def test_exportar_pdf_pagamento_salario_por_banco(self):
+        empresa = Empresa.objects.create(razao_social='Empresa PDF Banco', cnpj='00.000.000/0012-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        conta = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta PDF',
+            banco='Santander',
+            agencia='0001',
+            conta='999',
+        )
+        funcionario = Funcionario.objects.create(
+            empresa=empresa,
+            nome='Funcionário PDF Banco',
+            cpf='000.000.000-13',
+        )
+        controle = PagamentoSalarioControle.objects.create(
+            competencia=competencia,
+            nome='Salários Banco PDF',
+        )
+        PagamentoSalarioLinha.objects.create(
+            controle=controle,
+            funcionario=funcionario,
+            valor=Decimal('750.00'),
+            conta_bancaria_empresa=conta,
+        )
+        request = RequestFactory().get('/fake-url/', {'banco_empresa': str(conta.pk)})
+        request.empresa_ativa = empresa
+        request.user = SimpleNamespace(is_authenticated=False)
+
+        response = exportar_pagamento_salario_por_banco_pdf.__wrapped__(request, controle.pk)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')

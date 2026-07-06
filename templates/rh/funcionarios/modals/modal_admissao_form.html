@@ -168,6 +168,14 @@
                             <div class="field-error">{{ form.recebe_salario_familia.errors|join:", " }}</div>
                         {% endif %}
                     </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Recebe cesta básica</label>
+                        {{ form.tipo_cesta_basica }}
+                        {% if form.tipo_cesta_basica.errors %}
+                            <div class="field-error">{{ form.tipo_cesta_basica.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 

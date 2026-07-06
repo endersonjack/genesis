@@ -14,10 +14,12 @@
                         hx-trigger="change"
                         hx-target="#ps-table-host"
                         hx-swap="innerHTML"
-                        hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}">
+                        hx-include="#ps-filtros-form"
+                        hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"
+                        hx-on::after-request="document.body.dispatchEvent(new CustomEvent('pagamentoSalarioFiltroAtualizado')); if (typeof window.syncPagamentoSalarioExportLinks === 'function') { window.syncPagamentoSalarioExportLinks(); }">
                         <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>Por Nome</option>
                         <option value="cargo" {% if ordenacao == 'cargo' %}selected{% endif %}>Por Cargo</option>
-                        <option value="lotacao" {% if ordenacao == 'lotacao' %}selected{% endif %}>Por Lotação</option>
+                        <option value="local_trabalho" {% if ordenacao == 'local_trabalho' %}selected{% endif %}>Por Local de Trabalho</option>
                         <option value="tempo" {% if ordenacao == 'tempo' %}selected{% endif %}>Por Tempo de trabalho</option>
                     </select>
                 </th>

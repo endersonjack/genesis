@@ -31,12 +31,11 @@ PDF_LANDSCAPE_CONTENT_MM = 277
 
 def _col_widths_recibo_mm():
     """
-    Colunas №, empregado, função e lotação no mínimo prático; o restante fica para ASSINATURA.
-    Empregado com largura suficiente para nomes longos em uma linha (com redução de fonte se preciso).
+    Colunas №, funcionário, tipo da cesta e assinatura.
     """
-    w_n, w_e, w_f, w_l = 6, 52, 20, 20
-    w_a = PDF_LANDSCAPE_CONTENT_MM - (w_n + w_e + w_f + w_l)
-    return (w_n, w_e, w_f, w_l, w_a)
+    w_n, w_func, w_tipo = 6, 105, 34
+    w_a = PDF_LANDSCAPE_CONTENT_MM - (w_n + w_func + w_tipo)
+    return (w_n, w_func, w_tipo, w_a)
 
 
 def _paragraph_empregado_nome_uma_linha(nome_txt, parent_style, col_w_mm, pad_each_side_pt):
@@ -90,7 +89,47 @@ def _mes_nome_pt(mes):
 
 
 def _itens_export(lista):
-    return lista.itens.select_related('funcionario').order_by('ordem', 'nome', 'id')
+    return lista.itens.select_related(
+        'funcionario',
+        'funcionario__cargo',
+        'funcionario__local_trabalho',
+    ).order_by('ordem', 'nome', 'id')
+
+
+def _cesta_funcao_item(item):
+    if item.funcionario_id and getattr(item.funcionario, 'cargo', None):
+        return str(item.funcionario.cargo)
+    return (item.funcao or '').strip() or '—'
+
+
+def _cesta_local_trabalho_item(item):
+    if item.funcionario_id and getattr(item.funcionario, 'local_trabalho', None):
+        return str(item.funcionario.local_trabalho)
+    if item.funcionario_id:
+        return '—'
+    return (item.lotacao or '').strip() or '—'
+
+
+def _cesta_tipo_basica_item(item):
+    return getattr(item, 'tipo_cesta_basica_label', None) or '—'
+
+
+def _cesta_item_bloqueado(item):
+    return bool(getattr(item, 'cesta_basica_bloqueada', False))
+
+
+def _paragraph_funcionario_cesta(item, parent_style):
+    nome_txt = ((item.nome_exibicao or '').strip() or '—').upper()
+    funcao_txt = _cesta_funcao_item(item)
+    local_txt = _cesta_local_trabalho_item(item)
+    return Paragraph(
+        (
+            f'<b>{xml_escape(nome_txt)}</b><br/>'
+            f'<font size="6">{xml_escape(funcao_txt)}<br/>'
+            f'Local de Trabalho: {xml_escape(local_txt)}</font>'
+        ),
+        parent_style,
+    )
 
 
 def _nome_empresa_pdf(empresa):
@@ -565,9 +604,9 @@ def _table_style_recibo_assinatura(last_idx, mult=1.0):
     m = float(mult)
     base = _table_style_compact_scaled(last_idx, m)
     extra = [
-        ('VALIGN', (4, 1), (4, -1), 'TOP'),
-        ('TOPPADDING', (4, 1), (4, -1), 4 * m),
-        ('BOTTOMPADDING', (4, 1), (4, -1), 12 * m),
+        ('VALIGN', (3, 1), (3, -1), 'TOP'),
+        ('TOPPADDING', (3, 1), (3, -1), 4 * m),
+        ('BOTTOMPADDING', (3, 1), (3, -1), 12 * m),
         # Menos padding horizontal nas colunas estreitas; ainda separado o suficiente da grade
         ('LEFTPADDING', (0, 0), (-1, -1), 2 * m),
         ('RIGHTPADDING', (0, 0), (-1, -1), 2 * m),
@@ -599,27 +638,22 @@ def _http_response_pdf_recibo_cesta(lista, items, *, filename_label=None, reques
         spaceBefore=0,
         spaceAfter=0,
     )
-    headers = ['№', 'EMPREGADO', 'FUNÇÃO', 'LOTAÇÃO', 'ASSINATURA']
+    headers = ['№', 'FUNCIONÁRIO', 'TIPO CESTA', 'ASSINATURA']
 
     _cw = _col_widths_recibo_mm()
-    pad_nome = 2 * mult
 
     data_rows = [headers]
+    blocked_rows = []
     for n, item in enumerate(items, start=1):
-        nome_txt = ((item.nome_exibicao or '').strip() or '—').upper()
-        funcao_txt = (item.funcao or '').strip() or '—'
-        lot_txt = (item.lotacao or '').strip() or '—'
         # Uma quebra + leading 13,5 pt ≈ linha e meia em branco para assinar
         assin_bloco = Paragraph('<br/>', cell_assin)
-        p_nome = _paragraph_empregado_nome_uma_linha(
-            nome_txt, cell_txt, _cw[1], pad_nome
-        )
+        if _cesta_item_bloqueado(item):
+            blocked_rows.append(n)
         data_rows.append(
             [
                 Paragraph(xml_escape(str(n)), cell_num),
-                p_nome,
-                Paragraph(xml_escape(funcao_txt), cell_txt),
-                Paragraph(xml_escape(lot_txt), cell_txt),
+                _paragraph_funcionario_cesta(item, cell_txt),
+                Paragraph(xml_escape(_cesta_tipo_basica_item(item)), cell_num),
                 assin_bloco,
             ]
         )
@@ -652,7 +686,11 @@ def _http_response_pdf_recibo_cesta(lista, items, *, filename_label=None, reques
 
     last_idx = len(data_rows) - 1
     table = Table(data_rows, colWidths=[w * mm for w in _cw], repeatRows=1)
-    table.setStyle(TableStyle(_table_style_recibo_assinatura(last_idx, mult)))
+    style_cmds = _table_style_recibo_assinatura(last_idx, mult)
+    for row_idx in blocked_rows:
+        style_cmds.append(('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#e5e7eb')))
+        style_cmds.append(('TEXTCOLOR', (0, row_idx), (-1, row_idx), colors.HexColor('#475569')))
+    table.setStyle(TableStyle(style_cmds))
     story.append(table)
 
     decl = _texto_declaracao_padrao(lista)
@@ -739,30 +777,25 @@ def exportar_cesta_basica_pdf_relatorio(request, pk):
         alignment=1,
         fontName='Helvetica',
     )
-    headers = ['№', 'EMPREGADO', 'FUNÇÃO', 'LOTAÇÃO', 'RECEBEU', 'DATA RECEB.']
+    headers = ['№', 'FUNCIONÁRIO', 'TIPO CESTA', 'RECEBEU', 'DATA RECEB.']
 
-    _cw = (8, 86, 46, 46, 24, 67)
-    pad_nome_rel = 3 * mult
+    _cw = (8, 140, 38, 24, 67)
 
     data_rows = [headers]
+    blocked_rows = []
     for n, item in enumerate(_itens_export(lista), start=1):
-        nome_txt = ((item.nome_exibicao or '').strip() or '—').upper()
-        funcao_txt = (item.funcao or '').strip() or '—'
-        lot_txt = (item.lotacao or '').strip() or '—'
         recebeu_txt = 'Sim' if item.recebido else 'Não'
         if item.data_recebimento:
             data_txt = item.data_recebimento.strftime('%d/%m/%Y')
         else:
             data_txt = '—'
-        p_nome = _paragraph_empregado_nome_uma_linha(
-            nome_txt, cell_txt, _cw[1], pad_nome_rel
-        )
+        if _cesta_item_bloqueado(item):
+            blocked_rows.append(n)
         data_rows.append(
             [
                 Paragraph(xml_escape(str(n)), cell_num),
-                p_nome,
-                Paragraph(xml_escape(funcao_txt), cell_txt),
-                Paragraph(xml_escape(lot_txt), cell_txt),
+                _paragraph_funcionario_cesta(item, cell_txt),
+                Paragraph(xml_escape(_cesta_tipo_basica_item(item)), cell_center),
                 Paragraph(xml_escape(recebeu_txt), cell_center),
                 Paragraph(xml_escape(data_txt), cell_center),
             ]
@@ -798,7 +831,11 @@ def exportar_cesta_basica_pdf_relatorio(request, pk):
 
     last_idx = len(data_rows) - 1
     table = Table(data_rows, colWidths=[w * mm for w in _cw], repeatRows=1)
-    table.setStyle(TableStyle(_table_style_compact_scaled(last_idx, mult)))
+    style_cmds = _table_style_compact_scaled(last_idx, mult)
+    for row_idx in blocked_rows:
+        style_cmds.append(('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#e5e7eb')))
+        style_cmds.append(('TEXTCOLOR', (0, row_idx), (-1, row_idx), colors.HexColor('#475569')))
+    table.setStyle(TableStyle(style_cmds))
     story.append(table)
 
     story.extend(flowables_rodape_impressao(request, styles, space_before_mm=3))

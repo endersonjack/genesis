@@ -669,7 +669,7 @@ class CestaBasicaItem(models.Model):
     lotacao = models.CharField(
         max_length=120,
         blank=True,
-        verbose_name='Lotação',
+        verbose_name='Local de Trabalho',
     )
 
     ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
@@ -707,6 +707,24 @@ class CestaBasicaItem(models.Model):
             return self.funcionario.nome
         return 'Sem nome'
 
+    @property
+    def tipo_cesta_basica_valor(self):
+        if self.funcionario_id:
+            return getattr(self.funcionario, 'tipo_cesta_basica', '') or ''
+        return ''
+
+    @property
+    def tipo_cesta_basica_label(self):
+        if self.funcionario_id and hasattr(self.funcionario, 'get_tipo_cesta_basica_display'):
+            return self.funcionario.get_tipo_cesta_basica_display()
+        return '—'
+
+    @property
+    def cesta_basica_bloqueada(self):
+        if not self.funcionario_id:
+            return False
+        return self.tipo_cesta_basica_valor != 'recebe'
+
     def clean(self):
         errors = {}
         if self.funcionario_id and self.lista_id:
@@ -725,9 +743,9 @@ class CestaBasicaItem(models.Model):
                 cargo = getattr(self.funcionario, 'cargo', None)
                 self.funcao = str(cargo) if cargo else self.funcao
             if not (self.lotacao or '').strip():
-                lot = getattr(self.funcionario, 'lotacao', None)
-                if lot:
-                    self.lotacao = lot.nome
+                local_trabalho = getattr(self.funcionario, 'local_trabalho', None)
+                if local_trabalho:
+                    self.lotacao = local_trabalho.nome
         self.full_clean()
         super().save(*args, **kwargs)
 

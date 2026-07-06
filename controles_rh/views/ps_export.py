@@ -27,6 +27,7 @@ from controles_rh.views.cesta_export import (
 )
 from controles_rh.views.pagamento_salario import (
     _fmt_af_moeda,
+    _filtro_banco_empresa,
     _get_controle_pagamento_empresa,
     _monta_linhas_tabela,
     _ordenacao_linhas,
@@ -78,22 +79,27 @@ def _pdf_text(value) -> str:
 
 
 def _totais_resumo_pdf(linhas: list[dict], total_pagar_fmt: str) -> list[list[str]]:
-    por_lotacao: dict[str, Decimal] = {}
+    por_local_trabalho: dict[str, Decimal] = {}
     por_banco: dict[str, Decimal] = {}
     for row in linhas:
         valor = row['linha'].valor or Decimal('0.00')
-        lotacao = _pdf_text(row.get('lotacao')).strip()
-        if lotacao in {'', '-'}:
-            lotacao = 'Sem lotação'
+        local_trabalho = _pdf_text(row.get('local_trabalho')).strip()
+        if local_trabalho in {'', '-'}:
+            local_trabalho = 'Sem local de trabalho'
         banco = _pdf_text(row.get('banco_empresa')).strip()
         if banco in {'', '-'}:
             banco = 'Sem banco empresa'
-        por_lotacao[lotacao] = por_lotacao.get(lotacao, Decimal('0.00')) + valor
+        por_local_trabalho[local_trabalho] = (
+            por_local_trabalho.get(local_trabalho, Decimal('0.00')) + valor
+        )
         por_banco[banco] = por_banco.get(banco, Decimal('0.00')) + valor
 
     rows = [['Total R$:', f'R$ {total_pagar_fmt}']]
-    for lotacao, total in sorted(por_lotacao.items(), key=lambda item: item[0].lower()):
-        rows.append([f'Total {lotacao}:', f'R$ {_fmt_af_moeda(total)}'])
+    for local_trabalho, total in sorted(
+        por_local_trabalho.items(),
+        key=lambda item: item[0].lower(),
+    ):
+        rows.append([f'Total {local_trabalho}:', f'R$ {_fmt_af_moeda(total)}'])
     for banco, total in sorted(por_banco.items(), key=lambda item: item[0].lower()):
         rows.append([f'Total {banco}:', f'R$ {_fmt_af_moeda(total)}'])
     rows.append(['Total Funcionários:', str(len(linhas))])
@@ -102,13 +108,23 @@ def _totais_resumo_pdf(linhas: list[dict], total_pagar_fmt: str) -> list[list[st
 
 @login_required
 def exportar_pagamento_salario_pdf(request, controle_pk):
+    return _gerar_pagamento_salario_pdf(request, controle_pk, por_banco=False)
+
+
+@login_required
+def exportar_pagamento_salario_por_banco_pdf(request, controle_pk):
+    return _gerar_pagamento_salario_pdf(request, controle_pk, por_banco=True)
+
+
+def _gerar_pagamento_salario_pdf(request, controle_pk, *, por_banco: bool):
     controle = _get_controle_pagamento_empresa(request, controle_pk)
     competencia = controle.competencia
 
     ordenacao = _ordenacao_linhas(request.GET.get('ordenacao'))
-    qs = _queryset_linhas(controle, ordenacao=ordenacao)
+    banco_empresa = _filtro_banco_empresa(request.GET.get('banco_empresa'))
+    qs = _queryset_linhas(controle, ordenacao=ordenacao, banco_empresa=banco_empresa)
     linhas = _monta_linhas_tabela(competencia, controle, qs)
-    totais = _totais_pagamento_salario(controle)
+    totais = _totais_pagamento_salario(controle, qs)
 
     empresa = competencia.empresa
     styles = getSampleStyleSheet()
@@ -163,6 +179,16 @@ def exportar_pagamento_salario_pdf(request, controle_pk):
         spaceBefore=0,
         spaceAfter=0,
     )
+    group_header_style = ParagraphStyle(
+        'ps_group_header',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.4,
+        leading=10,
+        textColor=colors.HexColor('#0f172a'),
+        spaceBefore=0,
+        spaceAfter=0,
+    )
 
     headers = [
         'Nº',
@@ -173,18 +199,21 @@ def exportar_pagamento_salario_pdf(request, controle_pk):
         'BANCO EMPRESA',
     ]
     data_rows = [headers]
-    for row in linhas:
+    group_rows = []
+    subtotal_rows = []
+
+    def append_funcionario_row(row):
         funcionario = row['funcionario']
         nome = xml_escape((funcionario.nome or '').upper())
         cargo = xml_escape(_pdf_text(row['funcao']))
-        lotacao = xml_escape(_pdf_text(row['lotacao']))
+        local_trabalho = xml_escape(_pdf_text(row['local_trabalho']))
         admissao = xml_escape(_pdf_text(row['data_admissao_fmt']))
         tempo_admissao = xml_escape(_pdf_text(row['tempo_admissao_fmt']))
         funcionario_text = Paragraph(
             (
                 f'<b>{nome}</b><br/>'
                 f'<font size="6">{cargo}<br/>'
-                f'Lotação: {lotacao}<br/>Admissão: {admissao} ({tempo_admissao})</font>'
+                f'Local de Trabalho: {local_trabalho}<br/>Admissão: {admissao} ({tempo_admissao})</font>'
             ),
             cell_style,
         )
@@ -223,12 +252,57 @@ def exportar_pagamento_salario_pdf(request, controle_pk):
             ]
         )
 
+    if por_banco:
+        grupos = {}
+        for row in linhas:
+            banco_label = _pdf_text(row.get('banco_empresa')).strip()
+            if banco_label in {'', '-'}:
+                banco_label = 'Sem banco empresa'
+            grupos.setdefault(banco_label, []).append(row)
+
+        seq = 1
+        for banco_label, rows_banco in sorted(grupos.items(), key=lambda item: item[0].lower()):
+            idx_grupo = len(data_rows)
+            group_rows.append(idx_grupo)
+            data_rows.append(
+                [
+                    Paragraph(xml_escape(f'BANCO EMPRESA: {banco_label}'), group_header_style),
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                ]
+            )
+            for row in rows_banco:
+                row = {**row, 'seq': seq}
+                append_funcionario_row(row)
+                seq += 1
+            total_banco = sum((row['linha'].valor or Decimal('0.00')) for row in rows_banco)
+            idx_subtotal = len(data_rows)
+            subtotal_rows.append(idx_subtotal)
+            data_rows.append(
+                [
+                    '',
+                    f'Total {banco_label}',
+                    '',
+                    Paragraph(xml_escape(f'R$ {_fmt_af_moeda(total_banco)}'), valor_style),
+                    '',
+                    f'{len(rows_banco)} funcionário{"s" if len(rows_banco) != 1 else ""}',
+                ]
+            )
+    else:
+        for row in linhas:
+            append_funcionario_row(row)
+
     data_rows.append(
-        ['', 'TOTAIS', '', Paragraph(f'R$ {totais["total_pagar_fmt"]}', valor_style), '', '']
+        ['', 'TOTAIS GERAL' if por_banco else 'TOTAIS', '', Paragraph(f'R$ {totais["total_pagar_fmt"]}', valor_style), '', '']
     )
 
     mes_titulo = f'{_mes_nome_pt(competencia.mes).upper()} {competencia.ano}'
     titulo_doc = f'{controle.nome_exibicao.upper()} - {mes_titulo}'
+    if por_banco:
+        titulo_doc = f'{titulo_doc} - POR BANCO'
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -298,6 +372,30 @@ def exportar_pagamento_salario_pdf(request, controle_pk):
                 ('FONTSIZE', (0, i_first_data), (-1, i_last_data), 8),
             ]
         )
+    for row_idx in group_rows:
+        pdf_style.extend(
+            [
+                ('SPAN', (0, row_idx), (-1, row_idx)),
+                ('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#e0e7ff')),
+                ('ALIGN', (0, row_idx), (-1, row_idx), 'LEFT'),
+                ('VALIGN', (0, row_idx), (-1, row_idx), 'MIDDLE'),
+                ('TOPPADDING', (0, row_idx), (-1, row_idx), 4),
+                ('BOTTOMPADDING', (0, row_idx), (-1, row_idx), 4),
+            ]
+        )
+    for row_idx in subtotal_rows:
+        pdf_style.extend(
+            [
+                ('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#f1f5f9')),
+                ('BACKGROUND', (3, row_idx), (3, row_idx), PS_COLOR_BODY_VALOR),
+                ('FONTNAME', (0, row_idx), (-1, row_idx), 'Helvetica-Bold'),
+                ('TEXTCOLOR', (3, row_idx), (3, row_idx), colors.HexColor('#166534')),
+                ('ALIGN', (1, row_idx), (1, row_idx), 'LEFT'),
+                ('ALIGN', (3, row_idx), (3, row_idx), 'CENTER'),
+                ('ALIGN', (5, row_idx), (5, row_idx), 'CENTER'),
+                ('VALIGN', (0, row_idx), (-1, row_idx), 'MIDDLE'),
+            ]
+        )
 
     table.setStyle(TableStyle(pdf_style))
     story.append(table)
@@ -337,7 +435,8 @@ def exportar_pagamento_salario_pdf(request, controle_pk):
     ref = f'{competencia.mes:02d}_{competencia.ano}'
     emp_part = _safe_filename_part(_nome_empresa_pdf(empresa))
     nome_part = _safe_filename_part(controle.nome_exibicao)
-    filename = f'{nome_part}_{emp_part}_{ref}.pdf'
+    sufixo = '_por_banco' if por_banco else ''
+    filename = f'{nome_part}_{emp_part}_{ref}{sufixo}.pdf'
 
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'

@@ -667,7 +667,7 @@
                                         onchange="this.form.submit()">
                                         <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>Por Nome</option>
                                         <option value="cargo" {% if ordenacao == 'cargo' %}selected{% endif %}>Por Cargo</option>
-                                        <option value="lotacao" {% if ordenacao == 'lotacao' %}selected{% endif %}>Por Lotação</option>
+                                        <option value="local_trabalho" {% if ordenacao == 'local_trabalho' %}selected{% endif %}>Por Local de Trabalho</option>
                                         <option value="banco" {% if ordenacao == 'banco' %}selected{% endif %}>Por Banco</option>
                                     </select>
                                 </form>
@@ -724,7 +724,7 @@
                                 </td>
                                 <td
                                     class="col-nome"
-                                    title="{{ item.nome_exibicao|upper }} — {{ item.funcao|default:'-'|upper }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}{% if item.funcionario and item.funcionario.lotacao %} — Lotação: {{ item.funcionario.lotacao }}{% endif %}">
+                                    title="{{ item.nome_exibicao|upper }} — {{ item.funcao|default:'-'|upper }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}{% if item.funcionario and item.funcionario.local_trabalho %} — Local de Trabalho: {{ item.funcionario.local_trabalho }}{% endif %}">
                         <span class="vt-func-cell">
                             <span class="vt-func-avatar-wrap">
                                 {% if item.funcionario and item.funcionario.foto %}
@@ -741,7 +741,7 @@
                             <span class="vt-nome-wrap">
                                 <span class="vt-nome-text">{{ item.nome_exibicao }}</span>
                                 <span class="vt-meta-text">{{ item.funcao|default:"-" }}{% if item.funcionario and item.funcionario.cpf %}, CPF {{ item.funcionario.cpf }}{% endif %}</span>
-                                <span class="vt-meta-text">Lotação: {% if item.funcionario and item.funcionario.lotacao %}{{ item.funcionario.lotacao }}{% else %}—{% endif %}</span>
+                                <span class="vt-meta-text">Local de Trabalho: {% if item.funcionario and item.funcionario.local_trabalho %}{{ item.funcionario.local_trabalho }}{% else %}—{% endif %}</span>
                             </span>
                         </span>
                                 </td>

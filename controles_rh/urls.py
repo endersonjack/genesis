@@ -27,7 +27,10 @@ from controles_rh.views.pagamento_salario import (
     modal_pagamento_salario_linha,
     pagamento_salario_competencia,
 )
-from controles_rh.views.ps_export import exportar_pagamento_salario_pdf
+from controles_rh.views.ps_export import (
+    exportar_pagamento_salario_pdf,
+    exportar_pagamento_salario_por_banco_pdf,
+)
 from controles_rh.views.tabelas import criar_anexo_diverso, excluir_anexo_diverso
 from controles_rh.views.vale_transporte import (
     adicionar_item_vt,
@@ -135,6 +138,11 @@ urlpatterns = [
         'pagamento-salario/<int:controle_pk>/exportar/pdf/',
         empresa_scoped(exportar_pagamento_salario_pdf),
         name='exportar_pagamento_salario_pdf',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/exportar/pdf-por-banco/',
+        empresa_scoped(exportar_pagamento_salario_por_banco_pdf),
+        name='exportar_pagamento_salario_por_banco_pdf',
     ),
     path(
         'pagamento-salario/<int:controle_pk>/linha/<int:linha_pk>/modal/',
