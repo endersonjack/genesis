@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagamento de salário — {{ competencia.referencia }} | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .ps-summary-card {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+    .ps-summary-body { padding: 1.25rem; background: #f8fafc; }
+    .ps-title { font-size: 1.55rem; font-weight: 800; color: #0f172a; margin-bottom: .15rem; }
+    .ps-sub { color: #64748b; margin: 0; }
+    .ps-table-wrap {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #fff;
+    }
+    .ps-table thead th {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 800;
+        color: #475569;
+        vertical-align: bottom;
+        border-bottom-width: 1px;
+        line-height: 1.2;
+        white-space: normal;
+    }
+    .ps-th-base { background: #f8fafc !important; }
+    .ps-th-valor {
+        background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%) !important;
+        color: #166534 !important;
+        min-width: 8rem;
+        text-align: center;
+    }
+    .ps-th-funcionario { white-space: nowrap; min-width: 15rem; }
+    .ps-th-funcionario-title { margin-bottom: 0.25rem; }
+    .ps-order-select {
+        min-width: 8.5rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: 0;
+        color: #334155;
+        padding-top: 0.2rem;
+        padding-bottom: 0.2rem;
+    }
+    .ps-table tbody td { vertical-align: middle; font-size: 0.875rem; }
+    .ps-func-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 245px;
+        position: relative;
+    }
+    .ps-func-avatar-wrap {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        position: relative;
+        z-index: 2;
+    }
+    .ps-func-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: grid;
+        place-items: center;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px #cbd5e1, 0 4px 12px rgba(15, 23, 42, 0.14);
+        background: #e0f2fe;
+        color: #075985;
+        font-size: 0.78rem;
+        font-weight: 800;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        transform-origin: left center;
+    }
+    .ps-func-avatar-wrap:hover { z-index: 40; }
+    .ps-func-avatar-wrap:hover .ps-func-avatar {
+        transform: scale(2.25);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+    }
+    .ps-func-info { min-width: 0; padding-left: 0.15rem; }
+    .ps-func-meta {
+        color: #64748b;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.25;
+        margin-top: 0.1rem;
+    }
+    .ps-td-base { background: #fafbfc !important; color: #334155; }
+    .ps-td-valor {
+        background: #dcfce7 !important;
+        color: #166534;
+        font-weight: 800;
+        text-align: center !important;
+        vertical-align: middle !important;
+        box-shadow: inset 3px 0 0 #22c55e;
+    }
+    tr.ps-row-click { cursor: pointer; transition: background 0.12s ease; }
+    tr.ps-row-click:hover td.ps-td-base { background: #f1f5f9 !important; }
+    tr.ps-row-click:hover td.ps-td-valor { background: #bbf7d0 !important; }
+    tr.ps-row-click:focus-visible {
+        outline: 2px solid #22c55e;
+        outline-offset: -2px;
+    }
+    .ps-table-host-inner.htmx-request {
+        opacity: 0.55;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    .ps-totais-row {
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1rem;
+        margin-top: 0.75rem;
+    }
+    .ps-total-box {
+        border-radius: 0.75rem;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.8rem;
+        background: #fff;
+        border: 1px solid #dbeafe;
+    }
+    .ps-total-box--money {
+        background: linear-gradient(180deg, rgba(220, 252, 231, 0.75) 0%, rgba(187, 247, 208, 0.45) 100%);
+        border-color: #86efac;
+    }
+    .ps-total-label {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 0.2rem;
+    }
+    .ps-total-value { font-weight: 800; font-size: 1rem; color: #0f172a; }
+    .ps-total-box--money .ps-total-value { color: #166534; }
+</style>
+
+<div class="ps-summary-card mb-4">
+    <div class="ps-summary-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-2">
+            <div>
+                <h1 class="ps-title mb-1" id="ps-page-title">{{ controle.nome_exibicao }}</h1>
+                <p class="ps-sub mb-0">Competência {{ competencia.referencia }} — {{ competencia.empresa }}</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <a href="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
+                   class="btn btn-outline-secondary rounded-3 fw-semibold"
+                   hx-get="{% url 'controles_rh:detalhe_competencia' empresa_id=request.empresa_ativa.pk ano=competencia.ano mes=competencia.mes %}"
+                   hx-target="body"
+                   hx-swap="innerHTML"
+                   hx-push-url="true">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar à competência
+                </a>
+                <a href="{% url 'controles_rh:exportar_pagamento_salario_pdf' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                   id="ps-export-pdf-link"
+                   data-base-href="{% url 'controles_rh:exportar_pagamento_salario_pdf' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                   class="btn btn-outline-danger rounded-3 fw-semibold"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+                </a>
+                <div class="dropdown" data-bs-popper="static">
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary px-2 rounded-3"
+                        id="ps-dropdown-config"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Configurações do pagamento de salário"
+                        title="Configurações">
+                        <i class="bi bi-gear fs-5"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="ps-dropdown-config">
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item"
+                                data-no-global-loading
+                                hx-get="{% url 'controles_rh:modal_pagamento_salario_controle' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                                hx-target="#modalPsContent"
+                                hx-swap="innerHTML"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPs">
+                                <i class="bi bi-pencil-square me-2"></i> Alterar dados da planilha
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item"
+                                data-no-global-loading
+                                hx-post="{% url 'controles_rh:limpar_pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                                hx-swap="none"
+                                hx-confirm="Limpar todos os valores e bancos empresa desta planilha? A planilha continuará criada."
+                                hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}">
+                                <i class="bi bi-eraser me-2"></i> Limpar todos os dados
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                hx-post="{% url 'controles_rh:excluir_pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                                hx-confirm="Excluir esta planilha de pagamento de salário? Os valores preenchidos serão apagados.">
+                                <i class="bi bi-trash me-2"></i> Excluir planilha
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="ps-totais-host">
+            {% include 'controles_rh/pagamento_salario/_totais.html' %}
+        </div>
+    </div>
+</div>
+
+<template id="ps-table-skeleton-template">
+    {% include 'controles_rh/pagamento_salario/_tabela_skeleton.html' %}
+</template>
+
+<div
+    class="d-none"
+    data-no-global-loading
+    hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=totais"
+    hx-trigger="pagamentoSalarioTabelaAtualizada from:body"
+    hx-target="#ps-totais-host"
+    hx-swap="innerHTML"></div>
+
+<div
+    class="d-none"
+    data-no-global-loading
+    hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
+    hx-trigger="pagamentoSalarioTabelaAtualizada from:body"
+    hx-target="#ps-table-host"
+    hx-swap="innerHTML"
+    hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"></div>
+
+<div id="ps-table-host" class="mb-3">
+    <div
+        class="ps-table-host-inner"
+        data-no-global-loading
+        hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
+        hx-trigger="load"
+        hx-target="#ps-table-host"
+        hx-swap="innerHTML">
+        {% include 'controles_rh/pagamento_salario/_tabela_skeleton.html' %}
+    </div>
+</div>
+
+<script>
+    (function () {
+        function syncPsExportOrdering() {
+            var link = document.getElementById('ps-export-pdf-link');
+            var select = document.querySelector('#ps-table-host select[name="ordenacao"]');
+            if (!link || !select) return;
+            var baseHref = link.getAttribute('data-base-href') || link.getAttribute('href');
+            var params = new URLSearchParams();
+            params.set('ordenacao', select.value || 'nome');
+            link.setAttribute('href', baseHref + '?' + params.toString());
+        }
+        document.addEventListener('change', function (evt) {
+            if (evt.target && evt.target.matches('#ps-table-host select[name="ordenacao"]')) {
+                syncPsExportOrdering();
+            }
+        });
+        document.body.addEventListener('htmx:afterSettle', syncPsExportOrdering);
+        document.addEventListener('DOMContentLoaded', syncPsExportOrdering);
+    })();
+
+    document.body.addEventListener('pagamentoSalarioModalSalvo', function () {
+        var modalEl = document.getElementById('modalPs');
+        if (modalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        }
+    });
+    document.body.addEventListener('pagamentoSalarioDadosSalvos', function (event) {
+        var modalEl = document.getElementById('modalPs');
+        if (modalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        }
+        var titleEl = document.getElementById('ps-page-title');
+        if (titleEl && event.detail && event.detail.nome) {
+            titleEl.textContent = event.detail.nome;
+        }
+    });
+</script>
+
+<div class="modal fade" id="modalPs" tabindex="-1" aria-labelledby="modalPsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" id="modalPsContent"></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,175 +1,306 @@
-<div class="controle-list controle-list--solo">
-    {% if alteracao_folha_gerada %}
-        <a href="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-           class="controle-list-item controle-list-item-link"
-           hx-get="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                    <span class="controle-icon folha-alt" title="Alterações de folha" aria-hidden="true" style="background:#e0e7ff;color:#4338ca;">
-                        <i class="bi bi-table"></i>
-                    </span>
-                    <div class="min-w-0">
-                        <div class="fw-bold text-dark">ALTERAÇÕES DE FOLHA</div>
-                        <small class="text-muted d-block mt-1">
-                            Tabela mensal com todos os funcionários — adicionais, descontos e referência de faltas.
-                        </small>
-                    </div>
-                </div>
-                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-            </div>
-        </a>
-    {% endif %}
-    {% for tabela in tabelas_vt %}
-        <a href="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-           class="controle-list-item controle-list-item-link"
-           hx-get="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=tabela.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                    <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
-                        <i class="bi bi-bus-front-fill"></i>
-                    </span>
-                    <div class="min-w-0">
-                    <div class="fw-bold text-dark">{{ tabela.nome|upper }}</div>
-                    <div class="mt-1">
-                        {% if tabela.vt_status_efetivo == 'pago_completo' %}
-                            <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
-                        {% else %}
-                            <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
-                        {% endif %}
-                    </div>
-                    <small class="text-muted d-block mt-1">
-                        {% if tabela.descricao %}
-                            {{ tabela.descricao|truncatechars:72 }}
-                        {% else %}
-                            Sem descrição
-                        {% endif %}
-                    </small>
-                    </div>
-                </div>
-                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-            </div>
-        </a>
-    {% endfor %}
-    {% for lista_cb in listas_cesta_basica %}
-        <a href="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-           class="controle-list-item controle-list-item-link"
-           hx-get="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=lista_cb.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                    <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
-                        <i class="bi bi-basket3-fill"></i>
-                    </span>
-                    <div class="min-w-0">
-                        <div class="fw-bold text-dark">{{ lista_cb.nome_exibicao|upper }}</div>
-                        <div class="mt-1">
-                            {% if lista_cb.cb_total_ativos == 0 %}
-                                <span class="badge rounded-pill bg-secondary">Vazio</span>
-                            {% elif lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
-                                <span class="badge rounded-pill bg-success">{{ lista_cb.cb_status_efetivo_label }}</span>
-                            {% else %}
-                                <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ lista_cb.cb_status_efetivo_label }}</span>
-                            {% endif %}
+{% if controles_competencia %}
+    <div
+        class="controle-list controle-list--solo"
+        id="competencia-controles-sortable"
+        data-reorder-url="{% url 'controles_rh:reordenar_controles_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}">
+        {% for card in controles_competencia %}
+            <div class="controle-sortable-row" data-chave="{{ card.chave }}">
+                <button
+                    type="button"
+                    class="controle-drag-handle"
+                    draggable="true"
+                    title="Arrastar para ordenar"
+                    aria-label="Arrastar {{ card.chave }} para ordenar">
+                    <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                </button>
+
+                {% if card.tipo == 'alteracao_folha' %}
+                    <a href="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                       class="controle-list-item controle-list-item-link"
+                       hx-get="{% url 'controles_rh:alteracao_folha_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon folha-alt" title="Alterações de folha" aria-hidden="true">
+                                    <i class="bi bi-table"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">ALTERAÇÕES DE FOLHA</div>
+                                    <small class="text-muted d-block mt-1">
+                                        Tabela mensal com todos os funcionários — adicionais, descontos e referência de faltas.
+                                    </small>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
                         </div>
-                        <small class="text-muted d-block mt-1">
-                            Recibo de cesta básica — clique para editar linhas e exportar PDF.
-                        </small>
-                    </div>
-                </div>
-                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
-            </div>
-        </a>
-    {% endfor %}
-    {% if faltas_registros_count %}
-        <a href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-           class="controle-list-item controle-list-item-link"
-           hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
-           hx-target="body"
-           hx-swap="innerHTML"
-           hx-push-url="true">
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                    <span class="controle-icon faltas" title="Faltas" aria-hidden="true">
-                        <i class="bi bi-x-circle-fill"></i>
-                    </span>
-                    <div class="min-w-0">
-                        <div class="fw-bold text-dark">FALTAS</div>
-                        <div class="mt-1">
-                            <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
-                                {{ faltas_registros_count }} registro{% if faltas_registros_count != 1 %}s{% endif %}
-                            </span>
+                    </a>
+                {% elif card.tipo == 'pagamento_salario' %}
+                    <a href="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=card.pagamento.pk %}"
+                       class="controle-list-item controle-list-item-link"
+                       hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=card.pagamento.pk %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon pagamento-salario" title="Pagamento de salário" aria-hidden="true">
+                                    <i class="bi bi-cash-coin"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">{{ card.pagamento.nome_exibicao|upper }}</div>
+                                    <small class="text-muted d-block mt-1">
+                                        Pagamento de Salário dos Funcionários
+                                    </small>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
                         </div>
-                        <small class="text-muted d-block mt-1">
-                            {% if faltas_colaboradores_count %}
-                                {{ faltas_colaboradores_count }} colaborador{% if faltas_colaboradores_count != 1 %}es{% endif %} com falta neste mês — abrir controle de faltas.
-                            {% else %}
-                                Clique para abrir a home de faltas desta competência.
-                            {% endif %}
-                        </small>
+                    </a>
+                {% elif card.tipo == 'vt' %}
+                    <a href="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=card.tabela.pk %}"
+                       class="controle-list-item controle-list-item-link"
+                       hx-get="{% url 'controles_rh:detalhe_tabela_vt' empresa_id=request.empresa_ativa.pk pk=card.tabela.pk %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon vt" title="Vale Transporte" aria-hidden="true">
+                                    <i class="bi bi-bus-front-fill"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">{{ card.tabela.nome|upper }}</div>
+                                    <div class="mt-1">
+                                        {% if card.tabela.vt_status_efetivo == 'pago_completo' %}
+                                            <span class="badge rounded-pill bg-success">{{ card.tabela.vt_status_efetivo_label }}</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ card.tabela.vt_status_efetivo_label }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        {% if card.tabela.descricao %}
+                                            {{ card.tabela.descricao|truncatechars:72 }}
+                                        {% else %}
+                                            Sem descrição
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+                        </div>
+                    </a>
+                {% elif card.tipo == 'cesta' %}
+                    <a href="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=card.lista_cb.pk %}"
+                       class="controle-list-item controle-list-item-link"
+                       hx-get="{% url 'controles_rh:detalhe_cesta_basica' empresa_id=request.empresa_ativa.pk pk=card.lista_cb.pk %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon cesta" title="Cesta Básica" aria-hidden="true">
+                                    <i class="bi bi-basket3-fill"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">{{ card.lista_cb.nome_exibicao|upper }}</div>
+                                    <div class="mt-1">
+                                        {% if card.lista_cb.cb_total_ativos == 0 %}
+                                            <span class="badge rounded-pill bg-secondary">Vazio</span>
+                                        {% elif card.lista_cb.cb_status_efetivo == 'entregue_totalmente' %}
+                                            <span class="badge rounded-pill bg-success">{{ card.lista_cb.cb_status_efetivo_label }}</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ card.lista_cb.cb_status_efetivo_label }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        Recibo de cesta básica — clique para editar linhas e exportar PDF.
+                                    </small>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+                        </div>
+                    </a>
+                {% elif card.tipo == 'faltas' %}
+                    <a href="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                       class="controle-list-item controle-list-item-link"
+                       hx-get="{% url 'rh:faltas_home_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                       hx-target="body"
+                       hx-swap="innerHTML"
+                       hx-push-url="true">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon faltas" title="Faltas" aria-hidden="true">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">FALTAS</div>
+                                    <div class="mt-1">
+                                        <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                                            {{ faltas_registros_count }} registro{% if faltas_registros_count != 1 %}s{% endif %}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        {% if faltas_colaboradores_count %}
+                                            {{ faltas_colaboradores_count }} colaborador{% if faltas_colaboradores_count != 1 %}es{% endif %} com falta neste mês — abrir controle de faltas.
+                                        {% else %}
+                                            Clique para abrir a home de faltas desta competência.
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+                        </div>
+                    </a>
+                {% elif card.tipo == 'anexo' %}
+                    <div class="controle-list-item controle-list-item-link position-relative">
+                        <a href="{{ card.anexo.arquivo.url }}"
+                           class="stretched-link"
+                           target="_blank"
+                           rel="noopener"
+                           aria-label="Abrir anexo {{ card.anexo.nome }}"></a>
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
+                                <span class="controle-icon anexos" title="Anexo Diverso" aria-hidden="true">
+                                    <i class="bi bi-paperclip"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="fw-bold text-dark">{{ card.anexo.nome|upper }}</div>
+                                    <small class="text-muted d-block mt-1">
+                                        {% if card.anexo.descricao %}
+                                            {{ card.anexo.descricao|truncatechars:72 }}
+                                        {% else %}
+                                            {{ card.anexo.arquivo_nome }}
+                                        {% endif %}
+                                    </small>
+                                    <small class="text-muted d-block mt-1">
+                                        Anexado em {{ card.anexo.data_criacao|date:"d/m/Y H:i" }}
+                                        {% if card.anexo.usuario %}
+                                            por {{ card.anexo.usuario.nome_completo|default:card.anexo.usuario.username }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                <span class="btn btn-outline-secondary btn-sm" title="Abrir anexo" aria-hidden="true">
+                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-danger btn-sm position-relative z-1"
+                                    title="Excluir anexo"
+                                    aria-label="Excluir anexo {{ card.anexo.nome }}"
+                                    hx-get="{% url 'controles_rh:excluir_anexo_diverso' empresa_id=request.empresa_ativa.pk pk=card.anexo.pk %}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalPadrao">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <i class="bi bi-chevron-right text-muted fs-5 flex-shrink-0" aria-hidden="true"></i>
+                {% endif %}
             </div>
-        </a>
-    {% endif %}
-    {% for anexo in anexos_diversos %}
-        <div class="controle-list-item controle-list-item-link position-relative">
-            <a href="{{ anexo.arquivo.url }}"
-               class="stretched-link"
-               target="_blank"
-               rel="noopener"
-               aria-label="Abrir anexo {{ anexo.nome }}"></a>
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                    <span class="controle-icon anexos" title="Anexo Diverso" aria-hidden="true">
-                        <i class="bi bi-paperclip"></i>
-                    </span>
-                    <div class="min-w-0">
-                        <div class="fw-bold text-dark">{{ anexo.nome|upper }}</div>
-                        <small class="text-muted d-block mt-1">
-                            {% if anexo.descricao %}
-                                {{ anexo.descricao|truncatechars:72 }}
-                            {% else %}
-                                {{ anexo.arquivo_nome }}
-                            {% endif %}
-                        </small>
-                        <small class="text-muted d-block mt-1">
-                            Anexado em {{ anexo.data_criacao|date:"d/m/Y H:i" }}
-                            {% if anexo.usuario %}
-                                por {{ anexo.usuario.nome_completo|default:anexo.usuario.username }}
-                            {% endif %}
-                        </small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                    <span class="btn btn-outline-secondary btn-sm" title="Abrir anexo" aria-hidden="true">
-                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                    </span>
-                    <button
-                        type="button"
-                        class="btn btn-outline-danger btn-sm position-relative z-1"
-                        title="Excluir anexo"
-                        aria-label="Excluir anexo {{ anexo.nome }}"
-                        hx-get="{% url 'controles_rh:excluir_anexo_diverso' empresa_id=request.empresa_ativa.pk pk=anexo.pk %}"
-                        hx-target="#modal-content"
-                        hx-swap="innerHTML"
-                        data-bs-toggle="modal"
-                        data-bs-target="#modalPadrao">
-                        <i class="bi bi-trash" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    {% endfor %}
-</div>
-{% if not tabelas_vt and not listas_cesta_basica and not faltas_registros_count and not anexos_diversos %}
+        {% endfor %}
+    </div>
+
+    <script>
+        (function () {
+            const list = document.getElementById('competencia-controles-sortable');
+            if (!list || list.dataset.dragReady === '1') {
+                return;
+            }
+            list.dataset.dragReady = '1';
+
+            let draggingRow = null;
+            let saveTimer = null;
+
+            function getCsrfToken() {
+                const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+                return match ? decodeURIComponent(match[1]) : '';
+            }
+
+            function rows() {
+                return Array.from(list.querySelectorAll('.controle-sortable-row'));
+            }
+
+            function getRowAfterPointer(y) {
+                return rows()
+                    .filter((row) => row !== draggingRow)
+                    .reduce((closest, row) => {
+                        const rect = row.getBoundingClientRect();
+                        const offset = y - rect.top - rect.height / 2;
+                        if (offset < 0 && offset > closest.offset) {
+                            return { offset: offset, row: row };
+                        }
+                        return closest;
+                    }, { offset: Number.NEGATIVE_INFINITY, row: null }).row;
+            }
+
+            function saveOrder() {
+                window.clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(() => {
+                    const orderedKeys = rows().map((row) => row.dataset.chave).filter(Boolean);
+                    rows().forEach((row) => row.classList.add('is-saving'));
+
+                    fetch(list.dataset.reorderUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ ordem: orderedKeys }),
+                    }).finally(() => {
+                        rows().forEach((row) => row.classList.remove('is-saving'));
+                    });
+                }, 120);
+            }
+
+            list.addEventListener('dragstart', function (event) {
+                const handle = event.target.closest('.controle-drag-handle');
+                if (!handle) {
+                    return;
+                }
+
+                draggingRow = handle.closest('.controle-sortable-row');
+                if (!draggingRow) {
+                    return;
+                }
+
+                draggingRow.classList.add('is-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', draggingRow.dataset.chave || '');
+            });
+
+            list.addEventListener('dragover', function (event) {
+                if (!draggingRow) {
+                    return;
+                }
+
+                event.preventDefault();
+                const afterRow = getRowAfterPointer(event.clientY);
+                if (afterRow) {
+                    list.insertBefore(draggingRow, afterRow);
+                } else {
+                    list.appendChild(draggingRow);
+                }
+            });
+
+            list.addEventListener('dragend', function () {
+                if (!draggingRow) {
+                    return;
+                }
+
+                draggingRow.classList.remove('is-dragging');
+                draggingRow = null;
+                saveOrder();
+            });
+        })();
+    </script>
+{% else %}
     <p class="controle-empty controle-empty--solo mb-0 mt-2">Nenhum outro controle cadastrado (VT, cesta, faltas ou anexos) nesta competência.</p>
 {% endif %}

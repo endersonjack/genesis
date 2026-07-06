@@ -15,8 +15,19 @@ from controles_rh.views.competencias import (
     editar_competencia,
     excluir_competencia,
     lista_competencias,
+    reordenar_controles_competencia,
 )
 from controles_rh.views.home import home_controles_rh
+from controles_rh.views.pagamento_salario import (
+    excluir_pagamento_salario_competencia,
+    gerar_pagamento_salario_competencia,
+    limpar_pagamento_salario_competencia,
+    modal_opcoes_criar_pagamento_salario,
+    modal_pagamento_salario_controle,
+    modal_pagamento_salario_linha,
+    pagamento_salario_competencia,
+)
+from controles_rh.views.ps_export import exportar_pagamento_salario_pdf
 from controles_rh.views.tabelas import criar_anexo_diverso, excluir_anexo_diverso
 from controles_rh.views.vale_transporte import (
     adicionar_item_vt,
@@ -66,6 +77,11 @@ urlpatterns = [
     path('competencias/nova/', empresa_scoped(criar_competencia), name='criar_competencia'),
     path('competencias/<int:ano>/<int:mes>/', empresa_scoped(detalhe_competencia), name='detalhe_competencia'),
     path(
+        'competencias/<int:competencia_pk>/controles/reordenar/',
+        empresa_scoped(reordenar_controles_competencia),
+        name='reordenar_controles_competencia',
+    ),
+    path(
         'competencias/<int:competencia_pk>/alteracao-folha/gerar/',
         empresa_scoped(gerar_alteracao_folha_competencia),
         name='gerar_alteracao_folha_competencia',
@@ -89,6 +105,46 @@ urlpatterns = [
         'competencias/<int:competencia_pk>/alteracao-folha/',
         empresa_scoped(alteracao_folha_competencia),
         name='alteracao_folha_competencia',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/pagamento-salario/gerar/',
+        empresa_scoped(gerar_pagamento_salario_competencia),
+        name='gerar_pagamento_salario_competencia',
+    ),
+    path(
+        'competencias/<int:competencia_pk>/pagamento-salario/modal-opcoes/',
+        empresa_scoped(modal_opcoes_criar_pagamento_salario),
+        name='modal_opcoes_criar_pagamento_salario',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/excluir/',
+        empresa_scoped(excluir_pagamento_salario_competencia),
+        name='excluir_pagamento_salario_competencia',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/limpar/',
+        empresa_scoped(limpar_pagamento_salario_competencia),
+        name='limpar_pagamento_salario_competencia',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/dados/modal/',
+        empresa_scoped(modal_pagamento_salario_controle),
+        name='modal_pagamento_salario_controle',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/exportar/pdf/',
+        empresa_scoped(exportar_pagamento_salario_pdf),
+        name='exportar_pagamento_salario_pdf',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/linha/<int:linha_pk>/modal/',
+        empresa_scoped(modal_pagamento_salario_linha),
+        name='modal_pagamento_salario_linha',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/',
+        empresa_scoped(pagamento_salario_competencia),
+        name='pagamento_salario_competencia',
     ),
     path('competencias/<int:pk>/editar/', empresa_scoped(editar_competencia), name='editar_competencia'),
     path('competencias/<int:pk>/excluir/', empresa_scoped(excluir_competencia), name='excluir_competencia'),

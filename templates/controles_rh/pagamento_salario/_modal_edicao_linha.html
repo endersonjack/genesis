@@ -1,0 +1,93 @@
+<style>
+    .ps-linha-form .ps-save-loading { display: none; }
+    .ps-linha-form.htmx-request .ps-save-default { display: none; }
+    .ps-linha-form.htmx-request .ps-save-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-0" id="modalPsLabel">Editar valor do pagamento</h5>
+        <p class="text-muted small mb-0 mt-1">
+            Competência {{ competencia.referencia }} · {{ linha.funcionario.nome }}
+        </p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    class="ps-linha-form"
+    method="post"
+    data-no-global-loading
+    hx-post="{% url 'controles_rh:modal_pagamento_salario_linha' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk linha_pk=linha.pk %}"
+    hx-target="#modalPsContent"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="border rounded-3 p-3 bg-light h-100">
+                    <div class="small text-muted mb-1">Funcionário</div>
+                    <div class="fw-bold">{{ linha.funcionario.nome }}</div>
+                    <div class="small text-muted mt-1">CPF: {{ linha.funcionario.cpf|default:"—" }}</div>
+                    <div class="small text-muted mt-1">Salário cadastrado: R$ {{ salario_cadastrado_fmt }}</div>
+                    <div class="small text-muted mt-2 lh-sm">
+                        <div>Tipo: {% if linha.funcionario.tipo_pix %}{{ linha.funcionario.get_tipo_pix_display }}{% else %}—{% endif %}</div>
+                        <div>{{ linha.funcionario.pix|default:"—" }}</div>
+                        <div>Banco: {{ linha.funcionario.banco|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.valor.id_for_label }}">
+                    {{ form.valor.label }}
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor }}
+                </div>
+                {% if form.valor.errors %}
+                    <div class="text-danger small mt-1">{{ form.valor.errors|join:", " }}</div>
+                {% endif %}
+
+                <label class="form-label fw-semibold mt-3" for="{{ form.conta_bancaria_empresa.id_for_label }}">
+                    {{ form.conta_bancaria_empresa.label }}
+                </label>
+                {{ form.conta_bancaria_empresa }}
+                {% if form.conta_bancaria_empresa.errors %}
+                    <div class="text-danger small mt-1">{{ form.conta_bancaria_empresa.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-text">
+                    Conta da empresa usada para pagar este funcionário.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button
+            type="button"
+            class="btn btn-outline-secondary"
+            onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-mask=\'br-moeda\']:not(:disabled)').forEach(function(i){i.value='';});f.querySelectorAll('select[name=\'conta_bancaria_empresa\']:not(:disabled)').forEach(function(i){i.value='';i.dispatchEvent(new Event('change',{bubbles:true}));});})(this)">
+            Limpar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <span class="ps-save-default">
+                <i class="bi bi-check2-circle me-1"></i> Salvar
+            </span>
+            <span class="ps-save-loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Salvando...</span>
+            </span>
+        </button>
+    </div>
+</form>

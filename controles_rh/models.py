@@ -166,6 +166,42 @@ class Competencia(models.Model):
         return dict(STATUS_PAGAMENTO_VT_CHOICES).get(self.vt_status_efetivo, self.vt_status_efetivo)
 
 
+class ControleCompetenciaOrdem(models.Model):
+    """
+    Guarda a ordem manual dos cards exibidos em Controles da Competência.
+    """
+
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='ordens_controles',
+    )
+    chave = models.CharField(
+        max_length=100,
+        verbose_name='Chave do controle',
+    )
+    ordem = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Ordem',
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Ordem de controle da competência'
+        verbose_name_plural = 'Ordens de controles da competência'
+        ordering = ['ordem', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['competencia', 'chave'],
+                name='unique_ordem_controle_por_competencia',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.competencia.referencia} - {self.chave}'
+
+
 class ValeTransporteTabela(models.Model):
     """
     Representa uma tabela/grupo de VT dentro de uma competência.
@@ -717,6 +753,36 @@ class AlteracaoFolhaControle(models.Model):
         return f'Alteração de folha — {self.competencia.referencia}'
 
 
+class PagamentoSalarioControle(models.Model):
+    """
+    Marca que a planilha de pagamento de salário foi gerada na competência.
+    """
+
+    competencia = models.ForeignKey(
+        Competencia,
+        on_delete=models.CASCADE,
+        related_name='pagamentos_salario_controles',
+    )
+    nome = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name='Nome',
+    )
+    data_geracao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Pagamento de salário (geração)'
+        verbose_name_plural = 'Pagamentos de salário (gerações)'
+
+    def __str__(self):
+        return f'{self.nome_exibicao} — {self.competencia.referencia}'
+
+    @property
+    def nome_exibicao(self):
+        return (self.nome or '').strip() or 'Pagamento de salário'
+
+
 class AnexoDiversoCompetencia(models.Model):
     competencia = models.ForeignKey(
         Competencia,
@@ -907,6 +973,69 @@ class PremiacaoFuncionario(models.Model):
         ce = self.competencia.empresa_id
         if fe and ce and fe != ce:
             errors['funcionario'] = 'O funcionário deve pertencer à mesma empresa da competência.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class PagamentoSalarioLinha(models.Model):
+    """Linha da planilha de pagamento de salário por funcionário."""
+
+    controle = models.ForeignKey(
+        PagamentoSalarioControle,
+        on_delete=models.CASCADE,
+        related_name='linhas',
+    )
+    funcionario = models.ForeignKey(
+        'rh.Funcionario',
+        on_delete=models.CASCADE,
+        related_name='pagamentos_salario',
+    )
+    valor = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Valor',
+    )
+    conta_bancaria_empresa = models.ForeignKey(
+        'financeiro.ContaBancaria',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pagamentos_salario_linhas',
+        verbose_name='Banco Empresa',
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Linha de pagamento de salário'
+        verbose_name_plural = 'Linhas de pagamento de salário'
+        ordering = ['funcionario__nome', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['controle', 'funcionario'],
+                name='unique_pagamento_salario_por_controle_funcionario',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.funcionario} — {self.controle.competencia.referencia}'
+
+    def clean(self):
+        errors = {}
+        fe = getattr(self.funcionario, 'empresa_id', None)
+        ce = self.controle.competencia.empresa_id if self.controle_id else None
+        if fe and ce and fe != ce:
+            errors['funcionario'] = 'O funcionário deve pertencer à mesma empresa da competência.'
+        conta_empresa_id = getattr(self.conta_bancaria_empresa, 'empresa_id', None)
+        if conta_empresa_id and ce and conta_empresa_id != ce:
+            errors['conta_bancaria_empresa'] = (
+                'O banco da empresa deve pertencer à mesma empresa da competência.'
+            )
         if errors:
             raise ValidationError(errors)
 

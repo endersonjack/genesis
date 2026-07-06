@@ -1,0 +1,46 @@
+<tr
+    id="ps-row-{{ row.linha.pk }}"
+    class="ps-row-click"
+    role="button"
+    tabindex="0"
+    hx-get="{% url 'controles_rh:modal_pagamento_salario_linha' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk linha_pk=row.linha.pk %}"
+    hx-target="#modalPsContent"
+    hx-swap="innerHTML"
+    hx-on="htmx:afterRequest: if (event.detail.successful) { const m = document.getElementById('modalPs'); if (m && window.bootstrap) { bootstrap.Modal.getOrCreateInstance(m).show(); } }"
+    onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
+    <td class="ps-td-base text-muted">{{ row.seq }}</td>
+    <td class="ps-td-base">
+        <div class="ps-func-cell">
+            <div class="ps-func-avatar-wrap">
+                {% if row.funcionario.foto %}
+                    <img
+                        class="ps-func-avatar"
+                        src="{{ row.funcionario.foto.url }}"
+                        alt="Foto de {{ row.funcionario.nome }}">
+                {% else %}
+                    <div class="ps-func-avatar ps-func-avatar-fallback" aria-hidden="true">
+                        {{ row.funcionario_iniciais }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="ps-func-info">
+                <div class="fw-semibold">{{ row.funcionario.nome }}</div>
+                <div class="ps-func-meta">{{ row.funcao }}</div>
+                <div class="ps-func-meta">Lotação: {{ row.lotacao }}</div>
+                <div class="ps-func-meta">
+                    Admissão: {{ row.data_admissao_fmt }} ({{ row.tempo_admissao_fmt }})
+                </div>
+            </div>
+        </div>
+    </td>
+    <td class="ps-td-base">{{ row.cpf }}</td>
+    <td class="ps-td-valor">R$ {{ row.valor_fmt }}</td>
+    <td class="ps-td-base">
+        <div class="small lh-sm">
+            <div>Tipo: {{ row.dados_pix.tipo }}</div>
+            <div>{{ row.dados_pix.chave }}</div>
+            <div>Banco: {{ row.dados_pix.banco }}</div>
+        </div>
+    </td>
+    <td class="ps-td-base">{{ row.banco_empresa }}</td>
+</tr>

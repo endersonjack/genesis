@@ -11,6 +11,8 @@ from .models import (
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
+    PagamentoSalarioControle,
+    PagamentoSalarioLinha,
     PremiacaoFuncionario,
     STATUS_PAGAMENTO_VT_CHOICES,
     ValeTransporteItem,
@@ -810,4 +812,66 @@ class PremiacaoFuncionarioForm(BaseStyledModelForm):
                 continue
             if cleaned[name] is None:
                 cleaned[name] = z
+        return cleaned
+
+
+class PagamentoSalarioControleForm(BaseStyledModelForm):
+    class Meta:
+        model = PagamentoSalarioControle
+        fields = ['nome']
+        widgets = {
+            'nome': forms.TextInput(attrs={'maxlength': 120}),
+        }
+        labels = {
+            'nome': 'Nome',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['nome'].required = False
+        self.fields['nome'].widget.attrs.setdefault('placeholder', 'Pagamento de salário')
+
+
+class PagamentoSalarioLinhaForm(BaseStyledModelForm):
+    class Meta:
+        model = PagamentoSalarioLinha
+        fields = ['valor', 'conta_bancaria_empresa']
+        widgets = {
+            'valor': forms.TextInput(
+                attrs={
+                    'data-mask': 'br-moeda',
+                    'inputmode': 'decimal',
+                    'autocomplete': 'off',
+                    'maxlength': '20',
+                    'placeholder': '0,00',
+                    'class': 'text-end',
+                }
+            ),
+            'conta_bancaria_empresa': forms.Select(),
+        }
+        labels = {
+            'valor': 'Valor',
+            'conta_bancaria_empresa': 'Banco Empresa',
+        }
+
+    def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)
+        self.apply_bootstrap_classes()
+        self.fields['valor'].required = False
+        banco_field = self.fields['conta_bancaria_empresa']
+        banco_field.required = False
+        banco_field.empty_label = 'Selecione o banco da empresa'
+        if empresa:
+            banco_field.queryset = banco_field.queryset.filter(empresa=empresa, ativo=True)
+        else:
+            banco_field.queryset = banco_field.queryset.none()
+        if not self.is_bound and self.instance:
+            self.initial['valor'] = _decimal_input_ptbr(getattr(self.instance, 'valor', 0))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('valor') is None:
+            cleaned['valor'] = Decimal('0')
         return cleaned

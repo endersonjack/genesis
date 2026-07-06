@@ -1,8 +1,12 @@
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count, Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from auditoria.registry import audit_controles_rh
 
@@ -14,6 +18,8 @@ from controles_rh.models import (
     AnexoDiversoCompetencia,
     CestaBasicaLista,
     Competencia,
+    ControleCompetenciaOrdem,
+    PagamentoSalarioControle,
     ValeTransporteTabela,
 )
 
@@ -172,6 +178,53 @@ def criar_competencia(request):
     return render(request, 'controles_rh/competencias/_form_modal.html', context)
 
 
+def _ordenar_controles_competencia(competencia: Competencia, controles):
+    if not controles:
+        ControleCompetenciaOrdem.objects.filter(competencia=competencia).delete()
+        return []
+
+    chaves = [controle['chave'] for controle in controles]
+    ordens_salvas = {
+        item.chave: item.ordem
+        for item in ControleCompetenciaOrdem.objects.filter(
+            competencia=competencia,
+            chave__in=chaves,
+        )
+    }
+    novos_registros = []
+
+    for indice, controle in enumerate(controles):
+        ordem_padrao = (indice + 1) * 100
+        ordem = ordens_salvas.get(controle['chave'])
+        if ordem is None:
+            ordem = ordem_padrao
+            novos_registros.append(
+                ControleCompetenciaOrdem(
+                    competencia=competencia,
+                    chave=controle['chave'],
+                    ordem=ordem,
+                )
+            )
+
+        controle['_ordem'] = ordem
+        controle['_ordem_padrao'] = ordem_padrao
+
+    if novos_registros:
+        ControleCompetenciaOrdem.objects.bulk_create(
+            novos_registros,
+            ignore_conflicts=True,
+        )
+
+    ControleCompetenciaOrdem.objects.filter(
+        competencia=competencia,
+    ).exclude(chave__in=chaves).delete()
+
+    return sorted(
+        controles,
+        key=lambda controle: (controle['_ordem'], controle['_ordem_padrao']),
+    )
+
+
 def _context_controles_da_competencia(competencia: Competencia, empresa):
     """
     Dados da coluna principal «Controles da Competência» (VT, Cesta, Faltas).
@@ -206,14 +259,62 @@ def _context_controles_da_competencia(competencia: Competencia, empresa):
     alteracao_folha_gerada = AlteracaoFolhaControle.objects.filter(
         competencia_id=competencia.pk
     ).exists()
+    pagamentos_salario = PagamentoSalarioControle.objects.filter(
+        competencia_id=competencia.pk
+    ).order_by('data_geracao', 'id')
+    pagamento_salario_gerado = pagamentos_salario.exists()
 
     anexos_diversos = AnexoDiversoCompetencia.objects.filter(
         competencia=competencia
     ).order_by('-data_criacao', '-id')
 
+    controles_competencia = []
+    if alteracao_folha_gerada:
+        controles_competencia.append({
+            'tipo': 'alteracao_folha',
+            'chave': 'alteracao_folha',
+        })
+    for pagamento in pagamentos_salario:
+        controles_competencia.append({
+            'tipo': 'pagamento_salario',
+            'chave': f'pagamento_salario:{pagamento.pk}',
+            'pagamento': pagamento,
+        })
+    for tabela in tabelas_vt:
+        controles_competencia.append({
+            'tipo': 'vt',
+            'chave': f'vt:{tabela.pk}',
+            'tabela': tabela,
+        })
+    for lista_cb in listas_cesta_basica:
+        controles_competencia.append({
+            'tipo': 'cesta',
+            'chave': f'cesta:{lista_cb.pk}',
+            'lista_cb': lista_cb,
+        })
+    if faltas_registros_count:
+        controles_competencia.append({
+            'tipo': 'faltas',
+            'chave': 'faltas',
+        })
+    for anexo in anexos_diversos:
+        controles_competencia.append({
+            'tipo': 'anexo',
+            'chave': f'anexo:{anexo.pk}',
+            'anexo': anexo,
+        })
+
+    controles_competencia = _ordenar_controles_competencia(
+        competencia,
+        controles_competencia,
+    )
+
     return {
         'competencia': competencia,
         'alteracao_folha_gerada': alteracao_folha_gerada,
+        'pagamento_salario_gerado': pagamento_salario_gerado,
+        'pagamentos_salario': pagamentos_salario,
+        'controles_competencia': controles_competencia,
         'tabelas_vt': tabelas_vt,
         'total_tabelas_vt': tabelas_vt.count(),
         'listas_cesta_basica': listas_cesta_basica,
@@ -255,6 +356,40 @@ def detalhe_competencia(request, ano, mes):
         }
     )
     return render(request, 'controles_rh/competencias/detalhe.html', context)
+
+
+@login_required
+@require_POST
+def reordenar_controles_competencia(request, competencia_pk):
+    competencia = _get_competencia_empresa(request, competencia_pk)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        payload = {}
+
+    chaves = payload.get('ordem')
+    if not isinstance(chaves, list):
+        chaves = request.POST.getlist('ordem[]') or request.POST.getlist('ordem')
+
+    chaves = [
+        chave.strip()
+        for chave in chaves
+        if isinstance(chave, str) and chave.strip()
+    ]
+
+    if not chaves:
+        return JsonResponse({'ok': False, 'erro': 'Nenhuma ordem enviada.'}, status=400)
+
+    with transaction.atomic():
+        for indice, chave in enumerate(dict.fromkeys(chaves), start=1):
+            ControleCompetenciaOrdem.objects.update_or_create(
+                competencia=competencia,
+                chave=chave,
+                defaults={'ordem': indice * 100},
+            )
+
+    return JsonResponse({'ok': True})
 
 
 @login_required

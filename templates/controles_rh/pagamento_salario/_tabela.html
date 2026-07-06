@@ -1,0 +1,42 @@
+{# Fragmento HTMX: tabela completa (thead + tbody) #}
+<div class="table-responsive ps-table-wrap mb-0">
+    <table class="table table-bordered table-hover mb-0 ps-table">
+        <thead>
+            <tr>
+                <th scope="col" class="ps-th-base">#</th>
+                <th scope="col" class="ps-th-base ps-th-funcionario">
+                    <div class="ps-th-funcionario-title">Funcionário</div>
+                    <select
+                        class="form-select form-select-sm ps-order-select"
+                        name="ordenacao"
+                        aria-label="Ordenar funcionários"
+                        hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
+                        hx-trigger="change"
+                        hx-target="#ps-table-host"
+                        hx-swap="innerHTML"
+                        hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}">
+                        <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>Por Nome</option>
+                        <option value="cargo" {% if ordenacao == 'cargo' %}selected{% endif %}>Por Cargo</option>
+                        <option value="lotacao" {% if ordenacao == 'lotacao' %}selected{% endif %}>Por Lotação</option>
+                        <option value="tempo" {% if ordenacao == 'tempo' %}selected{% endif %}>Por Tempo de trabalho</option>
+                    </select>
+                </th>
+                <th scope="col" class="ps-th-base">CPF</th>
+                <th scope="col" class="ps-th-valor">Valor</th>
+                <th scope="col" class="ps-th-base">Dados do PIX</th>
+                <th scope="col" class="ps-th-base">Banco Empresa</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in linhas %}
+                {% include 'controles_rh/pagamento_salario/_linha_tr.html' %}
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        Nenhum funcionário ativo encontrado para esta empresa.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -7,6 +7,8 @@ from .models import (
     CestaBasicaItem,
     CestaBasicaLista,
     Competencia,
+    PagamentoSalarioControle,
+    PagamentoSalarioLinha,
     PremiacaoFuncionario,
     ValeTransporteItem,
     ValeTransporteTabela,
@@ -64,6 +66,31 @@ class PremiacaoFuncionarioAdmin(admin.ModelAdmin):
     search_fields = ('funcionario__nome', 'funcionario__cpf')
     autocomplete_fields = ('competencia', 'funcionario')
     ordering = ('competencia__ano', 'competencia__mes', 'funcionario__nome')
+
+
+@admin.register(PagamentoSalarioControle)
+class PagamentoSalarioControleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nome_exibicao', 'competencia', 'data_geracao', 'data_atualizacao')
+    list_filter = ('competencia__empresa', 'competencia__ano', 'competencia__mes')
+    search_fields = ('nome', 'competencia__titulo')
+    autocomplete_fields = ('competencia',)
+    ordering = ('-data_geracao',)
+
+
+@admin.register(PagamentoSalarioLinha)
+class PagamentoSalarioLinhaAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'controle',
+        'funcionario',
+        'valor',
+        'conta_bancaria_empresa',
+        'data_atualizacao',
+    )
+    list_filter = ('controle__competencia__empresa', 'controle__competencia__ano', 'controle__competencia__mes')
+    search_fields = ('funcionario__nome', 'funcionario__cpf', 'conta_bancaria_empresa__nome', 'conta_bancaria_empresa__banco')
+    autocomplete_fields = ('controle', 'funcionario', 'conta_bancaria_empresa')
+    ordering = ('controle__competencia__ano', 'controle__competencia__mes', 'funcionario__nome')
 
 
 @admin.register(Competencia)

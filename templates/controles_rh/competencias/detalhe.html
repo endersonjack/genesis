@@ -207,6 +207,11 @@
         color: #047857;
     }
 
+    .controle-icon.pagamento-salario {
+        background: #dcfce7;
+        color: #166534;
+    }
+
     .controle-list-item .controle-icon {
         width: 42px;
         height: 42px;
@@ -230,6 +235,55 @@
         border: 1px solid #e2e8f0;
         border-radius: .9rem;
         padding: .8rem .9rem;
+    }
+
+    .controle-sortable-row {
+        display: flex;
+        align-items: stretch;
+        gap: .55rem;
+        transition: opacity .15s ease, transform .15s ease;
+    }
+
+    .controle-sortable-row .controle-list-item {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .controle-sortable-row.is-dragging {
+        opacity: .45;
+    }
+
+    .controle-sortable-row.is-saving .controle-drag-handle {
+        color: #2563eb;
+        border-color: #bfdbfe;
+        background: #eff6ff;
+    }
+
+    .controle-drag-handle {
+        flex: 0 0 2.15rem;
+        width: 2.15rem;
+        border: 1px solid #e2e8f0;
+        border-radius: .75rem;
+        background: #fff;
+        color: #94a3b8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+        touch-action: none;
+        transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+
+    .controle-drag-handle:hover,
+    .controle-drag-handle:focus-visible {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #475569;
+        outline: none;
+    }
+
+    .controle-drag-handle:active {
+        cursor: grabbing;
     }
 
     a.controle-list-item-link {
@@ -313,6 +367,11 @@
 
         .summary-actions .btn {
             width: 100%;
+        }
+
+        .controle-drag-handle {
+            flex-basis: 2rem;
+            width: 2rem;
         }
     }
 
@@ -541,6 +600,33 @@
                                         <i class="bi bi-plus-lg" aria-hidden="true"></i>
                                     </button>
                                 {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="add-mini-card">
+                            <p id="ps-gen-ind-{{ competencia.pk }}" class="af-gen-loading mb-0" aria-live="polite">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Gerando dados para o Pagamento de Salário</span>
+                            </p>
+                            <div class="add-mini-card-top">
+                                <div class="add-mini-title-wrap">
+                                    <span class="controle-icon pagamento-salario" aria-hidden="true">
+                                        <i class="bi bi-cash-coin"></i>
+                                    </span>
+                                    <p class="add-mini-title mb-0">Pagamento de Salário</p>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-primary btn-sm btn-add-inline"
+                                        title="Adicionar pagamento de salário"
+                                        aria-label="Adicionar pagamento de salário"
+                                        data-no-global-loading
+                                        hx-get="{% url 'controles_rh:modal_opcoes_criar_pagamento_salario' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPadrao">
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
                         </div>
 

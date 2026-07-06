@@ -1,0 +1,88 @@
+<style>
+    .ps-dados-form .ps-save-loading { display: none; }
+    .ps-dados-form.htmx-request .ps-save-default { display: none; }
+    .ps-dados-form.htmx-request .ps-save-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold mb-0" id="modalPsLabel">
+            {% if modo == 'criar' %}Novo Pagamento de Salário{% else %}Alterar dados da planilha{% endif %}
+        </h5>
+        <p class="text-muted small mb-0 mt-1">
+            Competência {{ competencia.referencia }} · {{ competencia.empresa }}
+        </p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form
+    class="ps-dados-form"
+    method="post"
+    data-no-global-loading
+    hx-post="{% if modo == 'criar' %}{% url 'controles_rh:gerar_pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}{% else %}{% url 'controles_rh:modal_pagamento_salario_controle' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}{% endif %}"
+    hx-target="{% if modo == 'criar' %}#modal-content{% else %}#modalPsContent{% endif %}"
+    hx-swap="innerHTML">
+    {% csrf_token %}
+    {% if modo == 'criar' %}
+        <input type="hidden" name="criacao_modo" value="{{ criacao_modo }}">
+        <input type="hidden" name="origem_controle" value="{{ origem_controle_pk }}">
+    {% endif %}
+
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {% if modo == 'criar' and modo_resumo %}
+            <div class="alert alert-info border-0 py-2 small mb-3">
+                <i class="bi bi-info-circle me-1"></i>{{ modo_resumo }}
+            </div>
+        {% endif %}
+
+        <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">
+            {{ form.nome.label }}
+        </label>
+        {{ form.nome }}
+        {% if form.nome.errors %}
+            <div class="text-danger small mt-1">{{ form.nome.errors|join:", " }}</div>
+        {% endif %}
+        <div class="form-text">
+            Se deixar em branco, será exibido “Pagamento de salário”.
+        </div>
+    </div>
+
+    <div class="modal-footer d-flex flex-wrap gap-2 justify-content-between">
+        <div>
+            {% if modo == 'criar' %}
+                <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    data-no-global-loading
+                    hx-get="{% url 'controles_rh:modal_opcoes_criar_pagamento_salario' empresa_id=request.empresa_ativa.pk competencia_pk=competencia.pk %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                </button>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2 ms-auto">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <span class="ps-save-default">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar
+                </span>
+                <span class="ps-save-loading">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Salvando...</span>
+                </span>
+            </button>
+        </div>
+    </div>
+</form>

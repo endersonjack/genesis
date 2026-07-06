@@ -1,11 +1,29 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
-from django.test import SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from empresas.models import Empresa
-from controles_rh.forms import AlteracaoFolhaLinhaForm, PremiacaoFuncionarioForm
-from controles_rh.models import AlteracaoFolhaLinha, Competencia, PremiacaoFuncionario
+from financeiro.models import ContaBancaria
+from controles_rh.forms import (
+    AlteracaoFolhaLinhaForm,
+    PagamentoSalarioControleForm,
+    PagamentoSalarioLinhaForm,
+    PremiacaoFuncionarioForm,
+)
+from controles_rh.models import (
+    AlteracaoFolhaLinha,
+    Competencia,
+    PagamentoSalarioControle,
+    PagamentoSalarioLinha,
+    PremiacaoFuncionario,
+)
 from controles_rh.views.alteracao_folha import _fmt_af_horas, _fmt_celula_faltas
+from controles_rh.views.pagamento_salario import (
+    garantir_linhas_pagamento_salario,
+    limpar_dados_pagamento_salario,
+)
+from controles_rh.views.ps_export import exportar_pagamento_salario_pdf
 from rh.models import Funcionario
 
 
@@ -106,3 +124,145 @@ class PremiacaoFuncionarioFormTests(TestCase):
         self.assertEqual(form.cleaned_data['premio_atual'], Decimal('150.00'))
         self.assertEqual(form.cleaned_data['premio_anterior'], Decimal('250.00'))
         self.assertEqual(form.cleaned_data['media_premiacao'], Decimal('300.00'))
+
+
+class PagamentoSalarioTests(TestCase):
+    def test_nome_exibicao_padrao(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Nome', cnpj='00.000.000/0007-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        controle = PagamentoSalarioControle.objects.create(competencia=competencia)
+
+        self.assertEqual(controle.nome_exibicao, 'Pagamento de salário')
+
+    def test_form_dados_planilha_edita_nome(self):
+        form = PagamentoSalarioControleForm(data={'nome': 'Salários Obra A'})
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['nome'], 'Salários Obra A')
+
+    def test_permite_multiplas_planilhas_na_mesma_competencia(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Multi', cnpj='00.000.000/0010-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+
+        primeiro = PagamentoSalarioControle.objects.create(competencia=competencia)
+        segundo = PagamentoSalarioControle.objects.create(
+            competencia=competencia,
+            nome='Pagamento complementar',
+        )
+
+        self.assertNotEqual(primeiro.pk, segundo.pk)
+        self.assertEqual(
+            PagamentoSalarioControle.objects.filter(competencia=competencia).count(),
+            2,
+        )
+
+    def test_gera_linha_com_valor_zerado(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Pagamento', cnpj='00.000.000/0003-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        funcionario = Funcionario.objects.create(
+            empresa=empresa,
+            nome='Funcionário Pagamento',
+            cpf='000.000.000-03',
+            salario=Decimal('2345.67'),
+        )
+        controle = PagamentoSalarioControle.objects.create(competencia=competencia)
+
+        garantir_linhas_pagamento_salario(controle)
+
+        linha = PagamentoSalarioLinha.objects.get(controle=controle, funcionario=funcionario)
+        self.assertEqual(linha.valor, Decimal('0.00'))
+
+    def test_form_initial_mostra_valor_em_pt_br(self):
+        form = PagamentoSalarioLinhaForm(instance=PagamentoSalarioLinha(valor=Decimal('1234.50')))
+
+        self.assertEqual(form.initial['valor'], '1234,50')
+
+    def test_form_linha_lista_contas_ativas_da_empresa(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Banco', cnpj='00.000.000/0004-00')
+        outra_empresa = Empresa.objects.create(razao_social='Outra Empresa Banco', cnpj='00.000.000/0005-00')
+        conta_ativa = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta Salário',
+            banco='Santander',
+            agencia='0001',
+            conta='123',
+        )
+        conta_inativa = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta Inativa',
+            banco='Banco Inativo',
+            agencia='0002',
+            conta='456',
+            ativo=False,
+        )
+        conta_outra_empresa = ContaBancaria.objects.create(
+            empresa=outra_empresa,
+            nome='Conta Outra',
+            banco='Outro Banco',
+            agencia='0003',
+            conta='789',
+        )
+
+        form = PagamentoSalarioLinhaForm(empresa=empresa)
+
+        queryset = form.fields['conta_bancaria_empresa'].queryset
+        self.assertIn(conta_ativa, queryset)
+        self.assertNotIn(conta_inativa, queryset)
+        self.assertNotIn(conta_outra_empresa, queryset)
+
+    def test_limpar_dados_zera_valor_e_remove_banco_empresa(self):
+        empresa = Empresa.objects.create(razao_social='Empresa Limpar', cnpj='00.000.000/0006-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        funcionario = Funcionario.objects.create(
+            empresa=empresa,
+            nome='Funcionário Limpar',
+            cpf='000.000.000-06',
+        )
+        conta = ContaBancaria.objects.create(
+            empresa=empresa,
+            nome='Conta Limpar',
+            banco='Santander',
+            agencia='0001',
+            conta='999',
+        )
+        controle = PagamentoSalarioControle.objects.create(competencia=competencia)
+        linha = PagamentoSalarioLinha.objects.create(
+            controle=controle,
+            funcionario=funcionario,
+            valor=Decimal('500.00'),
+            conta_bancaria_empresa=conta,
+        )
+
+        total = limpar_dados_pagamento_salario(controle)
+
+        linha.refresh_from_db()
+        self.assertEqual(total, 1)
+        self.assertEqual(linha.valor, Decimal('0.00'))
+        self.assertIsNone(linha.conta_bancaria_empresa)
+
+    def test_exportar_pdf_pagamento_salario(self):
+        empresa = Empresa.objects.create(razao_social='Empresa PDF', cnpj='00.000.000/0008-00')
+        competencia = Competencia.objects.create(empresa=empresa, mes=7, ano=2026)
+        funcionario = Funcionario.objects.create(
+            empresa=empresa,
+            nome='Funcionário PDF',
+            cpf='000.000.000-08',
+        )
+        controle = PagamentoSalarioControle.objects.create(
+            competencia=competencia,
+            nome='Salários PDF',
+        )
+        PagamentoSalarioLinha.objects.create(
+            controle=controle,
+            funcionario=funcionario,
+            valor=Decimal('500.00'),
+        )
+        request = RequestFactory().get('/fake-url/')
+        request.empresa_ativa = empresa
+        request.user = SimpleNamespace(is_authenticated=False)
+
+        response = exportar_pagamento_salario_pdf.__wrapped__(request, controle.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF'))
