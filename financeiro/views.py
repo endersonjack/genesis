@@ -4930,7 +4930,11 @@ def _recebimentos_filtros(request, empresa, *, prefixo: str, usar_mes_corrente_p
     campo_data_inicio = f'{prefixo}_data_inicio'
     campo_data_fim = f'{prefixo}_data_fim'
     campo_obra = f'{prefixo}_obra'
+    campo_tipo = f'{prefixo}_tipo'
     obra_id = _int_param(request, campo_obra)
+    tipo = (request.GET.get(campo_tipo) or '').strip().lower()
+    if tipo not in {'avulso', 'medicao'}:
+        tipo = ''
     obra_selecionada = None
     obras = list(Obra.objects.filter(empresa=empresa).order_by('nome'))
     if obra_id:
@@ -4957,10 +4961,12 @@ def _recebimentos_filtros(request, empresa, *, prefixo: str, usar_mes_corrente_p
         'campo_data_inicio': campo_data_inicio,
         'campo_data_fim': campo_data_fim,
         'campo_obra': campo_obra,
+        'campo_tipo': campo_tipo,
         'data_inicio_raw': data_inicio.isoformat() if data_inicio else data_inicio_raw,
         'data_fim_raw': data_fim.isoformat() if data_fim else data_fim_raw,
         'data_inicio': data_inicio,
         'data_fim': data_fim,
+        'tipo': tipo,
         'obra_id': obra_selecionada.pk if obra_selecionada else None,
         'obra': obra_selecionada,
         'obras': obras,
@@ -4975,6 +4981,8 @@ def _recebimentos_query_string(filtros):
         params[filtros['campo_data_fim']] = filtros['data_fim_raw']
     if filtros.get('obra_id'):
         params[filtros['campo_obra']] = filtros['obra_id']
+    if filtros.get('tipo'):
+        params[filtros['campo_tipo']] = filtros['tipo']
     return urlencode(params)
 
 
@@ -4988,6 +4996,7 @@ def _aplicar_filtros_recebimentos(recebimentos, filtros):
     data_inicio = filtros.get('data_inicio')
     data_fim = filtros.get('data_fim')
     obra_id = filtros.get('obra_id')
+    tipo = filtros.get('tipo')
 
     filtrados = []
     for recebimento in recebimentos:
@@ -5000,6 +5009,8 @@ def _aplicar_filtros_recebimentos(recebimentos, filtros):
             obra = recebimento.get('obra')
             if not obra or obra.pk != obra_id:
                 continue
+        if tipo and recebimento.get('tipo') != tipo:
+            continue
         filtrados.append(recebimento)
     return filtrados
 
@@ -5128,6 +5139,8 @@ def recebimentos_pdf(request, status: str):
         filtro_partes.append(f'Até {_format_data_pdf(filtros["data_fim"])}')
     if filtros.get('obra'):
         filtro_partes.append(f'Obra: {filtros["obra"].nome}')
+    if filtros.get('tipo'):
+        filtro_partes.append('Tipo: Avulso' if filtros['tipo'] == 'avulso' else 'Tipo: Medição')
     if filtro_partes:
         subtitulo = f'{subtitulo} · {" · ".join(filtro_partes)}'
 

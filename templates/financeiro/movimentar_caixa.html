@@ -288,6 +288,7 @@
         <input type="hidden" name="pagos_data_inicio" value="{{ filtros_pagos.data_inicio_raw }}">
         <input type="hidden" name="pagos_data_fim" value="{{ filtros_pagos.data_fim_raw }}">
         {% if filtros_pagos.obra_id %}<input type="hidden" name="pagos_obra" value="{{ filtros_pagos.obra_id }}">{% endif %}
+        {% if filtros_pagos.tipo %}<input type="hidden" name="pagos_tipo" value="{{ filtros_pagos.tipo }}">{% endif %}
         <div class="financeiro-card-filter__field">
             <label for="abertos_data_inicio">Inicial</label>
             <input type="date"
@@ -437,6 +438,7 @@
         <input type="hidden" name="abertos_data_inicio" value="{{ filtros_abertos.data_inicio_raw }}">
         <input type="hidden" name="abertos_data_fim" value="{{ filtros_abertos.data_fim_raw }}">
         {% if filtros_abertos.obra_id %}<input type="hidden" name="abertos_obra" value="{{ filtros_abertos.obra_id }}">{% endif %}
+        {% if filtros_abertos.tipo %}<input type="hidden" name="abertos_tipo" value="{{ filtros_abertos.tipo }}">{% endif %}
         <div class="financeiro-card-filter__field">
             <label for="pagos_data_inicio">Inicial</label>
             <input type="date"
@@ -460,6 +462,14 @@
                 {% for obra in filtros_pagos.obras %}
                     <option value="{{ obra.pk }}"{% if filtros_pagos.obra_id == obra.pk %} selected{% endif %}>{{ obra.nome }}</option>
                 {% endfor %}
+            </select>
+        </div>
+        <div class="financeiro-card-filter__field">
+            <label for="pagos_tipo">Tipo</label>
+            <select id="pagos_tipo" name="pagos_tipo" class="form-select">
+                <option value="">Todos</option>
+                <option value="avulso"{% if filtros_pagos.tipo == 'avulso' %} selected{% endif %}>Avulso</option>
+                <option value="medicao"{% if filtros_pagos.tipo == 'medicao' %} selected{% endif %}>Medição</option>
             </select>
         </div>
         <div class="financeiro-filter-actions">
