@@ -29,6 +29,7 @@ from .views import (
     relatorios,
     relatorio_fornecedor_pdf,
     _status_busca_pagamento_nf,
+    _vencimento_status_busca_pagamento,
     pagamento_nf_detalhe,
     pagamento_nf_fornecedor_info,
 )
@@ -118,6 +119,66 @@ class BuscarPagamentosStatusTests(TestCase):
                 hoje=date(2026, 5, 6),
             ),
             'Vence Hoje',
+        )
+
+    def test_vencimento_status_em_aberto_usa_proximo_vencimento(self):
+        hoje = date(2026, 5, 6)
+        boletos = [
+            BoletoPagamento(
+                vencimento=date(2026, 5, 20),
+                status=BoletoPagamento.Status.EMITIDO,
+                valor=Decimal('100.00'),
+            ),
+            BoletoPagamento(
+                vencimento=date(2026, 5, 10),
+                status=BoletoPagamento.Status.RASCUNHO,
+                valor=Decimal('100.00'),
+            ),
+        ]
+
+        self.assertEqual(
+            _vencimento_status_busca_pagamento('Em Aberto', boletos, hoje=hoje),
+            date(2026, 5, 10),
+        )
+
+    def test_vencimento_status_vence_hoje_usa_data_de_hoje(self):
+        hoje = date(2026, 5, 6)
+        boletos = [
+            BoletoPagamento(
+                vencimento=hoje,
+                status=BoletoPagamento.Status.EMITIDO,
+                valor=Decimal('100.00'),
+            )
+        ]
+
+        self.assertEqual(
+            _vencimento_status_busca_pagamento('Vence Hoje', boletos, hoje=hoje),
+            hoje,
+        )
+
+    def test_vencimento_status_vencido_usa_vencido_mais_antigo(self):
+        hoje = date(2026, 5, 6)
+        boletos = [
+            BoletoPagamento(
+                vencimento=date(2026, 5, 5),
+                status=BoletoPagamento.Status.EMITIDO,
+                valor=Decimal('100.00'),
+            ),
+            BoletoPagamento(
+                vencimento=date(2026, 4, 30),
+                status=BoletoPagamento.Status.RASCUNHO,
+                valor=Decimal('100.00'),
+            ),
+            BoletoPagamento(
+                vencimento=date(2026, 4, 20),
+                status=BoletoPagamento.Status.PAGO,
+                valor=Decimal('100.00'),
+            ),
+        ]
+
+        self.assertEqual(
+            _vencimento_status_busca_pagamento('Vencido', boletos, hoje=hoje),
+            date(2026, 4, 30),
         )
 
 

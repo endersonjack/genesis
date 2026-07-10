@@ -488,6 +488,7 @@
             <thead class="table-light">
 	                <tr>
 	                    <th>Status</th>
+	                    <th class="text-nowrap">Venc:</th>
 	                    <th class="text-nowrap">Data Emissão</th>
 	                    <th>Nome</th>
 	                    <th class="text-nowrap">Tipo de Saída</th>
@@ -511,6 +512,13 @@
 	                    role="button">
 	                    <td class="small">
 	                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
+	                    </td>
+	                    <td class="small fw-bold text-nowrap">
+	                        {% if item.vencimento_status %}
+	                            <span class="{{ item.vencimento_status_text_class }}">{{ item.vencimento_status|date:"d/m/Y" }}</span>
+	                        {% else %}
+	                            <span class="text-muted">&mdash;</span>
+	                        {% endif %}
 	                    </td>
 	                    <td class="small text-muted text-nowrap">{{ item.data|date:"d/m/Y" }}</td>
 	                    <td class="small fw-semibold">
@@ -550,7 +558,7 @@
 	                    </td>
 	                </tr>
 	                <tr>
-	                    <td colspan="11" class="p-0 border-0">
+	                    <td colspan="12" class="p-0 border-0">
 	                        <div class="collapse" id="resultadoDetalhe{{ forloop.counter }}">
 	                            <div class="financeiro-result-detail">
 	                                {% if item.detalhes_avista %}

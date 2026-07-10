@@ -490,6 +490,31 @@ def _status_busca_pagamento_nf(resumo: dict, boletos, total_itens: Decimal, hoje
     return 'Sem Pagamento'
 
 
+def _vencimento_status_busca_pagamento(status: str, boletos, hoje=None):
+    hoje = hoje or timezone.localdate()
+    boletos_abertos = [
+        boleto for boleto in list(boletos or [])
+        if boleto.status not in (BoletoPagamento.Status.PAGO, BoletoPagamento.Status.CANCELADO)
+    ]
+    if status == 'Vencido':
+        vencidos = [boleto.vencimento for boleto in boletos_abertos if boleto.vencimento < hoje]
+        return min(vencidos) if vencidos else None
+    if status == 'Vence Hoje':
+        return hoje
+    if status == 'Em Aberto':
+        proximos = [boleto.vencimento for boleto in boletos_abertos if boleto.vencimento > hoje]
+        return min(proximos) if proximos else None
+    return None
+
+
+def _classe_texto_status_busca_pagamento(status: str) -> str:
+    return {
+        'Vencido': 'text-danger',
+        'Vence Hoje': 'text-warning',
+        'Em Aberto': 'text-secondary',
+    }.get(status, 'text-muted')
+
+
 def _badge_status_busca_pagamento(status: str) -> str:
     return {
         'Pago Completo': 'text-bg-success',
@@ -2601,6 +2626,14 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     'valor_pago': resumo['valor_pago'],
                     'valor_a_pagar': resumo['valor_em_aberto'],
                     'vencimento': nf.data_emissao,
+                    'vencimento_status': _vencimento_status_busca_pagamento(
+                        status_linha,
+                        boletos_validos,
+                        hoje,
+                    ),
+                    'vencimento_status_text_class': _classe_texto_status_busca_pagamento(
+                        status_linha,
+                    ),
                     'data_pagamento': _data_ultimo_pagamento_nf(pagamentos_diretos, boletos_validos),
                     'status_label': status_linha,
                     'status_badge_class': _badge_status_busca_pagamento(status_linha),
@@ -2877,7 +2910,7 @@ def _linhas_export_busca_pagamentos(context: dict) -> list[list]:
                 item.get('numero_doc') or '',
                 item.get('forma_pagamento') or '',
                 item.get('forma_detalhe') or '',
-                item.get('vencimento'),
+                item.get('vencimento_status') or item.get('vencimento'),
                 item.get('valor_linha') or Decimal('0'),
                 item.get('parcela_label') or '',
                 item.get('data_pagamento'),
@@ -3064,7 +3097,10 @@ def buscar_pagamentos_pdf(request):
                 _pdf_cell(item.get('categoria_label') or '', cell),
                 _pdf_cell(item.get('numero_doc') or '', cell),
                 _pdf_cell(tipo_pgto, cell),
-                _pdf_cell(_format_data_pdf(item.get('vencimento')), cell),
+                _pdf_cell(
+                    _format_data_pdf(item.get('vencimento_status') or item.get('vencimento')),
+                    cell,
+                ),
                 _pdf_cell(_format_moeda_pdf(item.get('valor_linha')), cell_right),
                 _pdf_cell(_format_data_pdf(item.get('data_pagamento')), cell),
             ]
