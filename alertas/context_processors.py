@@ -1,4 +1,5 @@
 from django.db import DatabaseError
+from django.db.models import Case, IntegerField, Value, When
 
 from .models import Alerta
 from .permissions import filtrar_alertas_permitidos
@@ -25,12 +26,23 @@ def alertas_topbar(request):
                 usuario=request.user,
             )
         )
-        qs = filtrar_alertas_permitidos(request, qs).distinct().order_by('-data_alerta', '-id')
+        qs = (
+            filtrar_alertas_permitidos(request, qs)
+            .distinct()
+            .annotate(
+                sem_vencimento=Case(
+                    When(data_vencimento__isnull=True, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by('sem_vencimento', 'data_vencimento', 'data_alerta', 'id')
+        )
         qtd = qs.count()
         resolver_match = getattr(request, 'resolver_match', None)
         return {
             'alertas_topbar_qtd': qtd,
-            'alertas_topbar_recentes': list(qs[:6]),
+            'alertas_topbar_recentes': list(qs),
             'alertas_topbar_auto_open': (
                 qtd > 0
                 and getattr(resolver_match, 'view_name', '') == 'rh:dashboard_rh'

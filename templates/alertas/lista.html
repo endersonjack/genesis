@@ -31,6 +31,12 @@
         color: #64748b;
         margin: .2rem 0 0;
     }
+    .alertas-head-actions {
+        display: flex;
+        gap: .6rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
     .alertas-filter {
         padding: 1rem 1.25rem;
         border-bottom: 1px solid #e2e8f0;
@@ -116,12 +122,17 @@
             <h1 class="alertas-title">Alertas</h1>
             <p class="alertas-sub">Central de notificações da empresa ativa, reunindo avisos de todos os módulos.</p>
         </div>
-        <form method="post" action="{% url 'alertas:marcar_todos_lidos' empresa_id=request.empresa_ativa.pk %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline-primary rounded-3 fw-semibold">
-                <i class="bi bi-check2-all me-1"></i> Marcar todos como lidos
-            </button>
-        </form>
+        <div class="alertas-head-actions">
+            <a href="{{ alertas_voltar_url }}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <form method="post" action="{% url 'alertas:marcar_todos_lidos' empresa_id=request.empresa_ativa.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-primary rounded-3 fw-semibold">
+                    <i class="bi bi-check2-all me-1"></i> Marcar todos como lidos
+                </button>
+            </form>
+        </div>
     </div>
 
     <form method="get" class="alertas-filter">
@@ -171,14 +182,14 @@
                 <div>
                     <h2 class="alerta-title h6">{{ alerta.titulo }}</h2>
                     {% if alerta.descricao %}
-                        <p class="alerta-desc">{{ alerta.descricao }}</p>
+                        <p class="alerta-desc">{{ alerta.descricao_exibicao }}</p>
                     {% endif %}
                     <div class="alerta-meta">
                         <span class="badge text-bg-light border">{{ alerta.get_modulo_display }}</span>
                         <span class="badge {{ alerta.nivel_badge_class }}">{{ alerta.get_nivel_display }}</span>
                         <span class="badge text-bg-light border">{{ alerta.get_status_display }}</span>
-                        {% if alerta.data_vencimento %}
-                            <span class="badge text-bg-light border">Vencimento: {{ alerta.data_vencimento|date:"d/m/Y" }}</span>
+                        {% if alerta.data_vencimento_exibicao %}
+                            <span class="badge text-bg-light border">Vencimento: {{ alerta.data_vencimento_exibicao|date:"d/m/Y" }}</span>
                         {% endif %}
                         <span class="badge text-bg-light border">Criado em {{ alerta.data_alerta|date:"d/m/Y H:i" }}</span>
                     </div>

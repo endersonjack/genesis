@@ -1,3 +1,6 @@
+import re
+from datetime import date, timedelta
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -115,6 +118,54 @@ class Alerta(models.Model):
 
     def __str__(self):
         return self.titulo
+
+    @property
+    def titulo_sem_nome_origem(self):
+        nome = getattr(self.objeto_origem, 'nome', '')
+        titulo = self.titulo or ''
+        if not nome:
+            return titulo
+        return titulo.replace(f': {nome}', ':', 1).replace(f' {nome} ', ' ', 1).strip()
+
+    @property
+    def data_vencimento_exibicao(self):
+        if self.categoria != 'alerta_exame' or not self.data_vencimento:
+            return self.data_vencimento
+
+        match_oficial = re.search(r'Data oficial:\s*(\d{2})/(\d{2})/(\d{4})', self.descricao or '')
+        if match_oficial:
+            dia, mes, ano = map(int, match_oficial.groups())
+            return date(ano, mes, dia)
+
+        match_dias = re.search(r'renovar exame em\s+(\d+)\s+dias', self.titulo or '', re.IGNORECASE)
+        if not match_dias:
+            return self.data_vencimento
+
+        try:
+            data_chave = date.fromisoformat((self.chave or '').rsplit(':', 1)[-1])
+        except ValueError:
+            data_chave = None
+
+        if data_chave and data_chave == self.data_vencimento:
+            return self.data_vencimento + timedelta(days=int(match_dias.group(1)))
+        return self.data_vencimento
+
+    @property
+    def descricao_exibicao(self):
+        descricao = self.descricao or ''
+        data_exibicao = self.data_vencimento_exibicao
+        if self.categoria != 'alerta_exame' or not self.data_vencimento or not data_exibicao:
+            return descricao
+        if data_exibicao == self.data_vencimento and 'Data oficial:' in descricao:
+            return descricao
+
+        data_texto = data_exibicao.strftime('%d/%m/%Y')
+        return re.sub(
+            r'(Aviso: renovar exame em \d+ dias) em \d{2}/\d{2}/\d{4}\.',
+            rf'\1. Data efetiva: {data_texto}.',
+            descricao,
+            count=1,
+        )
 
     @property
     def pendente(self):

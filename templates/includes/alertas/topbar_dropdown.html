@@ -37,10 +37,12 @@
                                 {% if alerta.objeto_origem.nome %}
                                     <span class="topbar-alerta-person">{{ alerta.objeto_origem.nome }}</span>
                                 {% endif %}
-                                <span class="topbar-alerta-title">{{ alerta.titulo }}</span>
+                                <span class="topbar-alerta-title">{{ alerta.titulo_sem_nome_origem }}</span>
                                 <span class="topbar-alerta-meta">
-                                    {{ alerta.get_modulo_display }}
-                                    {% if alerta.data_vencimento %} · vence em {{ alerta.data_vencimento|date:"d/m/Y" }}{% endif %}
+                                    <span>{{ alerta.get_modulo_display }}</span>
+                                    {% if alerta.data_vencimento_exibicao %}
+                                        <span class="topbar-alerta-date">{{ alerta.data_vencimento_exibicao|date:"d/m/Y" }}</span>
+                                    {% endif %}
                                 </span>
                             </span>
                         </a>

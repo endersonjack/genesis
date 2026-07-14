@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.urlutils import is_safe_internal_path, redirect_empresa
+from core.urlutils import is_safe_internal_path, redirect_empresa, reverse_empresa
 
 from .models import Alerta
 from .permissions import filtrar_alertas_permitidos
@@ -60,6 +60,10 @@ def lista_alertas(request):
         nivel = ''
 
     alertas = list(qs.order_by('-data_alerta', '-id')[:200])
+    voltar_url = request.META.get('HTTP_REFERER') or ''
+    if not is_safe_internal_path(voltar_url) or voltar_url == request.get_full_path():
+        voltar_url = reverse_empresa(request, 'dashboard_home')
+
     return render(
         request,
         'alertas/lista.html',
@@ -72,6 +76,7 @@ def lista_alertas(request):
             'status_choices': Alerta.Status.choices,
             'modulo_choices': Alerta.Modulo.choices,
             'nivel_choices': Alerta.Nivel.choices,
+            'alertas_voltar_url': voltar_url,
         },
     )
 

@@ -31,6 +31,7 @@ from .base import _empresa_ativa_or_redirect
 
 
 ALERTA_RH_DIAS_ANTECEDENCIA = 5
+ALERTAS_EXAME_DIAS_ANTECEDENCIA = (30, 15, 10, 5)
 
 FERIADOS_FIXOS_RH = [
     (1, 1, "Confraternização Universal"),
@@ -90,6 +91,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
         detalhe_url=None,
         extra="",
         chave_extra="",
+        data_vencimento_oficial=None,
     ):
         if not data_evento or data_evento < hoje or data_evento > limite:
             return
@@ -104,7 +106,10 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
 
         quando = _texto_quando_alerta_rh(data_evento, hoje)
         alvo = funcionario.nome if funcionario else (chave_extra or label)
+        data_vencimento = data_vencimento_oficial or data_evento
         descricao = f"{label} em {data_evento.strftime('%d/%m/%Y')}."
+        if data_vencimento_oficial and data_vencimento_oficial != data_evento:
+            descricao = f"{descricao} Data oficial: {data_vencimento_oficial.strftime('%d/%m/%Y')}."
         if funcionario:
             descricao = f"{funcionario.nome}: {descricao}"
         if extra:
@@ -122,7 +127,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
             modulo=Alerta.Modulo.RH,
             categoria=tipo,
             nivel=_nivel_alerta_rh(data_evento, hoje),
-            data_vencimento=data_evento,
+            data_vencimento=data_vencimento,
             link_url=detalhe_url or "",
             objeto_origem=objeto_origem,
             chave=f"rh:calendario:{tipo}:{objeto_chave}:{data_evento.isoformat()}",
@@ -170,17 +175,19 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
         for data_exame in _datas_anuais_no_periodo(data_base_exame, hoje, limite):
             add_alerta(data_exame, "renovacao_exame", "Renovar exame anual", func)
 
-        for data_exame in _datas_anuais_no_periodo(
-            data_base_exame,
-            hoje + timedelta(days=30),
-            limite + timedelta(days=30),
-        ):
-            add_alerta(
-                data_exame - timedelta(days=30),
-                "alerta_exame",
-                "Aviso: renovar exame em 30 dias",
-                func,
-            )
+        for dias_antecedencia in ALERTAS_EXAME_DIAS_ANTECEDENCIA:
+            for data_exame in _datas_anuais_no_periodo(
+                data_base_exame,
+                hoje + timedelta(days=dias_antecedencia),
+                limite + timedelta(days=dias_antecedencia),
+            ):
+                add_alerta(
+                    data_exame - timedelta(days=dias_antecedencia),
+                    "alerta_exame",
+                    f"Aviso: renovar exame em {dias_antecedencia} dias",
+                    func,
+                    data_vencimento_oficial=data_exame,
+                )
 
         add_alerta(func.data_ultimo_exame, "ultimo_exame", "Data do último exame", func)
 
@@ -443,20 +450,19 @@ def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
             except ValueError:
                 renovacao = data_base_exame.replace(year=ano, day=28)
 
-            alerta_renovacao = renovacao - timedelta(days=30)
-
             add_evento(
                 renovacao,
                 "renovacao_exame",
                 "Renovar exame anual",
                 func,
             )
-            add_evento(
-                alerta_renovacao,
-                "alerta_exame",
-                "Aviso: renovar exame em 30 dias",
-                func,
-            )
+            for dias_antecedencia in ALERTAS_EXAME_DIAS_ANTECEDENCIA:
+                add_evento(
+                    renovacao - timedelta(days=dias_antecedencia),
+                    "alerta_exame",
+                    f"Aviso: renovar exame em {dias_antecedencia} dias",
+                    func,
+                )
 
         if func.data_ultimo_exame:
             add_evento(
