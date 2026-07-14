@@ -7,7 +7,16 @@
     <div class="employee-summary-center">
         <div class="employee-photo-box">
             {% if funcionario.foto %}
-                <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}">
+                <button type="button"
+                        class="employee-photo-open"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalFotoFuncionario"
+                        aria-label="Ampliar foto de {{ funcionario.nome }}">
+                    <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}">
+                    <span class="employee-photo-open-icon" aria-hidden="true">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </span>
+                </button>
             {% else %}
                 <div class="employee-photo-empty">
                     <i class="bi bi-person"></i>

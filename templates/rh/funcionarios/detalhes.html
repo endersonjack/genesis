@@ -97,6 +97,22 @@
         <div class="modal-content section-modal-shell" id="modal-content"></div>
     </div>
 </div>
+
+    {% if funcionario.foto %}
+    <div class="modal fade" id="modalFotoFuncionario" tabindex="-1" aria-labelledby="modalFotoFuncionarioTitulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered employee-photo-modal-dialog">
+            <div class="modal-content employee-photo-modal">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="modalFotoFuncionarioTitulo">{{ funcionario.nome }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body pt-3">
+                    <img src="{{ funcionario.foto.url }}" alt="Foto ampliada de {{ funcionario.nome }}" class="employee-photo-modal-img">
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}
 
 {% block extra_js %}
