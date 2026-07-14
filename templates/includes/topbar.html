@@ -74,6 +74,9 @@
         <form id="topbar-logout-form" method="post" action="{% url 'logout' %}" class="d-none" aria-hidden="true">
             {% csrf_token %}
         </form>
+        {% if request.empresa_ativa %}
+            {% include 'includes/alertas/topbar_dropdown.html' %}
+        {% endif %}
         <div class="dropdown topbar-user-dropdown">
             <button type="button"
                     class="user-box btn d-flex align-items-center gap-2 px-3 py-2 rounded-pill dropdown-toggle border-0 text-start"

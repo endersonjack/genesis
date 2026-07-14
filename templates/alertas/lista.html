@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block title %}Alertas | Genesis ERP{% endblock %}
+
+{% block content %}
+<style>
+    .alertas-shell {
+        border: 1px solid #d9e2ec;
+        border-radius: 1.25rem;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .alertas-head {
+        padding: 1.25rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .alertas-title {
+        font-size: 1.55rem;
+        font-weight: 800;
+        margin: 0;
+        color: #0f172a;
+    }
+    .alertas-sub {
+        color: #64748b;
+        margin: .2rem 0 0;
+    }
+    .alertas-filter {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(10rem, 1fr)) auto;
+        gap: .75rem;
+        align-items: end;
+    }
+    .alertas-list {
+        padding: 1rem;
+        background: #f8fafc;
+    }
+    .alerta-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: .9rem;
+        align-items: start;
+        margin-bottom: .75rem;
+    }
+    .alerta-card:last-child {
+        margin-bottom: 0;
+    }
+    .alerta-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .8rem;
+        font-size: 1rem;
+    }
+    .alerta-title {
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 .2rem;
+    }
+    .alerta-desc {
+        color: #475569;
+        margin: 0;
+    }
+    .alerta-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        margin-top: .65rem;
+    }
+    .alerta-actions {
+        display: flex;
+        gap: .45rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .alerta-empty {
+        border: 1px dashed #cbd5e1;
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        color: #64748b;
+        background: #fff;
+    }
+    @media (max-width: 991.98px) {
+        .alertas-filter {
+            grid-template-columns: 1fr;
+        }
+        .alerta-card {
+            grid-template-columns: auto minmax(0, 1fr);
+        }
+        .alerta-actions {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<div class="alertas-shell">
+    <div class="alertas-head">
+        <div>
+            <h1 class="alertas-title">Alertas</h1>
+            <p class="alertas-sub">Central de notificações da empresa ativa, reunindo avisos de todos os módulos.</p>
+        </div>
+        <form method="post" action="{% url 'alertas:marcar_todos_lidos' empresa_id=request.empresa_ativa.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary rounded-3 fw-semibold">
+                <i class="bi bi-check2-all me-1"></i> Marcar todos como lidos
+            </button>
+        </form>
+    </div>
+
+    <form method="get" class="alertas-filter">
+        <div>
+            <label class="form-label fw-semibold small text-muted" for="status">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="pendentes"{% if status_atual == 'pendentes' %} selected{% endif %}>Pendentes</option>
+                {% for value,label in status_choices %}
+                    <option value="{{ value }}"{% if status_atual == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label fw-semibold small text-muted" for="modulo">Módulo</label>
+            <select class="form-select" id="modulo" name="modulo">
+                <option value="">Todos</option>
+                {% for value,label in modulo_choices %}
+                    <option value="{{ value }}"{% if modulo_atual == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label fw-semibold small text-muted" for="nivel">Nível</label>
+            <select class="form-select" id="nivel" name="nivel">
+                <option value="">Todos</option>
+                {% for value,label in nivel_choices %}
+                    <option value="{{ value }}"{% if nivel_atual == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+                <i class="bi bi-funnel me-1"></i> Filtrar
+            </button>
+            <a href="{% url 'alertas:lista' empresa_id=request.empresa_ativa.pk %}" class="btn btn-outline-secondary rounded-3 fw-semibold">
+                Limpar
+            </a>
+        </div>
+    </form>
+
+    <div class="alertas-list">
+        {% for alerta in alertas %}
+            <article class="alerta-card">
+                <span class="alerta-icon badge {{ alerta.nivel_badge_class }}">
+                    <i class="bi {{ alerta.icone }}"></i>
+                </span>
+                <div>
+                    <h2 class="alerta-title h6">{{ alerta.titulo }}</h2>
+                    {% if alerta.descricao %}
+                        <p class="alerta-desc">{{ alerta.descricao }}</p>
+                    {% endif %}
+                    <div class="alerta-meta">
+                        <span class="badge text-bg-light border">{{ alerta.get_modulo_display }}</span>
+                        <span class="badge {{ alerta.nivel_badge_class }}">{{ alerta.get_nivel_display }}</span>
+                        <span class="badge text-bg-light border">{{ alerta.get_status_display }}</span>
+                        {% if alerta.data_vencimento %}
+                            <span class="badge text-bg-light border">Vencimento: {{ alerta.data_vencimento|date:"d/m/Y" }}</span>
+                        {% endif %}
+                        <span class="badge text-bg-light border">Criado em {{ alerta.data_alerta|date:"d/m/Y H:i" }}</span>
+                    </div>
+                </div>
+                <div class="alerta-actions">
+                    {% if alerta.link_url %}
+                        <a href="{{ alerta.link_url }}" class="btn btn-sm btn-outline-primary rounded-3 fw-semibold">
+                            Abrir
+                        </a>
+                    {% endif %}
+                    {% if alerta.status == 'aberto' %}
+                        <form method="post" action="{% url 'alertas:marcar_lido' empresa_id=request.empresa_ativa.pk pk=alerta.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold">Lido</button>
+                        </form>
+                    {% endif %}
+                    {% if alerta.pendente %}
+                        <form method="post" action="{% url 'alertas:resolver' empresa_id=request.empresa_ativa.pk pk=alerta.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-success rounded-3 fw-semibold">Resolver</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <div class="alerta-empty">
+                <i class="bi bi-check2-circle fs-1 d-block mb-2"></i>
+                Nenhum alerta encontrado para os filtros selecionados.
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

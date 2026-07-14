@@ -1,0 +1,90 @@
+<div class="dropdown topbar-alertas-dropdown">
+    <button type="button"
+            class="topbar-alertas-btn"
+            id="topbarAlertasMenu"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            aria-haspopup="true"
+            title="Alertas">
+        <i class="bi bi-bell"></i>
+        {% if alertas_topbar_qtd %}
+            <span class="topbar-alertas-badge">{{ alertas_topbar_qtd }}</span>
+        {% endif %}
+    </button>
+    <div class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 rounded-3 topbar-alertas-menu"
+         aria-labelledby="topbarAlertasMenu">
+        <div class="topbar-alertas-head">
+            <div>
+                <strong>Alertas</strong>
+                <div class="small text-muted">{{ alertas_topbar_qtd|default:0 }} em aberto</div>
+            </div>
+            {% if request.empresa_ativa %}
+                <a href="{% url 'alertas:lista' empresa_id=request.empresa_ativa.pk %}" class="small fw-semibold text-decoration-none">
+                    Ver todos
+                </a>
+            {% endif %}
+        </div>
+
+        {% if alertas_topbar_recentes %}
+            <div class="topbar-alertas-list">
+                {% for alerta in alertas_topbar_recentes %}
+                    <div class="topbar-alerta-item">
+                        <a class="topbar-alerta-link" href="{% if alerta.link_url %}{{ alerta.link_url }}{% else %}{% url 'alertas:lista' empresa_id=request.empresa_ativa.pk %}{% endif %}">
+                            <span class="topbar-alerta-icon badge {{ alerta.nivel_badge_class }}">
+                                <i class="bi {{ alerta.icone }}"></i>
+                            </span>
+                            <span class="topbar-alerta-content">
+                                {% if alerta.objeto_origem.nome %}
+                                    <span class="topbar-alerta-person">{{ alerta.objeto_origem.nome }}</span>
+                                {% endif %}
+                                <span class="topbar-alerta-title">{{ alerta.titulo }}</span>
+                                <span class="topbar-alerta-meta">
+                                    {{ alerta.get_modulo_display }}
+                                    {% if alerta.data_vencimento %} · vence em {{ alerta.data_vencimento|date:"d/m/Y" }}{% endif %}
+                                </span>
+                            </span>
+                        </a>
+                        <form method="post"
+                              action="{% url 'alertas:marcar_lido' empresa_id=request.empresa_ativa.pk pk=alerta.pk %}"
+                              class="topbar-alerta-read-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="topbar-alerta-read-btn">Lido</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="topbar-alertas-empty">
+                <i class="bi bi-check2-circle"></i>
+                <span>Nenhum alerta aberto.</span>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if alertas_topbar_auto_open %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var button = document.getElementById('topbarAlertasMenu');
+    if (!button || !window.bootstrap) return;
+
+    window.setTimeout(function () {
+        var dropdown = bootstrap.Dropdown.getOrCreateInstance(button);
+        var menu = button.parentElement ? button.parentElement.querySelector('.topbar-alertas-menu') : null;
+
+        dropdown.show();
+
+        if (menu) {
+            menu.classList.remove('topbar-alertas-auto-attention');
+            void menu.offsetWidth;
+            menu.classList.add('topbar-alertas-auto-attention');
+
+            button.addEventListener('hidden.bs.dropdown', function () {
+                menu.classList.remove('topbar-alertas-auto-attention');
+            }, { once: true });
+        }
+    }, 350);
+});
+</script>
+{% endif %}

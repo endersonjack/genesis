@@ -37,6 +37,8 @@ def titulo_modulo_topbar(request: HttpRequest) -> str:
         return 'Recursos Humanos'
     if re.search(r'/empresa/\d+/auditoria(/|$)', path):
         return 'Auditoria'
+    if re.search(r'/empresa/\d+/alertas(/|$)', path):
+        return 'Alertas'
     if re.search(r'/empresa/\d+/fornecedores(/|$)', path):
         return 'Fornecedores'
     if re.search(r'/empresa/\d+/clientes(/|$)', path):

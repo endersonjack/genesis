@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'auditoria',
     'controles_rh',
     'apontamento',
+    'alertas',
 ]
 
 MIDDLEWARE = [
@@ -78,6 +79,7 @@ TEMPLATES = [
                 'core.context_processors.usuario_empresas',
                 'core.context_processors.modulo_topbar',
                 'core.context_processors.brand_icons',
+                'alertas.context_processors.alertas_topbar',
             ],
         },
     },

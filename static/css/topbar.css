@@ -40,6 +40,215 @@
 .topbar-user-dropdown .dropdown-menu {
     z-index: 1055;
 }
+
+.topbar-alertas-dropdown .dropdown-menu {
+    z-index: 1055;
+}
+
+.topbar-alertas-btn {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #facc15;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.topbar-alertas-btn:hover,
+.topbar-alertas-btn:focus {
+    color: #fde047;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+.topbar-alertas-badge {
+    position: absolute;
+    top: 1px;
+    right: 0;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .68rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0 .3rem;
+}
+
+.topbar-alertas-menu {
+    width: min(94vw, 560px);
+    overflow: hidden;
+}
+
+.topbar-alertas-menu.topbar-alertas-auto-attention {
+    animation: topbarAlertasBorderPulse .72s ease-in-out infinite;
+    border: 3px solid rgba(220, 38, 38, .9) !important;
+}
+
+.topbar-alertas-menu.topbar-alertas-auto-attention .topbar-alerta-item {
+    animation: topbarAlertasItemPulse 1.6s ease-out 1;
+}
+
+@keyframes topbarAlertasBorderPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, .66), 0 10px 28px rgba(15, 23, 42, .14);
+        border-color: rgba(220, 38, 38, .9);
+    }
+    50% {
+        box-shadow: 0 0 0 9px rgba(220, 38, 38, .22), 0 18px 45px rgba(15, 23, 42, .22);
+        border-color: rgba(220, 38, 38, 1);
+    }
+}
+
+@keyframes topbarAlertasItemPulse {
+    0%, 100% {
+        background: transparent;
+    }
+    35% {
+        background: #fef9c3;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .topbar-alertas-menu.topbar-alertas-auto-attention,
+    .topbar-alertas-menu.topbar-alertas-auto-attention .topbar-alerta-item {
+        animation: none;
+    }
+
+    .topbar-alertas-menu.topbar-alertas-auto-attention {
+        border: 3px solid rgba(220, 38, 38, .92) !important;
+        box-shadow: 0 0 0 5px rgba(220, 38, 38, .24), 0 10px 28px rgba(15, 23, 42, .14);
+    }
+}
+
+.topbar-alertas-head {
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.topbar-alertas-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: .35rem;
+}
+
+.topbar-alerta-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .4rem;
+    align-items: center;
+    border-radius: .8rem;
+}
+
+.topbar-alerta-item:hover,
+.topbar-alerta-item:focus-within {
+    background: #f8fafc;
+}
+
+.topbar-alerta-link {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: .7rem;
+    align-items: start;
+    padding: .7rem;
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.topbar-alerta-link:hover,
+.topbar-alerta-link:focus {
+    color: #0f172a;
+}
+
+.topbar-alerta-read-form {
+    padding-right: .45rem;
+}
+
+.topbar-alerta-read-btn {
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    font-size: .72rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: .38rem .55rem;
+}
+
+.topbar-alerta-read-btn:hover,
+.topbar-alerta-read-btn:focus {
+    border-color: #94a3b8;
+    color: #0f172a;
+    background: #f1f5f9;
+}
+
+.topbar-alerta-icon {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: .65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.topbar-alerta-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.topbar-alerta-person {
+    color: #0f172a;
+    font-size: .9rem;
+    font-weight: 900;
+    line-height: 1.15;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topbar-alerta-title {
+    color: #334155;
+    font-weight: 750;
+    font-size: .84rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topbar-alerta-meta {
+    color: #64748b;
+    font-size: .76rem;
+    line-height: 1.25;
+}
+
+.topbar-alertas-empty {
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    color: #64748b;
+}
+
 .topbar-user-dropdown .dropdown-toggle::after {
     margin-left: 0.35rem;
     align-self: center;

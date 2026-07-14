@@ -7,6 +7,9 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from core.urlutils import reverse_empresa
 
+from alertas.models import Alerta
+from alertas.services import criar_ou_atualizar_alerta
+
 from apontamento.models import (
     ApontamentoFalta,
     ApontamentoObservacaoLocal,
@@ -27,9 +30,281 @@ from ..models import (
 from .base import _empresa_ativa_or_redirect
 
 
-# ==========================================================
-# CALENDÁRIO RH - MONTAGEM DOS EVENTOS
-# ==========================================================
+ALERTA_RH_DIAS_ANTECEDENCIA = 5
+
+FERIADOS_FIXOS_RH = [
+    (1, 1, "Confraternização Universal"),
+    (4, 21, "Tiradentes"),
+    (5, 1, "Dia do Trabalhador"),
+    (9, 7, "Independência do Brasil"),
+    (10, 12, "Nossa Senhora Aparecida"),
+    (11, 2, "Finados"),
+    (11, 15, "Proclamação da República"),
+    (12, 25, "Natal"),
+]
+
+
+def _data_anual_segura(data_base, ano):
+    try:
+        return data_base.replace(year=ano)
+    except ValueError:
+        return data_base.replace(year=ano, day=28)
+
+
+def _datas_anuais_no_periodo(data_base, inicio, fim):
+    if not data_base:
+        return []
+
+    datas = []
+    for ano in range(inicio.year, fim.year + 1):
+        data_evento = _data_anual_segura(data_base, ano)
+        if inicio <= data_evento <= fim:
+            datas.append(data_evento)
+    return datas
+
+
+def _texto_quando_alerta_rh(data_evento, hoje):
+    dias = (data_evento - hoje).days
+    if dias == 0:
+        return "hoje"
+    if dias == 1:
+        return "amanhã"
+    return f"em {dias} dias"
+
+
+def _nivel_alerta_rh(data_evento, hoje):
+    dias = (data_evento - hoje).days
+    return Alerta.Nivel.URGENTE if dias <= 1 else Alerta.Nivel.ATENCAO
+
+
+def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
+    hoje = timezone.localdate()
+    limite = hoje + timedelta(days=ALERTA_RH_DIAS_ANTECEDENCIA)
+
+    def add_alerta(
+        data_evento,
+        tipo,
+        label,
+        funcionario=None,
+        objeto=None,
+        detalhe_url=None,
+        extra="",
+        chave_extra="",
+    ):
+        if not data_evento or data_evento < hoje or data_evento > limite:
+            return
+
+        objeto_origem = objeto or funcionario
+        if funcionario and not detalhe_url:
+            detalhe_url = perfil_funcionario_url_por_tipo(
+                request,
+                funcionario.pk,
+                tipo,
+            )
+
+        quando = _texto_quando_alerta_rh(data_evento, hoje)
+        alvo = funcionario.nome if funcionario else (chave_extra or label)
+        descricao = f"{label} em {data_evento.strftime('%d/%m/%Y')}."
+        if funcionario:
+            descricao = f"{funcionario.nome}: {descricao}"
+        if extra:
+            descricao = f"{descricao} {extra}"
+
+        if objeto_origem and objeto_origem.pk:
+            objeto_chave = f"{objeto_origem._meta.label_lower}:{objeto_origem.pk}"
+        else:
+            objeto_chave = f"geral:{chave_extra or label}"
+
+        criar_ou_atualizar_alerta(
+            empresa=empresa_ativa,
+            titulo=f"{label}: {alvo} {quando}",
+            descricao=descricao,
+            modulo=Alerta.Modulo.RH,
+            categoria=tipo,
+            nivel=_nivel_alerta_rh(data_evento, hoje),
+            data_vencimento=data_evento,
+            link_url=detalhe_url or "",
+            objeto_origem=objeto_origem,
+            chave=f"rh:calendario:{tipo}:{objeto_chave}:{data_evento.isoformat()}",
+        )
+
+    funcionarios = (
+        Funcionario.objects.filter(empresa=empresa_ativa)
+        .exclude(situacao_atual__in=["demitido", "inativo"])
+        .select_related("cargo", "tipo_contrato")
+        .prefetch_related("asos")
+        .order_by("nome")
+    )
+
+    for func in funcionarios:
+        for data_aniversario in _datas_anuais_no_periodo(
+            func.data_nascimento,
+            hoje,
+            limite,
+        ):
+            add_alerta(data_aniversario, "aniversario", "Aniversário", func)
+
+        add_alerta(func.data_admissao, "admissao", "Admissão", func)
+
+        if func.data_admissao and not func.inicio_prorrogacao:
+            add_alerta(
+                func.data_admissao + timedelta(days=45),
+                "experiencia_45",
+                "45 dias / iniciar prorrogação",
+                func,
+            )
+
+        add_alerta(
+            func.inicio_prorrogacao,
+            "inicio_prorrogacao",
+            "Início da prorrogação",
+            func,
+        )
+        add_alerta(func.fim_prorrogacao, "fim_prorrogacao", "Fim da prorrogação", func)
+        add_alerta(func.data_inicio_aviso, "inicio_aviso", "Início do aviso", func)
+        add_alerta(func.data_fim_aviso, "fim_aviso", "Fim do aviso", func)
+        add_alerta(func.data_demissao, "demissao", "Demissão", func)
+
+        aso_admissional = func.asos.filter(tipo="admissional").order_by("-data").first()
+        data_base_exame = aso_admissional.data if aso_admissional else func.data_admissao
+        for data_exame in _datas_anuais_no_periodo(data_base_exame, hoje, limite):
+            add_alerta(data_exame, "renovacao_exame", "Renovar exame anual", func)
+
+        for data_exame in _datas_anuais_no_periodo(
+            data_base_exame,
+            hoje + timedelta(days=30),
+            limite + timedelta(days=30),
+        ):
+            add_alerta(
+                data_exame - timedelta(days=30),
+                "alerta_exame",
+                "Aviso: renovar exame em 30 dias",
+                func,
+            )
+
+        add_alerta(func.data_ultimo_exame, "ultimo_exame", "Data do último exame", func)
+
+    ferias = (
+        FeriasFuncionario.objects.filter(funcionario__empresa=empresa_ativa)
+        .filter(
+            Q(gozo_inicio__gte=hoje, gozo_inicio__lte=limite)
+            | Q(gozo_fim__gte=hoje, gozo_fim__lte=limite)
+        )
+        .select_related("funcionario")
+    )
+    for item in ferias:
+        add_alerta(
+            item.gozo_inicio,
+            "ferias_inicio",
+            "Início de férias",
+            item.funcionario,
+            objeto=item,
+        )
+        add_alerta(
+            item.gozo_fim,
+            "ferias_volta",
+            "Volta de férias",
+            item.funcionario,
+            objeto=item,
+        )
+
+    afastamentos = (
+        AfastamentoFuncionario.objects.filter(funcionario__empresa=empresa_ativa)
+        .filter(
+            Q(data_afastamento__gte=hoje, data_afastamento__lte=limite)
+            | Q(previsao_retorno__gte=hoje, previsao_retorno__lte=limite)
+        )
+        .select_related("funcionario")
+    )
+    for item in afastamentos:
+        add_alerta(
+            item.data_afastamento,
+            "afastamento",
+            f"Afastamento - {item.get_tipo_display()}",
+            item.funcionario,
+            objeto=item,
+        )
+        add_alerta(
+            item.previsao_retorno,
+            "retorno_afastamento",
+            "Previsão de retorno do afastamento",
+            item.funcionario,
+            objeto=item,
+        )
+
+    asos = (
+        ASOFuncionario.objects.filter(
+            funcionario__empresa=empresa_ativa,
+            data__gte=hoje,
+            data__lte=limite,
+        )
+        .select_related("funcionario")
+        .order_by("data")
+    )
+    for item in asos:
+        add_alerta(
+            item.data,
+            "aso",
+            f"ASO - {item.get_tipo_display()}",
+            item.funcionario,
+            objeto=item,
+        )
+
+    pcmso_items = (
+        PCMSOFuncionario.objects.filter(
+            funcionario__empresa=empresa_ativa,
+            data_vencimento__gte=hoje,
+            data_vencimento__lte=limite,
+        )
+        .select_related("funcionario")
+        .order_by("data_vencimento")
+    )
+    for item in pcmso_items:
+        add_alerta(
+            item.data_vencimento,
+            "pcmso",
+            "Vencimento de PCMSO",
+            item.funcionario,
+            objeto=item,
+        )
+
+    lembretes = (
+        LembreteRH.objects.filter(
+            empresa=empresa_ativa,
+            concluido=False,
+            data__gte=hoje,
+            data__lte=limite,
+        )
+        .select_related("funcionario")
+        .order_by("data", "titulo")
+    )
+    for item in lembretes:
+        detalhe = reverse_empresa(
+            request,
+            "rh:editar_lembrete_rh",
+            kwargs={"pk": item.pk},
+        )
+        add_alerta(
+            item.data,
+            "lembrete",
+            item.titulo,
+            item.funcionario,
+            objeto=item,
+            detalhe_url=detalhe,
+            extra=item.descricao,
+        )
+
+    for ano in range(hoje.year, limite.year + 1):
+        for mes_f, dia_f, nome in FERIADOS_FIXOS_RH:
+            data_feriado = date(ano, mes_f, dia_f)
+            add_alerta(
+                data_feriado,
+                "feriado",
+                nome,
+                chave_extra=nome,
+            )
+
+
 def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
     """
     Monta todos os eventos do calendário mensal do RH.
@@ -292,18 +567,7 @@ def _montar_eventos_calendario_rh(request, empresa_ativa, ano, mes):
     # --------------------------------------------------
     # FERIADOS FIXOS
     # --------------------------------------------------
-    feriados_fixos = [
-        (1, 1, "Confraternização Universal"),
-        (4, 21, "Tiradentes"),
-        (5, 1, "Dia do Trabalhador"),
-        (9, 7, "Independência do Brasil"),
-        (10, 12, "Nossa Senhora Aparecida"),
-        (11, 2, "Finados"),
-        (11, 15, "Proclamação da República"),
-        (12, 25, "Natal"),
-    ]
-
-    for mes_f, dia_f, nome in feriados_fixos:
+    for mes_f, dia_f, nome in FERIADOS_FIXOS_RH:
         if mes_f == mes:
             add_evento(
                 date(ano, mes_f, dia_f),
@@ -893,6 +1157,8 @@ def dashboard_rh(request):
     )
     if redirect_response:
         return redirect_response
+
+    _sincronizar_alertas_rh_dashboard(request, empresa_ativa)
 
     return render(request, "rh/dashboard.html", {})
 

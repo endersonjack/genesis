@@ -46,6 +46,8 @@ def path_permitido_para_so_apontador(rest: str) -> bool:
         return True
     if p.startswith('rh/locais-trabalho'):
         return p == 'rh/locais-trabalho' or p.startswith('rh/locais-trabalho/')
+    if p == 'alertas' or p.startswith('alertas/'):
+        return True
     if p == 'usuarios/trocar-empresa' or p.startswith('usuarios/trocar-empresa/'):
         return True
     return False
