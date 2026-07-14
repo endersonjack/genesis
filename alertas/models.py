@@ -123,6 +123,15 @@ class Alerta(models.Model):
     def titulo_sem_nome_origem(self):
         nome = getattr(self.objeto_origem, 'nome', '')
         titulo = self.titulo or ''
+        if self.categoria == 'alerta_exame':
+            if nome and f': {nome}' in titulo:
+                return titulo.split(f': {nome}', 1)[0].strip()
+            return re.sub(
+                r':\s*(hoje|amanh\S*|em\s+\d+\s+dias)\s*$',
+                '',
+                titulo,
+                flags=re.IGNORECASE,
+            ).strip()
         if not nome:
             return titulo
         return titulo.replace(f': {nome}', ':', 1).replace(f' {nome} ', ' ', 1).strip()

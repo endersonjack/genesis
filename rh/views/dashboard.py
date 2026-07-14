@@ -92,6 +92,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
         extra="",
         chave_extra="",
         data_vencimento_oficial=None,
+        exibir_quando=True,
     ):
         if not data_evento or data_evento < hoje or data_evento > limite:
             return
@@ -106,6 +107,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
 
         quando = _texto_quando_alerta_rh(data_evento, hoje)
         alvo = funcionario.nome if funcionario else (chave_extra or label)
+        titulo = f"{label}: {alvo} {quando}" if exibir_quando else f"{label}: {alvo}"
         data_vencimento = data_vencimento_oficial or data_evento
         descricao = f"{label} em {data_evento.strftime('%d/%m/%Y')}."
         if data_vencimento_oficial and data_vencimento_oficial != data_evento:
@@ -122,7 +124,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
 
         criar_ou_atualizar_alerta(
             empresa=empresa_ativa,
-            titulo=f"{label}: {alvo} {quando}",
+            titulo=titulo,
             descricao=descricao,
             modulo=Alerta.Modulo.RH,
             categoria=tipo,
@@ -187,6 +189,7 @@ def _sincronizar_alertas_rh_dashboard(request, empresa_ativa):
                     f"Aviso: renovar exame em {dias_antecedencia} dias",
                     func,
                     data_vencimento_oficial=data_exame,
+                    exibir_quando=False,
                 )
 
         add_alerta(func.data_ultimo_exame, "ultimo_exame", "Data do último exame", func)
