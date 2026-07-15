@@ -162,6 +162,37 @@
         color: #64748b;
         font-weight: 800;
     }
+    .fin-sort-btn {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        padding: 0;
+        font: inherit;
+        text-transform: inherit;
+        letter-spacing: inherit;
+    }
+    .fin-sort-btn:hover,
+    .fin-sort-btn:focus {
+        color: #0f172a;
+        outline: none;
+    }
+    .fin-sort-btn::after {
+        content: "\F282";
+        font-family: "bootstrap-icons";
+        font-size: .68rem;
+        opacity: .35;
+    }
+    .fin-sort-btn.is-sorted-asc::after {
+        content: "\F286";
+        opacity: .9;
+    }
+    .fin-sort-btn.is-sorted-desc::after {
+        content: "\F282";
+        opacity: .9;
+    }
     .fin-table td {
         vertical-align: middle;
         font-size: .92rem;
@@ -422,12 +453,12 @@
                        aria-label="Buscar por número do documento ou nota fiscal">
             </div>
             <div>
-                <label class="form-label">Pessoa / Entidade</label>
+                <label class="form-label">FORNECEDOR/ENTIDADE</label>
                 <input type="text"
                        name="fornecedor"
                        class="form-control"
                        value="{{ fornecedor }}"
-                       placeholder="Fornecedor, funcionário, Geral ou autoridade">
+                       placeholder="Nome/razão e CNPJ">
             </div>
             <div>
                 <label class="form-label">Categoria</label>
@@ -484,21 +515,21 @@
 
     {% if resultados %}
     <div class="table-responsive">
-        <table class="table table-hover fin-table mb-0 align-middle">
+        <table class="table table-hover fin-table mb-0 align-middle" id="financeiroResultadosTable">
             <thead class="table-light">
 	                <tr>
-	                    <th>Status</th>
-	                    <th class="text-nowrap">Venc:</th>
-	                    <th class="text-nowrap">Data Emissão</th>
-	                    <th>Nome</th>
-	                    <th class="text-nowrap">Tipo de Saída</th>
-	                    <th>Categoria</th>
-	                    <th class="text-nowrap">Nº NF</th>
-	                    <th class="text-nowrap">Tipo Pagamento</th>
-	                    <th class="text-end text-nowrap">R$ Total</th>
-	                    <th class="text-end text-nowrap">R$ Pago</th>
-	                    <th class="text-end text-nowrap">R$ à Pagar</th>
-	                    <th class="text-nowrap">Data de Pagamento</th>
+	                    <th><button type="button" class="fin-sort-btn" data-sort-index="0" data-sort-type="text">Status</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="1" data-sort-type="date">Venc:</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="2" data-sort-type="date">Data Emissão</button></th>
+	                    <th><button type="button" class="fin-sort-btn" data-sort-index="3" data-sort-type="text">Nome</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="4" data-sort-type="text">Tipo de Saída</button></th>
+	                    <th><button type="button" class="fin-sort-btn" data-sort-index="5" data-sort-type="text">Categoria</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="6" data-sort-type="text">Nº NF</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="7" data-sort-type="text">Tipo Pagamento</button></th>
+	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="8" data-sort-type="number">R$ Total</button></th>
+	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="9" data-sort-type="number">R$ Pago</button></th>
+	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="10" data-sort-type="number">R$ à Pagar</button></th>
+	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="11" data-sort-type="date">Data de Pagamento</button></th>
 	                </tr>
             </thead>
             <tbody>
@@ -510,23 +541,23 @@
 	                    aria-controls="resultadoDetalhe{{ forloop.counter }}"
 	                    tabindex="0"
 	                    role="button">
-	                    <td class="small">
+	                    <td class="small" data-sort="{{ item.status_label }}">
 	                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
 	                    </td>
-	                    <td class="small fw-bold text-nowrap">
+	                    <td class="small fw-bold text-nowrap" data-sort="{% if item.vencimento_status %}{{ item.vencimento_status|date:'Y-m-d' }}{% endif %}">
 	                        {% if item.vencimento_status %}
 	                            <span class="{{ item.vencimento_status_text_class }}">{{ item.vencimento_status|date:"d/m/Y" }}</span>
 	                        {% else %}
 	                            <span class="text-muted">&mdash;</span>
 	                        {% endif %}
 	                    </td>
-	                    <td class="small text-muted text-nowrap">{{ item.data|date:"d/m/Y" }}</td>
-	                    <td class="small fw-semibold">
+	                    <td class="small text-muted text-nowrap" data-sort="{{ item.data|date:'Y-m-d' }}">{{ item.data|date:"d/m/Y" }}</td>
+	                    <td class="small fw-semibold" data-sort="{{ item.entidade|default:'' }}">
 	                        <span class="{% if item.highlight_entidade %}financeiro-highlight-match{% endif %}">{{ item.entidade }}</span>
 	                    </td>
-	                    <td class="small text-muted text-nowrap">{{ item.tipo_registro }}</td>
-	                    <td class="small text-muted">{{ item.categoria_label }}</td>
-	                    <td class="small text-muted text-nowrap">
+	                    <td class="small text-muted text-nowrap" data-sort="{{ item.tipo_registro|default:'' }}">{{ item.tipo_registro }}</td>
+	                    <td class="small text-muted" data-sort="{{ item.categoria_label|default:'' }}">{{ item.categoria_label }}</td>
+	                    <td class="small text-muted text-nowrap" data-sort="{{ item.numero_doc|default:'' }}">
 	                        <span class="{% if item.highlight_numero_doc %}financeiro-highlight-match{% endif %}">
 	                            {{ item.numero_doc|default:"—" }}
 	                            {% if item.doc_match_label %}
@@ -534,22 +565,22 @@
 	                            {% endif %}
 	                        </span>
 	                    </td>
-	                    <td class="small text-muted text-nowrap">
+	                    <td class="small text-muted text-nowrap" data-sort="{{ item.forma_pagamento|default:'' }}">
 	                        {{ item.forma_pagamento }}
                         {% if item.forma_detalhe %}
 	                            <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
 	                        {% endif %}
 	                    </td>
-	                    <td class="text-end small fw-semibold text-nowrap">
+	                    <td class="text-end small fw-semibold text-nowrap" data-sort="{{ item.valor_total|default:0 }}">
 	                        <span class="{% if item.highlight_valor_total %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_total|moeda_br }}</span>
 	                    </td>
-	                    <td class="text-end small fw-semibold text-success text-nowrap">
+	                    <td class="text-end small fw-semibold text-success text-nowrap" data-sort="{{ item.valor_pago|default:0 }}">
 	                        <span class="{% if item.highlight_valor_pago %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_pago|moeda_br }}</span>
 	                    </td>
-	                    <td class="text-end small fw-semibold {% if item.valor_a_pagar %}text-danger{% endif %} text-nowrap">
+	                    <td class="text-end small fw-semibold {% if item.valor_a_pagar %}text-danger{% endif %} text-nowrap" data-sort="{{ item.valor_a_pagar|default:0 }}">
 	                        <span class="{% if item.highlight_valor_a_pagar %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_a_pagar|moeda_br }}</span>
 	                    </td>
-	                    <td class="small text-nowrap">
+	                    <td class="small text-nowrap" data-sort="{% if item.data_pagamento %}{{ item.data_pagamento|date:'Y-m-d' }}{% endif %}">
 	                        {% if item.data_pagamento %}
                             {{ item.data_pagamento|date:"d/m/Y" }}
                         {% else %}
@@ -771,6 +802,57 @@
 	    if (!row) return;
 	    event.preventDefault();
 	    row.click();
+	});
+
+	document.querySelectorAll('#financeiroResultadosTable .fin-sort-btn').forEach((button) => {
+	    button.addEventListener('click', () => {
+	        const table = document.getElementById('financeiroResultadosTable');
+	        const tbody = table ? table.querySelector('tbody') : null;
+	        if (!tbody) return;
+	        const index = Number(button.dataset.sortIndex);
+	        const type = button.dataset.sortType || 'text';
+	        const direction = button.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
+
+	        table.querySelectorAll('.fin-sort-btn').forEach((other) => {
+	            other.classList.remove('is-sorted-asc', 'is-sorted-desc');
+	            delete other.dataset.sortDirection;
+	        });
+	        button.dataset.sortDirection = direction;
+	        button.classList.add(direction === 'asc' ? 'is-sorted-asc' : 'is-sorted-desc');
+
+	        const groups = [];
+	        const rows = Array.from(tbody.children);
+	        for (let i = 0; i < rows.length; i += 2) {
+	            groups.push({ main: rows[i], detail: rows[i + 1] || null, originalIndex: i });
+	        }
+
+	        const normalize = (row) => {
+	            const cell = row.children[index];
+	            const raw = (cell && (cell.dataset.sort || cell.textContent) || '').trim();
+	            if (!raw) return type === 'number' ? Number.NEGATIVE_INFINITY : '';
+	            if (type === 'number') {
+	                const normalized = raw.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+	                return Number.parseFloat(normalized) || 0;
+	            }
+	            if (type === 'date') return raw;
+	            return raw.toLocaleLowerCase('pt-BR');
+	        };
+
+	        groups.sort((a, b) => {
+	            const av = normalize(a.main);
+	            const bv = normalize(b.main);
+	            let result = 0;
+	            if (av > bv) result = 1;
+	            if (av < bv) result = -1;
+	            if (result === 0) result = a.originalIndex - b.originalIndex;
+	            return direction === 'asc' ? result : -result;
+	        });
+
+	        groups.forEach((group) => {
+	            tbody.appendChild(group.main);
+	            if (group.detail) tbody.appendChild(group.detail);
+	        });
+	    });
 	});
 	</script>
 {% endblock %}

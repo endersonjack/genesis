@@ -2267,6 +2267,7 @@ def relatorio_fornecedor_pdf(request):
 def _buscar_pagamentos_context(request, empresa) -> dict:
     query = str(request.GET.get('q', '')).strip()
     fornecedor = str(request.GET.get('fornecedor', '')).strip()
+    fornecedor_digits = re.sub(r'\D+', '', fornecedor)
     categoria_id = _int_param(request, 'categoria')
     valor_raw = str(request.GET.get('valor', '')).strip()
     data_inicio = str(request.GET.get('data_inicio', '')).strip()
@@ -2397,7 +2398,14 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             .order_by('-criado_em', '-pk')
         )
         if fornecedor:
-            nfs_qs = nfs_qs.filter(fornecedor__nome__icontains=fornecedor)
+            filtro_fornecedor = (
+                Q(fornecedor__nome__icontains=fornecedor)
+                | Q(fornecedor__razao_social__icontains=fornecedor)
+                | Q(fornecedor__cpf_cnpj__icontains=fornecedor)
+            )
+            if fornecedor_digits:
+                filtro_fornecedor |= Q(fornecedor__cpf_cnpj__icontains=fornecedor_digits)
+            nfs_qs = nfs_qs.filter(filtro_fornecedor)
         if categoria_id:
             nfs_qs = nfs_qs.filter(itens__categoria_id=categoria_id)
         if query:
@@ -2654,8 +2662,9 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             .order_by('-criado_em', '-pk')
         )
         if fornecedor:
-            pessoal_qs = pessoal_qs.filter(
+            filtro_pessoal = (
                 Q(funcionario__nome__icontains=fornecedor)
+                | Q(funcionario__cpf__icontains=fornecedor)
                 | Q(descricao__icontains=fornecedor)
                 | (
                     Q(tipo_destino=PagamentoPessoal.TipoDestino.GERAL)
@@ -2663,6 +2672,9 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     else Q(pk__isnull=True)
                 )
             )
+            if fornecedor_digits:
+                filtro_pessoal |= Q(funcionario__cpf__icontains=fornecedor_digits)
+            pessoal_qs = pessoal_qs.filter(filtro_pessoal)
         if categoria_id:
             pessoal_qs = pessoal_qs.filter(itens__categoria_id=categoria_id)
         if data_inicio:
@@ -2753,7 +2765,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             .order_by('-criado_em', '-pk')
         )
         if fornecedor:
-            impostos_qs = impostos_qs.filter(autoridade__nome__icontains=fornecedor)
+            filtro_autoridade = (
+                Q(autoridade__nome__icontains=fornecedor)
+                | Q(autoridade__cnpj__icontains=fornecedor)
+            )
+            if fornecedor_digits:
+                filtro_autoridade |= Q(autoridade__cnpj__icontains=fornecedor_digits)
+            impostos_qs = impostos_qs.filter(filtro_autoridade)
         if categoria_id:
             impostos_qs = impostos_qs.filter(itens__categoria_id=categoria_id)
         if data_inicio:

@@ -73,10 +73,13 @@
         display: none;
     }
     .financeiro-top-search {
-        width: clamp(16rem, 28vw, 24rem);
+        width: clamp(14rem, 22vw, 24rem);
         min-width: 0;
         flex: 0 1 auto;
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-search--entity {
+        width: clamp(15rem, 24vw, 25rem);
     }
     .financeiro-top-search .form-control {
         border-radius: 999px 0 0 999px;
@@ -386,6 +389,22 @@
     <div class="financeiro-top-actions ms-auto">
         <form method="get"
               action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
+              class="input-group financeiro-top-search financeiro-top-search--entity">
+            <input type="text"
+                   name="fornecedor"
+                   class="form-control"
+                   placeholder="nome, razão ou CNPJ"
+                   aria-label="Buscar por nome, razão social ou CNPJ">
+            <input type="hidden" name="status_vencido" value="1">
+            <input type="hidden" name="status_aberto" value="1">
+            <input type="hidden" name="status_pago" value="1">
+            <input type="hidden" name="origem" value="dashboard">
+            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar por pessoa ou empresa">
+                <i class="bi bi-search"></i>
+            </button>
+        </form>
+        <form method="get"
+              action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
               class="input-group financeiro-top-search">
             <input type="text"
                    name="q"
@@ -396,20 +415,10 @@
             <input type="hidden" name="status_aberto" value="1">
             <input type="hidden" name="status_pago" value="1">
             <input type="hidden" name="origem" value="dashboard">
-            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar">
+            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar por documento">
                 <i class="bi bi-search"></i>
             </button>
         </form>
-        <a href="{% url 'financeiro:relatorios' empresa_id=request.empresa_ativa.pk %}"
-           class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-graph-up-arrow"></i>
-            <span>Relatórios</span>
-        </a>
-        <a href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}"
-           class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-wallet2"></i>
-            <span>Caixas</span>
-        </a>
         <div class="dropdown financeiro-top-more-dropdown" data-bs-popper="static">
             <button type="button"
                     class="financeiro-top-btn financeiro-top-btn-light financeiro-top-btn-icon-only dropdown-toggle"
@@ -419,6 +428,17 @@
                 <i class="bi bi-gear"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:relatorios' empresa_id=request.empresa_ativa.pk %}">
+                        <i class="bi bi-graph-up-arrow me-2"></i> Relatórios
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'financeiro:caixa_lista' empresa_id=request.empresa_ativa.pk %}">
+                        <i class="bi bi-wallet2 me-2"></i> Caixas
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
                 <li>
                     <a class="dropdown-item" href="{% url 'financeiro:categoria_lista' empresa_id=request.empresa_ativa.pk %}">
                         <i class="bi bi-tags me-2"></i> Categoria
