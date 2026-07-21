@@ -69,6 +69,35 @@ def _total_valor_pago_tabela(tabela):
     return total if total is not None else Decimal('0.00')
 
 
+def _resumo_itens_vt(itens_qs):
+    totais = itens_qs.aggregate(
+        total_valor=Sum('valor_pagar'),
+        total_valor_pago=Sum('valor_pago'),
+    )
+    total_a_pagar = totais['total_valor'] or Decimal('0.00')
+    total_valor_pago = totais['total_valor_pago'] or Decimal('0.00')
+    saldo_a_pagar = total_a_pagar - total_valor_pago
+    if saldo_a_pagar < 0:
+        saldo_a_pagar = Decimal('0.00')
+    vt_status = (
+        'em_pagamento'
+        if itens_qs.filter(ativo=True, valor_pagar__gt=F('valor_pago')).exists()
+        else 'pago_completo'
+    )
+    status_labels = {
+        'em_pagamento': 'Em pagamento',
+        'pago_completo': 'Pago completo',
+    }
+    return {
+        'total_itens': itens_qs.count(),
+        'total_a_pagar': total_a_pagar,
+        'total_valor_pago': total_valor_pago,
+        'saldo_a_pagar': saldo_a_pagar,
+        'vt_status': vt_status,
+        'vt_status_label': status_labels[vt_status],
+    }
+
+
 def _get_funcionarios_para_vt(competencia):
     """
     Retorna os funcionários admitidos da empresa da competência.
@@ -452,21 +481,19 @@ def detalhe_tabela_vt(request, pk):
     query_params = {'ordenacao': ordenacao}
     query_params.update({k: v for k, v in filtros.items() if v})
 
-    total_valor_pago = _total_valor_pago_tabela(tabela)
-    total_a_pagar = tabela.total_valor
-    saldo_a_pagar = total_a_pagar - total_valor_pago
-    if saldo_a_pagar < 0:
-        saldo_a_pagar = Decimal('0.00')
+    resumo = _resumo_itens_vt(itens)
 
     context = {
         'page_title': f'VT - {tabela.nome}',
         'tabela': tabela,
         'competencia': tabela.competencia,
         'itens': itens,
-        'total_itens': itens.count(),
-        'total_valor': total_a_pagar,
-        'total_valor_pago': total_valor_pago,
-        'saldo_a_pagar': saldo_a_pagar,
+        'total_itens': resumo['total_itens'],
+        'total_valor': resumo['total_a_pagar'],
+        'total_valor_pago': resumo['total_valor_pago'],
+        'saldo_a_pagar': resumo['saldo_a_pagar'],
+        'vt_status': resumo['vt_status'],
+        'vt_status_label': resumo['vt_status_label'],
         'ordenacao': ordenacao,
         'filtros': filtros,
         'opcoes_filtros': _opcoes_filtros_itens_vt(tabela),

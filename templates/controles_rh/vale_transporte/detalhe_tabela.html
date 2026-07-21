@@ -578,10 +578,10 @@
             <div class="summary-box">
                 <div class="summary-label">Pagamento (VT)</div>
                 <div class="summary-value">
-                    {% if tabela.vt_status_efetivo == 'pago_completo' %}
-                        <span class="badge rounded-pill bg-success">{{ tabela.vt_status_efetivo_label }}</span>
+                    {% if vt_status == 'pago_completo' %}
+                        <span class="badge rounded-pill bg-success">{{ vt_status_label }}</span>
                     {% else %}
-                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ tabela.vt_status_efetivo_label }}</span>
+                        <span class="badge rounded-pill text-dark" style="background-color:#fdba74;">{{ vt_status_label }}</span>
                     {% endif %}
                 </div>
             </div>

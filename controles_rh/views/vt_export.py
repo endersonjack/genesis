@@ -31,7 +31,7 @@ from controles_rh.views.vale_transporte import (
     _get_tabela_vt_empresa,
     _order_by_itens_vt,
     _ordenacao_itens_vt,
-    _total_valor_pago_tabela,
+    _resumo_itens_vt,
 )
 from controles_rh.views.pdf_avatar import AvatarFuncionario, _foto_funcionario_png
 
@@ -49,24 +49,19 @@ def _itens_export(tabela, ordenacao='nome', filtros=None):
     return qs.order_by(*_order_by_itens_vt(ordenacao))
 
 
-def _resumo_tabela_export(tabela):
+def _resumo_tabela_export(tabela, itens_qs):
     """
-    Mesmos totais e metadados do cabeçalho da tela de detalhe (controle VT).
+    Mesmos totais e metadados do cabecalho da tela de detalhe (controle VT),
+    respeitando os filtros recebidos pela exportacao.
     """
-    comp = tabela.competencia
-    total_itens = tabela.itens.count()
-    total_valor_pago = _total_valor_pago_tabela(tabela)
-    total_a_pagar = tabela.total_valor
-    saldo_a_pagar = total_a_pagar - total_valor_pago
-    if saldo_a_pagar < 0:
-        saldo_a_pagar = Decimal('0.00')
+    resumo = _resumo_itens_vt(itens_qs)
     return {
-        'competencia': comp,
-        'total_itens': total_itens,
-        'total_a_pagar': total_a_pagar,
-        'total_valor_pago': total_valor_pago,
-        'saldo_a_pagar': saldo_a_pagar,
-        'status_vt_label': tabela.vt_status_efetivo_label,
+        'competencia': tabela.competencia,
+        'total_itens': resumo['total_itens'],
+        'total_a_pagar': resumo['total_a_pagar'],
+        'total_valor_pago': resumo['total_valor_pago'],
+        'saldo_a_pagar': resumo['saldo_a_pagar'],
+        'status_vt_label': resumo['vt_status_label'],
     }
 
 
@@ -179,9 +174,10 @@ def exportar_tabela_vt_xlsx(request, pk):
     tabela = _get_tabela_vt_empresa(request, pk)
     comp = tabela.competencia
     empresa = comp.empresa
-    resumo = _resumo_tabela_export(tabela)
     ordenacao = _ordenacao_itens_vt(request.GET.get('ordenacao'))
     filtros = _filtros_itens_vt(request.GET)
+    itens_export = _itens_export(tabela, ordenacao, filtros)
+    resumo = _resumo_tabela_export(tabela, itens_export)
 
     headers = [
         '#',
@@ -261,7 +257,7 @@ def exportar_tabela_vt_xlsx(request, pk):
     row += 1
 
     ws.column_dimensions['B'].width = 44
-    for n, item in enumerate(_itens_export(tabela, ordenacao, filtros), start=1):
+    for n, item in enumerate(itens_export, start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_val = '—'
         else:
@@ -332,9 +328,10 @@ def exportar_tabela_vt_pdf(request, pk):
     tabela = _get_tabela_vt_empresa(request, pk)
     comp = tabela.competencia
     empresa = Empresa.objects.get(pk=comp.empresa_id)
-    resumo = _resumo_tabela_export(tabela)
     ordenacao = _ordenacao_itens_vt(request.GET.get('ordenacao'))
     filtros = _filtros_itens_vt(request.GET)
+    itens_export = _itens_export(tabela, ordenacao, filtros)
+    resumo = _resumo_tabela_export(tabela, itens_export)
 
     styles = getSampleStyleSheet()
     _cw = _col_widths_vt_pdf_mm(tabela, ordenacao, filtros)
@@ -417,7 +414,7 @@ def exportar_tabela_vt_pdf(request, pk):
     )
     data_rows = [headers]
 
-    for n, item in enumerate(_itens_export(tabela, ordenacao, filtros), start=1):
+    for n, item in enumerate(itens_export, start=1):
         if not item.ativo or not item.valor_pagar or item.valor_pagar <= 0:
             saldo_s = '—'
         else:
