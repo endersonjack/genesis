@@ -11,6 +11,7 @@ from .models import (
     PagamentoSalarioLinha,
     PremiacaoFuncionario,
     ValeTransporteItem,
+    ValeTransportePagamento,
     ValeTransporteTabela,
 )
 
@@ -178,3 +179,16 @@ class ValeTransporteItemAdmin(admin.ModelAdmin):
     list_filter = ('tabela__competencia__empresa', 'tabela__competencia__ano', 'tabela__competencia__mes', 'tipo_pix', 'ativo')
     search_fields = ('nome', 'funcao', 'endereco', 'pix', 'banco', 'funcionario__nome')
     ordering = ('tabela', 'ordem', 'nome', 'id')
+
+
+@admin.register(ValeTransportePagamento)
+class ValeTransportePagamentoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'item', 'valor', 'data_pagamento', 'observacao', 'ordem')
+    list_filter = (
+        'item__tabela__competencia__empresa',
+        'item__tabela__competencia__ano',
+        'item__tabela__competencia__mes',
+        'data_pagamento',
+    )
+    search_fields = ('item__nome', 'item__funcionario__nome', 'item__tabela__nome', 'observacao')
+    ordering = ('item', 'ordem', 'data_pagamento', 'id')

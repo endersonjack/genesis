@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.forms import inlineformset_factory
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
@@ -16,6 +17,7 @@ from .models import (
     PremiacaoFuncionario,
     STATUS_PAGAMENTO_VT_CHOICES,
     ValeTransporteItem,
+    ValeTransportePagamento,
     ValeTransporteTabela,
 )
 
@@ -234,34 +236,55 @@ class ValeTransporteTabelaForm(BaseStyledModelForm):
         return instance
 
 
-class ValeTransporteItemPagamentoForm(BaseStyledModelForm):
-    """Modal rápido: apenas valor pago e data de pagamento."""
-
+class ValeTransportePagamentoForm(BaseStyledModelForm):
     class Meta:
-        model = ValeTransporteItem
-        fields = ['valor_pago', 'data_pagamento']
+        model = ValeTransportePagamento
+        fields = ['valor', 'data_pagamento', 'observacao']
         widgets = {
-            'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            # type="date" exige value em ISO (YYYY-MM-DD); locale pt-BR quebrava o valor inicial
-            'data_pagamento': forms.DateInput(
-                attrs={'type': 'date'},
-                format='%Y-%m-%d',
-            ),
+            'valor': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'data_pagamento': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'observacao': forms.TextInput(attrs={'maxlength': 255}),
         }
         labels = {
-            'valor_pago': 'Valor pago',
+            'valor': 'Valor Pago',
             'data_pagamento': 'Data de pagamento',
+            'observacao': 'Obs.',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.apply_bootstrap_classes()
-        self.fields['valor_pago'].required = False
+        self.fields['valor'].required = False
         self.fields['data_pagamento'].required = False
-        self.fields['data_pagamento'].help_text = 'Opcional.'
+        self.fields['observacao'].required = False
         dp = self.fields['data_pagamento']
         dp.widget.format = '%Y-%m-%d'
         dp.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('DELETE'):
+            return cleaned_data
+        valor = cleaned_data.get('valor')
+        data_pagamento = cleaned_data.get('data_pagamento')
+        observacao = (cleaned_data.get('observacao') or '').strip()
+        if valor is None and not data_pagamento and not observacao:
+            return cleaned_data
+        if valor is None:
+            self.add_error('valor', 'Informe o valor pago.')
+        elif valor < 0:
+            self.add_error('valor', 'O valor pago nao pode ser negativo.')
+        return cleaned_data
+
+
+ValeTransportePagamentoFormSet = inlineformset_factory(
+    ValeTransporteItem,
+    ValeTransportePagamento,
+    form=ValeTransportePagamentoForm,
+    fields=['valor', 'data_pagamento', 'observacao'],
+    extra=0,
+    can_delete=True,
+)
 
 
 class ValeTransporteItemForm(BaseStyledModelForm):
@@ -276,26 +299,16 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'viagens_dia',
             'dias',
             'valor_pagar',
-            'valor_pago',
-            'data_pagamento',
             'pix',
             'tipo_pix',
             'banco',
-            'observacao',
             'ativo',
         ]
         widgets = {
-            'observacao': forms.Textarea(attrs={'rows': 2}),
             'valor_unitario': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'viagens_dia': forms.NumberInput(attrs={'step': '1', 'min': '0'}),
             'dias': forms.NumberInput(attrs={'step': '1', 'min': '0'}),
             'valor_pagar': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            'valor_pago': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            # type="date" exige value ISO (YYYY-MM-DD)
-            'data_pagamento': forms.DateInput(
-                attrs={'type': 'date'},
-                format='%Y-%m-%d',
-            ),
         }
         labels = {
             'funcionario': 'Funcionário',
@@ -306,8 +319,6 @@ class ValeTransporteItemForm(BaseStyledModelForm):
             'viagens_dia': 'X',
             'dias': 'Dias',
             'valor_pagar': 'Valor Total de VT',
-            'valor_pago': 'Valor pago',
-            'data_pagamento': 'Data de pagamento',
             'pix': 'Chave Pix',
             'tipo_pix': 'Tipo Pix',
             'banco': 'Banco',
@@ -322,13 +333,6 @@ class ValeTransporteItemForm(BaseStyledModelForm):
         self.apply_bootstrap_classes()
 
         self.fields['funcionario'].required = False
-        self.fields['observacao'].required = False
-
-        if 'data_pagamento' in self.fields:
-            dp = self.fields['data_pagamento']
-            dp.widget.format = '%Y-%m-%d'
-            dp.input_formats = ['%Y-%m-%d', '%d/%m/%Y', '%d/%m/%y']
-
         if self.tabela:
             empresa = self.tabela.competencia.empresa
             funcionarios_qs = Funcionario.objects.filter(

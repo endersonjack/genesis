@@ -16,11 +16,11 @@ from auditoria.registry import audit_controles_rh
 
 from core.urlutils import redirect_empresa, reverse_empresa
 
-from controles_rh.models import Competencia, ValeTransporteItem, ValeTransporteTabela
+from controles_rh.models import Competencia, ValeTransporteItem, ValeTransportePagamento, ValeTransporteTabela
 from rh.models import Funcionario
 from controles_rh.forms import (
     ValeTransporteItemForm,
-    ValeTransporteItemPagamentoForm,
+    ValeTransportePagamentoFormSet,
     ValeTransporteTabelaForm,
 )
 
@@ -473,7 +473,7 @@ def detalhe_tabela_vt(request, pk):
 
     itens = (
         _filtrar_itens_vt(
-            tabela.itens.select_related('funcionario', 'funcionario__local_trabalho'),
+            tabela.itens.select_related('funcionario', 'funcionario__local_trabalho').prefetch_related('pagamentos'),
             filtros,
         )
         .order_by(*_order_by_itens_vt(ordenacao))
@@ -651,16 +651,24 @@ def reordenar_itens_vt(request, tabela_pk):
     )
     return JsonResponse({'ok': True})
 
+def _pagamentos_formset_item_vt(request, item):
+    data = request.POST if request.method == 'POST' else None
+    return ValeTransportePagamentoFormSet(
+        data,
+        instance=item,
+        prefix='pagamentos',
+    )
 
 @login_required
 def adicionar_item_vt(request, tabela_pk):
     """
-    Adiciona uma nova linha manual à tabela VT.
+    Adiciona uma nova linha manual a tabela VT.
     """
     tabela = _get_tabela_vt_empresa(request, tabela_pk)
 
     ultima_ordem = tabela.itens.order_by('-ordem').values_list('ordem', flat=True).first() or 0
 
+    item_formset_base = ValeTransporteItem(tabela=tabela)
     form = ValeTransporteItemForm(
         request.POST or None,
         tabela=tabela,
@@ -671,32 +679,41 @@ def adicionar_item_vt(request, tabela_pk):
             'dias': 20,
         }
     )
+    pagamento_formset = _pagamentos_formset_item_vt(request, item_formset_base)
 
     if request.method == 'POST':
         if form.is_valid():
-            item = form.save()
-            audit_controles_rh(
-                request,
-                'create',
-                f'Linha VT "{item.nome_exibicao}" adicionada.',
-                {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
-            )
-            messages.success(request, f'Linha "{item.nome_exibicao}" adicionada com sucesso.')
+            item = form.save(commit=False)
+            item.tabela = tabela
+            pagamento_formset = _pagamentos_formset_item_vt(request, item)
+            if pagamento_formset.is_valid():
+                with transaction.atomic():
+                    item.save()
+                    pagamento_formset.instance = item
+                    pagamento_formset.save()
+                    item.sincronizar_total_pago()
+                audit_controles_rh(
+                    request,
+                    'create',
+                    f'Linha VT "{item.nome_exibicao}" adicionada.',
+                    {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
+                )
+                messages.success(request, f'Linha "{item.nome_exibicao}" adicionada com sucesso.')
 
-            if _is_htmx(request):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
-                return response
+                if _is_htmx(request):
+                    response = HttpResponse(status=204)
+                    response['HX-Refresh'] = 'true'
+                    return response
 
-            return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
-
-        messages.error(request, 'Não foi possível adicionar a linha.')
+                return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
+        messages.error(request, 'Nao foi possivel adicionar a linha. Revise os campos.')
 
     context = {
         'tabela': tabela,
         'competencia': tabela.competencia,
         'item': None,
         'form': form,
+        'pagamento_formset': pagamento_formset,
         'modo': 'criar',
     }
     return render(request, 'controles_rh/vale_transporte/_form_item_modal.html', context)
@@ -715,10 +732,15 @@ def editar_item_vt(request, pk):
         instance=item,
         tabela=tabela
     )
+    pagamento_formset = _pagamentos_formset_item_vt(request, item)
 
     if request.method == 'POST':
-        if form.is_valid():
-            item = form.save()
+        if form.is_valid() and pagamento_formset.is_valid():
+            with transaction.atomic():
+                item = form.save()
+                pagamento_formset.instance = item
+                pagamento_formset.save()
+                item.sincronizar_total_pago()
             audit_controles_rh(
                 request,
                 'update',
@@ -734,13 +756,14 @@ def editar_item_vt(request, pk):
 
             return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
 
-        messages.error(request, 'Não foi possível atualizar a linha.')
+        messages.error(request, 'Nao foi possivel atualizar a linha. Revise os campos.')
 
     context = {
         'tabela': tabela,
         'competencia': tabela.competencia,
         'item': item,
         'form': form,
+        'pagamento_formset': pagamento_formset,
         'modo': 'editar',
     }
     return render(request, 'controles_rh/vale_transporte/_form_item_modal.html', context)
@@ -749,38 +772,37 @@ def editar_item_vt(request, pk):
 @login_required
 def modal_pagamento_item_vt(request, pk):
     """
-    Modal pequeno para editar valor pago e data de pagamento.
+    Modal pequeno para editar pagamentos parciais do item.
     """
     item = _get_item_vt_empresa(request, pk)
     tabela = item.tabela
 
-    form = ValeTransporteItemPagamentoForm(
-        request.POST or None,
-        instance=item,
-    )
+    pagamento_formset = _pagamentos_formset_item_vt(request, item)
 
     if request.method == 'POST':
-        if form.is_valid():
-            form.save()
+        if pagamento_formset.is_valid():
+            with transaction.atomic():
+                pagamento_formset.save()
+                item.sincronizar_total_pago()
             audit_controles_rh(
                 request,
                 'update',
-                f'Pagamento VT atualizado — {item.nome_exibicao}.',
+                f'Pagamentos VT atualizados - {item.nome_exibicao}.',
                 {'item_vt_id': item.pk, 'tabela_vt_id': tabela.pk},
             )
-            messages.success(request, 'Pagamento atualizado.')
+            messages.success(request, 'Pagamentos atualizados.')
             if _is_htmx(request):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
             return redirect_empresa(request, 'controles_rh:detalhe_tabela_vt', pk=tabela.pk)
-        messages.error(request, 'Revise os valores informados.')
+        messages.error(request, 'Revise os pagamentos informados.')
 
     context = {
         'item': item,
         'tabela': tabela,
         'competencia': tabela.competencia,
-        'form': form,
+        'pagamento_formset': pagamento_formset,
     }
     return render(request, 'controles_rh/vale_transporte/_modal_pagamento_item.html', context)
 
@@ -795,11 +817,17 @@ def pagar_total_item_vt(request, pk):
     tabela = item.tabela
 
     item.save()
-    total = item.valor_pagar or Decimal('0')
-    item.valor_pago = total
-    if item.data_pagamento is None:
-        item.data_pagamento = timezone.localdate()
-    item.save()
+    saldo = item.saldo
+    total = saldo if saldo > 0 else (item.valor_pagar or Decimal('0'))
+    if total > 0:
+        ValeTransportePagamento.objects.create(
+            item=item,
+            valor=total,
+            data_pagamento=timezone.localdate(),
+            observacao='Pagamento total',
+            ordem=(item.pagamentos.order_by('-ordem').values_list('ordem', flat=True).first() or 0) + 1,
+        )
+    item.sincronizar_total_pago()
 
     audit_controles_rh(
         request,

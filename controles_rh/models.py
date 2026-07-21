@@ -473,6 +473,25 @@ class ValeTransporteItem(models.Model):
         return vp - pp
 
     @property
+    def pagamentos_ordenados(self):
+        return self.pagamentos.order_by('data_pagamento', 'id')
+
+    def sincronizar_total_pago(self):
+        total = self.pagamentos.aggregate(total=models.Sum('valor'))['total'] or Decimal('0.00')
+        ultimo = (
+            self.pagamentos.exclude(data_pagamento__isnull=True)
+            .order_by('-data_pagamento', '-id')
+            .values_list('data_pagamento', flat=True)
+            .first()
+        )
+        self.valor_pago = total
+        self.data_pagamento = ultimo
+        ValeTransporteItem.objects.filter(pk=self.pk).update(
+            valor_pago=total,
+            data_pagamento=ultimo,
+        )
+
+    @property
     def classe_linha_pagamento(self):
         if not self.ativo:
             return ''
@@ -538,6 +557,64 @@ class ValeTransporteItem(models.Model):
 
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class ValeTransportePagamento(models.Model):
+    """Registro individual de pagamento parcial de uma linha de Vale Transporte."""
+
+    item = models.ForeignKey(
+        ValeTransporteItem,
+        on_delete=models.CASCADE,
+        related_name='pagamentos',
+    )
+    valor = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Valor pago',
+    )
+    data_pagamento = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data de pagamento',
+    )
+    observacao = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='Observacao',
+    )
+    ordem = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Ordem',
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Pagamento de Vale Transporte'
+        verbose_name_plural = 'Pagamentos de Vale Transporte'
+        ordering = ['ordem', 'data_pagamento', 'id']
+
+    def __str__(self):
+        data = self.data_pagamento.strftime('%d/%m/%Y') if self.data_pagamento else 'sem data'
+        return f'{self.item.nome_exibicao} - R$ {self.valor} - {data}'
+
+    def clean(self):
+        errors = {}
+        if self.valor is not None and self.valor < 0:
+            errors['valor'] = 'O valor pago nao pode ser negativo.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+        self.item.sincronizar_total_pago()
+
+    def delete(self, *args, **kwargs):
+        item = self.item
+        result = super().delete(*args, **kwargs)
+        item.sincronizar_total_pago()
+        return result
 
 
 class CestaBasicaLista(models.Model):

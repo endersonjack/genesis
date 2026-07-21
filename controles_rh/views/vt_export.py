@@ -43,7 +43,7 @@ def _safe_filename_part(text):
 
 
 def _itens_export(tabela, ordenacao='nome', filtros=None):
-    qs = tabela.itens.select_related('funcionario', 'funcionario__local_trabalho')
+    qs = tabela.itens.select_related('funcionario', 'funcionario__local_trabalho').prefetch_related('pagamentos')
     if filtros:
         qs = _filtrar_itens_vt(qs, filtros)
     return qs.order_by(*_order_by_itens_vt(ordenacao))
@@ -66,9 +66,25 @@ def _resumo_tabela_export(tabela, itens_qs):
 
 
 def _row_data_pagamento(item):
+    datas = [
+        pagamento.data_pagamento.strftime('%d/%m/%Y')
+        for pagamento in item.pagamentos.all()
+        if pagamento.data_pagamento
+    ]
+    if datas:
+        return '\n'.join(datas)
     if item.data_pagamento:
         return item.data_pagamento.strftime('%d/%m/%Y')
-    return '—'
+    return '-'
+
+
+def _row_valor_pago(item):
+    linhas = [f'Total: R$ {_fmt_br_decimal(item.valor_pago or 0)}']
+    for pagamento in item.pagamentos.all():
+        data = pagamento.data_pagamento.strftime('%d/%m/%Y') if pagamento.data_pagamento else 'sem data'
+        obs = f' - {pagamento.observacao}' if pagamento.observacao else ''
+        linhas.append(f'R$ {_fmt_br_decimal(pagamento.valor or 0)} - {data}{obs}')
+    return '\n'.join(linhas)
 
 
 def _fmt_br_decimal(val):
@@ -275,7 +291,7 @@ def exportar_tabela_vt_xlsx(request, pk):
             funcionario_txt,
             item.endereco or '',
             float(item.valor_pagar or 0),
-            float(item.valor_pago or 0),
+            _row_valor_pago(item),
             saldo_val,
             _row_data_pagamento(item),
             item.pix or '',
@@ -291,6 +307,8 @@ def exportar_tabela_vt_xlsx(request, pk):
                     wrap_text=True,
                     indent=4 if foto_png else 0,
                 )
+            elif col == 5:
+                cell.alignment = Alignment(horizontal='right', vertical='top', wrap_text=True)
         if foto_png:
             try:
                 funcionario_img = XLImage(BytesIO(foto_png))
@@ -449,7 +467,7 @@ def exportar_tabela_vt_pdf(request, pk):
                 str(n),
                 nome_cell,
                 f'{item.valor_pagar or 0:.2f}'.replace('.', ','),
-                f'{item.valor_pago or 0:.2f}'.replace('.', ','),
+                Paragraph(xml_escape(_row_valor_pago(item)).replace('\n', '<br/>'), pix_para_style),
                 saldo_s,
                 pix_cell,
                 data_cell,

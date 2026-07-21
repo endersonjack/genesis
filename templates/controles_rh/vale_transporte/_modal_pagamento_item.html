@@ -1,5 +1,5 @@
-<div class="modal-header py-2">
-    <h5 class="modal-title fw-bold small">Pagamento — {{ item.nome_exibicao }}</h5>
+﻿<div class="modal-header py-2">
+    <h5 class="modal-title fw-bold small">Pagamentos — {{ item.nome_exibicao }}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
 
@@ -12,33 +12,89 @@
     {% csrf_token %}
 
     <div class="modal-body py-3">
+        <style>
+            #modalPagamentoVt .modal-dialog { max-width: min(760px, calc(100vw - 1rem)); }
+            .vt-payment-quick-row {
+                border: 1px solid #e2e8f0;
+                border-radius: .55rem;
+                padding: .55rem;
+                background: #fff;
+            }
+            .vt-payment-quick-row + .vt-payment-quick-row { margin-top: .45rem; }
+            .vt-payment-delete-field { display: none; }
+            .vt-payment-remove { min-height: 2rem; padding: .2rem .45rem; }
+        </style>
         <p class="small text-muted mb-3">
             Valor total VT:
             <strong class="text-dark">R$ {{ item.valor_pagar|floatformat:2 }}</strong>
+            · Total pago:
+            <strong class="text-success">R$ {{ item.valor_pago|floatformat:2 }}</strong>
             · Saldo:
             <strong class="text-dark">R$ {{ item.saldo|floatformat:2 }}</strong>
         </p>
-        <div class="mb-3">
-            <label class="form-label fw-semibold mb-1" for="{{ form.valor_pago.id_for_label }}">
-                {{ form.valor_pago.label }}
-            </label>
-            {{ form.valor_pago }}
-            {% if form.valor_pago.errors %}
-                <div class="text-danger small mt-1">{{ form.valor_pago.errors|join:", " }}</div>
-            {% endif %}
+
+        {{ pagamento_formset.management_form }}
+        {% if pagamento_formset.non_form_errors %}
+            <div class="alert alert-danger py-2 mb-2">{{ pagamento_formset.non_form_errors }}</div>
+        {% endif %}
+        <div id="vt-payment-quick-rows">
+            {% for pagamento_form in pagamento_formset.forms %}
+                <div class="vt-payment-quick-row" data-payment-row>
+                    {% for hidden in pagamento_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold mb-1" for="{{ pagamento_form.valor.id_for_label }}">{{ pagamento_form.valor.label }}</label>
+                            {{ pagamento_form.valor }}
+                            {% if pagamento_form.valor.errors %}<div class="text-danger small mt-1">{{ pagamento_form.valor.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold mb-1" for="{{ pagamento_form.data_pagamento.id_for_label }}">{{ pagamento_form.data_pagamento.label }}</label>
+                            {{ pagamento_form.data_pagamento }}
+                            {% if pagamento_form.data_pagamento.errors %}<div class="text-danger small mt-1">{{ pagamento_form.data_pagamento.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label fw-semibold mb-1" for="{{ pagamento_form.observacao.id_for_label }}">{{ pagamento_form.observacao.label }}</label>
+                            {{ pagamento_form.observacao }}
+                            {% if pagamento_form.observacao.errors %}<div class="text-danger small mt-1">{{ pagamento_form.observacao.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-12 col-md-1 d-grid">
+                            <span class="vt-payment-delete-field">{{ pagamento_form.DELETE }}</span>
+                            <button type="button" class="btn btn-outline-danger vt-payment-remove" title="Remover pagamento">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
-        <div class="mb-0">
-            <label class="form-label fw-semibold mb-1" for="{{ form.data_pagamento.id_for_label }}">
-                {{ form.data_pagamento.label }}
-            </label>
-            {{ form.data_pagamento }}
-            {% if form.data_pagamento.help_text %}
-                <div class="form-text">{{ form.data_pagamento.help_text }}</div>
-            {% endif %}
-            {% if form.data_pagamento.errors %}
-                <div class="text-danger small mt-1">{{ form.data_pagamento.errors|join:", " }}</div>
-            {% endif %}
-        </div>
+        <template id="vt-payment-quick-empty-template">
+            <div class="vt-payment-quick-row" data-payment-row>
+                {% for hidden in pagamento_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label fw-semibold mb-1" for="{{ pagamento_formset.empty_form.valor.id_for_label }}">{{ pagamento_formset.empty_form.valor.label }}</label>
+                        {{ pagamento_formset.empty_form.valor }}
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label fw-semibold mb-1" for="{{ pagamento_formset.empty_form.data_pagamento.id_for_label }}">{{ pagamento_formset.empty_form.data_pagamento.label }}</label>
+                        {{ pagamento_formset.empty_form.data_pagamento }}
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label fw-semibold mb-1" for="{{ pagamento_formset.empty_form.observacao.id_for_label }}">{{ pagamento_formset.empty_form.observacao.label }}</label>
+                        {{ pagamento_formset.empty_form.observacao }}
+                    </div>
+                    <div class="col-12 col-md-1 d-grid">
+                        <span class="vt-payment-delete-field">{{ pagamento_formset.empty_form.DELETE }}</span>
+                        <button type="button" class="btn btn-outline-danger vt-payment-remove" title="Remover pagamento">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="vt-add-payment-quick-row">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar pagamento
+        </button>
     </div>
 
     <div class="modal-footer py-2 d-flex flex-wrap align-items-center gap-2">
@@ -47,8 +103,8 @@
                 hx-post="{% url 'controles_rh:pagar_total_item_vt' empresa_id=request.empresa_ativa.pk pk=item.pk %}"
                 hx-target="#modal-pagamento-vt-content"
                 hx-swap="innerHTML"
-                hx-confirm="Deseja registrar o pagamento na totalidade?">
-            Pagar total
+                hx-confirm="Deseja registrar o saldo restante como pagamento?">
+            Pagar saldo
         </button>
         <div class="ms-auto d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
@@ -56,3 +112,41 @@
         </div>
     </div>
 </form>
+
+<script>
+(function () {
+    const rows = document.getElementById('vt-payment-quick-rows');
+    const addBtn = document.getElementById('vt-add-payment-quick-row');
+    const template = document.getElementById('vt-payment-quick-empty-template');
+    const totalForms = document.querySelector('input[name="pagamentos-TOTAL_FORMS"]');
+
+    function wire(row) {
+        const btn = row.querySelector('.vt-payment-remove');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            const del = row.querySelector('input[name$="-DELETE"]');
+            if (del) {
+                del.checked = true;
+                row.style.display = 'none';
+            } else {
+                row.remove();
+            }
+        });
+    }
+
+    if (rows) rows.querySelectorAll('[data-payment-row]').forEach(wire);
+    if (addBtn && template && rows && totalForms) {
+        addBtn.addEventListener('click', function () {
+            const index = parseInt(totalForms.value || '0', 10);
+            const html = template.innerHTML.replace(/__prefix__/g, String(index));
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html.trim();
+            const row = wrap.firstElementChild;
+            if (!row) return;
+            rows.appendChild(row);
+            totalForms.value = String(index + 1);
+            wire(row);
+        });
+    }
+})();
+</script>
