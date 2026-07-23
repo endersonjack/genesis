@@ -148,6 +148,7 @@ class FerramentaForm(forms.ModelForm):
             'cor',
             'tamanho',
             'codigo_numeracao',
+            'quantidade',
             'preco',
             'fornecedor',
             'ativo',
@@ -174,6 +175,9 @@ class FerramentaForm(forms.ModelForm):
             'codigo_numeracao': forms.TextInput(
                 attrs={'class': 'form-control rounded-3', 'maxlength': 64}
             ),
+            'quantidade': forms.NumberInput(
+                attrs={'class': 'form-control rounded-3', 'step': '1', 'min': 0}
+            ),
             'preco': forms.NumberInput(
                 attrs={'class': 'form-control rounded-3', 'step': '0.01', 'min': 0}
             ),
@@ -198,12 +202,14 @@ class FerramentaForm(forms.ModelForm):
             'cor': 'Cor',
             'tamanho': 'Tamanho',
             'codigo_numeracao': 'Código / numeração',
+            'quantidade': 'Quantidade',
             'preco': 'Preço',
             'fornecedor': 'Fornecedor',
             'ativo': 'Ativa',
             'observacoes': 'Obs.',
         }
         help_texts = {
+            'quantidade': 'Quantidade cadastrada desta ferramenta.',
             'ativo': 'Desmarque para inativar: some das buscas principais.',
         }
 
@@ -227,6 +233,7 @@ class FerramentaForm(forms.ModelForm):
         self.fields['cor'].required = False
         self.fields['tamanho'].required = False
         self.fields['codigo_numeracao'].required = False
+        self.fields['quantidade'].required = False
         self.fields['preco'].required = False
         self.fields['observacoes'].required = False
 
@@ -245,6 +252,14 @@ class FerramentaForm(forms.ModelForm):
                     'Já existe uma ferramenta com este código nesta empresa.'
                 )
         return cod
+
+    def clean_quantidade(self):
+        quantidade = self.cleaned_data.get('quantidade')
+        if quantidade is None:
+            return 0
+        if quantidade < 0:
+            raise forms.ValidationError('Informe uma quantidade maior ou igual a zero.')
+        return quantidade
 
     def clean_descricao(self):
         d = (self.cleaned_data.get('descricao') or '').strip()

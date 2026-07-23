@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -25,12 +26,16 @@ from .cautela_forms import (
 )
 from .models import (
     Cautela,
+    CautelaFerramentaQuantidade,
     Entrega_Cautela,
     Ferramenta,
     MotivoDevolucaoCautela,
     RascunhoNovaCautela,
     SituacaoFerramentasPosDevolucao,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _empresa(request):
@@ -64,6 +69,31 @@ def _parse_ferramentas_devolucao_ids(request) -> list[int]:
     return ids
 
 
+def _parse_ferramentas_quantidades_post(request) -> dict[int, int]:
+    quantidades: dict[int, int] = {}
+    for raw in request.POST.getlist('ferramentas_quantidades'):
+        try:
+            sid, sqtd = str(raw).split(':', 1)
+            fid = int(sid.strip())
+            qtd = int(sqtd.strip())
+        except (TypeError, ValueError):
+            continue
+        if fid > 0 and qtd > 0:
+            quantidades[fid] = quantidades.get(fid, 0) + qtd
+
+    if quantidades:
+        return quantidades
+
+    for raw in request.POST.getlist('ferramentas_ids'):
+        try:
+            fid = int(str(raw).strip())
+        except (TypeError, ValueError):
+            continue
+        if fid > 0:
+            quantidades[fid] = quantidades.get(fid, 0) + 1
+    return quantidades
+
+
 def _devolucao_catalogos_prontos(empresa) -> bool:
     return (
         MotivoDevolucaoCautela.objects.filter(empresa=empresa, ativo=True).exists()
@@ -71,6 +101,61 @@ def _devolucao_catalogos_prontos(empresa) -> bool:
             empresa=empresa, ativo=True
         ).exists()
     )
+
+
+def _uso_ferramentas_ativas(empresa, ferramenta_ids) -> dict[int, int]:
+    ids = {int(fid) for fid in ferramenta_ids if fid}
+    if not ids:
+        return {}
+    return dict(
+        CautelaFerramentaQuantidade.objects.filter(
+            cautela__empresa=empresa,
+            cautela__situacao=Cautela.Situacao.ATIVA,
+            cautela__ferramentas=F('ferramenta'),
+            ferramenta_id__in=ids,
+        )
+        .values('ferramenta_id')
+        .annotate(total=Sum('quantidade'))
+        .values_list('ferramenta_id', 'total')
+    )
+
+
+def _anotar_saldo_ferramentas(empresa, ferramentas):
+    ferrs = list(ferramentas)
+    uso = _uso_ferramentas_ativas(empresa, [f.pk for f in ferrs])
+    for f in ferrs:
+        total = max(int(getattr(f, 'quantidade', 0) or 0), 0)
+        em_cautela = int(uso.get(f.pk, 0) or 0)
+        disponivel = max(total - em_cautela, 0)
+        f.quantidade_cadastrada = total
+        f.quantidade_em_cautela = em_cautela
+        f.quantidade_disponivel = disponivel
+        f.cautela_sem_saldo = disponivel <= 0
+    return ferrs
+
+
+def _ferramentas_sem_saldo(empresa, ferramentas):
+    return [f for f in _anotar_saldo_ferramentas(empresa, ferramentas) if f.cautela_sem_saldo]
+
+
+def _sync_situacao_ferramentas_por_quantidade(empresa, ferramenta_ids) -> None:
+    ids = {int(fid) for fid in ferramenta_ids if fid}
+    if not ids:
+        return
+    ferrs = _anotar_saldo_ferramentas(
+        empresa,
+        Ferramenta.objects.filter(empresa=empresa, pk__in=ids),
+    )
+    ocupadas = [f.pk for f in ferrs if f.cautela_sem_saldo]
+    livres = [f.pk for f in ferrs if not f.cautela_sem_saldo]
+    if ocupadas:
+        Ferramenta.objects.filter(empresa=empresa, pk__in=ocupadas).update(
+            situacao_cautela=Ferramenta.SituacaoCautela.OCUPADA
+        )
+    if livres:
+        Ferramenta.objects.filter(empresa=empresa, pk__in=livres).update(
+            situacao_cautela=Ferramenta.SituacaoCautela.LIVRE
+        )
 
 
 _RASCUNHO_FORM_KEYS = frozenset(
@@ -116,6 +201,11 @@ def _sanitizar_rascunho_nova_cautela(payload: object) -> dict:
             if fid <= 0:
                 continue
             du = str(it.get('detail_url', '') or '')[:800]
+            try:
+                qtd = int(it.get('quantidade') or 1)
+            except (TypeError, ValueError):
+                qtd = 1
+            qtd = max(qtd, 1)
             items.append(
                 {
                     'id': fid,
@@ -123,6 +213,7 @@ def _sanitizar_rascunho_nova_cautela(payload: object) -> dict:
                     'marca': str(it.get('marca', '') or '')[:_RASCUNHO_ITEM_STR_MAX],
                     'cat': str(it.get('cat', '') or '')[:_RASCUNHO_ITEM_STR_MAX],
                     'code': str(it.get('code', '') or '')[:_RASCUNHO_ITEM_STR_MAX],
+                    'quantidade': qtd,
                     'cor': str(it.get('cor', '') or '')[:_RASCUNHO_ITEM_STR_MAX],
                     'tamanho': str(it.get('tamanho', '') or '')[:_RASCUNHO_ITEM_STR_MAX],
                     'detail_url': du,
@@ -155,6 +246,8 @@ def _rascunho_nova_cautela_de_post(request, empresa) -> dict | None:
             continue
         if rid not in ids:
             ids.append(rid)
+
+    quantidades = _parse_ferramentas_quantidades_post(request)
 
     form_vals = {
         'funcionario_id': (p.get('funcionario') or '').strip(),
@@ -189,6 +282,7 @@ def _rascunho_nova_cautela_de_post(request, empresa) -> dict | None:
                     'marca': f.marca or '',
                     'cat': f.categoria.nome if f.categoria_id else '',
                     'code': f.codigo_numeracao or '',
+                    'quantidade': quantidades.get(rid, 1),
                     'cor': f.cor or '',
                     'tamanho': f.tamanho or '',
                     'detail_url': reverse_empresa(
@@ -283,7 +377,14 @@ def detalhe_cautela(request, pk: int):
     )
     pode_adiar_cautela = cautela.situacao == Cautela.Situacao.ATIVA
 
+    qtd_por_ferramenta = dict(
+        CautelaFerramentaQuantidade.objects.filter(cautela=cautela).values_list(
+            'ferramenta_id', 'quantidade'
+        )
+    )
     ferramentas_ativas_na_cautela = list(cautela.ferramentas.all())
+    for f in ferramentas_ativas_na_cautela:
+        f.quantidade_cautela = qtd_por_ferramenta.get(f.pk, 1)
     ativas_ids = {f.pk for f in ferramentas_ativas_na_cautela}
     entregues_por_pk: dict[int, Ferramenta] = {}
     for ent in cautela.entregas.all():
@@ -297,6 +398,8 @@ def detalhe_cautela(request, pk: int):
         ),
         key=lambda x: x.descricao.lower(),
     )
+    for f in ferramentas_entregues_na_cautela:
+        f.quantidade_cautela = qtd_por_ferramenta.get(f.pk, 1)
     total_ferramentas_listagem = len(ferramentas_ativas_na_cautela) + len(
         ferramentas_entregues_na_cautela
     )
@@ -495,10 +598,8 @@ def editar_cautela_staff(request, pk: int):
                     )
                 obj.save()
                 if pks_to_free:
-                    Ferramenta.objects.filter(
-                        pk__in=pks_to_free, empresa=empresa
-                    ).update(situacao_cautela=Ferramenta.SituacaoCautela.LIVRE)
                     locked.ferramentas.clear()
+                    _sync_situacao_ferramentas_por_quantidade(empresa, pks_to_free)
 
             registrar_auditoria(
                 request,
@@ -548,11 +649,8 @@ def excluir_cautela_staff(request, pk: int):
                 pk=cautela.pk, empresa=empresa
             )
             pks = list(locked.ferramentas.values_list('pk', flat=True))
-            if pks:
-                Ferramenta.objects.filter(pk__in=pks, empresa=empresa).update(
-                    situacao_cautela=Ferramenta.SituacaoCautela.LIVRE
-                )
             locked.delete()
+            _sync_situacao_ferramentas_por_quantidade(empresa, pks)
 
         registrar_auditoria(
             request,
@@ -586,82 +684,86 @@ def nova_cautela(request):
 
     if request.method == 'POST':
         form = CautelaForm(request.POST, empresa=empresa, request=request)
-        raw_ids = request.POST.getlist('ferramentas_ids')
-        ids: list[int] = []
-        for r in raw_ids:
-            try:
-                rid = int(str(r).strip())
-            except Exception:
-                continue
-            if rid not in ids:
-                ids.append(rid)
+        quantidades = _parse_ferramentas_quantidades_post(request)
+        ids = list(quantidades.keys())
 
         if not ids:
             messages.error(request, 'Selecione ao menos 1 ferramenta.')
 
         if form.is_valid() and ids:
             try:
-                reserved_ids = set(
-                    Ferramenta.objects.filter(
-                        empresa=empresa,
-                        ativo=True,
-                        pk__in=ids,
-                        situacao_cautela=Ferramenta.SituacaoCautela.OCUPADA,
-                    ).values_list('pk', flat=True)
-                )
-
-                if reserved_ids:
-                    messages.error(
-                        request,
-                        'Uma ou mais ferramentas já estão em cautela ativa. '
-                        'Elas não podem ser selecionadas para uma nova cautela.',
+                with transaction.atomic():
+                    ferrs = list(
+                        Ferramenta.objects.select_for_update()
+                        .filter(empresa=empresa, ativo=True, pk__in=ids)
+                        .select_related('categoria')
                     )
-                    # cai fora do try: volta ao render da página
-                    raise ValueError('Ferramenta indisponível')
-
-                ferrs = (
-                    Ferramenta.objects.filter(
-                        empresa=empresa, ativo=True, pk__in=ids
-                    ).exclude(
-                        situacao_cautela=Ferramenta.SituacaoCautela.OCUPADA
-                    )
-                    .select_related('categoria')
-                    .distinct()
-                )
-                if ferrs.count() != len(set(ids)):
-                    messages.error(
-                        request,
-                        'Uma ou mais ferramentas selecionadas são inválidas.',
-                    )
-                else:
-                    with transaction.atomic():
-                        obj = form.save(commit=False)
-                        obj.empresa = empresa
-                        obj.almoxarife = request.user
-                        obj.situacao = Cautela.Situacao.ATIVA
-                        obj.entrega = Cautela.Entrega.NAO
-                        obj.save()
-                        obj.ferramentas.set(ferrs)
-                        Ferramenta.objects.filter(
-                            pk__in=ferrs.values_list('pk', flat=True)
-                        ).update(
-                            situacao_cautela=Ferramenta.SituacaoCautela.OCUPADA
-                        )
-
-                        registrar_auditoria(
+                    if len(ferrs) != len(set(ids)):
+                        messages.error(
                             request,
-                            acao='create',
-                            resumo=f'Cautela #{obj.pk} cadastrada.',
-                            modulo='estoque',
-                            detalhes={'cautela_id': obj.pk},
+                            'Uma ou mais ferramentas selecionadas são inválidas.',
                         )
+                        raise ValueError('Ferramenta inválida')
 
-                    messages.success(request, 'Cautela cadastrada.')
-                    _excluir_rascunho_nova_cautela(empresa, request.user)
-                    return redirect(
-                        reverse_empresa(request, 'estoque:cautela_ferramentas')
+                    ferrs = _anotar_saldo_ferramentas(empresa, ferrs)
+                    sem_saldo = [
+                        f
+                        for f in ferrs
+                        if quantidades.get(f.pk, 0) > f.quantidade_disponivel
+                    ]
+                    if sem_saldo:
+                        nomes = ', '.join(f.descricao for f in sem_saldo[:3])
+                        if len(sem_saldo) > 3:
+                            nomes += '...'
+                        messages.error(
+                            request,
+                            'Uma ou mais ferramentas estão sem quantidade disponível para nova cautela: '
+                            f'{nomes}.',
+                        )
+                        raise ValueError('Ferramenta sem saldo')
+
+                    obj = form.save(commit=False)
+                    obj.empresa = empresa
+                    obj.almoxarife = request.user
+                    obj.situacao = Cautela.Situacao.ATIVA
+                    obj.entrega = Cautela.Entrega.NAO
+                    obj.save()
+                    obj.ferramentas.set(ferrs)
+                    CautelaFerramentaQuantidade.objects.bulk_create(
+                        [
+                            CautelaFerramentaQuantidade(
+                                cautela=obj,
+                                ferramenta=f,
+                                quantidade=quantidades.get(f.pk, 1),
+                            )
+                            for f in ferrs
+                        ]
                     )
+                    _sync_situacao_ferramentas_por_quantidade(
+                        empresa, [f.pk for f in ferrs]
+                    )
+                    obj_pk = obj.pk
+
+                try:
+                    registrar_auditoria(
+                        request,
+                        acao='create',
+                        resumo=f'Cautela #{obj_pk} cadastrada.',
+                        modulo='estoque',
+                        detalhes={'cautela_id': obj_pk},
+                    )
+                except Exception:
+                    logger.exception('Erro ao registrar auditoria da cautela %s.', obj_pk)
+
+                messages.success(request, 'Cautela cadastrada.')
+                _excluir_rascunho_nova_cautela(empresa, request.user)
+                return redirect(
+                    reverse_empresa(request, 'estoque:cautela_ferramentas')
+                )
+            except ValueError:
+                pass
             except Exception:
+                logger.exception('Erro ao cadastrar cautela de ferramentas.')
                 messages.error(
                     request, 'Não foi possível cadastrar a cautela. Tente de novo.'
                 )
@@ -776,8 +878,6 @@ def partial_buscar_itens_cautela(request):
         .order_by('descricao')
     )
 
-    # UI usa `Ferramenta.situacao_cautela` (persistido) para mostrar LIVRE/OCUPADA.
-
     q_filter = (
         Q(descricao__icontains=q)
         | Q(marca__icontains=q)
@@ -798,6 +898,7 @@ def partial_buscar_itens_cautela(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
+    page_obj.object_list = _anotar_saldo_ferramentas(empresa, page_obj.object_list)
 
     return render(
         request,
@@ -973,10 +1074,8 @@ def modal_entrega_cautela(request, pk: int):
                     entrega.ferramentas_devolvidas.set(ferramentas_a_livrar)
 
                     pks_livrar = [f.pk for f in ferramentas_a_livrar]
-                    Ferramenta.objects.filter(pk__in=pks_livrar).update(
-                        situacao_cautela=Ferramenta.SituacaoCautela.LIVRE
-                    )
                     locked.ferramentas.remove(*ferramentas_a_livrar)
+                    _sync_situacao_ferramentas_por_quantidade(empresa, pks_livrar)
 
                     restantes = locked.ferramentas.count()
                     if restantes == 0:

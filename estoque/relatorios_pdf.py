@@ -316,6 +316,7 @@ def build_http_response(request, empresa, ctx: dict) -> HttpResponse:
                 story.append(
                     _p(
                         f'<b>{xml_escape(ferr.descricao)}</b> — '
+                        f'Qtd.: {getattr(ferr, "quantidade", 0) or 0} — '
                         f'{xml_escape(ferr.get_situacao_cautela_display())}',
                         styles['Normal'],
                     )

@@ -56,6 +56,8 @@
                     <dd class="col-sm-8 mb-3">{% if ferramenta.tamanho %}{{ ferramenta.tamanho }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
                     <dt class="col-sm-4 text-muted small fw-semibold">Código / numeração</dt>
                     <dd class="col-sm-8 mb-3">{% if ferramenta.codigo_numeracao %}{{ ferramenta.codigo_numeracao }}{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                    <dt class="col-sm-4 text-muted small fw-semibold">Quantidade</dt>
+                    <dd class="col-sm-8 mb-3 fw-semibold">{{ ferramenta.quantidade|default:0 }}</dd>
                     <dt class="col-sm-4 text-muted small fw-semibold">Preço</dt>
                     <dd class="col-sm-8 mb-3">
                         {% if ferramenta.preco is not None %}

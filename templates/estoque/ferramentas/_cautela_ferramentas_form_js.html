@@ -202,6 +202,8 @@
             var marca = it.marca || '—';
             var cat = it.cat || '—';
             var code = it.code ? String(it.code) : '—';
+            var quantidade = String(it.quantidade || '1');
+            if (quantidade === '0') quantidade = '1';
             var cor = it.cor || '—';
             var tamanho = it.tamanho || '—';
             var detailUrl = it.detail_url || '';
@@ -211,6 +213,7 @@
                 <td>${marca}</td>
                 <td>${cat}</td>
                 <td class="text-nowrap">${code}</td>
+                <td class="text-end fw-semibold">${quantidade}</td>
                 <td>${cor}</td>
                 <td>${tamanho}</td>
                 <td class="text-end">
@@ -233,13 +236,31 @@
             inp.name = 'ferramentas_ids';
             inp.value = String(it.id);
             hiddenInputs.appendChild(inp);
+
+            var qinp = document.createElement('input');
+            qinp.type = 'hidden';
+            qinp.name = 'ferramentas_quantidades';
+            qinp.value = String(it.id) + ':' + quantidade;
+            hiddenInputs.appendChild(qinp);
         });
     }
 
+    function getItem(id) {
+        var sid = String(id);
+        return (state.items || []).find(function (x) {
+            return String(x.id) === sid;
+        }) || null;
+    }
+
+    function getItemQuantidade(id) {
+        var it = getItem(id);
+        if (!it) return 0;
+        var qtd = parseInt(it.quantidade || 0, 10);
+        return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
+    }
+
     function idExists(id) {
-        return (state.items || []).some(function (x) {
-            return String(x.id) === String(id);
-        });
+        return !!getItem(id);
     }
 
     function syncCautelaModalRascunho(scope) {
@@ -248,10 +269,16 @@
             if (tr.getAttribute('data-db-ocupada') === '1') return;
             var pk = tr.getAttribute('data-ferramenta-pk');
             if (!pk) return;
-            var inDraft = idExists(pk);
+            var baseDisponivel = parseInt(tr.dataset.ferramentaDisponivel || '0', 10);
+            if (!Number.isFinite(baseDisponivel) || baseDisponivel < 0) baseDisponivel = 0;
+            var qtdRascunho = getItemQuantidade(pk);
+            var restante = Math.max(baseDisponivel - qtdRascunho, 0);
+            var inDraft = qtdRascunho > 0;
             var livreSpan = tr.querySelector('.js-cautela-badge-livre');
             var rascunhoSpan = tr.querySelector('.js-cautela-badge-rascunho');
+            var qtdCell = tr.querySelector('.js-cautela-qtd-disponivel');
             var addBtn = tr.querySelector('.js-cautela-add-ferramenta');
+            if (qtdCell) qtdCell.textContent = String(restante);
             if (livreSpan && rascunhoSpan) {
                 if (inDraft) {
                     livreSpan.classList.add('d-none');
@@ -262,21 +289,18 @@
                 }
             }
             if (addBtn) {
-                if (inDraft) {
+                if (restante <= 0) {
                     addBtn.disabled = true;
                     addBtn.classList.remove('btn-outline-primary');
                     addBtn.classList.add('btn-outline-secondary');
                     addBtn.innerHTML = '<i class="bi bi-lock"></i>';
-                    addBtn.setAttribute(
-                        'title',
-                        'Já adicionada no rascunho — remova da lista da cautela para incluir novamente'
-                    );
+                    addBtn.setAttribute('title', 'Sem quantidade disponível');
                 } else {
                     addBtn.disabled = false;
                     addBtn.classList.add('btn-outline-primary');
                     addBtn.classList.remove('btn-outline-secondary');
                     addBtn.innerHTML = '<i class="bi bi-plus-lg"></i>';
-                    addBtn.setAttribute('title', 'Adicionar à cautela');
+                    addBtn.setAttribute('title', 'Adicionar 1 à cautela');
                 }
             }
         });
@@ -305,17 +329,22 @@
     function upsertItem(meta) {
         if (!meta || meta.id == null) return;
         var id = String(meta.id);
-        if (idExists(id)) return;
-        state.items.push({
-            id: parseInt(id, 10),
-            desc: meta.desc || '',
-            marca: meta.marca || '',
-            cat: meta.cat || '',
-            code: meta.code || '',
-            cor: meta.cor || '',
-            tamanho: meta.tamanho || '',
-            detail_url: meta.detail_url || '',
-        });
+        var atual = getItem(id);
+        if (atual) {
+            atual.quantidade = getItemQuantidade(id) + 1;
+        } else {
+            state.items.push({
+                id: parseInt(id, 10),
+                desc: meta.desc || '',
+                marca: meta.marca || '',
+                cat: meta.cat || '',
+                code: meta.code || '',
+                quantidade: 1,
+                cor: meta.cor || '',
+                tamanho: meta.tamanho || '',
+                detail_url: meta.detail_url || '',
+            });
+        }
         syncStateFromDom();
         schedulePersistRascunho(true);
         syncDomFromState();
@@ -349,6 +378,7 @@
                 marca: addBtn.dataset.ferramentaMarca || '',
                 cat: addBtn.dataset.ferramentaCat,
                 code: addBtn.dataset.ferramentaCode || '',
+                quantidade: addBtn.dataset.ferramentaQuantidade || '0',
                 cor: addBtn.dataset.ferramentaCor || '',
                 tamanho: addBtn.dataset.ferramentaTamanho || '',
                 detail_url: addBtn.dataset.ferramentaDetailUrl || '',

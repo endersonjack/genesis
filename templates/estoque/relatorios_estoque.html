@@ -493,6 +493,8 @@
                     {% if ferramenta %}
                     <p class="small mb-2">
                         <strong>{{ ferramenta.descricao }}</strong>
+                        <span class="text-muted"> — qtd.:</span>
+                        <strong>{{ ferramenta.quantidade|default:0 }}</strong>
                         <span class="text-muted"> — situação atual:</span>
                         {% if ferramenta.situacao_cautela == 'livre' %}
                         <span class="badge rounded-pill text-bg-success">Livre</span>

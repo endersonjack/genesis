@@ -4,6 +4,7 @@ from .models import (
     CategoriaFerramenta,
     CategoriaItem,
     Cautela,
+    CautelaFerramentaQuantidade,
     Entrega_Cautela,
     Ferramenta,
     FerramentaImagem,
@@ -49,6 +50,7 @@ class FerramentaAdmin(admin.ModelAdmin):
         'descricao',
         'categoria',
         'codigo_numeracao',
+        'quantidade',
         'ativo',
         'preco',
         'empresa',
@@ -152,6 +154,13 @@ class CautelaAdmin(admin.ModelAdmin):
     autocomplete_fields = ('empresa', 'funcionario', 'almoxarife', 'local', 'obra')
     readonly_fields = ('criado_em', 'atualizado_em')
     inlines = (Entrega_CautelaInline,)
+
+
+@admin.register(CautelaFerramentaQuantidade)
+class CautelaFerramentaQuantidadeAdmin(admin.ModelAdmin):
+    list_display = ('cautela', 'ferramenta', 'quantidade')
+    search_fields = ('cautela__pk', 'ferramenta__descricao')
+    autocomplete_fields = ('cautela', 'ferramenta')
 
 
 @admin.register(MotivoDevolucaoCautela)

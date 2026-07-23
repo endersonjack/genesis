@@ -8,6 +8,7 @@
                 <th>Marca</th>
                 <th>Categoria</th>
                 <th>Código</th>
+                <th class="text-end">Qtd.</th>
                 <th>Cor</th>
                 <th>Tamanho</th>
                 <th class="pe-3 text-end" style="width:140px;">Ações</th>
@@ -16,7 +17,7 @@
         <tbody>
             {% if hint %}
                 <tr>
-                    <td colspan="8" class="ps-3 py-4 text-muted small">
+                    <td colspan="9" class="ps-3 py-4 text-muted small">
                         {{ hint }}
                     </td>
                 </tr>
@@ -25,7 +26,8 @@
                 <tr class="estoque-row-modal js-cautela-modal-row"
                     role="group"
                     data-ferramenta-pk="{{ f.pk }}"
-                    {% if f.situacao_cautela == 'ocupada' %}data-db-ocupada="1"{% endif %}>
+                    data-ferramenta-disponivel="{{ f.quantidade_disponivel|default:0 }}"
+                    {% if f.cautela_sem_saldo %}data-db-ocupada="1"{% endif %}>
                     <td class="ps-3">
                         {% with im=f.imagem_listagem %}
                             {% if im %}
@@ -39,11 +41,11 @@
                     </td>
                     <td class="fw-semibold">
                         <span>{{ f.descricao|truncatechars:80 }}</span>
-                        {% if f.situacao_cautela == 'ocupada' %}
-                            <span class="badge text-bg-warning rounded-pill ms-2">OCUPADA</span>
+                        {% if f.cautela_sem_saldo %}
+                            <span class="badge text-bg-warning rounded-pill ms-2">SEM SALDO</span>
                         {% else %}
-                            <span class="badge text-bg-success rounded-pill ms-2 js-cautela-badge-livre">LIVRE</span>
-                            <span class="badge text-bg-warning rounded-pill ms-2 js-cautela-badge-rascunho d-none">OCUPADA</span>
+                            <span class="badge text-bg-success rounded-pill ms-2 js-cautela-badge-livre">DISPONÍVEL</span>
+                            <span class="badge text-bg-warning rounded-pill ms-2 js-cautela-badge-rascunho d-none">NO RASCUNHO</span>
                         {% endif %}
                     </td>
                     <td>
@@ -61,6 +63,7 @@
                             <span class="text-muted">—</span>
                         {% endif %}
                     </td>
+                    <td class="text-end text-nowrap fw-semibold js-cautela-qtd-disponivel">{{ f.quantidade_disponivel|default:0 }}</td>
                     <td>
                         {% if f.cor %}
                             {{ f.cor }}
@@ -77,11 +80,11 @@
                     </td>
                     <td class="pe-3 text-end">
                         <div class="d-inline-flex align-items-center gap-2">
-                            {% if f.situacao_cautela == 'ocupada' %}
+                            {% if f.cautela_sem_saldo %}
                                 <button type="button"
                                         class="btn btn-sm btn-outline-secondary rounded-3"
                                         disabled
-                                        title="Ferramenta ocupada em cautela">
+                                        title="Ferramenta sem quantidade disponível">
                                     <i class="bi bi-lock"></i>
                                 </button>
                             {% else %}
@@ -93,6 +96,7 @@
                                         data-ferramenta-marca="{{ f.marca|default:''|escapejs }}"
                                         data-ferramenta-cat="{{ f.categoria.nome|escapejs }}"
                                         data-ferramenta-code="{{ f.codigo_numeracao|default:''|escapejs }}"
+                                        data-ferramenta-quantidade="1"
                                         data-ferramenta-cor="{{ f.cor|default:''|escapejs }}"
                                         data-ferramenta-tamanho="{{ f.tamanho|default:''|escapejs }}"
                                         data-ferramenta-detail-url="{% url 'estoque:detalhes_ferramenta' empresa_id=request.empresa_ativa.pk pk=f.pk %}">
@@ -110,7 +114,7 @@
             {% endfor %}
             {% if not hint and not page_obj %}
                 <tr>
-                    <td colspan="8" class="ps-3 py-4 text-muted small">Nenhum resultado.</td>
+                    <td colspan="9" class="ps-3 py-4 text-muted small">Nenhum resultado.</td>
                 </tr>
             {% endif %}
         </tbody>

@@ -10,6 +10,7 @@
                         <th>Descrição</th>
                         <th>Categoria</th>
                         <th>Código</th>
+                        <th class="text-end">Qtd.</th>
                         <th class="text-end">Preço</th>
                         <th class="pe-3">Ativa</th>
                     </tr>
@@ -42,6 +43,7 @@
                                 <span class="text-muted">—</span>
                             {% endif %}
                         </td>
+                        <td class="text-end text-nowrap fw-semibold">{{ f.quantidade|default:0 }}</td>
                         <td class="text-end text-nowrap">
                             {% if f.preco is not None %}
                                 R$ {{ f.preco|floatformat:2|intcomma }}

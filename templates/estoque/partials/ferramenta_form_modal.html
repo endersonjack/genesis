@@ -78,12 +78,18 @@
                 {% if form.codigo_numeracao.help_text %}<div class="form-text">{{ form.codigo_numeracao.help_text }}</div>{% endif %}
                 {% if form.codigo_numeracao.errors %}<div class="text-danger small mt-1">{{ form.codigo_numeracao.errors|join:", " }}</div>{% endif %}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="{{ form.quantidade.id_for_label }}">{{ form.quantidade.label }}</label>
+                {{ form.quantidade }}
+                {% if form.quantidade.help_text %}<div class="form-text">{{ form.quantidade.help_text }}</div>{% endif %}
+                {% if form.quantidade.errors %}<div class="text-danger small mt-1">{{ form.quantidade.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
                 <label class="form-label fw-semibold" for="{{ form.preco.id_for_label }}">{{ form.preco.label }}</label>
                 {{ form.preco }}
                 {% if form.preco.errors %}<div class="text-danger small mt-1">{{ form.preco.errors|join:", " }}</div>{% endif %}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label fw-semibold" for="{{ form.fornecedor.id_for_label }}">{{ form.fornecedor.label }}</label>
                 {{ form.fornecedor }}
                 {% if form.fornecedor.errors %}<div class="text-danger small mt-1">{{ form.fornecedor.errors|join:", " }}</div>{% endif %}

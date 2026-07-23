@@ -97,6 +97,7 @@
                                     {% if f.codigo_numeracao %}
                                         <span class="text-muted">· {{ f.codigo_numeracao }}</span>
                                     {% endif %}
+                                    <span class="text-muted">· Qtd.: {{ f.quantidade|default:0 }}</span>
                                 </span>
                             </label>
                         {% endfor %}

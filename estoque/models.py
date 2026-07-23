@@ -209,6 +209,11 @@ class Ferramenta(TimeStampedModel):
         blank=True,
         help_text='Identificador interno ou de patrimônio (opcional).',
     )
+    quantidade = models.PositiveIntegerField(
+        'Quantidade',
+        default=1,
+        help_text='Quantidade cadastrada desta ferramenta.',
+    )
     preco = models.DecimalField(
         max_digits=14,
         decimal_places=2,
@@ -494,6 +499,34 @@ class Cautela(TimeStampedModel):
     def data_registro(self):
         # Alias para o requisito “Data de registro” (usa `criado_em` do TimeStampedModel).
         return self.criado_em
+
+
+class CautelaFerramentaQuantidade(models.Model):
+    cautela = models.ForeignKey(
+        Cautela,
+        on_delete=models.CASCADE,
+        related_name='ferramentas_quantidades',
+    )
+    ferramenta = models.ForeignKey(
+        Ferramenta,
+        on_delete=models.CASCADE,
+        related_name='cautelas_quantidades',
+    )
+    quantidade = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = 'Quantidade de ferramenta na cautela'
+        verbose_name_plural = 'Quantidades de ferramentas na cautela'
+        ordering = ['ferramenta__descricao', 'pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cautela', 'ferramenta'],
+                name='uniq_cautela_ferramenta_quantidade',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.cautela_id} ? {self.ferramenta} ? {self.quantidade}'
 
 
 class MotivoDevolucaoCautela(TimeStampedModel):
