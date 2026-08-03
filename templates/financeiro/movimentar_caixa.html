@@ -344,6 +344,7 @@
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
                     <th>Obra / Cliente</th>
+                    <th class="text-end">Valor bruto</th>
                     <th class="text-end">Valor líquido</th>
                     <th class="text-end">Valor pago</th>
                     <th class="text-end">Valor restante</th>
@@ -365,6 +366,7 @@
                         <div class="fw-bold text-truncate" title="{{ r.obra.nome|default:'—' }}">{{ r.obra.nome|default:"—" }}</div>
                         <div class="text-muted text-truncate" title="{{ r.cliente.nome }}">{{ r.cliente.nome }}</div>
                     </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
                     <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
                     <td class="text-end fw-bold text-primary text-nowrap">R$ {{ r.valor_pago|moeda_br }}</td>
                     <td class="text-end fw-bold financeiro-valor-restante text-nowrap">R$ {{ r.valor_restante|moeda_br }}</td>
@@ -400,6 +402,10 @@
         </table>
     </div>
     <div class="financeiro-totals">
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Valor Bruto</div>
+            <strong>R$ {{ totais_abertos.valor|moeda_br }}</strong>
+        </div>
         <div class="financeiro-total-card">
             <div class="small text-muted fw-semibold">Valor Líquido</div>
             <strong>R$ {{ totais_abertos.valor_liquido|moeda_br }}</strong>
@@ -500,6 +506,8 @@
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
                     <th>Obra / Cliente</th>
+                    <th class="text-end">Valor bruto</th>
+                    <th class="text-end">Valor líquido</th>
                     <th class="text-end">Valor pago</th>
                     <th class="text-end">Valor restante</th>
                     <th>Recebido em</th>
@@ -522,6 +530,8 @@
                         <div class="fw-bold text-truncate" title="{{ r.obra.nome|default:'—' }}">{{ r.obra.nome|default:"—" }}</div>
                         <div class="text-muted text-truncate" title="{{ r.cliente.nome }}">{{ r.cliente.nome }}</div>
                     </td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor_total_recebimento|moeda_br }}</td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor_total_liquido_recebimento|moeda_br }}</td>
                     <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_pago|moeda_br }}</td>
                     <td class="text-end fw-bold financeiro-valor-restante text-nowrap">R$ {{ r.valor_restante|moeda_br }}</td>
                     <td class="small text-muted text-nowrap">{{ r.conta_bancaria.nome|default:"Dinheiro" }}</td>
@@ -545,13 +555,13 @@
         </table>
     </div>
     <div class="financeiro-totals">
+        <div class="financeiro-total-card">
+            <div class="small text-muted fw-semibold">Valor Bruto</div>
+            <strong>R$ {{ totais_pagos.valor|moeda_br }}</strong>
+        </div>
         <div class="financeiro-total-card financeiro-total-card--liquido">
             <div class="small text-success fw-semibold">Valor Pago</div>
             <strong class="text-success">R$ {{ totais_pagos.valor_pago|moeda_br }}</strong>
-        </div>
-        <div class="financeiro-total-card">
-            <div class="small text-muted fw-semibold">Valor Bruto Pago</div>
-            <strong>R$ {{ totais_pagos.valor|moeda_br }}</strong>
         </div>
         <div class="financeiro-total-card financeiro-total-card--restante">
             <div class="small financeiro-valor-restante fw-semibold">Valor Restante</div>

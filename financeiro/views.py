@@ -318,6 +318,8 @@ def _recebimento_para_linha(recebimento, tipo: str) -> dict:
         'valor': recebimento.valor,
         'impostos': recebimento.impostos,
         'valor_liquido': recebimento.valor_liquido,
+        'valor_total_recebimento': recebimento.valor,
+        'valor_total_liquido_recebimento': recebimento.valor_liquido,
         'valor_pago': info_pagamento['valor_pago'],
         'valor_restante': info_pagamento['valor_restante'],
         'descricao': recebimento.descricao,
@@ -5389,11 +5391,13 @@ def recebimentos_pdf(request, status: str):
             'Medição',
             'NF',
             'Obra / Cliente',
+            'Bruto',
+            'Líquido',
             'Valor Pago',
             'Restante',
             'Recebido em',
         ]]
-        col_widths = [7, 15, 16, 20, 13, 17, 14, 62, 24, 22, 28]
+        col_widths = [6, 14, 15, 18, 12, 15, 13, 54, 20, 20, 21, 20, 26]
     else:
         data = [[
             '#',
@@ -5403,11 +5407,12 @@ def recebimentos_pdf(request, status: str):
             'Medição',
             'NF',
             'Obra / Cliente',
+            'Bruto',
             'Líquido',
             'Pago',
             'Restante',
         ]]
-        col_widths = [8, 18, 22, 16, 20, 16, 76, 28, 26, 28]
+        col_widths = [7, 17, 20, 15, 18, 15, 67, 24, 24, 24, 25]
 
     for idx, recebimento in enumerate(recebimentos, start=1):
         obra = getattr(recebimento.get('obra'), 'nome', '') or '-'
@@ -5427,6 +5432,8 @@ def recebimentos_pdf(request, status: str):
                     recebimento.get('medicao') or '-',
                     recebimento.get('nf') or '-',
                     _pdf_cell(obra_cliente, cell),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_total_recebimento') or recebimento.get('valor')), cell_right),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_total_liquido_recebimento') or recebimento.get('valor_liquido')), cell_right),
                     _pdf_cell(_format_moeda_pdf(recebimento.get('valor_pago')), cell_right),
                     _pdf_cell(_format_moeda_pdf(recebimento.get('valor_restante')), cell_right),
                     _pdf_cell(recebido_em, cell),
@@ -5440,6 +5447,7 @@ def recebimentos_pdf(request, status: str):
                     recebimento.get('medicao') or '-',
                     recebimento.get('nf') or '-',
                     _pdf_cell(obra_cliente, cell),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor')), cell_right),
                     _pdf_cell(_format_moeda_pdf(recebimento.get('valor_liquido')), cell_right),
                     _pdf_cell(_format_moeda_pdf(recebimento.get('valor_pago')), cell_right),
                     _pdf_cell(_format_moeda_pdf(recebimento.get('valor_restante')), cell_right),
@@ -5474,16 +5482,18 @@ def recebimentos_pdf(request, status: str):
     totais_table = Table(
         [[
             'Quantidade',
+            'Valor Bruto',
             'Valor Líquido',
             'Valor Pago',
             'Valor Restante',
         ], [
             str(len(recebimentos)),
+            _format_moeda_pdf(totais['valor']),
             _format_moeda_pdf(totais['valor_liquido']),
             _format_moeda_pdf(totais['valor_pago']),
             _format_moeda_pdf(totais['valor_restante']),
         ]],
-        colWidths=[34 * mm, 48 * mm, 48 * mm, 48 * mm],
+        colWidths=[30 * mm, 42 * mm, 42 * mm, 42 * mm, 42 * mm],
     )
     totais_table.setStyle(_pdf_table_style())
     story.append(totais_table)
