@@ -94,11 +94,11 @@
                 </div>
                 <div class="col-12 col-md-4">
                     <div class="small text-muted fw-semibold">Valor deste pagamento</div>
-                    <div class="fw-bold text-success">R$ {{ liquidacao.valor_liquido|moeda_br }}</div>
+                    <div class="fw-bold text-success js-liq-summary-value">R$ {{ liquidacao.valor_liquido|moeda_br }}</div>
                 </div>
                 <div class="col-12 col-md-4">
                     <div class="small text-muted fw-semibold">Data atual</div>
-                    <div class="fw-bold">{{ liquidacao.data_pagamento|date:'d/m/Y' }}</div>
+                    <div class="fw-bold js-liq-summary-date">{{ liquidacao.data_pagamento|date:'d/m/Y' }}</div>
                 </div>
             </div>
         </div>
@@ -158,6 +158,42 @@
     const form = document.querySelector('.financeiro-liquidacao-edit-form');
     if (!form) return;
     const actionInput = form.querySelector('.js-liq-action');
+    const valorInput = form.querySelector('[name="valor_liquido"]');
+    const dataInput = form.querySelector('[name="data_pagamento"]');
+    const resumoValor = form.querySelector('.js-liq-summary-value');
+    const resumoData = form.querySelector('.js-liq-summary-date');
+
+    const parseMoeda = (valor) => {
+        const raw = String(valor || '').trim().replace(/\s|R\$/gi, '');
+        if (!raw) return 0;
+        const normalizado = raw.includes(',')
+            ? raw.replace(/\./g, '').replace(',', '.')
+            : raw;
+        const numero = Number.parseFloat(normalizado.replace(/[^\d.-]/g, ''));
+        return Number.isFinite(numero) ? numero : 0;
+    };
+    const formatMoeda = (valor) => valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+    const formatData = (valor) => {
+        if (!valor) return '—';
+        const partes = valor.split('-');
+        if (partes.length !== 3) return valor;
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    };
+    const atualizarResumo = () => {
+        if (resumoValor && valorInput) {
+            resumoValor.textContent = `R$ ${formatMoeda(parseMoeda(valorInput.value))}`;
+        }
+        if (resumoData && dataInput) {
+            resumoData.textContent = formatData(dataInput.value);
+        }
+    };
+    valorInput?.addEventListener('input', atualizarResumo);
+    valorInput?.addEventListener('blur', atualizarResumo);
+    dataInput?.addEventListener('change', atualizarResumo);
+
     const setAction = (button) => {
         const action = button?.dataset.action || 'salvar';
         if (actionInput) actionInput.value = action;
