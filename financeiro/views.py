@@ -72,6 +72,7 @@ from .forms import (
     nf_numero_exige_unicidade_para_fornecedor,
     RecebimentoAvulsoEditForm,
     RecebimentoAvulsoForm,
+    RecebimentoLiquidacaoEditForm,
     RecebimentoLiquidacaoForm,
     RecebimentoMedicaoEditForm,
     RecebimentoMedicaoForm,
@@ -5508,6 +5509,39 @@ def recebimentos_pdf(request, status: str):
 
 
 @login_required
+
+
+def _atualizar_status_recebimento_por_liquidacoes(recebimento) -> None:
+    total_pago = (
+        recebimento.liquidacoes.aggregate(total=Sum('valor_liquido'))['total']
+        or Decimal('0')
+    )
+    if total_pago <= 0:
+        recebimento.status = recebimento.Status.ABERTO
+        recebimento.data_pagamento = None
+        recebimento.conta_bancaria = None
+        recebimento.movimento = None
+    elif total_pago >= (recebimento.valor_liquido or Decimal('0')):
+        recebimento.status = recebimento.Status.PAGO
+    else:
+        recebimento.status = recebimento.Status.PARCIAL
+
+    ultima = recebimento.liquidacoes.order_by('-data_pagamento', '-pk').first()
+    if ultima:
+        recebimento.data_pagamento = ultima.data_pagamento
+        recebimento.conta_bancaria = ultima.conta_bancaria
+        recebimento.movimento = ultima.movimento
+    recebimento.save(
+        update_fields=(
+            'status',
+            'data_pagamento',
+            'conta_bancaria',
+            'movimento',
+            'atualizado_em',
+        )
+    )
+
+
 def recebimento_liquidar(request, tipo: str, pk: int):
     empresa = _empresa(request)
     if not empresa:
@@ -5578,6 +5612,97 @@ def recebimento_liquidar(request, tipo: str, pk: int):
                     request,
                     'financeiro:recebimento_liquidar',
                     kwargs={'tipo': tipo, 'pk': recebimento.pk},
+                ),
+            },
+        )
+    return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+
+@login_required
+def recebimento_liquidacao_editar(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    liquidacao = get_object_or_404(
+        RecebimentoLiquidacao.objects.filter(empresa=empresa)
+        .select_related(
+            'movimento',
+            'conta_bancaria',
+            'recebimento_avulso',
+            'recebimento_avulso__cliente',
+            'recebimento_medicao',
+            'recebimento_medicao__cliente',
+            'recebimento_medicao__obra',
+        ),
+        pk=pk,
+    )
+    recebimento = liquidacao.recebimento
+    if not recebimento:
+        messages.error(request, 'Liquidação sem recebimento vinculado.')
+        return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    form = RecebimentoLiquidacaoEditForm(
+        request.POST or None,
+        liquidacao=liquidacao,
+        empresa=empresa,
+    )
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or 'salvar').strip()
+        if action == 'excluir':
+            with transaction.atomic():
+                movimento_id = liquidacao.movimento_id
+                liquidacao.delete()
+                if movimento_id:
+                    MovimentoCaixa.objects.filter(pk=movimento_id, empresa=empresa).delete()
+                _atualizar_status_recebimento_por_liquidacoes(recebimento)
+            messages.success(request, 'Pagamento excluído.')
+            if _is_htmx(request):
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = reverse_empresa(request, 'financeiro:movimentar_caixa')
+                return response
+            return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            with transaction.atomic():
+                liquidacao.data_pagamento = cd['data_pagamento']
+                liquidacao.valor = cd['valor_liquido']
+                liquidacao.impostos = Decimal('0')
+                liquidacao.valor_liquido = cd['valor_liquido']
+                liquidacao.conta_bancaria = cd.get('conta_bancaria')
+                liquidacao.observacao = cd.get('observacao') or ''
+                liquidacao.full_clean()
+                liquidacao.save()
+
+                movimento = liquidacao.movimento
+                if movimento:
+                    movimento.valor = liquidacao.valor_liquido
+                    movimento.data = liquidacao.data_pagamento
+                    movimento.observacao = liquidacao.observacao
+                    movimento.full_clean()
+                    movimento.save()
+                _atualizar_status_recebimento_por_liquidacoes(recebimento)
+            messages.success(request, 'Pagamento atualizado.')
+            if _is_htmx(request):
+                response = HttpResponse(status=200)
+                response['HX-Redirect'] = reverse_empresa(request, 'financeiro:movimentar_caixa')
+                return response
+            return redirect_empresa(request, 'financeiro:movimentar_caixa')
+
+    if _is_htmx(request):
+        return render(
+            request,
+            'financeiro/partials/recebimento_liquidacao_editar_modal.html',
+            {
+                'form': form,
+                'liquidacao': liquidacao,
+                'recebimento': recebimento,
+                'post_url': reverse_empresa(
+                    request,
+                    'financeiro:recebimento_liquidacao_editar',
+                    kwargs={'pk': liquidacao.pk},
                 ),
             },
         )

@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from django import forms
 from django.forms import formset_factory
+from django.db.models import Sum
 from django.utils import timezone
 
 from clientes.models import Cliente
@@ -320,7 +321,10 @@ class RecebimentoAvulsoForm(forms.Form):
         return categoria
 
     def clean_valor(self):
-        return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor'))
+        raw = self.cleaned_data.get('valor')
+        if raw in (None, ''):
+            return Decimal('0')
+        return parse_valor_moeda_br(raw) or Decimal('0')
 
     def clean_impostos(self):
         raw = self.cleaned_data.get('impostos')
@@ -425,36 +429,19 @@ class RecebimentoLiquidacaoForm(forms.Form):
     )
     valor = forms.CharField(
         label='Valor bruto (R$)',
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control rounded-3 text-end js-liquidacao-valor',
-                'data-mask': 'br-moeda',
-                'inputmode': 'decimal',
-                'autocomplete': 'off',
-                'maxlength': '22',
-                'placeholder': '0,00',
-            },
-        ),
+        required=False,
+        widget=forms.HiddenInput(),
     )
     impostos = forms.CharField(
         label='Valor de impostos (R$)',
         required=False,
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control rounded-3 text-end js-liquidacao-impostos',
-                'data-mask': 'br-moeda',
-                'inputmode': 'decimal',
-                'autocomplete': 'off',
-                'maxlength': '22',
-                'placeholder': '0,00',
-            },
-        ),
+        widget=forms.HiddenInput(),
     )
     valor_liquido = forms.CharField(
-        label='Valor líquido (R$)',
+        label='Valor a pagar (R$)',
         widget=forms.TextInput(
             attrs={
-                'class': 'form-control rounded-3 text-end fw-bold js-liquidacao-liquido',
+                'class': 'form-control rounded-3 text-end fw-bold js-liquidacao-liquido js-liquidacao-pagamento',
                 'data-mask': 'br-moeda',
                 'inputmode': 'decimal',
                 'autocomplete': 'off',
@@ -487,8 +474,8 @@ class RecebimentoLiquidacaoForm(forms.Form):
             ).order_by('banco', 'nome')
         if recebimento and not self.is_bound:
             self.initial['data_pagamento'] = timezone.localdate().isoformat()
-            self.initial['valor'] = format_decimal_br_moeda(self.restantes['valor'])
-            self.initial['impostos'] = format_decimal_br_moeda(self.restantes['impostos'])
+            self.initial['valor'] = format_decimal_br_moeda(self.restantes['valor_liquido'])
+            self.initial['impostos'] = format_decimal_br_moeda(Decimal('0'))
             self.initial['valor_liquido'] = format_decimal_br_moeda(self.restantes['valor_liquido'])
             self.initial['conta_bancaria'] = recebimento.conta_bancaria_id
 
@@ -506,31 +493,90 @@ class RecebimentoLiquidacaoForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        valor = cleaned.get('valor')
-        impostos = cleaned.get('impostos') or Decimal('0')
         valor_liquido = cleaned.get('valor_liquido')
-        if valor is None or valor_liquido is None:
+        if valor_liquido is None:
             return cleaned
-        if impostos < 0:
-            self.add_error('impostos', 'Valor não pode ser negativo.')
         if valor_liquido <= 0:
-            self.add_error('valor_liquido', 'Informe um valor líquido maior que zero.')
-        if impostos >= valor:
-            self.add_error('impostos', 'Impostos devem ser menores que o valor bruto.')
-        if valor - impostos != valor_liquido:
-            self.add_error(
-                'valor_liquido',
-                'Valor líquido deve ser o valor bruto menos impostos.',
-            )
+            self.add_error('valor_liquido', 'Informe um valor maior que zero.')
         if self.recebimento:
-            if valor > self.restantes['valor']:
-                self.add_error('valor', 'Valor bruto maior que o saldo restante.')
-            if impostos > self.restantes['impostos']:
-                self.add_error('impostos', 'Impostos maiores que o saldo restante.')
             if valor_liquido > self.restantes['valor_liquido']:
-                self.add_error('valor_liquido', 'Valor líquido maior que o saldo restante.')
+                self.add_error('valor_liquido', 'Valor maior que o saldo restante.')
             if self.restantes['valor_liquido'] <= 0:
                 self.add_error('valor_liquido', 'Este recebimento já está totalmente liquidado.')
+        cleaned['valor'] = valor_liquido or Decimal('0')
+        cleaned['impostos'] = Decimal('0')
+        return cleaned
+
+
+class RecebimentoLiquidacaoEditForm(forms.Form):
+    data_pagamento = forms.DateField(
+        label='Data de pagamento/liquidação',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control rounded-3'}),
+    )
+    valor_liquido = forms.CharField(
+        label='Valor pago (R$)',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control rounded-3 text-end fw-bold',
+                'data-mask': 'br-moeda',
+                'inputmode': 'decimal',
+                'autocomplete': 'off',
+                'maxlength': '22',
+                'placeholder': '0,00',
+            },
+        ),
+    )
+    conta_bancaria = forms.ModelChoiceField(
+        label='Recebimento realizado em',
+        queryset=ContaBancaria.objects.none(),
+        required=False,
+        empty_label='DINHEIRO',
+        widget=forms.Select(attrs={'class': 'form-select rounded-3'}),
+    )
+    observacao = forms.CharField(
+        label='Observação',
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control rounded-3', 'rows': 3}),
+    )
+
+    def __init__(self, *args, liquidacao=None, empresa=None, **kwargs):
+        self.liquidacao = liquidacao
+        self.recebimento = liquidacao.recebimento if liquidacao else None
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                empresa=empresa,
+                ativo=True,
+            ).order_by('banco', 'nome')
+        if liquidacao and not self.is_bound:
+            self.initial.update(
+                {
+                    'data_pagamento': liquidacao.data_pagamento.isoformat() if liquidacao.data_pagamento else '',
+                    'valor_liquido': format_decimal_br_moeda(liquidacao.valor_liquido),
+                    'conta_bancaria': liquidacao.conta_bancaria_id,
+                    'observacao': liquidacao.observacao,
+                }
+            )
+
+    def clean_valor_liquido(self):
+        return parse_valor_moeda_obrigatorio(self.cleaned_data.get('valor_liquido'))
+
+    def clean(self):
+        cleaned = super().clean()
+        valor_liquido = cleaned.get('valor_liquido')
+        if valor_liquido is None or not self.liquidacao or not self.recebimento:
+            return cleaned
+        if valor_liquido <= 0:
+            self.add_error('valor_liquido', 'Informe um valor maior que zero.')
+            return cleaned
+        total_outras = (
+            self.recebimento.liquidacoes.exclude(pk=self.liquidacao.pk)
+            .aggregate(total=Sum('valor_liquido'))['total']
+            or Decimal('0')
+        )
+        limite = max((self.recebimento.valor_liquido or Decimal('0')) - total_outras, Decimal('0'))
+        if valor_liquido > limite:
+            self.add_error('valor_liquido', 'Valor maior que o saldo restante deste recebimento.')
         return cleaned
 
 

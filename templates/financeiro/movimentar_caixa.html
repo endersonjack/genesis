@@ -538,9 +538,9 @@
                     <td class="text-end text-nowrap">
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary rounded-circle"
-                                title="Editar"
-                                aria-label="Editar"
-                                hx-get="{% url 'financeiro:recebimento_editar' empresa_id=request.empresa_ativa.pk tipo=r.tipo pk=r.pk %}"
+                                title="Editar pagamento"
+                                aria-label="Editar pagamento"
+                                hx-get="{% url 'financeiro:recebimento_liquidacao_editar' empresa_id=request.empresa_ativa.pk pk=r.liquidacao_pk %}"
                                 hx-target="#modal-content"
                                 hx-swap="innerHTML"
                                 data-no-global-loading

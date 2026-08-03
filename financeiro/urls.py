@@ -255,6 +255,11 @@ urlpatterns = [
         name='recebimento_liquidar',
     ),
     path(
+        'movimentar/recebimentos/liquidacoes/<int:pk>/editar/',
+        empresa_scoped(views.recebimento_liquidacao_editar),
+        name='recebimento_liquidacao_editar',
+    ),
+    path(
         'movimentar/recebimentos/<str:tipo>/<int:pk>/editar/',
         empresa_scoped(views.recebimento_editar),
         name='recebimento_editar',

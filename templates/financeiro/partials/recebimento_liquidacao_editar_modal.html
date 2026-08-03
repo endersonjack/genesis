@@ -1,4 +1,4 @@
-{% load moeda %}
+﻿{% load moeda %}
 <style>
     .financeiro-modal-btn {
         border: none;
@@ -29,13 +29,24 @@
             background: #2563eb;
         {% endif %}
     }
-    .financeiro-liquidacao-form:not(.htmx-request) .js-liquidacao-saving {
-        display: none;
+    .financeiro-modal-btn-danger {
+        background: #dc2626;
+        color: #fff;
+        border: 1px solid #dc2626;
     }
-    .financeiro-liquidacao-form.htmx-request .js-liquidacao-ready {
-        display: none;
+    .financeiro-liquidacao-edit-form .js-liq-save-loading,
+    .financeiro-liquidacao-edit-form .js-liq-delete-loading {
+        display: none !important;
     }
-    .financeiro-liquidacao-form.htmx-request .financeiro-modal-btn-primary {
+    .financeiro-liquidacao-edit-form.htmx-request[data-loading-action="salvar"] .js-liq-save-ready,
+    .financeiro-liquidacao-edit-form.htmx-request[data-loading-action="excluir"] .js-liq-delete-ready {
+        display: none !important;
+    }
+    .financeiro-liquidacao-edit-form.htmx-request[data-loading-action="salvar"] .js-liq-save-loading,
+    .financeiro-liquidacao-edit-form.htmx-request[data-loading-action="excluir"] .js-liq-delete-loading {
+        display: inline-flex !important;
+    }
+    .financeiro-liquidacao-edit-form.htmx-request button[type="submit"] {
         pointer-events: none;
         opacity: .86;
     }
@@ -49,8 +60,8 @@
 
 <div class="modal-header">
     <div>
-        <h5 class="modal-title fw-bold mb-1">{{ page_title }}</h5>
-        <div class="text-muted small">Confirme os valores antes de lançar este recebimento no caixa.</div>
+        <h5 class="modal-title fw-bold mb-1">Editar pagamento</h5>
+        <div class="text-muted small">Atualize ou exclua somente esta liquidação.</div>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
@@ -60,9 +71,9 @@
     hx-post="{{ post_url }}"
     hx-target="#modal-content"
     hx-swap="innerHTML"
-    data-no-global-loading
-    class="financeiro-liquidacao-form d-flex flex-column"
     hx-disabled-elt="find button[type='submit']"
+    data-no-global-loading
+    class="financeiro-liquidacao-edit-form d-flex flex-column"
     style="max-height: calc(100vh - 9rem);"
     novalidate>
     {% csrf_token %}
@@ -81,21 +92,16 @@
                     <div class="fw-bold">R$ {{ recebimento.valor_liquido|moeda_br }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="small text-muted fw-semibold">Valor pago</div>
-                    <div class="fw-bold text-primary js-resumo-valor-pago"
-                         data-valor-base="{{ form.restantes.valor_pago }}">R$ {{ form.restantes.valor_pago|moeda_br }}</div>
+                    <div class="small text-muted fw-semibold">Valor deste pagamento</div>
+                    <div class="fw-bold text-success">R$ {{ liquidacao.valor_liquido|moeda_br }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="small text-muted fw-semibold">Valor restante</div>
-                    <div class="fw-bold js-resumo-valor-restante"
-                         style="color:#6d0f1f;"
-                         data-valor-base="{{ form.restantes.valor_liquido }}">R$ {{ form.restantes.valor_liquido|moeda_br }}</div>
+                    <div class="small text-muted fw-semibold">Data atual</div>
+                    <div class="fw-bold">{{ liquidacao.data_pagamento|date:'d/m/Y' }}</div>
                 </div>
             </div>
         </div>
 
-        {{ form.valor }}
-        {{ form.impostos }}
         <div class="row g-3">
             <div class="col-12 col-lg-4">
                 <label class="form-label fw-semibold" for="{{ form.data_pagamento.id_for_label }}">{{ form.data_pagamento.label }}</label>
@@ -112,63 +118,48 @@
                 {{ form.conta_bancaria }}
                 {% if form.conta_bancaria.errors %}<div class="text-danger small mt-1">{{ form.conta_bancaria.errors }}</div>{% endif %}
             </div>
-        </div>
-
-        <div class="alert alert-info rounded-4 small mt-3 mb-0">
-            O valor informado será lançado no caixa para este recebimento.
+            <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>
+                {{ form.observacao }}
+                {% if form.observacao.errors %}<div class="text-danger small mt-1">{{ form.observacao.errors }}</div>{% endif %}
+            </div>
         </div>
     </div>
     <div class="modal-footer justify-content-between flex-shrink-0 bg-white">
-        <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="financeiro-modal-btn financeiro-modal-btn-primary">
-            <span class="js-liquidacao-ready d-inline-flex align-items-center gap-2">
-                <i class="bi bi-check2-circle"></i>
-                <span>Confirmar liquidação</span>
+        <button type="submit" name="action" value="excluir" class="financeiro-modal-btn financeiro-modal-btn-danger">
+            <span class="js-liq-delete-ready d-inline-flex align-items-center gap-2">
+                <i class="bi bi-trash"></i>
+                <span>Excluir</span>
             </span>
-            <span class="js-liquidacao-saving d-inline-flex align-items-center gap-2">
+            <span class="js-liq-delete-loading d-inline-flex align-items-center gap-2">
                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                <span>Salvando...</span>
+                <span>Excluindo...</span>
             </span>
         </button>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" name="action" value="salvar" class="financeiro-modal-btn financeiro-modal-btn-primary">
+                <span class="js-liq-save-ready d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-check2-circle"></i>
+                    <span>Salvar</span>
+                </span>
+                <span class="js-liq-save-loading d-inline-flex align-items-center gap-2">
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span>Salvando...</span>
+                </span>
+            </button>
+        </div>
     </div>
 </form>
 
 <script>
 (() => {
-    const container = document.getElementById('modal-content') || document;
-    const valorInput = container.querySelector('.js-liquidacao-pagamento');
-    const resumoPago = container.querySelector('.js-resumo-valor-pago');
-    const resumoRestante = container.querySelector('.js-resumo-valor-restante');
-    const valorHidden = container.querySelector('input[name="valor"]');
-    const impostosHidden = container.querySelector('input[name="impostos"]');
-    if (!valorInput || !resumoPago || !resumoRestante) return;
-
-    const parseMoeda = (valor) => {
-        const normalizado = String(valor || '')
-            .replace(/\./g, '')
-            .replace(',', '.')
-            .replace(/[^\d.-]/g, '');
-        const numero = Number.parseFloat(normalizado);
-        return Number.isFinite(numero) ? numero : 0;
-    };
-    const formatMoeda = (valor) => valor.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+    const form = document.querySelector('.financeiro-liquidacao-edit-form');
+    if (!form) return;
+    form.querySelectorAll('button[type="submit"][name="action"]').forEach((button) => {
+        button.addEventListener('click', () => {
+            form.dataset.loadingAction = button.value || 'salvar';
+        });
     });
-    const pagoBase = parseMoeda(resumoPago.dataset.valorBase || '0');
-    const restanteBase = parseMoeda(resumoRestante.dataset.valorBase || '0');
-
-    const recalcularResumo = () => {
-        const valorDigitado = Math.max(parseMoeda(valorInput.value), 0);
-        const valorAplicado = Math.min(valorDigitado, restanteBase);
-        resumoPago.textContent = `R$ ${formatMoeda(pagoBase + valorAplicado)}`;
-        resumoRestante.textContent = `R$ ${formatMoeda(Math.max(restanteBase - valorAplicado, 0))}`;
-        if (valorHidden) valorHidden.value = valorInput.value;
-        if (impostosHidden) impostosHidden.value = '0,00';
-    };
-
-    valorInput.addEventListener('input', recalcularResumo);
-    valorInput.addEventListener('blur', recalcularResumo);
-    recalcularResumo();
 })();
 </script>
