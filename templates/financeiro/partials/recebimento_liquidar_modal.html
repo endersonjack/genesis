@@ -29,11 +29,14 @@
             background: #2563eb;
         {% endif %}
     }
-    .financeiro-liquidacao-form:not(.htmx-request) .js-liquidacao-saving {
-        display: none;
+    .financeiro-liquidacao-form .js-liquidacao-saving {
+        display: none !important;
     }
     .financeiro-liquidacao-form.htmx-request .js-liquidacao-ready {
-        display: none;
+        display: none !important;
+    }
+    .financeiro-liquidacao-form.htmx-request .js-liquidacao-saving {
+        display: inline-flex !important;
     }
     .financeiro-liquidacao-form.htmx-request .financeiro-modal-btn-primary {
         pointer-events: none;
@@ -169,6 +172,5 @@
 
     valorInput.addEventListener('input', recalcularResumo);
     valorInput.addEventListener('blur', recalcularResumo);
-    recalcularResumo();
 })();
 </script>
