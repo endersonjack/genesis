@@ -5508,9 +5508,6 @@ def recebimentos_pdf(request, status: str):
     return response
 
 
-@login_required
-
-
 def _atualizar_status_recebimento_por_liquidacoes(recebimento) -> None:
     total_pago = (
         recebimento.liquidacoes.aggregate(total=Sum('valor_liquido'))['total']

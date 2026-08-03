@@ -1,4 +1,4 @@
-﻿{% load moeda %}
+{% load moeda %}
 <style>
     .financeiro-modal-btn {
         border: none;
@@ -77,6 +77,7 @@
     style="max-height: calc(100vh - 9rem);"
     novalidate>
     {% csrf_token %}
+    <input type="hidden" name="action" value="salvar" class="js-liq-action">
     <div class="modal-body overflow-auto flex-grow-1">
         {% if form.non_field_errors %}
         <div class="alert alert-danger rounded-4">{{ form.non_field_errors }}</div>
@@ -126,7 +127,7 @@
         </div>
     </div>
     <div class="modal-footer justify-content-between flex-shrink-0 bg-white">
-        <button type="submit" name="action" value="excluir" class="financeiro-modal-btn financeiro-modal-btn-danger">
+        <button type="submit" data-action="excluir" class="financeiro-modal-btn financeiro-modal-btn-danger">
             <span class="js-liq-delete-ready d-inline-flex align-items-center gap-2">
                 <i class="bi bi-trash"></i>
                 <span>Excluir</span>
@@ -138,7 +139,7 @@
         </button>
         <div class="d-flex align-items-center gap-2">
             <button type="button" class="financeiro-modal-btn financeiro-modal-btn-light" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" name="action" value="salvar" class="financeiro-modal-btn financeiro-modal-btn-primary">
+            <button type="submit" data-action="salvar" class="financeiro-modal-btn financeiro-modal-btn-primary">
                 <span class="js-liq-save-ready d-inline-flex align-items-center gap-2">
                     <i class="bi bi-check2-circle"></i>
                     <span>Salvar</span>
@@ -156,10 +157,17 @@
 (() => {
     const form = document.querySelector('.financeiro-liquidacao-edit-form');
     if (!form) return;
-    form.querySelectorAll('button[type="submit"][name="action"]').forEach((button) => {
-        button.addEventListener('click', () => {
-            form.dataset.loadingAction = button.value || 'salvar';
-        });
+    const actionInput = form.querySelector('.js-liq-action');
+    const setAction = (button) => {
+        const action = button?.dataset.action || 'salvar';
+        if (actionInput) actionInput.value = action;
+        form.dataset.loadingAction = action;
+    };
+    form.querySelectorAll('button[type="submit"][data-action]').forEach((button) => {
+        button.addEventListener('click', () => setAction(button));
+    });
+    form.addEventListener('submit', (event) => {
+        setAction(event.submitter);
     });
 })();
 </script>
