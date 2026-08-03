@@ -8,6 +8,7 @@ from .models import (
     ContaBancaria,
     MovimentoCaixa,
     RecebimentoAvulso,
+    RecebimentoLiquidacao,
     RecebimentoMedicao,
 )
 
@@ -147,3 +148,28 @@ class RecebimentoMedicaoAdmin(admin.ModelAdmin):
         'obra__nome',
     )
     raw_id_fields = ('movimento', 'cliente', 'obra')
+
+
+@admin.register(RecebimentoLiquidacao)
+class RecebimentoLiquidacaoAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'empresa',
+        'data_pagamento',
+        'valor_liquido',
+        'conta_bancaria',
+        'movimento',
+    )
+    list_filter = ('empresa', 'data_pagamento')
+    search_fields = (
+        'recebimento_avulso__cliente__nome',
+        'recebimento_medicao__cliente__nome',
+        'recebimento_medicao__obra__nome',
+        'movimento__descricao',
+    )
+    raw_id_fields = (
+        'recebimento_avulso',
+        'recebimento_medicao',
+        'movimento',
+        'conta_bancaria',
+    )

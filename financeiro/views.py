@@ -94,6 +94,7 @@ from .models import (
     PagamentoPessoal,
     PagamentoPessoalItem,
     RecebimentoAvulso,
+    RecebimentoLiquidacao,
     RecebimentoMedicao,
 )
 
@@ -262,16 +263,54 @@ def _active_tab_pagamento_nf(request, form, itens_fs, pagamentos_fs, boletos_fs)
     return requested
 
 
+def _liquidacoes_do_recebimento(recebimento) -> list:
+    liquidacoes = getattr(recebimento, 'liquidacoes_cache', None)
+    if liquidacoes is None:
+        liquidacoes = recebimento.liquidacoes.all()
+    return list(liquidacoes)
+
+
+def _info_pagamento_recebimento(recebimento) -> dict:
+    liquidacoes = _liquidacoes_do_recebimento(recebimento)
+    valor_pago = sum((l.valor_liquido for l in liquidacoes), Decimal('0'))
+    valor_bruto_pago = sum((l.valor for l in liquidacoes), Decimal('0'))
+    impostos_pago = sum((l.impostos for l in liquidacoes), Decimal('0'))
+    valor_restante = max((recebimento.valor_liquido or Decimal('0')) - valor_pago, Decimal('0'))
+    data_pagamento = max((l.data_pagamento for l in liquidacoes), default=recebimento.data_pagamento)
+    conta_bancaria = liquidacoes[-1].conta_bancaria if liquidacoes else recebimento.conta_bancaria
+    if valor_pago <= 0:
+        status_label = 'Em Aberto'
+        status_badge_class = 'text-bg-secondary'
+    elif valor_restante > 0:
+        status_label = 'Pago Parcial'
+        status_badge_class = 'text-bg-primary'
+    else:
+        status_label = 'Pago'
+        status_badge_class = 'text-bg-success'
+    return {
+        'liquidacoes': liquidacoes,
+        'valor_pago': valor_pago,
+        'valor_bruto_pago': valor_bruto_pago,
+        'impostos_pago': impostos_pago,
+        'valor_restante': valor_restante,
+        'data_pagamento': data_pagamento,
+        'conta_bancaria': conta_bancaria,
+        'status_label': status_label,
+        'status_badge_class': status_badge_class,
+    }
+
+
 def _recebimento_para_linha(recebimento, tipo: str) -> dict:
     movimento = getattr(recebimento, 'movimento', None)
+    info_pagamento = _info_pagamento_recebimento(recebimento)
     return {
         'pk': recebimento.pk,
         'tipo': tipo,
         'tipo_label': 'Avulso' if tipo == 'avulso' else 'Medição',
         'data': recebimento.data,
-        'data_pagamento': recebimento.data_pagamento,
+        'data_pagamento': info_pagamento['data_pagamento'],
         'caixa': recebimento.caixa,
-        'conta_bancaria': recebimento.conta_bancaria,
+        'conta_bancaria': info_pagamento['conta_bancaria'],
         'cliente': recebimento.cliente,
         'medicao': getattr(recebimento, 'medicao_numero', ''),
         'nf': getattr(recebimento, 'nota_fiscal_numero', ''),
@@ -279,19 +318,43 @@ def _recebimento_para_linha(recebimento, tipo: str) -> dict:
         'valor': recebimento.valor,
         'impostos': recebimento.impostos,
         'valor_liquido': recebimento.valor_liquido,
+        'valor_pago': info_pagamento['valor_pago'],
+        'valor_restante': info_pagamento['valor_restante'],
         'descricao': recebimento.descricao,
         'status': recebimento.status,
+        'status_label': info_pagamento['status_label'],
+        'status_badge_class': info_pagamento['status_badge_class'],
         'movimento': movimento,
+        'liquidacoes': info_pagamento['liquidacoes'],
     }
 
+
+def _liquidacao_para_linha(recebimento, tipo: str, liquidacao) -> dict:
+    linha = _recebimento_para_linha(recebimento, tipo)
+    linha.update(
+        {
+            'liquidacao': liquidacao,
+            'liquidacao_pk': liquidacao.pk,
+            'data_pagamento': liquidacao.data_pagamento,
+            'conta_bancaria': liquidacao.conta_bancaria,
+            'valor_total_recebimento': recebimento.valor,
+            'valor_total_liquido_recebimento': recebimento.valor_liquido,
+            'valor': liquidacao.valor,
+            'impostos': liquidacao.impostos,
+            'valor_liquido': liquidacao.valor_liquido,
+            'valor_pago': liquidacao.valor_liquido,
+        }
+    )
+    return linha
 
 def _totais_recebimentos(recebimentos: list[dict]) -> dict:
     return {
         'valor': sum((r['valor'] for r in recebimentos), Decimal('0')),
         'impostos': sum((r['impostos'] for r in recebimentos), Decimal('0')),
         'valor_liquido': sum((r['valor_liquido'] for r in recebimentos), Decimal('0')),
+        'valor_pago': sum((r.get('valor_pago') or Decimal('0') for r in recebimentos), Decimal('0')),
+        'valor_restante': sum((r.get('valor_restante') or Decimal('0') for r in recebimentos), Decimal('0')),
     }
-
 
 def _descricao_movimento_recebimento(recebimento) -> str:
     descricao = (getattr(recebimento, 'descricao', '') or '').strip()
@@ -312,37 +375,74 @@ def _descricao_movimento_recebimento(recebimento) -> str:
     return f'Recebimento avulso - {cliente_nome}' if cliente_nome else 'Recebimento avulso'
 
 
-def _criar_movimento_recebimento(recebimento, categoria_origem, data_liquidacao=None):
+def _criar_movimento_recebimento(
+    recebimento,
+    categoria_origem,
+    *,
+    data_liquidacao=None,
+    valor=None,
+    impostos=None,
+    valor_liquido=None,
+    conta_bancaria=None,
+):
     data_liquidacao = data_liquidacao or timezone.localdate()
+    valor = valor if valor is not None else recebimento.valor
+    impostos = impostos if impostos is not None else recebimento.impostos
+    valor_liquido = valor_liquido if valor_liquido is not None else recebimento.valor_liquido
     mov = MovimentoCaixa(
         empresa=recebimento.empresa,
         caixa=recebimento.caixa,
         natureza=MovimentoCaixa.Natureza.ENTRADA,
         categoria_origem=categoria_origem,
-        valor=recebimento.valor_liquido,
+        valor=valor_liquido,
         data=data_liquidacao,
         descricao=_descricao_movimento_recebimento(recebimento),
         observacao=recebimento.observacao,
     )
     mov.full_clean()
     mov.save()
-    recebimento.movimento = mov
-    recebimento.status = recebimento.Status.PAGO
-    recebimento.data_pagamento = mov.data
+
+    liquidacao_kwargs = {
+        'empresa': recebimento.empresa,
+        'movimento': mov,
+        'conta_bancaria': conta_bancaria,
+        'data_pagamento': data_liquidacao,
+        'valor': valor,
+        'impostos': impostos,
+        'valor_liquido': valor_liquido,
+        'observacao': recebimento.observacao,
+    }
+    if isinstance(recebimento, RecebimentoAvulso):
+        liquidacao_kwargs['recebimento_avulso'] = recebimento
+    else:
+        liquidacao_kwargs['recebimento_medicao'] = recebimento
+    liquidacao = RecebimentoLiquidacao(**liquidacao_kwargs)
+    liquidacao.full_clean()
+    liquidacao.save()
+
+    total_pago = (
+        recebimento.liquidacoes.aggregate(total=Sum('valor_liquido'))['total']
+        or Decimal('0')
+    )
+    recebimento.status = (
+        recebimento.Status.PAGO
+        if total_pago >= (recebimento.valor_liquido or Decimal('0'))
+        else recebimento.Status.PARCIAL
+    )
+    recebimento.data_pagamento = data_liquidacao
+    recebimento.conta_bancaria = conta_bancaria
+    if not recebimento.movimento_id:
+        recebimento.movimento = mov
     recebimento.save(
         update_fields=(
             'movimento',
             'status',
             'data_pagamento',
             'conta_bancaria',
-            'valor',
-            'impostos',
-            'valor_liquido',
             'atualizado_em',
         )
     )
     return mov
-
 
 def _aplicar_situacao_boleto(boleto: BoletoPagamento, hoje=None) -> BoletoPagamento:
     hoje = hoje or timezone.localdate()
@@ -1368,87 +1468,140 @@ def _extrato_caixa_detalhado(
 ) -> list[dict]:
     linhas = []
 
-    status_recebimentos = [RecebimentoAvulso.Status.PAGO]
-    if incluir_recebimentos_abertos:
-        status_recebimentos.append(RecebimentoAvulso.Status.ABERTO)
-
-    recebimentos_avulsos = (
-        RecebimentoAvulso.objects.filter(caixa=caixa, status__in=status_recebimentos)
-        .select_related('cliente', 'categoria')
-        .order_by('data_pagamento', 'data', 'pk')
-    )
-    for recebimento in recebimentos_avulsos:
-        data = recebimento.data_pagamento or recebimento.data or recebimento.criado_em.date()
-        linhas.append(
-            {
-                'data': data,
-                'sort_key': (data, recebimento.pk, 20),
-                'entrada': True,
-                'natureza': 'Entrada',
-                'categoria': 'Avulso',
-                'caixa_id': caixa.pk,
-                'caixa_nome': caixa.nome,
-                'categoria_id': recebimento.categoria_id,
-                'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
-                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
-                'nf': '-',
-                'pessoa': recebimento.cliente,
-                'fornecedor_id': None,
-                'descricao': (
-                    f'{recebimento.descricao or "Recebimento avulso"}'
-                    f'{" - Em aberto" if recebimento.status == RecebimentoAvulso.Status.ABERTO else ""}'
-                ),
-                'valor_bruto': recebimento.valor,
-                'descontos': recebimento.impostos,
-                'valor_liquido': recebimento.valor_liquido,
-                'url': reverse_empresa(
-                    request,
-                    'financeiro:recebimento_editar',
-                    kwargs={'tipo': 'avulso', 'pk': recebimento.pk},
-                ),
-            }
+    liquidacoes = (
+        RecebimentoLiquidacao.objects.filter(empresa=caixa.empresa, movimento__caixa=caixa)
+        .select_related(
+            'movimento',
+            'recebimento_avulso',
+            'recebimento_avulso__cliente',
+            'recebimento_avulso__categoria',
+            'recebimento_medicao',
+            'recebimento_medicao__cliente',
+            'recebimento_medicao__obra',
+            'recebimento_medicao__categoria',
         )
-
-    status_recebimentos = [RecebimentoMedicao.Status.PAGO]
-    if incluir_recebimentos_abertos:
-        status_recebimentos.append(RecebimentoMedicao.Status.ABERTO)
-
-    recebimentos_medicao = (
-        RecebimentoMedicao.objects.filter(caixa=caixa, status__in=status_recebimentos)
-        .select_related('cliente', 'obra', 'categoria')
-        .order_by('data_pagamento', 'data', 'pk')
+        .order_by('data_pagamento', 'pk')
     )
-    for recebimento in recebimentos_medicao:
-        data = recebimento.data_pagamento or recebimento.data or recebimento.criado_em.date()
-        descricao = f'Medição {recebimento.medicao_numero} - {recebimento.obra.nome}'
-        if recebimento.status == RecebimentoMedicao.Status.ABERTO:
-            descricao = f'{descricao} - Em aberto'
+    for liquidacao in liquidacoes:
+        recebimento = liquidacao.recebimento_avulso or liquidacao.recebimento_medicao
+        if not recebimento:
+            continue
+        is_medicao = bool(liquidacao.recebimento_medicao_id)
+        descricao = recebimento.descricao or ('Recebimento por medição' if is_medicao else 'Recebimento avulso')
+        if is_medicao:
+            descricao = f'{descricao} - Medição {recebimento.medicao_numero} - {recebimento.obra.nome}'
         linhas.append(
             {
-                'data': data,
-                'sort_key': (data, recebimento.pk, 30),
+                'data': liquidacao.data_pagamento,
+                'sort_key': (liquidacao.data_pagamento, liquidacao.pk, 20 if not is_medicao else 30),
                 'entrada': True,
                 'natureza': 'Entrada',
-                'categoria': 'Medição',
+                'categoria': 'Medição' if is_medicao else 'Avulso',
                 'caixa_id': caixa.pk,
                 'caixa_nome': caixa.nome,
                 'categoria_id': recebimento.categoria_id,
                 'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
-                'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
-                'nf': recebimento.nota_fiscal_numero or '-',
+                'tipo_pagamento': (
+                    CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO
+                    if is_medicao
+                    else CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO
+                ),
+                'nf': getattr(recebimento, 'nota_fiscal_numero', '') or '-',
                 'pessoa': recebimento.cliente,
                 'fornecedor_id': None,
                 'descricao': descricao,
-                'valor_bruto': recebimento.valor,
-                'descontos': recebimento.impostos,
-                'valor_liquido': recebimento.valor_liquido,
+                'valor_bruto': liquidacao.valor,
+                'descontos': liquidacao.impostos,
+                'valor_liquido': liquidacao.valor_liquido,
                 'url': reverse_empresa(
                     request,
                     'financeiro:recebimento_editar',
-                    kwargs={'tipo': 'medicao', 'pk': recebimento.pk},
+                    kwargs={'tipo': 'medicao' if is_medicao else 'avulso', 'pk': recebimento.pk},
                 ),
             }
         )
+
+    if incluir_recebimentos_abertos:
+        recebimentos_avulsos_abertos = (
+            RecebimentoAvulso.objects.filter(
+                caixa=caixa,
+                status__in=(RecebimentoAvulso.Status.ABERTO, RecebimentoAvulso.Status.PARCIAL),
+            )
+            .select_related('cliente', 'categoria')
+            .prefetch_related('liquidacoes')
+            .order_by('data', 'pk')
+        )
+        for recebimento in recebimentos_avulsos_abertos:
+            info = _info_pagamento_recebimento(recebimento)
+            data = recebimento.data or recebimento.criado_em.date()
+            linhas.append(
+                {
+                    'data': data,
+                    'sort_key': (data, recebimento.pk, 21),
+                    'entrada': True,
+                    'natureza': 'Entrada',
+                    'categoria': 'Avulso',
+                    'caixa_id': caixa.pk,
+                    'caixa_nome': caixa.nome,
+                    'categoria_id': recebimento.categoria_id,
+                    'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                    'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_AVULSO,
+                    'nf': '-',
+                    'pessoa': recebimento.cliente,
+                    'fornecedor_id': None,
+                    'descricao': f'{recebimento.descricao or "Recebimento avulso"} - {info["status_label"]}',
+                    'valor_bruto': max(recebimento.valor - info['valor_bruto_pago'], Decimal('0')),
+                    'descontos': max(recebimento.impostos - info['impostos_pago'], Decimal('0')),
+                    'valor_liquido': info['valor_restante'],
+                    'extrato_apenas_comprometido': True,
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:recebimento_editar',
+                        kwargs={'tipo': 'avulso', 'pk': recebimento.pk},
+                    ),
+                }
+            )
+
+        recebimentos_medicao_abertos = (
+            RecebimentoMedicao.objects.filter(
+                caixa=caixa,
+                status__in=(RecebimentoMedicao.Status.ABERTO, RecebimentoMedicao.Status.PARCIAL),
+            )
+            .select_related('cliente', 'obra', 'categoria')
+            .prefetch_related('liquidacoes')
+            .order_by('data', 'pk')
+        )
+        for recebimento in recebimentos_medicao_abertos:
+            info = _info_pagamento_recebimento(recebimento)
+            data = recebimento.data or recebimento.criado_em.date()
+            linhas.append(
+                {
+                    'data': data,
+                    'sort_key': (data, recebimento.pk, 31),
+                    'entrada': True,
+                    'natureza': 'Entrada',
+                    'categoria': 'Medição',
+                    'caixa_id': caixa.pk,
+                    'caixa_nome': caixa.nome,
+                    'categoria_id': recebimento.categoria_id,
+                    'categoria_ids': {recebimento.categoria_id} if recebimento.categoria_id else set(),
+                    'tipo_pagamento': CategoriaFinanceira.MovimentacaoTipo.RECEBIMENTO_MEDICAO,
+                    'nf': recebimento.nota_fiscal_numero or '-',
+                    'pessoa': recebimento.cliente,
+                    'fornecedor_id': None,
+                    'descricao': f'Medição {recebimento.medicao_numero} - {recebimento.obra.nome} - {info["status_label"]}',
+                    'valor_bruto': max(recebimento.valor - info['valor_bruto_pago'], Decimal('0')),
+                    'descontos': max(recebimento.impostos - info['impostos_pago'], Decimal('0')),
+                    'valor_liquido': info['valor_restante'],
+                    'extrato_apenas_comprometido': True,
+                    'url': reverse_empresa(
+                        request,
+                        'financeiro:recebimento_editar',
+                        kwargs={'tipo': 'medicao', 'pk': recebimento.pk},
+                    ),
+                }
+            )
+
 
     itens_nf = (
         PagamentoNotaFiscalItem.objects.filter(caixa=caixa)
@@ -1933,17 +2086,15 @@ def relatorios(request):
     inicio_periodo = meses_faturamento[0]
     fim_periodo = somar_meses(mes_atual, 1)
 
-    def faturamento_por_mes(modelo, status_pago):
+    def faturamento_por_mes():
         return (
-            modelo.objects.filter(
+            RecebimentoLiquidacao.objects.filter(
                 empresa=empresa,
-                status=status_pago,
-                data_pagamento__isnull=False,
                 data_pagamento__gte=inicio_periodo,
                 data_pagamento__lt=fim_periodo,
             )
             .annotate(mes=TruncMonth('data_pagamento'))
-            .values('mes', 'caixa_id')
+            .values('mes', 'movimento__caixa_id')
             .annotate(total=Coalesce(Sum('valor_liquido'), Value(Decimal('0')), output_field=dec))
             .order_by('mes')
         )
@@ -1957,14 +2108,13 @@ def relatorios(request):
 
     def aplicar_faturamento(item):
         mes = item['mes'].date() if hasattr(item['mes'], 'date') else item['mes']
-        caixa_id = str(item['caixa_id']) if item['caixa_id'] else ''
+        caixa_id_raw = item.get('caixa_id') or item.get('movimento__caixa_id')
+        caixa_id = str(caixa_id_raw) if caixa_id_raw else ''
         faturamento_mensal[mes] += item['total']
         if caixa_id in faturamento_por_caixa:
             faturamento_por_caixa[caixa_id][mes] += item['total']
 
-    for item in faturamento_por_mes(RecebimentoAvulso, RecebimentoAvulso.Status.PAGO):
-        aplicar_faturamento(item)
-    for item in faturamento_por_mes(RecebimentoMedicao, RecebimentoMedicao.Status.PAGO):
+    for item in faturamento_por_mes():
         aplicar_faturamento(item)
 
     nomes_meses = {
@@ -5044,6 +5194,8 @@ def _recebimentos_query_string(filtros):
 
 
 def _data_referencia_recebimento(recebimento):
+    if recebimento.get('liquidacao') is not None:
+        return recebimento.get('data_pagamento') or recebimento.get('data')
     if recebimento['status'] in (RecebimentoAvulso.Status.PAGO, RecebimentoMedicao.Status.PAGO):
         return recebimento.get('data_pagamento') or recebimento.get('data')
     return recebimento.get('data')
@@ -5073,36 +5225,49 @@ def _aplicar_filtros_recebimentos(recebimentos, filtros):
 
 
 def _recebimentos_movimentar_listas(empresa, *, filtros_abertos=None, filtros_pagos=None):
-    recebimentos_avulsos = (
+    liquidacoes_qs = RecebimentoLiquidacao.objects.select_related(
+        'conta_bancaria',
+        'movimento',
+    ).order_by('data_pagamento', 'pk')
+    recebimentos_avulsos = list(
         RecebimentoAvulso.objects.filter(empresa=empresa)
         .select_related('caixa', 'cliente', 'conta_bancaria', 'movimento')
+        .prefetch_related(Prefetch('liquidacoes', queryset=liquidacoes_qs, to_attr='liquidacoes_cache'))
         .order_by('-data', '-pk')
     )
-    recebimentos_medicao = (
+    recebimentos_medicao = list(
         RecebimentoMedicao.objects.filter(empresa=empresa)
         .select_related('caixa', 'cliente', 'obra', 'conta_bancaria', 'movimento')
+        .prefetch_related(Prefetch('liquidacoes', queryset=liquidacoes_qs, to_attr='liquidacoes_cache'))
         .order_by('-data', '-pk')
     )
-    recebimentos = [
-        *(_recebimento_para_linha(r, 'avulso') for r in recebimentos_avulsos),
-        *(_recebimento_para_linha(r, 'medicao') for r in recebimentos_medicao),
-    ]
-    recebimentos.sort(key=lambda r: (r['data'] or timezone.localdate(), r['pk']), reverse=True)
-    recebimentos_abertos = [
-        r for r in recebimentos
-        if r['status'] in (RecebimentoAvulso.Status.ABERTO, RecebimentoMedicao.Status.ABERTO)
-    ]
-    recebimentos_pagos = [
-        r for r in recebimentos
-        if r['status'] in (RecebimentoAvulso.Status.PAGO, RecebimentoMedicao.Status.PAGO)
-    ]
+
+    recebimentos_abertos = []
+    recebimentos_pagos = []
+    for recebimento in recebimentos_avulsos:
+        linha = _recebimento_para_linha(recebimento, 'avulso')
+        if linha['status'] in (RecebimentoAvulso.Status.ABERTO, RecebimentoAvulso.Status.PARCIAL):
+            recebimentos_abertos.append(linha)
+        for liquidacao in linha['liquidacoes']:
+            recebimentos_pagos.append(_liquidacao_para_linha(recebimento, 'avulso', liquidacao))
+    for recebimento in recebimentos_medicao:
+        linha = _recebimento_para_linha(recebimento, 'medicao')
+        if linha['status'] in (RecebimentoMedicao.Status.ABERTO, RecebimentoMedicao.Status.PARCIAL):
+            recebimentos_abertos.append(linha)
+        for liquidacao in linha['liquidacoes']:
+            recebimentos_pagos.append(_liquidacao_para_linha(recebimento, 'medicao', liquidacao))
+
+    recebimentos_abertos.sort(key=lambda r: (r['data'] or timezone.localdate(), r['pk']), reverse=True)
+    recebimentos_pagos.sort(
+        key=lambda r: (r['data_pagamento'] or r['data'] or timezone.localdate(), r.get('liquidacao_pk') or 0),
+        reverse=True,
+    )
     if filtros_abertos:
         recebimentos_abertos = _aplicar_filtros_recebimentos(recebimentos_abertos, filtros_abertos)
     if filtros_pagos:
         recebimentos_pagos = _aplicar_filtros_recebimentos(recebimentos_pagos, filtros_pagos)
     recebimentos_pagos = recebimentos_pagos[:ULTIMOS_RECEBIMENTOS_LISTA_LIMITE]
     return recebimentos_abertos, recebimentos_pagos
-
 
 def _flowables_header_recebimentos(empresa, subtitulo, styles):
     hdr_style = ParagraphStyle(
@@ -5219,56 +5384,69 @@ def recebimentos_pdf(request, status: str):
             '#',
             'Data',
             'Data Pgto.',
+            'Status',
             'Tipo',
             'Medição',
             'NF',
-            'Cliente',
-            'Obra',
-            'Bruto',
-            'Impostos',
-            'Líquido',
+            'Obra / Cliente',
+            'Valor Pago',
+            'Restante',
             'Recebido em',
         ]]
-        col_widths = [7, 15, 16, 14, 18, 16, 40, 32, 22, 20, 22, 28]
+        col_widths = [7, 15, 16, 20, 13, 17, 14, 62, 24, 22, 28]
     else:
         data = [[
             '#',
             'Data',
+            'Status',
             'Tipo',
             'Medição',
             'NF',
-            'Cliente',
-            'Obra',
-            'Bruto',
-            'Impostos',
+            'Obra / Cliente',
             'Líquido',
+            'Pago',
+            'Restante',
         ]]
-        col_widths = [8, 18, 18, 22, 18, 56, 42, 28, 25, 28]
+        col_widths = [8, 18, 22, 16, 20, 16, 76, 28, 26, 28]
 
     for idx, recebimento in enumerate(recebimentos, start=1):
         obra = getattr(recebimento.get('obra'), 'nome', '') or '-'
+        cliente = getattr(recebimento.get('cliente'), 'nome', '') or '-'
+        obra_cliente = f'{obra}\n{cliente}'
         row = [
             str(idx),
             _format_data_pdf(recebimento.get('data')),
         ]
         if status == 'pagos':
-            row.append(_format_data_pdf(recebimento.get('data_pagamento')))
-        row.extend(
-            [
-                recebimento.get('tipo_label') or '-',
-                recebimento.get('medicao') or '-',
-                recebimento.get('nf') or '-',
-                _pdf_cell(getattr(recebimento.get('cliente'), 'nome', '') or '-', cell),
-                _pdf_cell(obra, cell),
-                _pdf_cell(_format_moeda_pdf(recebimento.get('valor')), cell_right),
-                _pdf_cell(_format_moeda_pdf(recebimento.get('impostos')), cell_right),
-                _pdf_cell(_format_moeda_pdf(recebimento.get('valor_liquido')), cell_right),
-            ]
-        )
-        if status == 'pagos':
             recebido_em = getattr(recebimento.get('conta_bancaria'), 'nome', '') or 'Dinheiro'
-            row.append(_pdf_cell(recebido_em, cell))
+            row.extend(
+                [
+                    _format_data_pdf(recebimento.get('data_pagamento')),
+                    recebimento.get('status_label') or '-',
+                    recebimento.get('tipo_label') or '-',
+                    recebimento.get('medicao') or '-',
+                    recebimento.get('nf') or '-',
+                    _pdf_cell(obra_cliente, cell),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_pago')), cell_right),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_restante')), cell_right),
+                    _pdf_cell(recebido_em, cell),
+                ]
+            )
+        else:
+            row.extend(
+                [
+                    recebimento.get('status_label') or '-',
+                    recebimento.get('tipo_label') or '-',
+                    recebimento.get('medicao') or '-',
+                    recebimento.get('nf') or '-',
+                    _pdf_cell(obra_cliente, cell),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_liquido')), cell_right),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_pago')), cell_right),
+                    _pdf_cell(_format_moeda_pdf(recebimento.get('valor_restante')), cell_right),
+                ]
+            )
         data.append(row)
+
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -5296,14 +5474,14 @@ def recebimentos_pdf(request, status: str):
     totais_table = Table(
         [[
             'Quantidade',
-            'Valor Bruto',
-            'Impostos',
             'Valor Líquido',
+            'Valor Pago',
+            'Valor Restante',
         ], [
             str(len(recebimentos)),
-            _format_moeda_pdf(totais['valor']),
-            _format_moeda_pdf(totais['impostos']),
             _format_moeda_pdf(totais['valor_liquido']),
+            _format_moeda_pdf(totais['valor_pago']),
+            _format_moeda_pdf(totais['valor_restante']),
         ]],
         colWidths=[34 * mm, 48 * mm, 48 * mm, 48 * mm],
     )
@@ -5355,18 +5533,22 @@ def recebimento_liquidar(request, tipo: str, pk: int):
     )
     if request.method == 'POST' and form.is_valid():
         cd = form.cleaned_data
-        recebimento.valor = cd['valor']
-        recebimento.impostos = cd['impostos']
-        recebimento.valor_liquido = cd['valor_liquido']
-        recebimento.conta_bancaria = cd.get('conta_bancaria')
         with transaction.atomic():
             _criar_movimento_recebimento(
                 recebimento,
                 categoria_origem,
                 data_liquidacao=cd['data_pagamento'],
+                valor=cd['valor'],
+                impostos=cd['impostos'],
+                valor_liquido=cd['valor_liquido'],
+                conta_bancaria=cd.get('conta_bancaria'),
             )
 
-        messages.success(request, 'Recebimento liquidado e lançado no caixa.')
+        recebimento.refresh_from_db(fields=['status'])
+        if recebimento.status == recebimento.Status.PAGO:
+            messages.success(request, 'Recebimento liquidado e lançado no caixa.')
+        else:
+            messages.success(request, 'Pagamento parcial lançado no caixa.')
         if _is_htmx(request):
             response = HttpResponse(status=200)
             response['HX-Redirect'] = reverse_empresa(request, 'financeiro:movimentar_caixa')
@@ -5420,10 +5602,17 @@ def recebimento_editar(request, tipo: str, pk: int):
 
     if request.method == 'POST' and request.POST.get('action') == 'excluir':
         with transaction.atomic():
+            movimentos_ids = list(
+                recebimento.liquidacoes.exclude(movimento__isnull=True).values_list(
+                    'movimento_id', flat=True
+                )
+            )
             movimento = getattr(recebimento, 'movimento', None)
+            if movimento and movimento.pk not in movimentos_ids:
+                movimentos_ids.append(movimento.pk)
             recebimento.delete()
-            if movimento:
-                movimento.delete()
+            if movimentos_ids:
+                MovimentoCaixa.objects.filter(pk__in=movimentos_ids).delete()
         messages.success(request, 'Recebimento excluído.')
         if _is_htmx(request):
             response = HttpResponse(status=200)
@@ -5459,15 +5648,35 @@ def recebimento_editar(request, tipo: str, pk: int):
             recebimento.full_clean()
             recebimento.save()
 
-            movimento = getattr(recebimento, 'movimento', None)
-            if movimento:
-                movimento.caixa = recebimento.caixa
-                movimento.valor = recebimento.valor_liquido
-                movimento.data = recebimento.data_pagamento or recebimento.data
-                movimento.descricao = recebimento.descricao
-                movimento.observacao = recebimento.observacao
-                movimento.full_clean()
-                movimento.save()
+            liquidacoes = list(recebimento.liquidacoes.select_related('movimento'))
+            if len(liquidacoes) == 1 and recebimento.status == recebimento.Status.PAGO:
+                liquidacao = liquidacoes[0]
+                liquidacao.valor = recebimento.valor
+                liquidacao.impostos = recebimento.impostos
+                liquidacao.valor_liquido = recebimento.valor_liquido
+                liquidacao.data_pagamento = recebimento.data_pagamento or recebimento.data
+                liquidacao.conta_bancaria = recebimento.conta_bancaria
+                liquidacao.full_clean()
+                liquidacao.save()
+                movimento = liquidacao.movimento or getattr(recebimento, 'movimento', None)
+                if movimento:
+                    movimento.caixa = recebimento.caixa
+                    movimento.valor = liquidacao.valor_liquido
+                    movimento.data = liquidacao.data_pagamento
+                    movimento.descricao = recebimento.descricao
+                    movimento.observacao = recebimento.observacao
+                    movimento.full_clean()
+                    movimento.save()
+            elif not liquidacoes:
+                movimento = getattr(recebimento, 'movimento', None)
+                if movimento:
+                    movimento.caixa = recebimento.caixa
+                    movimento.valor = recebimento.valor_liquido
+                    movimento.data = recebimento.data_pagamento or recebimento.data
+                    movimento.descricao = recebimento.descricao
+                    movimento.observacao = recebimento.observacao
+                    movimento.full_clean()
+                    movimento.save()
 
         messages.success(request, 'Recebimento atualizado.')
         if _is_htmx(request):

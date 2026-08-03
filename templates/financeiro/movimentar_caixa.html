@@ -137,6 +137,14 @@
         border-color: #bbf7d0;
         box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
     }
+    .financeiro-valor-restante {
+        color: #6d0f1f !important;
+    }
+    .financeiro-total-card--restante {
+        background: #fff1f3;
+        border-color: #b91c3a;
+        box-shadow: 0 10px 24px rgba(109, 15, 31, 0.12);
+    }
     .fin-table th {
         font-size: .72rem;
         text-transform: uppercase;
@@ -331,14 +339,14 @@
                 <tr>
                     <th>#</th>
                     <th>Data</th>
+                    <th>Status</th>
                     <th>Tipo</th>
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
-                    <th>Cliente</th>
-                    <th>Obra</th>
-                    <th class="text-end">Valor bruto</th>
-                    <th class="text-end">Impostos</th>
+                    <th>Obra / Cliente</th>
                     <th class="text-end">Valor líquido</th>
+                    <th class="text-end">Valor pago</th>
+                    <th class="text-end">Valor restante</th>
                     <th class="text-end">Ações</th>
                 </tr>
             </thead>
@@ -347,22 +355,19 @@
                 <tr>
                     <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
                     <td class="text-nowrap">{{ r.data|date:'d/m/Y' }}</td>
-                    <td class="small text-muted text-nowrap">
-                        {{ r.tipo_label }}
+                    <td class="text-nowrap">
+                        <span class="badge rounded-pill {{ r.status_badge_class }}">{{ r.status_label }}</span>
                     </td>
+                    <td class="small text-muted text-nowrap">{{ r.tipo_label }}</td>
                     <td class="small text-muted text-nowrap">{{ r.medicao|default:"—" }}</td>
-                    <td class="small text-muted text-nowrap">
-                        {{ r.nf|default:"—" }}
+                    <td class="small text-muted text-nowrap">{{ r.nf|default:"—" }}</td>
+                    <td class="small" style="min-width: 14rem; max-width: 20rem;">
+                        <div class="fw-bold text-truncate" title="{{ r.obra.nome|default:'—' }}">{{ r.obra.nome|default:"—" }}</div>
+                        <div class="text-muted text-truncate" title="{{ r.cliente.nome }}">{{ r.cliente.nome }}</div>
                     </td>
-                    <td class="small">
-                        {{ r.cliente.nome }}
-                    </td>
-                    <td class="small text-muted" style="max-width: 10rem;">
-                        <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
-                    </td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
-                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
-                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="text-end fw-bold text-primary text-nowrap">R$ {{ r.valor_pago|moeda_br }}</td>
+                    <td class="text-end fw-bold financeiro-valor-restante text-nowrap">R$ {{ r.valor_restante|moeda_br }}</td>
                     <td class="text-end text-nowrap">
                         <button type="button"
                                 class="btn btn-sm btn-success rounded-circle"
@@ -396,16 +401,16 @@
     </div>
     <div class="financeiro-totals">
         <div class="financeiro-total-card">
-            <div class="small text-muted fw-semibold">Valor Bruto</div>
-            <strong>R$ {{ totais_abertos.valor|moeda_br }}</strong>
+            <div class="small text-muted fw-semibold">Valor Líquido</div>
+            <strong>R$ {{ totais_abertos.valor_liquido|moeda_br }}</strong>
         </div>
         <div class="financeiro-total-card">
-            <div class="small text-muted fw-semibold">Impostos</div>
-            <strong class="text-danger">R$ {{ totais_abertos.impostos|moeda_br }}</strong>
+            <div class="small text-primary fw-semibold">Valor Pago</div>
+            <strong class="text-primary">R$ {{ totais_abertos.valor_pago|moeda_br }}</strong>
         </div>
-        <div class="financeiro-total-card financeiro-total-card--liquido">
-            <div class="small text-success fw-semibold">Valor Líquido</div>
-            <strong class="text-success">R$ {{ totais_abertos.valor_liquido|moeda_br }}</strong>
+        <div class="financeiro-total-card financeiro-total-card--restante">
+            <div class="small financeiro-valor-restante fw-semibold">Valor Restante</div>
+            <strong class="financeiro-valor-restante">R$ {{ totais_abertos.valor_restante|moeda_br }}</strong>
         </div>
     </div>
     {% else %}
@@ -490,14 +495,13 @@
                     <th>#</th>
                     <th>Data</th>
                     <th>Data pagamento</th>
+                    <th>Status</th>
                     <th>Tipo</th>
                     <th>Medição</th>
                     <th class="text-nowrap">NF</th>
-                    <th>Cliente</th>
-                    <th>Obra</th>
-                    <th class="text-end">Valor bruto</th>
-                    <th class="text-end">Impostos</th>
-                    <th class="text-end">Valor líquido</th>
+                    <th>Obra / Cliente</th>
+                    <th class="text-end">Valor pago</th>
+                    <th class="text-end">Valor restante</th>
                     <th>Recebido em</th>
                     <th class="text-end">Ações</th>
                 </tr>
@@ -508,16 +512,18 @@
                     <td class="fw-semibold text-muted">{{ forloop.counter }}</td>
                     <td class="text-nowrap">{{ r.data|date:'d/m/Y' }}</td>
                     <td class="text-nowrap">{{ r.data_pagamento|date:'d/m/Y' }}</td>
+                    <td class="text-nowrap">
+                        <span class="badge rounded-pill {{ r.status_badge_class }}">{{ r.status_label }}</span>
+                    </td>
                     <td class="small text-muted text-nowrap">{{ r.tipo_label }}</td>
                     <td class="small text-muted text-nowrap">{{ r.medicao|default:"—" }}</td>
                     <td class="small text-muted text-nowrap">{{ r.nf|default:"—" }}</td>
-                    <td class="small">{{ r.cliente.nome }}</td>
-                    <td class="small text-muted" style="max-width: 10rem;">
-                        <span class="d-inline-block text-truncate w-100" title="{{ r.obra.nome }}">{{ r.obra.nome|default:"—" }}</span>
+                    <td class="small" style="min-width: 14rem; max-width: 20rem;">
+                        <div class="fw-bold text-truncate" title="{{ r.obra.nome|default:'—' }}">{{ r.obra.nome|default:"—" }}</div>
+                        <div class="text-muted text-truncate" title="{{ r.cliente.nome }}">{{ r.cliente.nome }}</div>
                     </td>
-                    <td class="text-end fw-semibold text-nowrap">R$ {{ r.valor|moeda_br }}</td>
-                    <td class="text-end text-danger text-nowrap">R$ {{ r.impostos|moeda_br }}</td>
-                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_liquido|moeda_br }}</td>
+                    <td class="text-end fw-bold text-success text-nowrap">R$ {{ r.valor_pago|moeda_br }}</td>
+                    <td class="text-end fw-bold financeiro-valor-restante text-nowrap">R$ {{ r.valor_restante|moeda_br }}</td>
                     <td class="small text-muted text-nowrap">{{ r.conta_bancaria.nome|default:"Dinheiro" }}</td>
                     <td class="text-end text-nowrap">
                         <button type="button"
@@ -539,17 +545,17 @@
         </table>
     </div>
     <div class="financeiro-totals">
+        <div class="financeiro-total-card financeiro-total-card--liquido">
+            <div class="small text-success fw-semibold">Valor Pago</div>
+            <strong class="text-success">R$ {{ totais_pagos.valor_pago|moeda_br }}</strong>
+        </div>
         <div class="financeiro-total-card">
-            <div class="small text-muted fw-semibold">Valor Bruto</div>
+            <div class="small text-muted fw-semibold">Valor Bruto Pago</div>
             <strong>R$ {{ totais_pagos.valor|moeda_br }}</strong>
         </div>
-        <div class="financeiro-total-card">
-            <div class="small text-muted fw-semibold">Impostos</div>
-            <strong class="text-danger">R$ {{ totais_pagos.impostos|moeda_br }}</strong>
-        </div>
-        <div class="financeiro-total-card financeiro-total-card--liquido">
-            <div class="small text-success fw-semibold">Valor Líquido</div>
-            <strong class="text-success">R$ {{ totais_pagos.valor_liquido|moeda_br }}</strong>
+        <div class="financeiro-total-card financeiro-total-card--restante">
+            <div class="small financeiro-valor-restante fw-semibold">Valor Restante</div>
+            <strong class="financeiro-valor-restante">R$ {{ totais_pagos.valor_restante|moeda_br }}</strong>
         </div>
     </div>
     {% else %}

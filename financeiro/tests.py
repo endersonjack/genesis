@@ -8,6 +8,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from clientes.models import Cliente
 from empresas.models import Empresa
 from fornecedores.models import Fornecedor
 from usuarios.models import UsuarioEmpresa
@@ -17,15 +18,20 @@ from .models import (
     BoletoPagamento,
     Caixa,
     CategoriaFinanceira,
+    MovimentoCaixa,
     PagamentoImposto,
     PagamentoImpostoItem,
     PagamentoNotaFiscal,
     PagamentoNotaFiscalPagamento,
     PagamentoNotaFiscalItem,
+    RecebimentoAvulso,
+    RecebimentoLiquidacao,
 )
 from .views import (
     _busca_pagamentos_nf_corresponde_status,
+    _criar_movimento_recebimento,
     _dashboard_alertas_financeiro_data,
+    _recebimentos_movimentar_listas,
     relatorios,
     relatorio_fornecedor_pdf,
     _status_busca_pagamento_nf,
@@ -508,3 +514,82 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
         self.assertEqual(boleto_2.status, BoletoPagamento.Status.PAGO)
         self.assertEqual(boleto_1.valor_pago, Decimal('100.00'))
         self.assertEqual(boleto_2.valor_pago, Decimal('100.00'))
+
+
+class RecebimentosParciaisTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(
+            razao_social='Empresa Parcial',
+            nome_fantasia='Empresa Parcial',
+            cnpj='00.000.000/0001-99',
+        )
+        self.caixa = Caixa.objects.get(
+            empresa=self.empresa,
+            tipo=Caixa.Tipo.GERAL,
+        )
+        self.cliente = Cliente.objects.create(
+            empresa=self.empresa,
+            nome='Cliente Parcial',
+            tipo='PJ',
+        )
+        self.recebimento = RecebimentoAvulso.objects.create(
+            empresa=self.empresa,
+            caixa=self.caixa,
+            cliente=self.cliente,
+            data=date(2026, 8, 1),
+            valor=Decimal('1000.00'),
+            impostos=Decimal('0.00'),
+            descricao='Recebimento parcial',
+        )
+
+    def test_liquidacao_parcial_mantem_restante_em_aberto(self):
+        _criar_movimento_recebimento(
+            self.recebimento,
+            MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_AVULSO,
+            data_liquidacao=date(2026, 8, 3),
+            valor=Decimal('400.00'),
+            impostos=Decimal('0.00'),
+            valor_liquido=Decimal('400.00'),
+            conta_bancaria=None,
+        )
+
+        self.recebimento.refresh_from_db()
+        self.assertEqual(self.recebimento.status, RecebimentoAvulso.Status.PARCIAL)
+        liquidacao = RecebimentoLiquidacao.objects.get(recebimento_avulso=self.recebimento)
+        self.assertEqual(liquidacao.valor_liquido, Decimal('400.00'))
+        self.assertEqual(liquidacao.movimento.valor, Decimal('400.00'))
+
+        abertos, liquidados = _recebimentos_movimentar_listas(self.empresa)
+        aberto = next(linha for linha in abertos if linha['pk'] == self.recebimento.pk)
+        self.assertEqual(aberto['status_label'], 'Pago Parcial')
+        self.assertEqual(aberto['valor_pago'], Decimal('400.00'))
+        self.assertEqual(aberto['valor_restante'], Decimal('600.00'))
+        self.assertEqual(len(liquidados), 1)
+        self.assertEqual(liquidados[0]['valor_pago'], Decimal('400.00'))
+
+    def test_segunda_liquidacao_fecha_recebimento(self):
+        _criar_movimento_recebimento(
+            self.recebimento,
+            MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_AVULSO,
+            data_liquidacao=date(2026, 8, 3),
+            valor=Decimal('400.00'),
+            impostos=Decimal('0.00'),
+            valor_liquido=Decimal('400.00'),
+            conta_bancaria=None,
+        )
+        self.recebimento.refresh_from_db()
+        _criar_movimento_recebimento(
+            self.recebimento,
+            MovimentoCaixa.CategoriaOrigem.RECEBIMENTO_AVULSO,
+            data_liquidacao=date(2026, 8, 4),
+            valor=Decimal('600.00'),
+            impostos=Decimal('0.00'),
+            valor_liquido=Decimal('600.00'),
+            conta_bancaria=None,
+        )
+
+        self.recebimento.refresh_from_db()
+        self.assertEqual(self.recebimento.status, RecebimentoAvulso.Status.PAGO)
+        abertos, liquidados = _recebimentos_movimentar_listas(self.empresa)
+        self.assertFalse(any(linha['pk'] == self.recebimento.pk for linha in abertos))
+        self.assertEqual(len([linha for linha in liquidados if linha['pk'] == self.recebimento.pk]), 2)

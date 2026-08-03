@@ -391,6 +391,30 @@ class RecebimentoAvulsoEditForm(RecebimentoAvulsoForm):
         return cleaned
 
 
+def _totais_liquidacoes_recebimento(recebimento) -> dict:
+    if not recebimento:
+        return {'valor': Decimal('0'), 'impostos': Decimal('0'), 'valor_liquido': Decimal('0')}
+    liquidacoes = getattr(recebimento, 'liquidacoes_cache', None)
+    if liquidacoes is None:
+        liquidacoes = recebimento.liquidacoes.all()
+    liquidacoes = list(liquidacoes)
+    return {
+        'valor': sum((l.valor for l in liquidacoes), Decimal('0')),
+        'impostos': sum((l.impostos for l in liquidacoes), Decimal('0')),
+        'valor_liquido': sum((l.valor_liquido for l in liquidacoes), Decimal('0')),
+    }
+
+
+def _restantes_recebimento(recebimento) -> dict:
+    pagos = _totais_liquidacoes_recebimento(recebimento)
+    return {
+        'valor': max((recebimento.valor or Decimal('0')) - pagos['valor'], Decimal('0')),
+        'impostos': max((recebimento.impostos or Decimal('0')) - pagos['impostos'], Decimal('0')),
+        'valor_liquido': max((recebimento.valor_liquido or Decimal('0')) - pagos['valor_liquido'], Decimal('0')),
+        'valor_pago': pagos['valor_liquido'],
+    }
+
+
 class RecebimentoLiquidacaoForm(forms.Form):
     data_pagamento = forms.DateField(
         label='Data de pagamento/liquidação',
@@ -448,6 +472,13 @@ class RecebimentoLiquidacaoForm(forms.Form):
     )
 
     def __init__(self, *args, recebimento=None, empresa=None, **kwargs):
+        self.recebimento = recebimento
+        self.restantes = _restantes_recebimento(recebimento) if recebimento else {
+            'valor': Decimal('0'),
+            'impostos': Decimal('0'),
+            'valor_liquido': Decimal('0'),
+            'valor_pago': Decimal('0'),
+        }
         super().__init__(*args, **kwargs)
         if empresa:
             self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
@@ -456,9 +487,9 @@ class RecebimentoLiquidacaoForm(forms.Form):
             ).order_by('banco', 'nome')
         if recebimento and not self.is_bound:
             self.initial['data_pagamento'] = timezone.localdate().isoformat()
-            self.initial['valor'] = format_decimal_br_moeda(recebimento.valor)
-            self.initial['impostos'] = format_decimal_br_moeda(recebimento.impostos)
-            self.initial['valor_liquido'] = format_decimal_br_moeda(recebimento.valor_liquido)
+            self.initial['valor'] = format_decimal_br_moeda(self.restantes['valor'])
+            self.initial['impostos'] = format_decimal_br_moeda(self.restantes['impostos'])
+            self.initial['valor_liquido'] = format_decimal_br_moeda(self.restantes['valor_liquido'])
             self.initial['conta_bancaria'] = recebimento.conta_bancaria_id
 
     def clean_valor(self):
@@ -491,6 +522,15 @@ class RecebimentoLiquidacaoForm(forms.Form):
                 'valor_liquido',
                 'Valor líquido deve ser o valor bruto menos impostos.',
             )
+        if self.recebimento:
+            if valor > self.restantes['valor']:
+                self.add_error('valor', 'Valor bruto maior que o saldo restante.')
+            if impostos > self.restantes['impostos']:
+                self.add_error('impostos', 'Impostos maiores que o saldo restante.')
+            if valor_liquido > self.restantes['valor_liquido']:
+                self.add_error('valor_liquido', 'Valor líquido maior que o saldo restante.')
+            if self.restantes['valor_liquido'] <= 0:
+                self.add_error('valor_liquido', 'Este recebimento já está totalmente liquidado.')
         return cleaned
 
 

@@ -1,3 +1,4 @@
+{% load moeda %}
 <style>
     .financeiro-modal-btn {
         border: none;
@@ -63,6 +64,20 @@
             <div class="small text-muted text-uppercase fw-bold mb-1" style="letter-spacing:.06em;">Recebimento</div>
             <div class="fw-bold">{{ recebimento.cliente.nome }}</div>
             <div class="small text-muted">{{ recebimento.descricao }}</div>
+            <div class="row g-2 mt-3">
+                <div class="col-12 col-md-4">
+                    <div class="small text-muted fw-semibold">Valor total</div>
+                    <div class="fw-bold">R$ {{ recebimento.valor_liquido|moeda_br }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="small text-muted fw-semibold">Valor pago</div>
+                    <div class="fw-bold text-primary">R$ {{ form.restantes.valor_pago|moeda_br }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="small text-muted fw-semibold">Valor restante</div>
+                    <div class="fw-bold text-warning">R$ {{ form.restantes.valor_liquido|moeda_br }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="row g-3">

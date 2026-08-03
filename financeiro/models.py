@@ -357,6 +357,7 @@ class RecebimentoAvulso(TimeStampedModel):
 
     class Status(models.TextChoices):
         ABERTO = 'aberto', 'Em aberto'
+        PARCIAL = 'parcial', 'Pago Parcial'
         PAGO = 'pago', 'Pago'
 
     movimento = models.OneToOneField(
@@ -459,6 +460,7 @@ class RecebimentoMedicao(TimeStampedModel):
 
     class Status(models.TextChoices):
         ABERTO = 'aberto', 'Em aberto'
+        PARCIAL = 'parcial', 'Pago Parcial'
         PAGO = 'pago', 'Pago'
 
     movimento = models.OneToOneField(
@@ -570,6 +572,118 @@ class RecebimentoMedicao(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.valor_liquido = self.calcular_valor_liquido()
         super().save(*args, **kwargs)
+
+
+
+class RecebimentoLiquidacao(TimeStampedModel):
+    """Pagamento parcial ou total de um recebimento lançado no caixa."""
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='recebimentos_liquidacoes',
+    )
+    recebimento_avulso = models.ForeignKey(
+        RecebimentoAvulso,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='liquidacoes',
+    )
+    recebimento_medicao = models.ForeignKey(
+        RecebimentoMedicao,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='liquidacoes',
+    )
+    movimento = models.OneToOneField(
+        MovimentoCaixa,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recebimento_liquidacao',
+    )
+    conta_bancaria = models.ForeignKey(
+        ContaBancaria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='recebimentos_liquidacoes',
+        verbose_name='Recebimento realizado em',
+    )
+    data_pagamento = models.DateField('Data de pagamento', db_index=True)
+    valor = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    impostos = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    valor_liquido = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal('0'))
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Liquidação de recebimento'
+        verbose_name_plural = 'Liquidações de recebimentos'
+        ordering = ['data_pagamento', 'pk']
+        indexes = [
+            models.Index(fields=('empresa', 'data_pagamento')),
+            models.Index(fields=('recebimento_avulso', 'data_pagamento')),
+            models.Index(fields=('recebimento_medicao', 'data_pagamento')),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (
+                        Q(recebimento_avulso__isnull=False)
+                        & Q(recebimento_medicao__isnull=True)
+                    )
+                    | (
+                        Q(recebimento_avulso__isnull=True)
+                        & Q(recebimento_medicao__isnull=False)
+                    )
+                ),
+                name='financeiro_liquidacao_um_recebimento',
+            ),
+        ]
+
+    @property
+    def recebimento(self):
+        return self.recebimento_avulso or self.recebimento_medicao
+
+    def clean(self) -> None:
+        super().clean()
+        if bool(self.recebimento_avulso_id) == bool(self.recebimento_medicao_id):
+            raise ValidationError(
+                'Informe exatamente um recebimento para a liquidação.'
+            )
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({'valor': 'Informe um valor maior que zero.'})
+        if self.impostos is not None and self.impostos < 0:
+            raise ValidationError({'impostos': 'Valor não pode ser negativo.'})
+        if self.valor_liquido is not None and self.valor_liquido <= 0:
+            raise ValidationError(
+                {'valor_liquido': 'Informe um valor líquido maior que zero.'}
+            )
+        if (
+            self.valor is not None
+            and self.impostos is not None
+            and self.valor_liquido is not None
+            and self.valor - self.impostos != self.valor_liquido
+        ):
+            raise ValidationError(
+                {'valor_liquido': 'Valor líquido deve ser o valor bruto menos impostos.'}
+            )
+        recebimento = self.recebimento
+        if recebimento and self.empresa_id and recebimento.empresa_id != self.empresa_id:
+            raise ValidationError('Recebimento inválido para esta empresa.')
+        if self.conta_bancaria_id and self.empresa_id:
+            if self.conta_bancaria.empresa_id != self.empresa_id:
+                raise ValidationError(
+                    {'conta_bancaria': 'Conta bancária inválida para esta empresa.'}
+                )
+        if self.movimento_id and self.empresa_id:
+            if self.movimento.empresa_id != self.empresa_id:
+                raise ValidationError({'movimento': 'Movimento inválido para esta empresa.'})
+
+    def __str__(self) -> str:
+        return f'Liquidação #{self.pk} - R$ {self.valor_liquido}'
 
 
 class PagamentoNotaFiscal(TimeStampedModel):
