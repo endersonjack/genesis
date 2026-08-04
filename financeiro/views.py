@@ -7929,6 +7929,49 @@ def pagamento_nf_detalhe(request, pk: int):
     )
 
 
+
+@login_required
+def pagamento_nf_imprimir(request, pk: int):
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+
+    nf = get_object_or_404(
+        PagamentoNotaFiscal.objects.filter(empresa=empresa).select_related(
+            'fornecedor',
+            'caixa',
+        ),
+        pk=pk,
+    )
+    itens = list(nf.itens.select_related('categoria', 'caixa').order_by('pk'))
+    pagamentos = list(
+        nf.pagamentos.select_related('conta_bancaria').order_by('data', 'pk')
+    )
+    hoje = timezone.localdate()
+    boletos = [
+        _aplicar_situacao_boleto(boleto, hoje)
+        for boleto in nf.boletos.select_related('conta_bancaria').order_by('vencimento', 'parcela', 'pk')
+    ]
+    total_itens = nf.total_itens()
+    total_boletos = sum((b.valor for b in boletos), Decimal('0'))
+    resumo_pagamento = _resumo_pagamento_nf(pagamentos, boletos, total_itens, hoje)
+
+    return render(
+        request,
+        'financeiro/pagamento_nf_impressao.html',
+        {
+            'page_title': f'Imprimir Nota Fiscal nº {nf.numero_nf}',
+            'empresa': empresa,
+            'nf': nf,
+            'itens': itens,
+            'pagamentos': pagamentos,
+            'boletos': boletos,
+            'total_itens': total_itens,
+            'total_boletos': total_boletos,
+            'resumo_pagamento': resumo_pagamento,
+        },
+    )
+
 def _format_quantidade_nf_pdf(valor) -> str:
     if valor is None:
         return '-'
