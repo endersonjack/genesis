@@ -4,6 +4,7 @@
         <thead>
             <tr>
                 <th scope="col" class="ps-th-base">#</th>
+                <th scope="col" class="ps-th-base ps-col-drag" aria-label="Ordenar manualmente"></th>
                 <th scope="col" class="ps-th-base ps-th-funcionario">
                     <div class="ps-th-funcionario-title">Funcionário</div>
                     <select
@@ -17,6 +18,7 @@
                         hx-include="#ps-filtros-form"
                         hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"
                         hx-on::after-request="document.body.dispatchEvent(new CustomEvent('pagamentoSalarioFiltroAtualizado')); if (typeof window.syncPagamentoSalarioExportLinks === 'function') { window.syncPagamentoSalarioExportLinks(); }">
+                        <option value="manual" {% if ordenacao == 'manual' %}selected{% endif %}>Manual</option>
                         <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>Por Nome</option>
                         <option value="cargo" {% if ordenacao == 'cargo' %}selected{% endif %}>Por Cargo</option>
                         <option value="local_trabalho" {% if ordenacao == 'local_trabalho' %}selected{% endif %}>Por Local de Trabalho</option>
@@ -29,12 +31,12 @@
                 <th scope="col" class="ps-th-base">Banco Empresa</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="ps-sortable-tbody">
             {% for row in linhas %}
                 {% include 'controles_rh/pagamento_salario/_linha_tr.html' %}
             {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-5">
+                    <td colspan="7" class="text-center text-muted py-5">
                         Nenhum funcionário ativo encontrado para esta empresa.
                     </td>
                 </tr>

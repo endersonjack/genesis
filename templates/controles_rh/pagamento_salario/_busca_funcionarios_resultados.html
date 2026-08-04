@@ -1,0 +1,39 @@
+{% if termo|length < 3 %}
+    <div class="text-muted small border rounded-3 p-3 bg-light">
+        Digite pelo menos 3 caracteres para procurar um funcion&aacute;rio.
+    </div>
+{% elif funcionarios %}
+    <div class="d-grid gap-2">
+        {% for funcionario in funcionarios %}
+            <form
+                method="post"
+                class="ps-add-form ps-add-result d-flex align-items-center justify-content-between gap-3"
+                data-no-global-loading
+                hx-post="{% url 'controles_rh:adicionar_funcionario_pagamento_salario' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                hx-swap="none"
+                hx-disabled-elt="find button[type='submit']">
+                {% csrf_token %}
+                <input type="hidden" name="funcionario_id" value="{{ funcionario.pk }}">
+                <div class="min-w-0">
+                    <div class="fw-bold text-truncate">{{ funcionario.nome }}</div>
+                    <div class="ps-add-meta">CPF: {{ funcionario.cpf|default:"-" }}</div>
+                    <div class="ps-add-meta">
+                        {{ funcionario.cargo|default:"-" }}
+                        {% if funcionario.local_trabalho_id %} &middot; {{ funcionario.local_trabalho }}{% endif %}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-sm btn-success rounded-3 fw-semibold flex-shrink-0">
+                    <span class="ps-add-default"><i class="bi bi-plus-circle me-1"></i> Adicionar</span>
+                    <span class="ps-add-loading align-items-center gap-2">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        Adicionando
+                    </span>
+                </button>
+            </form>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-muted small border rounded-3 p-3 bg-light">
+        Nenhum funcion&aacute;rio dispon&iacute;vel encontrado.
+    </div>
+{% endif %}

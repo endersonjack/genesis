@@ -19,13 +19,17 @@ from controles_rh.views.competencias import (
 )
 from controles_rh.views.home import home_controles_rh
 from controles_rh.views.pagamento_salario import (
+    adicionar_funcionario_pagamento_salario,
+    buscar_funcionario_pagamento_salario,
     excluir_pagamento_salario_competencia,
     gerar_pagamento_salario_competencia,
     limpar_pagamento_salario_competencia,
+    modal_adicionar_funcionario_pagamento_salario,
     modal_opcoes_criar_pagamento_salario,
     modal_pagamento_salario_controle,
     modal_pagamento_salario_linha,
     pagamento_salario_competencia,
+    reordenar_linhas_pagamento_salario,
 )
 from controles_rh.views.ps_export import (
     exportar_pagamento_salario_pdf,
@@ -143,6 +147,26 @@ urlpatterns = [
         'pagamento-salario/<int:controle_pk>/exportar/pdf-por-banco/',
         empresa_scoped(exportar_pagamento_salario_por_banco_pdf),
         name='exportar_pagamento_salario_por_banco_pdf',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/funcionarios/modal/',
+        empresa_scoped(modal_adicionar_funcionario_pagamento_salario),
+        name='modal_adicionar_funcionario_pagamento_salario',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/funcionarios/buscar/',
+        empresa_scoped(buscar_funcionario_pagamento_salario),
+        name='buscar_funcionario_pagamento_salario',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/funcionarios/adicionar/',
+        empresa_scoped(adicionar_funcionario_pagamento_salario),
+        name='adicionar_funcionario_pagamento_salario',
+    ),
+    path(
+        'pagamento-salario/<int:controle_pk>/linhas/reordenar/',
+        empresa_scoped(reordenar_linhas_pagamento_salario),
+        name='reordenar_linhas_pagamento_salario',
     ),
     path(
         'pagamento-salario/<int:controle_pk>/linha/<int:linha_pk>/modal/',

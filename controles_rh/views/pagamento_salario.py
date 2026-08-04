@@ -6,8 +6,8 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import F, Q, Sum
-from django.http import HttpResponse
+from django.db.models import F, Max, Q, Sum
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -16,6 +16,8 @@ from auditoria.registry import audit_controles_rh
 from core.urlutils import redirect_empresa, reverse_empresa
 
 from financeiro.models import ContaBancaria
+
+from rh.models import Funcionario
 
 from controles_rh.forms import PagamentoSalarioControleForm, PagamentoSalarioLinhaForm
 from controles_rh.models import (
@@ -61,7 +63,7 @@ def _get_controle_pagamento_empresa(request, controle_pk):
 def _ordenacao_linhas(valor: str | None) -> str:
     if valor == 'lotacao':
         return 'local_trabalho'
-    if valor in {'cargo', 'local_trabalho', 'tempo'}:
+    if valor in {'manual', 'cargo', 'local_trabalho', 'tempo'}:
         return valor
     return 'nome'
 
@@ -134,6 +136,7 @@ def _queryset_linhas(
     banco_empresa: str = '',
 ):
     orderings = {
+        'manual': ('ordem', 'funcionario__nome', 'id'),
         'nome': ('funcionario__nome', 'id'),
         'cargo': ('funcionario__cargo__nome', 'funcionario__nome', 'id'),
         'local_trabalho': ('funcionario__local_trabalho__nome', 'funcionario__nome', 'id'),
@@ -171,14 +174,16 @@ def garantir_linhas_pagamento_salario(controle: PagamentoSalarioControle) -> Non
     criar = funcionario_ids - existentes
     if criar:
         funcionarios = _get_funcionarios_para_vt(competencia).filter(pk__in=criar)
+        proxima_ordem = (controle.linhas.aggregate(max_ordem=Max('ordem'))['max_ordem'] or 0) + 1
         PagamentoSalarioLinha.objects.bulk_create(
             [
                 PagamentoSalarioLinha(
                     controle=controle,
                     funcionario=funcionario,
                     valor=Decimal('0.00'),
+                    ordem=proxima_ordem + idx,
                 )
-                for funcionario in funcionarios
+                for idx, funcionario in enumerate(funcionarios)
             ]
         )
     orphan = existentes - funcionario_ids
@@ -200,6 +205,7 @@ def _clonar_linhas_pagamento_salario(destino, origem):
             funcionario=linha.funcionario,
             valor=linha.valor,
             conta_bancaria_empresa=linha.conta_bancaria_empresa,
+            ordem=linha.ordem,
         )
         for linha in linhas
     ]
@@ -315,6 +321,147 @@ def _contexto_modal_controle(
         'origem_controle_pk': origem_controle_pk,
         'modo_resumo': modo_resumo,
     }
+
+
+def _funcionarios_disponiveis_pagamento(controle: PagamentoSalarioControle, termo: str = ''):
+    existentes = controle.linhas.values_list('funcionario_id', flat=True)
+    qs = (
+        Funcionario.objects.filter(
+            empresa=controle.competencia.empresa,
+            situacao_atual='admitido',
+        )
+        .exclude(pk__in=existentes)
+        .select_related('cargo', 'local_trabalho')
+    )
+    termo = (termo or '').strip()
+    if termo:
+        qs = qs.filter(Q(nome__icontains=termo) | Q(cpf__icontains=termo))
+    return qs.order_by('nome', 'id')
+
+
+def _contexto_busca_funcionarios_pagamento(controle: PagamentoSalarioControle, termo: str) -> dict:
+    termo = (termo or '').strip()
+    funcionarios = []
+    if len(termo) >= 3:
+        funcionarios = list(_funcionarios_disponiveis_pagamento(controle, termo)[:20])
+    return {
+        'controle': controle,
+        'competencia': controle.competencia,
+        'termo': termo,
+        'funcionarios': funcionarios,
+    }
+
+
+@login_required
+def modal_adicionar_funcionario_pagamento_salario(request, controle_pk):
+    controle = _get_controle_pagamento_empresa(request, controle_pk)
+    return render(
+        request,
+        'controles_rh/pagamento_salario/_modal_adicionar_funcionario.html',
+        _contexto_busca_funcionarios_pagamento(controle, ''),
+    )
+
+
+@login_required
+def buscar_funcionario_pagamento_salario(request, controle_pk):
+    controle = _get_controle_pagamento_empresa(request, controle_pk)
+    termo = (request.GET.get('q') or '').strip()
+    return render(
+        request,
+        'controles_rh/pagamento_salario/_busca_funcionarios_resultados.html',
+        _contexto_busca_funcionarios_pagamento(controle, termo),
+    )
+
+
+@login_required
+@require_POST
+def adicionar_funcionario_pagamento_salario(request, controle_pk):
+    controle = _get_controle_pagamento_empresa(request, controle_pk)
+    competencia = controle.competencia
+    funcionario_id = request.POST.get('funcionario_id')
+    funcionario = get_object_or_404(
+        _funcionarios_disponiveis_pagamento(controle),
+        pk=funcionario_id,
+    )
+    linha, created = PagamentoSalarioLinha.objects.get_or_create(
+        controle=controle,
+        funcionario=funcionario,
+        defaults={
+            'valor': Decimal('0.00'),
+            'ordem': (controle.linhas.aggregate(max_ordem=Max('ordem'))['max_ordem'] or 0) + 1,
+        },
+    )
+    if created:
+        audit_controles_rh(
+            request,
+            'create',
+            f'Funcionário adicionado ao pagamento de salário ({funcionario.nome}) — {competencia.referencia}.',
+            {
+                'pagamento_salario_linha_id': linha.pk,
+                'pagamento_salario_controle_id': controle.pk,
+                'competencia_id': competencia.pk,
+                'funcionario_id': funcionario.pk,
+            },
+        )
+    if _is_htmx(request):
+        response = HttpResponse(status=204)
+        response['HX-Trigger'] = json.dumps({
+            'pagamentoSalarioModalSalvo': {},
+            'pagamentoSalarioTabelaAtualizada': {},
+        })
+        return response
+    messages.success(request, 'Funcionário adicionado à planilha.')
+    return redirect_empresa(
+        request,
+        'controles_rh:pagamento_salario_competencia',
+        kwargs={'controle_pk': controle.pk},
+    )
+
+
+@login_required
+@require_POST
+def reordenar_linhas_pagamento_salario(request, controle_pk):
+    controle = _get_controle_pagamento_empresa(request, controle_pk)
+
+    try:
+        payload = json.loads(request.body.decode() or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'JSON invalido.'}, status=400)
+
+    ids = payload.get('ids')
+    if not isinstance(ids, list) or not ids:
+        return JsonResponse({'ok': False, 'error': 'Informe a lista ids.'}, status=400)
+
+    try:
+        id_list = [int(x) for x in ids]
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'error': 'ids deve conter inteiros.'}, status=400)
+
+    if len(id_list) != len(set(id_list)):
+        return JsonResponse({'ok': False, 'error': 'Lista de linhas duplicada.'}, status=400)
+
+    valid_ids = set(controle.linhas.values_list('id', flat=True))
+    if not set(id_list).issubset(valid_ids):
+        return JsonResponse({'ok': False, 'error': 'Lista de linhas invalida.'}, status=400)
+
+    ids_para_mover = set(id_list)
+    enviados = iter(id_list)
+    ordem_atual = list(
+        controle.linhas.order_by('ordem', 'funcionario__nome', 'id').values_list('id', flat=True)
+    )
+    ordem_final = [next(enviados) if linha_id in ids_para_mover else linha_id for linha_id in ordem_atual]
+
+    with transaction.atomic():
+        for ordem, linha_id in enumerate(ordem_final, start=1):
+            PagamentoSalarioLinha.objects.filter(pk=linha_id, controle=controle).update(ordem=ordem)
+
+    audit_controles_rh(
+        request,
+        'update',
+        f'Ordem das linhas de pagamento de salario atualizada - {controle.nome_exibicao}.',
+        {'pagamento_salario_controle_id': controle.pk},
+    )
+    return JsonResponse({'ok': True})
 
 
 @login_required
@@ -576,6 +723,35 @@ def modal_pagamento_salario_linha(request, controle_pk, linha_pk):
     )
 
     if request.method == 'POST':
+        action = (request.POST.get('action') or 'salvar').strip()
+        if action == 'excluir':
+            linha_id = linha.pk
+            funcionario_nome = linha.funcionario.nome
+            linha.delete()
+            audit_controles_rh(
+                request,
+                'delete',
+                f'Funcionário removido do pagamento de salário ({funcionario_nome}) — {competencia.referencia}.',
+                {
+                    'pagamento_salario_linha_id': linha_id,
+                    'pagamento_salario_controle_id': controle.pk,
+                    'competencia_id': competencia.pk,
+                },
+            )
+            if _is_htmx(request):
+                response = HttpResponse(status=204)
+                response['HX-Trigger'] = json.dumps({
+                    'pagamentoSalarioModalSalvo': {},
+                    'pagamentoSalarioTabelaAtualizada': {},
+                })
+                return response
+            messages.success(request, 'Funcionário removido da planilha.')
+            return redirect_empresa(
+                request,
+                'controles_rh:pagamento_salario_competencia',
+                kwargs={'controle_pk': controle.pk},
+            )
+
         post = request.POST.copy()
         raw = post.get('valor', '')
         s = raw.strip() if isinstance(raw, str) else str(raw or '').strip()

@@ -1103,13 +1103,14 @@ class PagamentoSalarioLinha(models.Model):
         related_name='pagamentos_salario_linhas',
         verbose_name='Banco Empresa',
     )
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Linha de pagamento de salário'
         verbose_name_plural = 'Linhas de pagamento de salário'
-        ordering = ['funcionario__nome', 'id']
+        ordering = ['ordem', 'funcionario__nome', 'id']
         constraints = [
             models.UniqueConstraint(
                 fields=['controle', 'funcionario'],

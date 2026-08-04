@@ -1,10 +1,17 @@
 <style>
-    .ps-linha-form .ps-save-loading { display: none; }
-    .ps-linha-form.htmx-request .ps-save-default { display: none; }
-    .ps-linha-form.htmx-request .ps-save-loading {
-        display: inline-flex;
+    .ps-linha-form .ps-save-loading,
+    .ps-linha-form .ps-delete-loading { display: none !important; }
+    .ps-linha-form.htmx-request[data-loading-action="salvar"] .ps-save-default,
+    .ps-linha-form.htmx-request[data-loading-action="excluir"] .ps-delete-default { display: none !important; }
+    .ps-linha-form.htmx-request[data-loading-action="salvar"] .ps-save-loading,
+    .ps-linha-form.htmx-request[data-loading-action="excluir"] .ps-delete-loading {
+        display: inline-flex !important;
         align-items: center;
         gap: .35rem;
+    }
+    .ps-linha-form.htmx-request button[type="submit"] {
+        pointer-events: none;
+        opacity: .82;
     }
 </style>
 
@@ -24,8 +31,10 @@
     data-no-global-loading
     hx-post="{% url 'controles_rh:modal_pagamento_salario_linha' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk linha_pk=linha.pk %}"
     hx-target="#modalPsContent"
-    hx-swap="innerHTML">
+    hx-swap="innerHTML"
+    hx-disabled-elt="find button[type='submit']">
     {% csrf_token %}
+    <input type="hidden" name="action" value="salvar" class="ps-linha-action">
     <div class="modal-body">
         {% if form.non_field_errors %}
             <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -70,24 +79,57 @@
             </div>
         </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer justify-content-between gap-2">
         <button
-            type="button"
-            class="btn btn-outline-secondary"
-            onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-mask=\'br-moeda\']:not(:disabled)').forEach(function(i){i.value='';});f.querySelectorAll('select[name=\'conta_bancaria_empresa\']:not(:disabled)').forEach(function(i){i.value='';i.dispatchEvent(new Event('change',{bubbles:true}));});})(this)">
-            Limpar
-        </button>
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-            Cancelar
-        </button>
-        <button type="submit" class="btn btn-primary">
-            <span class="ps-save-default">
-                <i class="bi bi-check2-circle me-1"></i> Salvar
+            type="submit"
+            class="btn btn-outline-danger"
+            data-action="excluir"
+            formnovalidate
+            onclick="return confirm('Excluir este funcionário desta planilha de pagamento de salário?')">
+            <span class="ps-delete-default">
+                <i class="bi bi-trash me-1"></i> Excluir Funcionário da planilha
             </span>
-            <span class="ps-save-loading">
+            <span class="ps-delete-loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                <span>Salvando...</span>
+                <span>Excluindo...</span>
             </span>
         </button>
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="(function limparFormulario(btn){var f=btn.closest('form');if(!f)return;f.querySelectorAll('[data-mask]:not(:disabled)').forEach(function(i){i.value='';});f.querySelectorAll('select[name=conta_bancaria_empresa]:not(:disabled)').forEach(function(i){i.value='';i.dispatchEvent(new Event('change',{bubbles:true}));});})(this)">
+                Limpar
+            </button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" data-action="salvar">
+                <span class="ps-save-default">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar
+                </span>
+                <span class="ps-save-loading">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Salvando...</span>
+                </span>
+            </button>
+        </div>
     </div>
 </form>
+
+<script>
+(() => {
+    const form = document.querySelector('.ps-linha-form');
+    if (!form) return;
+    const actionInput = form.querySelector('.ps-linha-action');
+    const setAction = (button) => {
+        const action = button?.dataset.action || 'salvar';
+        if (actionInput) actionInput.value = action;
+        form.dataset.loadingAction = action;
+    };
+    form.querySelectorAll('button[type="submit"][data-action]').forEach((button) => {
+        button.addEventListener('click', () => setAction(button));
+    });
+    form.addEventListener('submit', (event) => setAction(event.submitter));
+})();
+</script>

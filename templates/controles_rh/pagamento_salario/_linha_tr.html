@@ -1,6 +1,7 @@
 <tr
     id="ps-row-{{ row.linha.pk }}"
     class="ps-row-click"
+    data-linha-id="{{ row.linha.pk }}"
     role="button"
     tabindex="0"
     hx-get="{% url 'controles_rh:modal_pagamento_salario_linha' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk linha_pk=row.linha.pk %}"
@@ -8,7 +9,12 @@
     hx-swap="innerHTML"
     hx-on="htmx:afterRequest: if (event.detail.successful) { const m = document.getElementById('modalPs'); if (m && window.bootstrap) { bootstrap.Modal.getOrCreateInstance(m).show(); } }"
     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
-    <td class="ps-td-base text-muted">{{ row.seq }}</td>
+    <td class="ps-td-base text-muted ps-col-num">{{ row.seq }}</td>
+    <td class="ps-td-base ps-col-drag" onclick="event.stopPropagation()">
+        <span class="ps-drag-handle" title="Arrastar para reordenar">
+            <i class="bi bi-grip-vertical"></i>
+        </span>
+    </td>
     <td class="ps-td-base">
         <div class="ps-func-cell">
             <div class="ps-func-avatar-wrap">

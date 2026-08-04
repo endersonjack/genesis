@@ -1,0 +1,58 @@
+<style>
+    .ps-search-loading.htmx-request { display: inline-flex !important; }
+    .ps-search-loading { display: none !important; }
+    .ps-add-form.htmx-request .ps-add-default { display: none !important; }
+    .ps-add-form.htmx-request .ps-add-loading { display: inline-flex !important; }
+    .ps-add-loading { display: none !important; }
+    .ps-add-result {
+        border: 1px solid #e2e8f0;
+        border-radius: .9rem;
+        background: #fff;
+        padding: .85rem;
+    }
+    .ps-add-meta {
+        color: #64748b;
+        font-size: .78rem;
+        line-height: 1.35;
+    }
+</style>
+
+<div class="modal-header">
+    <div>
+        <h5 class="modal-title fw-bold" id="modalPsLabel">Adicionar Funcion&aacute;rio</h5>
+        <p class="text-muted mb-0 small">Compet&ecirc;ncia {{ competencia.referencia }} &middot; {{ controle.nome_exibicao }}</p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body">
+    <div class="ps-add-search" data-no-global-loading>
+        <label for="ps-add-funcionario-busca" class="form-label fw-semibold">Buscar funcion&aacute;rio</label>
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input
+                type="search"
+                id="ps-add-funcionario-busca"
+                name="q"
+                class="form-control"
+                placeholder="Digite pelo menos 3 caracteres"
+                autocomplete="off"
+                hx-get="{% url 'controles_rh:buscar_funcionario_pagamento_salario' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                hx-trigger="keyup changed delay:350ms, search"
+                hx-target="#ps-add-funcionarios-resultados"
+                hx-swap="innerHTML"
+                hx-indicator="#ps-add-search-indicator">
+            <span id="ps-add-search-indicator" class="input-group-text bg-white ps-search-loading align-items-center gap-2">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Buscando
+            </span>
+        </div>
+        <div class="form-text">A busca come&ccedil;a com pelo menos 3 caracteres, por nome ou CPF.</div>
+    </div>
+
+    <div id="ps-add-funcionarios-resultados" class="mt-3">
+        {% include 'controles_rh/pagamento_salario/_busca_funcionarios_resultados.html' %}
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary rounded-3 fw-semibold" data-bs-dismiss="modal">Fechar</button>
+</div>

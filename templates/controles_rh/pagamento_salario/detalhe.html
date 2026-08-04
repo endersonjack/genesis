@@ -39,6 +39,21 @@
         text-align: center;
     }
     .ps-th-funcionario { white-space: nowrap; min-width: 15rem; }
+    .ps-col-drag {
+        width: 2.2rem;
+        min-width: 2.2rem;
+        text-align: center;
+    }
+    .ps-drag-handle {
+        cursor: grab;
+        color: #94a3b8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: .1rem;
+    }
+    .ps-drag-handle:active { cursor: grabbing; }
+    .ps-sortable-ghost td { background: #e0f2fe !important; }
     .ps-th-funcionario-title { margin-bottom: 0.25rem; }
     .ps-order-select {
         min-width: 8.5rem;
@@ -151,10 +166,18 @@
     .ps-filter-inner {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
         gap: .65rem;
         flex-wrap: wrap;
     }
+    .ps-filter-actions,
+    .ps-filter-controls {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        flex-wrap: wrap;
+    }
+    .ps-filter-controls { justify-content: flex-end; }
     .ps-filter-label {
         font-size: .68rem;
         text-transform: uppercase;
@@ -294,29 +317,44 @@
 
 <form id="ps-filtros-form" class="ps-filter-bar mb-2" data-no-global-loading>
     <div class="ps-filter-inner">
-        <label class="ps-filter-label" for="ps-filter-banco-empresa">Banco Empresa</label>
-        <div>
-            <select
-                id="ps-filter-banco-empresa"
-                name="banco_empresa"
-                class="form-select ps-filter-select"
-                hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
-                hx-trigger="change"
-                hx-target="#ps-table-host"
+        <div class="ps-filter-actions">
+            <button
+                type="button"
+                class="btn btn-success rounded-3 fw-semibold"
+                data-no-global-loading
+                hx-get="{% url 'controles_rh:modal_adicionar_funcionario_pagamento_salario' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}"
+                hx-target="#modalPsContent"
                 hx-swap="innerHTML"
-                hx-include="#ps-filtros-form, #ps-table-host select[name='ordenacao']"
-                hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"
-                hx-on::after-request="document.body.dispatchEvent(new CustomEvent('pagamentoSalarioFiltroAtualizado')); if (typeof window.syncPagamentoSalarioExportLinks === 'function') { window.syncPagamentoSalarioExportLinks(); }">
-                <option value="" {% if not banco_empresa %}selected{% endif %}>Todos os bancos</option>
-                {% if tem_sem_banco %}
-                    <option value="sem_banco" {% if banco_empresa == 'sem_banco' %}selected{% endif %}>Sem banco empresa</option>
-                {% endif %}
-                {% for conta in contas %}
-                    <option value="{{ conta.pk }}" {% if banco_empresa == conta.pk|stringformat:"s" %}selected{% endif %}>{{ conta }}</option>
-                {% endfor %}
-            </select>
+                data-bs-toggle="modal"
+                data-bs-target="#modalPs">
+                <i class="bi bi-plus-lg me-1"></i> Adicionar Funcion&aacute;rio
+            </button>
         </div>
-        <div class="ps-filter-help">Afeta tabela e PDFs</div>
+        <div class="ps-filter-controls">
+            <label class="ps-filter-label" for="ps-filter-banco-empresa">Banco Empresa</label>
+            <div>
+                <select
+                    id="ps-filter-banco-empresa"
+                    name="banco_empresa"
+                    class="form-select ps-filter-select"
+                    hx-get="{% url 'controles_rh:pagamento_salario_competencia' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}?partial=tabela"
+                    hx-trigger="change"
+                    hx-target="#ps-table-host"
+                    hx-swap="innerHTML"
+                    hx-include="#ps-filtros-form, #ps-table-host select[name='ordenacao']"
+                    hx-on::before-request="const host=document.getElementById('ps-table-host');const tpl=document.getElementById('ps-table-skeleton-template');if(host&&tpl){host.innerHTML=tpl.innerHTML;}"
+                    hx-on::after-request="document.body.dispatchEvent(new CustomEvent('pagamentoSalarioFiltroAtualizado')); if (typeof window.syncPagamentoSalarioExportLinks === 'function') { window.syncPagamentoSalarioExportLinks(); }">
+                    <option value="" {% if not banco_empresa %}selected{% endif %}>Todos os bancos</option>
+                    {% if tem_sem_banco %}
+                        <option value="sem_banco" {% if banco_empresa == 'sem_banco' %}selected{% endif %}>Sem banco empresa</option>
+                    {% endif %}
+                    {% for conta in contas %}
+                        <option value="{{ conta.pk }}" {% if banco_empresa == conta.pk|stringformat:"s" %}selected{% endif %}>{{ conta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ps-filter-help">Afeta tabela e PDFs</div>
+        </div>
     </div>
 </form>
 
@@ -333,6 +371,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
     (function () {
         function syncPsExportOrdering() {
@@ -380,6 +419,68 @@
             titleEl.textContent = event.detail.nome;
         }
     });
+
+    (function () {
+        var reorderUrl = "{% url 'controles_rh:reordenar_linhas_pagamento_salario' empresa_id=request.empresa_ativa.pk controle_pk=controle.pk %}";
+
+        function getCookie(name) {
+            var value = '; ' + document.cookie;
+            var parts = value.split('; ' + name + '=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        function refreshRowNumbers(tbody) {
+            if (!tbody) return;
+            tbody.querySelectorAll('tr[data-linha-id]').forEach(function (tr, i) {
+                var cell = tr.querySelector('.ps-col-num');
+                if (cell) cell.textContent = String(i + 1);
+            });
+        }
+
+        function setManualOrdering() {
+            var select = document.querySelector('#ps-table-host select[name="ordenacao"]');
+            if (select) select.value = 'manual';
+            if (typeof window.syncPagamentoSalarioExportLinks === 'function') {
+                window.syncPagamentoSalarioExportLinks();
+            }
+        }
+
+        function initPagamentoSalarioSortable() {
+            var tbody = document.getElementById('ps-sortable-tbody');
+            if (!tbody || tbody.dataset.sortableReady === '1' || typeof Sortable === 'undefined') return;
+            tbody.dataset.sortableReady = '1';
+            Sortable.create(tbody, {
+                handle: '.ps-drag-handle',
+                animation: 150,
+                ghostClass: 'ps-sortable-ghost',
+                onEnd: function () {
+                    refreshRowNumbers(tbody);
+                    setManualOrdering();
+                    var ids = Array.prototype.map.call(
+                        tbody.querySelectorAll('tr[data-linha-id]'),
+                        function (tr) { return tr.dataset.linhaId; }
+                    );
+                    fetch(reorderUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ ids: ids })
+                    }).then(function (response) {
+                        if (!response.ok) throw new Error('Falha ao salvar ordem');
+                        return response.json();
+                    }).catch(function () {
+                        window.location.reload();
+                    });
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initPagamentoSalarioSortable);
+        document.body.addEventListener('htmx:afterSettle', initPagamentoSalarioSortable);
+    })();
 </script>
 
 <div class="modal fade" id="modalPs" tabindex="-1" aria-labelledby="modalPsLabel" aria-hidden="true">
