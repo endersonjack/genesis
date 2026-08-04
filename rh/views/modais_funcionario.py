@@ -37,6 +37,14 @@ from .htmx_funcionario import hx_trigger_secao_modal
 from ..utils.historico import registrar_alteracao_situacao
 
 
+def _sincronizar_banco_pagamento_salario(funcionario):
+    from controles_rh.models import PagamentoSalarioLinha
+
+    PagamentoSalarioLinha.objects.filter(funcionario=funcionario).update(
+        conta_bancaria_empresa=funcionario.banco_empresa_pagamento
+    )
+
+
 # ==========================================================
 # NOVO FUNCIONÁRIO - CADASTRO RÁPIDO
 # ==========================================================
@@ -169,6 +177,7 @@ def modal_editar_admissao(request, pk):
 
         if form.is_valid():
             funcionario = form.save()
+            _sincronizar_banco_pagamento_salario(funcionario)
             situacao_nova = funcionario.situacao_atual
 
             registrar_alteracao_situacao(

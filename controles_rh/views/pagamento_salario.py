@@ -181,6 +181,7 @@ def garantir_linhas_pagamento_salario(controle: PagamentoSalarioControle) -> Non
                     controle=controle,
                     funcionario=funcionario,
                     valor=Decimal('0.00'),
+                    conta_bancaria_empresa=funcionario.banco_empresa_pagamento,
                     ordem=proxima_ordem + idx,
                 )
                 for idx, funcionario in enumerate(funcionarios)
@@ -211,6 +212,10 @@ def _clonar_linhas_pagamento_salario(destino, origem):
     ]
     if novas:
         PagamentoSalarioLinha.objects.bulk_create(novas, batch_size=500)
+        for nova in novas:
+            Funcionario.objects.filter(pk=nova.funcionario_id).update(
+                banco_empresa_pagamento=nova.conta_bancaria_empresa
+            )
 
 
 def _dados_pix(funcionario) -> dict[str, str]:
@@ -280,10 +285,15 @@ def _totais_pagamento_salario(controle: PagamentoSalarioControle, qs=None) -> di
 
 
 def limpar_dados_pagamento_salario(controle: PagamentoSalarioControle) -> int:
-    return PagamentoSalarioLinha.objects.filter(controle=controle).update(
+    linhas = PagamentoSalarioLinha.objects.filter(controle=controle)
+    funcionario_ids = list(linhas.values_list('funcionario_id', flat=True))
+    total = linhas.update(
         valor=Decimal('0.00'),
         conta_bancaria_empresa=None,
     )
+    if funcionario_ids:
+        Funcionario.objects.filter(pk__in=funcionario_ids).update(banco_empresa_pagamento=None)
+    return total
 
 
 def _contexto_modal_linha(
@@ -388,6 +398,7 @@ def adicionar_funcionario_pagamento_salario(request, controle_pk):
         funcionario=funcionario,
         defaults={
             'valor': Decimal('0.00'),
+            'conta_bancaria_empresa': funcionario.banco_empresa_pagamento,
             'ordem': (controle.linhas.aggregate(max_ordem=Max('ordem'))['max_ordem'] or 0) + 1,
         },
     )
@@ -763,7 +774,10 @@ def modal_pagamento_salario_linha(request, controle_pk, linha_pk):
             post['valor'] = s
         form = PagamentoSalarioLinhaForm(post, instance=linha, empresa=competencia.empresa)
         if form.is_valid():
-            form.save()
+            linha = form.save()
+            Funcionario.objects.filter(pk=linha.funcionario_id).update(
+                banco_empresa_pagamento=linha.conta_bancaria_empresa
+            )
             audit_controles_rh(
                 request,
                 'update',

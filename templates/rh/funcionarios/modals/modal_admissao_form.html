@@ -106,19 +106,27 @@
                 </div>
 
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="modal-soft-label">Salário</label>
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Sal?rio</label>
                         {{ form.salario }}
                         {% if form.salario.errors %}
                             <div class="field-error">{{ form.salario.errors|join:", " }}</div>
                         {% endif %}
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="modal-soft-label">Adicional</label>
                         {{ form.adicional }}
                         {% if form.adicional.errors %}
                             <div class="field-error">{{ form.adicional.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="modal-soft-label">Banco Empresa para Pagamento</label>
+                        {{ form.banco_empresa_pagamento }}
+                        {% if form.banco_empresa_pagamento.errors %}
+                            <div class="field-error">{{ form.banco_empresa_pagamento.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>

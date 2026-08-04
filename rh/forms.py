@@ -55,6 +55,14 @@ class BaseStyledModelForm(forms.ModelForm):
                 empresa=empresa_ativa
             ).order_by('nome')
 
+        if 'banco_empresa_pagamento' in self.fields:
+            banco_field = self.fields['banco_empresa_pagamento']
+            banco_field.queryset = banco_field.queryset.filter(
+                empresa=empresa_ativa,
+                ativo=True,
+            ).order_by('banco', 'nome', 'id')
+            banco_field.empty_label = 'Selecione o banco da empresa'
+
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -188,6 +196,7 @@ class FuncionarioForm(BaseStyledModelForm):
             'tipo_contrato',
             'salario',
             'adicional',
+            'banco_empresa_pagamento',
             'recebe_vale_transporte',
             'valor_vale_transporte',
             'contribuinte_sindical',
@@ -306,6 +315,7 @@ class FuncionarioAdmissaoForm(BaseStyledModelForm):
             'tipo_contrato',
             'salario',
             'adicional',
+            'banco_empresa_pagamento',
             'recebe_vale_transporte',
             'valor_vale_transporte',
             'contribuinte_sindical',

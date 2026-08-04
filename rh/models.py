@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from empresas.models import Empresa
@@ -235,6 +236,14 @@ class Funcionario(TimeStampedModel):
         default=0,
         blank=True
     )
+    banco_empresa_pagamento = models.ForeignKey(
+        'financeiro.ContaBancaria',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='funcionarios_pagamento_salario',
+        verbose_name='Banco Empresa para Pagamento',
+    )
 
     recebe_vale_transporte = models.BooleanField(default=False)
     valor_vale_transporte = models.DecimalField(
@@ -336,6 +345,14 @@ class Funcionario(TimeStampedModel):
         if self.data_admissao and self.data_demissao:
             return (self.data_demissao - self.data_admissao).days > 90
         return False
+
+    def clean(self):
+        errors = {}
+        banco_empresa = getattr(self.banco_empresa_pagamento, 'empresa_id', None)
+        if banco_empresa and self.empresa_id and banco_empresa != self.empresa_id:
+            errors['banco_empresa_pagamento'] = 'O banco empresa deve pertencer a empresa do funcionario.'
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if self.data_admissao and self.data_demissao:
@@ -763,6 +780,7 @@ class FaltaFuncionario(TimeStampedModel):
 
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 

@@ -124,7 +124,7 @@ class FuncionarioAdmin(admin.ModelAdmin):
                 ('data_admissao', 'situacao_atual'),
                 ('inicio_prorrogacao', 'fim_prorrogacao'),
                 ('cargo', 'lotacao'),
-                ('salario', 'adicional'),
+                ('salario', 'adicional', 'banco_empresa_pagamento'),
                 ('recebe_vale_transporte', 'valor_vale_transporte'),
                 ('contribuinte_sindical', 'tipo_cesta_basica'),
                 ('data_ultimo_exame', 'responsavel'),
