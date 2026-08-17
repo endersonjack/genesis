@@ -78,13 +78,25 @@ def _row_data_pagamento(item):
     return '-'
 
 
-def _row_valor_pago(item):
+def _row_valor_pago_linhas(item):
     linhas = [f'Total: R$ {_fmt_br_decimal(item.valor_pago or 0)}']
     for pagamento in item.pagamentos.all():
         data = pagamento.data_pagamento.strftime('%d/%m/%Y') if pagamento.data_pagamento else 'sem data'
         obs = f' - {pagamento.observacao}' if pagamento.observacao else ''
         linhas.append(f'R$ {_fmt_br_decimal(pagamento.valor or 0)} - {data}{obs}')
+    return linhas
+
+
+def _row_valor_pago(item):
+    linhas = _row_valor_pago_linhas(item)
     return '\n'.join(linhas)
+
+
+def _vt_pdf_valor_pago_html(item):
+    linhas = _row_valor_pago_linhas(item)
+    total = f'<b>{xml_escape(linhas[0])}</b>'
+    detalhes = ''.join(f'<br/>{xml_escape(linha)}' for linha in linhas[1:])
+    return f'{total}{detalhes}'
 
 
 def _fmt_br_decimal(val):
@@ -97,53 +109,106 @@ def _fmt_br_decimal(val):
 VT_PDF_TABLE_WIDTH_MM = 273
 
 
-def _col_widths_vt_pdf_mm(tabela, ordenacao='nome', filtros=None):
-    """
-    # | NOME (nome-função) | valores | PIX | DT pag.
+def _fit_dynamic_widths(desired, minimums, maximums, total):
+    """Ajusta larguras desejadas ao espaco disponivel, preservando os minimos."""
+    widths = [
+        max(minimum, min(maximum, wanted))
+        for wanted, minimum, maximum in zip(desired, minimums, maximums)
+    ]
+    minimum_total = sum(minimums)
+    if minimum_total > total:
+        raise ValueError('A largura disponivel e menor que a soma dos minimos.')
 
-    Largura de NOME ≈ maior texto (nome + função) medido em Helvetica-Bold 7 pt,
-    com margem mínima — evita faixa vazia à direita do nome.
-    O que sobra na linha vai para PIX (e colunas numéricas já estreitas).
+    current_total = sum(widths)
+    if current_total > total:
+        available_extra = total - minimum_total
+        requested_extra = current_total - minimum_total
+        ratio = available_extra / requested_extra if requested_extra else 0
+        return [
+            minimum + ((width - minimum) * ratio)
+            for width, minimum in zip(widths, minimums)
+        ]
+
+    remaining = total - current_total
+    growth_room = [maximum - width for width, maximum in zip(widths, maximums)]
+    total_growth_room = sum(growth_room)
+    if remaining and total_growth_room:
+        widths = [
+            width + (remaining * room / total_growth_room)
+            for width, room in zip(widths, growth_room)
+        ]
+    return widths
+
+
+def _col_widths_vt_pdf_mm_for_items(itens):
+    """
+    Distribui o espaco livre entre Funcionario, Valor pago e PIX conforme o
+    conteudo real. Textos longos continuam quebrando, mas nenhuma dessas
+    colunas consegue consumir o espaco necessario das demais.
     """
     total = float(VT_PDF_TABLE_WIDTH_MM)
     w_n = 5.0
-    w_vp = 15.0
-    w_vpg = 15.0
-    w_saldo = 13.0
-    w_dt = 16.0
-    fixed_rest = w_n + w_vp + w_vpg + w_saldo + w_dt
-    min_pix = 50.0
-    min_nome = 52.0
+    w_vp = 18.0
+    w_saldo = 15.0
+    w_dt = 19.0
+    variable_total = total - w_n - w_vp - w_saldo - w_dt
 
-    font = 'Helvetica-Bold'
-    size = 7
-    # Padding lateral + avatar circular à esquerda.
-    pad_pt = 42.0
-
-    itens = list(_itens_export(tabela, ordenacao, filtros))
+    min_widths = (68.0, 42.0, 50.0)
+    max_widths = (105.0, 74.0, 90.0)
     if not itens:
-        w_nome = 82.0
-        w_pix = total - fixed_rest - w_nome
-        return (w_n, w_nome, w_vp, w_vpg, w_saldo, max(min_pix, w_pix), w_dt)
+        desired = (82.0, 50.0, 84.0)
+        w_nome, w_vpg, w_pix = _fit_dynamic_widths(
+            desired, min_widths, max_widths, variable_total
+        )
+        return (w_n, w_nome, w_vp, w_vpg, w_saldo, w_pix, w_dt)
 
-    max_w_pt = 0.0
+    nome_width_pt = 0.0
+    pago_width_pt = 0.0
+    pix_width_pt = 0.0
     for item in itens:
-        text = _vt_pdf_nome_funcao_texto(item)
-        max_w_pt = max(max_w_pt, stringWidth(text, font, size))
-    nome_pt = max_w_pt + pad_pt
-    w_nome_mm = nome_pt * 0.352778
+        nome = ((item.nome_exibicao or '').strip() or '—').upper()
+        funcao = (item.funcao or '').strip().upper() or '—'
+        cpf = ''
+        local = 'LOCAL DE TRABALHO: —'
+        if item.funcionario_id:
+            if getattr(item.funcionario, 'cpf', None):
+                cpf = f', CPF {item.funcionario.cpf}'
+            if getattr(item.funcionario, 'local_trabalho', None):
+                local = f'LOCAL DE TRABALHO: {item.funcionario.local_trabalho}'
+        nome_width_pt = max(
+            nome_width_pt,
+            stringWidth(nome, 'Helvetica-Bold', 7),
+            stringWidth(f'{funcao}{cpf}', 'Helvetica-Bold', 6),
+            stringWidth(local, 'Helvetica-Bold', 6),
+        )
+        pago_width_pt = max(
+            pago_width_pt,
+            *(stringWidth(linha, 'Helvetica', 7) for linha in _row_valor_pago_linhas(item)),
+        )
+        pix_width_pt = max(
+            pix_width_pt,
+            *(
+                stringWidth(linha, 'Helvetica', 7)
+                for linha in _vt_pdf_pix_tipo_banco_linhas(item)
+            ),
+        )
 
-    w_nome_mm = max(min_nome, w_nome_mm)
-    max_nome_allowed = total - fixed_rest - min_pix
-    w_nome_mm = min(w_nome_mm, max_nome_allowed)
+    pt_to_mm = 25.4 / 72.0
+    desired = (
+        (nome_width_pt * pt_to_mm) + 13.0,
+        (pago_width_pt * pt_to_mm) + 4.0,
+        (pix_width_pt * pt_to_mm) + 4.0,
+    )
+    w_nome, w_vpg, w_pix = _fit_dynamic_widths(
+        desired, min_widths, max_widths, variable_total
+    )
 
-    w_pix = total - fixed_rest - w_nome_mm
-    if w_pix < min_pix:
-        w_pix = min_pix
-        w_nome_mm = total - fixed_rest - w_pix
-        w_nome_mm = max(min_nome, w_nome_mm)
+    return (w_n, w_nome, w_vp, w_vpg, w_saldo, w_pix, w_dt)
 
-    return (w_n, w_nome_mm, w_vp, w_vpg, w_saldo, w_pix, w_dt)
+
+def _col_widths_vt_pdf_mm(tabela, ordenacao='nome', filtros=None):
+    itens = list(_itens_export(tabela, ordenacao, filtros))
+    return _col_widths_vt_pdf_mm_for_items(itens)
 
 
 def _vt_pdf_nome_funcao_texto(item) -> str:
@@ -178,11 +243,16 @@ def _vt_pdf_nome_funcao_html(item) -> str:
     )
 
 
-def _vt_pdf_pix_tipo_banco_texto(item) -> str:
+def _vt_pdf_pix_tipo_banco_linhas(item):
     pix = (item.pix or '').strip() or '—'
     tipo = (item.get_tipo_pix_display() or '—').upper()
     banco = (item.banco or '').strip().upper() or '—'
-    return f'{pix.upper()} - {tipo} - {banco}'
+    return (f'{pix.upper()} - {tipo}', banco)
+
+
+def _vt_pdf_pix_tipo_banco_html(item) -> str:
+    primeira_linha, banco = _vt_pdf_pix_tipo_banco_linhas(item)
+    return f'{xml_escape(primeira_linha)}<br/>{xml_escape(banco)}'
 
 
 @login_required
@@ -430,6 +500,11 @@ def exportar_tabela_vt_pdf(request, pk):
         spaceBefore=0,
         spaceAfter=0,
     )
+    valor_pago_style = ParagraphStyle(
+        'vt_valor_pago',
+        parent=pix_para_style,
+        alignment=2,
+    )
     data_rows = [headers]
 
     for n, item in enumerate(itens_export, start=1):
@@ -438,7 +513,7 @@ def exportar_tabela_vt_pdf(request, pk):
         else:
             saldo_s = f'{item.saldo:.2f}'.replace('.', ',')
         pix_cell = Paragraph(
-            xml_escape(_vt_pdf_pix_tipo_banco_texto(item)),
+            _vt_pdf_pix_tipo_banco_html(item),
             pix_para_style,
         )
         nome_text = Paragraph(_vt_pdf_nome_funcao_html(item), nome_vt_style)
@@ -467,7 +542,7 @@ def exportar_tabela_vt_pdf(request, pk):
                 str(n),
                 nome_cell,
                 f'{item.valor_pagar or 0:.2f}'.replace('.', ','),
-                Paragraph(xml_escape(_row_valor_pago(item)).replace('\n', '<br/>'), pix_para_style),
+                Paragraph(_vt_pdf_valor_pago_html(item), valor_pago_style),
                 saldo_s,
                 pix_cell,
                 data_cell,
