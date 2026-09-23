@@ -211,7 +211,7 @@
     .fin-description-snippet { font-size: .78rem; margin-top: .4rem; color: #475569; }
     .fin-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; width: 100%; }
     .fin-summary > div { padding: .8rem 1rem; border-radius: .8rem; background: #f8fafc; border: 1px solid #e2e8f0; }
-    .fin-detail-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; margin-bottom: 1rem; }
+    .fin-detail-overview { display: grid; grid-template-columns: minmax(0, 2fr) auto auto auto; align-items: center; gap: 1.5rem; margin-bottom: .5rem; }
     .fin-detail-overview > div { min-width: 0; overflow-wrap: anywhere; }
     .fin-detail-toggle { border: 1px solid #dbe4ee; border-radius: 50%; width: 32px; height: 32px; background: #fff; color: #334155; }
     .fin-detail-toggle[aria-expanded="true"] i { display: inline-block; transform: rotate(180deg); }
@@ -571,22 +571,15 @@
 	                        <div class="collapse" id="resultadoDetalhe{{ forloop.counter }}">
 	                            <div class="financeiro-result-detail">
                                 <div class="fin-detail-overview">
-                                    <div><span class="fin-result-label">Documento / identificação</span><strong>{{ item.numero_doc|default:"—" }}</strong><div class="small text-muted">{{ item.entidade_doc|default:"" }}</div></div>
-                                    <div><span class="fin-result-label">Emissão</span><strong>{{ item.data|date:"d/m/Y"|default:"—" }}</strong></div>
-                                    <div><span class="fin-result-label">Último pagamento</span><strong>{{ item.data_pagamento|date:"d/m/Y"|default:"—" }}</strong></div>
+                                    <div class="small"><span class="text-muted">Documento / identificação:</span> <strong>{{ item.numero_doc|default:"—" }}</strong>{% if item.entidade_doc %} · {{ item.entidade_doc }}{% endif %}</div>
+                                    <div class="small text-nowrap"><span class="text-muted">Emissão:</span> <strong>{{ item.data|date:"d/m/Y"|default:"—" }}</strong></div>
+                                    <div class="small text-nowrap"><span class="text-muted">Último pagamento:</span> <strong>{{ item.data_pagamento|date:"d/m/Y"|default:"—" }}</strong></div>
+                                    <a href="{{ item.url }}" class="btn btn-sm btn-outline-primary rounded-pill text-nowrap" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Abrir detalhes</a>
                                 </div>
-                                {% if item.descricao_resumo %}<p class="small mb-3"><strong>Descrição e observações:</strong> {{ item.descricao_resumo }}</p>{% endif %}
-                                <p class="small text-muted">Histórico completo do lançamento. As linhas destacadas mostram o documento, valor exato ou data em evidência na busca. Os totais consideram o documento completo.</p>
-
 	                                {% if item.detalhes_avista %}
 	                                <div class="financeiro-result-detail-head">
 	                                    <div class="financeiro-result-detail-title">Pagamentos à vista / crédito</div>
-	                                    <a href="{{ item.url }}"
-	                                       class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
-	                                       target="_blank"
-	                                       rel="noopener">
-	                                        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
-	                                    </a>
+	                                    
 	                                </div>
 	                                <div class="table-responsive rounded-3 border bg-white mb-3">
 	                                    <table class="table table-sm mb-0 align-middle">
@@ -626,12 +619,7 @@
 	                                <div class="financeiro-result-detail-head">
 	                                    <div class="financeiro-result-detail-title">Boletos</div>
 	                                    {% if not item.detalhes_avista %}
-	                                    <a href="{{ item.url }}"
-	                                       class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
-	                                       target="_blank"
-	                                       rel="noopener">
-	                                        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
-	                                    </a>
+	                                    
 	                                    {% endif %}
 	                                </div>
 	                                <div class="table-responsive rounded-3 border bg-white">
@@ -680,12 +668,7 @@
 	                                {% if not item.detalhes_avista and not item.detalhes_boletos %}
 	                                    <div class="financeiro-result-detail-head">
 	                                        <div class="financeiro-result-detail-title">Detalhes</div>
-	                                        <a href="{{ item.url }}"
-	                                           class="btn btn-sm btn-outline-primary rounded-pill fw-semibold"
-	                                           target="_blank"
-	                                           rel="noopener">
-	                                            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
-	                                        </a>
+	                                        
 	                                    </div>
 	                                    <div class="text-muted small">Nenhum pagamento registrado para este resultado.</div>
 	                                {% endif %}

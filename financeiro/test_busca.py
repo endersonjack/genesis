@@ -291,6 +291,17 @@ class BuscaAvancadaTests(TestCase):
         self.assertEqual(parser.footer_tables, ["financeiroResultadosTable"])
         self.assertLess(html.index('class="fin-totals-footer"'), html.index('aria-label="Filtros aplicados"'))
 
+    def test_entrada_dashboard_vazia_ignora_status_ocultos_legados(self):
+        ctx = self.context(origem="dashboard", fornecedor=" ", status_vencido="1",
+            status_aberto="1", status_pago="1")
+        self.assertEqual(ctx["resultados"], [])
+        self.assertEqual(ctx["filtros_chips"], [])
+        self.assertFalse(ctx["filtros_ativos"])
+        self.assertFalse(ctx["form_busca"]["status_pago"].value())
+
+    def test_busca_dashboard_com_nome_continua_funcionando(self):
+        self.assertEqual(len(self.context(origem="dashboard", fornecedor="Aurora")["resultados"]), 1)
+
 class ApresentacaoResultadosTests(TestCase):
     def item(self, emissao, vencimentos, pagamentos=()):
         return {"kind": "nf", "entidade": "Fornecedor", "numero_doc": "NF-10",

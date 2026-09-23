@@ -2420,24 +2420,29 @@ def relatorio_fornecedor_pdf(request):
 
 
 def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
-    form_busca = BuscaPagamentosForm(request.GET, empresa=empresa)
+    parametros = request.GET.copy()
+    if parametros.get('origem') == 'dashboard' and not any(
+        str(parametros.get(key, '')).strip() for key in ('q', 'fornecedor', 'busca')
+    ):
+        parametros.clear()
+    form_busca = BuscaPagamentosForm(parametros, empresa=empresa)
     busca_valida = form_busca.is_valid()
     dados_busca = form_busca.cleaned_data
-    chips, advanced_count = form_busca.filtros_ativos(request.GET)
-    busca = str(request.GET.get('busca', '')).strip()
-    query = str(request.GET.get('q', '')).strip()
-    fornecedor = str(request.GET.get('fornecedor', '')).strip()
+    chips, advanced_count = form_busca.filtros_ativos(parametros)
+    busca = str(parametros.get('busca', '')).strip()
+    query = str(parametros.get('q', '')).strip()
+    fornecedor = str(parametros.get('fornecedor', '')).strip()
     fornecedor_digits = re.sub(r'\D+', '', fornecedor)
     categoria_id = _int_param(request, 'categoria')
-    valor_raw = str(request.GET.get('valor', '')).strip()
-    data_inicio = str(request.GET.get('data_inicio', '')).strip()
-    data_fim = str(request.GET.get('data_fim', '')).strip()
-    status_vencido_raw = str(request.GET.get('status_vencido', '')).strip()
-    status_aberto_raw = str(request.GET.get('status_aberto', '')).strip()
-    status_pago_parcial_raw = str(request.GET.get('status_pago_parcial', '')).strip()
-    status_sem_pagamento_raw = str(request.GET.get('status_sem_pagamento', '')).strip()
-    status_pago_raw = str(request.GET.get('status_pago', '')).strip()
-    origem = str(request.GET.get('origem', '')).strip()
+    valor_raw = str(parametros.get('valor', '')).strip()
+    data_inicio = str(parametros.get('data_inicio', '')).strip()
+    data_fim = str(parametros.get('data_fim', '')).strip()
+    status_vencido_raw = str(parametros.get('status_vencido', '')).strip()
+    status_aberto_raw = str(parametros.get('status_aberto', '')).strip()
+    status_pago_parcial_raw = str(parametros.get('status_pago_parcial', '')).strip()
+    status_sem_pagamento_raw = str(parametros.get('status_sem_pagamento', '')).strip()
+    status_pago_raw = str(parametros.get('status_pago', '')).strip()
+    origem = str(parametros.get('origem', '')).strip()
     tem_filtro_principal = any(
         [
             query,
@@ -2449,11 +2454,11 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
         ]
     )
     tem_status_expresso = (
-        'status_vencido' in request.GET
-        or 'status_aberto' in request.GET
-        or 'status_pago_parcial' in request.GET
-        or 'status_sem_pagamento' in request.GET
-        or 'status_pago' in request.GET
+        'status_vencido' in parametros
+        or 'status_aberto' in parametros
+        or 'status_pago_parcial' in parametros
+        or 'status_sem_pagamento' in parametros
+        or 'status_pago' in parametros
     )
     status_vencido = (
         status_vencido_raw in ('1', 'on', 'true')
@@ -2488,7 +2493,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
         status_pago = False
     resultados = []
     erro_valor = ''
-    filtros_ativos = any(request.GET.get(key) for key in form_busca.fields) or tem_filtro_principal or any(
+    filtros_ativos = any(parametros.get(key) for key in form_busca.fields) or tem_filtro_principal or any(
         [
             status_vencido,
             status_aberto,
