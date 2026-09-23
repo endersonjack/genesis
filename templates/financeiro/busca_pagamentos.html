@@ -13,28 +13,6 @@
         padding: 1.25rem;
         margin-bottom: 1.25rem;
     }
-    .financeiro-search-hero {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
-        box-shadow:
-            inset 6px 0 0 0 {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}{{ request.empresa_ativa.cor_tema }}{% else %}#2563eb{% endif %},
-            0 14px 36px rgba(15, 23, 42, 0.07);
-    }
-    .financeiro-search-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 16px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.65rem;
-        color: #fff;
-        {% if request.empresa_ativa and request.empresa_ativa.cor_tema %}
-            background: {{ request.empresa_ativa.cor_tema }};
-        {% else %}
-            background: #2563eb;
-        {% endif %}
-        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
-    }
     .financeiro-top-btn {
         border: none;
         text-decoration: none;
@@ -50,6 +28,10 @@
         line-height: 1;
         transition: all .2s ease;
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    .financeiro-top-btn i {
+        font-size: 1rem;
+        line-height: 1;
     }
     .financeiro-top-btn-light {
         background: #fff;
@@ -75,6 +57,10 @@
         color: #fff;
         filter: brightness(0.96);
         transform: translateY(-1px);
+    }
+    .financeiro-top-btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 .2rem rgba(37, 99, 235, 0.15);
     }
     .fin-search-form .form-label {
         font-size: .72rem;
@@ -200,57 +186,37 @@
         vertical-align: middle;
         font-size: .9rem;
     }
-    #financeiroResultadosTable {
-        table-layout: fixed;
-        width: 100%;
-        min-width: 0;
-    }
+    #financeiroResultadosTable { table-layout: auto; width: 100%; min-width: 1150px; }
     #financeiroResultadosTable > thead > tr > th,
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td {
-        padding-left: .45rem;
-        padding-right: .45rem;
-        overflow-wrap: anywhere;
+    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td { padding: .8rem .55rem; }
+    #financeiroResultadosTable th:nth-child(1) { width: 36px; }
+    #financeiroResultadosTable th:nth-child(4) { min-width: 200px; width: 24%; }
+    #financeiroResultadosTable .fin-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #financeiroResultadosTable .fin-overdue {
+        --bs-table-bg: #fff1f2; --bs-table-color: #b91c1c;
+        --bs-table-hover-bg: #ffe4e6; --bs-table-hover-color: #991b1b;
+        background-color: #fff1f2; color: #b91c1c; font-weight: 700;
     }
-    #financeiroResultadosTable > thead > tr > th:nth-child(1),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(1) {
-        width: 8%;
+    .fin-totals-footer > tr > * {
+        --bs-table-bg: #eef2f7; background: #eef2f7; font-weight: 800;
+        border-top: 2px solid #94a3b8; padding: 1rem .55rem;
     }
-    #financeiroResultadosTable > thead > tr > th:nth-child(2),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(2),
-    #financeiroResultadosTable > thead > tr > th:nth-child(3),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(3),
-    #financeiroResultadosTable > thead > tr > th:nth-child(11),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(11) {
-        width: 7%;
-    }
-    #financeiroResultadosTable > thead > tr > th:nth-child(4),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(4) {
-        width: 24%;
-    }
-    #financeiroResultadosTable > thead > tr > th:nth-child(5),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(5) {
-        width: 11%;
-    }
-    #financeiroResultadosTable > thead > tr > th:nth-child(7),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(7) {
-        width: 8%;
-    }
-    #financeiroResultadosTable > thead > tr > th:nth-child(8),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(8),
-    #financeiroResultadosTable > thead > tr > th:nth-child(9),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(9),
-    #financeiroResultadosTable > thead > tr > th:nth-child(10),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(10) {
-        width: 8%;
-    }
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td.text-nowrap {
-        white-space: normal !important;
-    }
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(8),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(9),
-    #financeiroResultadosTable > tbody > tr.financeiro-clickable-row > td:nth-child(10) {
-        white-space: nowrap !important;
-    }
+    .fin-export-check { width: 1rem; height: 1rem; cursor: pointer; }
+    .fin-result-meta { font-size: .78rem; color: #64748b; margin-top: .35rem; line-height: 1.5; }
+    .fin-result-value { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .fin-result-label { font-size: .7rem; color: #64748b; display: block; margin-bottom: .2rem; }
+    .fin-result-secondary { display: flex; flex-wrap: wrap; gap: .2rem .8rem; justify-content: flex-end; font-size: .73rem; color: #64748b; margin-top: .35rem; }
+    .fin-result-secondary span { white-space: nowrap; }
+    .fin-match-note { font-size: .72rem; color: #745700; margin-top: .35rem; }
+    .fin-description-snippet { font-size: .78rem; margin-top: .4rem; color: #475569; }
+    .fin-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; width: 100%; }
+    .fin-summary > div { padding: .8rem 1rem; border-radius: .8rem; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .fin-detail-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; margin-bottom: 1rem; }
+    .fin-detail-overview > div { min-width: 0; overflow-wrap: anywhere; }
+    .fin-detail-toggle { border: 1px solid #dbe4ee; border-radius: 50%; width: 32px; height: 32px; background: #fff; color: #334155; }
+    .fin-detail-toggle[aria-expanded="true"] i { display: inline-block; transform: rotate(180deg); }
+    .fin-detail-match > td { --bs-table-bg: #fff8dc; background-color: #fff8dc; }
+    .fin-sort-btn:focus-visible, .fin-detail-toggle:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
     .financeiro-result-name {
         display: block;
         color: #0f172a;
@@ -460,211 +426,158 @@
     }
 </style>
 
-<div class="fin-card financeiro-search-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
-    <div class="d-flex align-items-center gap-3">
-        <span class="financeiro-search-icon" aria-hidden="true">
-            <i class="bi bi-search"></i>
-        </span>
-        <div>
-            <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing:.06em;">Financeiro</div>
-            <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
-                <h2 class="fw-bold mb-0">Buscar Pagamentos</h2>
-                <div class="d-flex flex-wrap align-items-center fin-status-filters">
-                    <div class="fin-status-check">
-                        <input class="form-check-input" type="checkbox" value="1" id="statusVencido" name="status_vencido" form="buscarLancamentosForm" {% if status_vencido %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold mb-0" for="statusVencido">Vencidos</label>
-                    </div>
-                    <div class="fin-status-check">
-                        <input class="form-check-input" type="checkbox" value="1" id="statusAberto" name="status_aberto" form="buscarLancamentosForm" {% if status_aberto %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold mb-0" for="statusAberto">Em aberto</label>
-                    </div>
-                    <div class="fin-status-check">
-                        <input class="form-check-input" type="checkbox" value="1" id="statusPagoParcial" name="status_pago_parcial" form="buscarLancamentosForm" {% if status_pago_parcial %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold mb-0" for="statusPagoParcial">Pago Parcial</label>
-                    </div>
-                    <div class="fin-status-check">
-                        <input class="form-check-input" type="checkbox" value="1" id="statusSemPagamento" name="status_sem_pagamento" form="buscarLancamentosForm" {% if status_sem_pagamento %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold mb-0" for="statusSemPagamento">Sem Pagamento</label>
-                    </div>
-                    <div class="fin-status-check">
-                        <input class="form-check-input" type="checkbox" value="1" id="statusPago" name="status_pago" form="buscarLancamentosForm" {% if status_pago %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold mb-0" for="statusPago">Pagos</label>
-                    </div>
-                </div>
-            </div>
-            <p class="text-muted mb-0">Pesquise pagamentos por documento, nota fiscal, valor, período, pessoa/entidade, categoria e situação.</p>
-        </div>
-    </div>
-    <div class="financeiro-top-actions d-flex flex-wrap align-items-center gap-2">
-        <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
-           class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-        </a>
-        <a href="{% url 'financeiro:buscar_pagamentos_xlsx' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
-           class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-file-earmark-excel me-1"></i> Excel
-        </a>
-        <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
-    </div>
-</div>
-
 <div class="fin-card">
     <form method="get" class="fin-search-form" id="buscarLancamentosForm">
-        <div class="financeiro-search-grid">
-            <div>
-                <label class="form-label">Nº doc ou NF</label>
-                <input type="text"
-                       name="q"
-                       class="form-control"
-                       value="{{ query }}"
-                       aria-label="Buscar por número do documento ou nota fiscal">
+        <h2 class="h6 fw-bold mb-3">BUSCA FINANCEIRO</h2>
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="{{ form_busca.q.id_for_label }}" class="form-label">DOC/NF</label>
+                {{ form_busca.q }}{{ form_busca.q.errors }}
             </div>
-            <div>
-                <label class="form-label">FORNECEDOR/ENTIDADE</label>
-                <input type="text"
-                       name="fornecedor"
-                       class="form-control"
-                       value="{{ fornecedor }}"
-                       placeholder="Nome/razão e CNPJ">
+            <div class="col-12 col-md-6 col-xl-4">
+                <label for="{{ form_busca.fornecedor.id_for_label }}" class="form-label">FORNECEDOR/ENTIDADE</label>
+                {{ form_busca.fornecedor }}{{ form_busca.fornecedor.errors }}
             </div>
-            <div>
-                <label class="form-label">Categoria</label>
-                <select name="categoria" class="form-select">
-                    <option value="">Todas</option>
-                    {% for categoria in categorias_filtro %}
-                    <option value="{{ categoria.pk }}" {% if categoria_id == categoria.pk %}selected{% endif %}>
-                        {{ categoria.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <div class="col-12 col-md-4 col-xl-2">
+                <label for="{{ form_busca.valor_contem.id_for_label }}" class="form-label">VALOR (CONTÉM)</label>
+                {{ form_busca.valor_contem }}{{ form_busca.valor_contem.errors }}
             </div>
-            <div>
-                <label class="form-label">Valor</label>
-                <input type="text"
-                       name="valor"
-                       class="form-control"
-                       value="{{ valor }}"
-                       data-mask="br-moeda"
-                       placeholder="0,00">
-                {% if erro_valor %}<div class="text-danger small mt-1">{{ erro_valor }}</div>{% endif %}
+            <div class="col-6 col-md-4 col-xl-2">
+                <label for="{{ form_busca.data_inicio.id_for_label }}" class="form-label">PERÍODO — INÍCIO</label>
+                {{ form_busca.data_inicio }}{{ form_busca.data_inicio.errors }}
             </div>
-            <div>
-                <label class="form-label">Início</label>
-                <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
-            </div>
-            <div>
-                <label class="form-label">Fim</label>
-                <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
-            </div>
-            <div>
-                <div class="financeiro-search-actions">
-                    <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary" aria-label="Buscar">
-                        <i class="bi bi-search"></i>
-                    </button>
-                    <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
-                       class="financeiro-top-btn financeiro-top-btn-light"
-                       aria-label="Limpar filtros"
-                       title="Limpar filtros">
-                        <i class="bi bi-x-lg"></i>
-                    </a>
-                </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <label for="{{ form_busca.data_fim.id_for_label }}" class="form-label">PERÍODO — FIM</label>
+                {{ form_busca.data_fim }}{{ form_busca.data_fim.errors }}
             </div>
         </div>
+        <div class="d-flex flex-wrap gap-3 mt-3 align-items-center">
+            <div class="d-flex flex-wrap gap-2">
+                <label class="fin-status-check">{{ form_busca.status_vencido }} Vencidos</label>
+                <label class="fin-status-check">{{ form_busca.status_hoje }} Vence hoje</label>
+                <label class="fin-status-check">{{ form_busca.status_aberto }} Em aberto</label>
+                <label class="fin-status-check">{{ form_busca.status_pago }} Pagos</label>
+            </div>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <label for="{{ form_busca.forma.id_for_label }}" class="form-label mb-0">FORMA DE PAGAMENTO</label>
+                <div>{{ form_busca.forma }}</div>
+                {{ form_busca.forma.errors }}
+            </div>
+            <div class="d-flex gap-2 flex-wrap ms-lg-auto">
+                <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary"><i class="bi bi-search" aria-hidden="true"></i>Buscar</button>
+                <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
+                   class="financeiro-top-btn financeiro-top-btn-light" aria-label="Limpar todos os filtros">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Limpar
+                </a>
+                <button type="button" class="financeiro-top-btn financeiro-top-btn-light"
+                        data-bs-toggle="collapse" data-bs-target="#filtrosAvancados"
+                        aria-controls="filtrosAvancados" aria-expanded="{% if form_busca.errors %}true{% else %}false{% endif %}">
+                    <i class="bi bi-sliders" aria-hidden="true"></i>Filtros avançados ({{ filtros_avancados_count }})
+                </button>
+            </div>
+        </div>
+        <div id="filtrosAvancados" class="collapse{% if form_busca.errors %} show{% endif %}">
+            <p class="text-muted small mt-3 mb-0">Fechar este painel mantém os critérios aplicados. Os valores se referem aos documentos encontrados. Pagamentos bancários recorrentes aparecem por parcela.</p>
+            {% for titulo, campos in form_busca.grupos %}
+            <fieldset class="mt-4">
+                <legend class="h6 fw-bold">{{ titulo }}</legend>
+                <div class="row g-3">
+                    {% for campo in campos %}
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                        {% for erro in campo.errors %}<div class="text-danger small" role="alert">{{ erro }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            {% endfor %}
+            <div class="d-flex gap-2 flex-wrap mt-4">
+                <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary">Aplicar filtros</button>
+                <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}" class="financeiro-top-btn financeiro-top-btn-light">Limpar tudo</a>
+            </div>
+        </div>
+        {% if form_busca.errors %}<div class="alert alert-danger mt-3 mb-0" role="alert">Revise os filtros destacados antes de buscar.</div>{% endif %}
     </form>
+
 </div>
 
 <div class="financeiro-board-card mb-0">
     <div class="financeiro-board-header">
         <div>
-            <h3 class="h6 fw-bold mb-0">Resultados</h3>
+            <h3 class="h6 fw-bold mb-1">{{ totais_busca.quantidade }} resultado{{ totais_busca.quantidade|pluralize:"s" }}</h3>
+            <div class="small text-muted"><span id="fin-order-hint">{{ apresentacao_busca.ordem_label }}.</span> Clique em um resultado para ver os detalhes.</div>
+        </div>
+        <div class="d-flex align-items-center flex-wrap gap-2" aria-label="Exportar resultados">
+            <span class="small text-muted me-1" id="selecaoExportStatus" aria-live="polite">Todos selecionados</span>
+            <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+               class="btn btn-sm btn-outline-secondary fin-export-link" aria-label="Exportar resultados em PDF">
+                <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>PDF
+            </a>
+            <a href="{% url 'financeiro:buscar_pagamentos_xlsx' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
+               class="btn btn-sm btn-outline-secondary fin-export-link" aria-label="Exportar resultados em Excel">
+                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Excel
+            </a>
         </div>
     </div>
 
     {% if resultados %}
     <div class="table-responsive">
         <table class="table table-hover fin-table mb-0 align-middle" id="financeiroResultadosTable">
-            <thead class="table-light">
-	                <tr>
-	                    <th><button type="button" class="fin-sort-btn" data-sort-index="0" data-sort-type="text">Status</button></th>
-	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="1" data-sort-type="date">Venc:</button></th>
-	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="2" data-sort-type="date">Data Emissão</button></th>
-	                    <th><button type="button" class="fin-sort-btn" data-sort-index="3" data-sort-type="text">Nome</button></th>
-	                    <th><button type="button" class="fin-sort-btn" data-sort-index="4" data-sort-type="text">Categoria / Tipo</button></th>
-	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="5" data-sort-type="text">Nº NF</button></th>
-	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="6" data-sort-type="text">Tipo Pagamento</button></th>
-	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="7" data-sort-type="number">R$ Total</button></th>
-	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="8" data-sort-type="number">R$ Pago</button></th>
-	                    <th class="text-end text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="9" data-sort-type="number">R$ à Pagar</button></th>
-	                    <th class="text-nowrap"><button type="button" class="fin-sort-btn" data-sort-index="10" data-sort-type="date">Data de Pagamento</button></th>
-	                </tr>
-            </thead>
+            <thead class="table-light"><tr>
+                <th scope="col"><input type="checkbox" id="selecionarTodos" class="form-check-input fin-export-check" checked aria-label="Selecionar todos para exportação"></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="1" data-sort-type="text">Status</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="2" data-sort-type="date">Vencimento</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="3" data-sort-type="text">Nome</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="4" data-sort-type="text">Nº NF</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="5" data-sort-type="text">Forma de Pagamento</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="6" data-sort-type="number">Total NF</button></th>
+                <th scope="col" class="fin-overdue"><button type="button" class="fin-sort-btn" data-sort-index="7" data-sort-type="number">Total Vencido</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="8" data-sort-type="number">Total Pago</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="9" data-sort-type="number">Total à Pagar</button></th>
+                <th scope="col"><button type="button" class="fin-sort-btn" data-sort-index="10" data-sort-type="date">Data Pagamento</button></th>
+            </tr></thead>
             <tbody>
                 {% for item in resultados %}
-	                <tr class="financeiro-clickable-row"
-	                    data-bs-toggle="collapse"
-	                    data-bs-target="#resultadoDetalhe{{ forloop.counter }}"
-	                    aria-expanded="false"
-	                    aria-controls="resultadoDetalhe{{ forloop.counter }}"
-	                    tabindex="0"
-	                    role="button">
-	                    <td class="small" data-sort="{{ item.status_label }}">
-	                        <span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
-	                    </td>
-	                    <td class="small fw-bold text-nowrap" data-sort="{% if item.vencimento_status %}{{ item.vencimento_status|date:'Y-m-d' }}{% endif %}">
-	                        {% if item.vencimento_status %}
-	                            <span class="{{ item.vencimento_status_text_class }}">{{ item.vencimento_status|date:"d/m/Y" }}</span>
-	                        {% else %}
-	                            <span class="text-muted">&mdash;</span>
-	                        {% endif %}
-	                    </td>
-	                    <td class="small text-muted text-nowrap" data-sort="{{ item.data|date:'Y-m-d' }}">{{ item.data|date:"d/m/Y" }}</td>
-	                    <td class="small fw-semibold" data-sort="{{ item.entidade|default:'' }}">
-	                        <span class="financeiro-result-name {% if item.highlight_entidade %}financeiro-highlight-match{% endif %}">{{ item.entidade }}</span>
-	                        {% if item.entidade_doc %}
-	                            <span class="financeiro-result-doc">{{ item.entidade_doc }}</span>
-	                        {% endif %}
-	                    </td>
-	                    <td class="small text-muted" data-sort="{{ item.categoria_label|default:'' }} {{ item.tipo_registro|default:'' }}">
-	                        <span class="financeiro-result-name text-muted">{{ item.categoria_label }}</span>
-	                        <span class="financeiro-result-subline">{{ item.tipo_registro }}</span>
-	                    </td>
-	                    <td class="small text-muted text-nowrap" data-sort="{{ item.numero_doc|default:'' }}">
-	                        <span class="{% if item.highlight_numero_doc %}financeiro-highlight-match{% endif %}">
-	                            {{ item.numero_doc|default:"—" }}
-	                            {% if item.doc_match_label %}
-	                                <span class="financeiro-cell-note">Doc: {{ item.doc_match_label }}</span>
-	                            {% endif %}
-	                        </span>
-	                    </td>
-	                    <td class="small text-muted text-nowrap" data-sort="{{ item.forma_pagamento|default:'' }}">
-	                        {{ item.forma_pagamento }}
-                        {% if item.forma_detalhe %}
-	                            <span class="financeiro-cell-note">{{ item.forma_detalhe }}</span>
-	                        {% endif %}
-	                    </td>
-	                    <td class="text-end small fw-semibold text-nowrap" data-sort="{{ item.valor_total|default:0 }}">
-	                        <span class="{% if item.highlight_valor_total %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_total|moeda_br }}</span>
-	                    </td>
-	                    <td class="text-end small fw-semibold text-success text-nowrap" data-sort="{{ item.valor_pago|default:0 }}">
-	                        <span class="{% if item.highlight_valor_pago %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_pago|moeda_br }}</span>
-	                    </td>
-	                    <td class="text-end small fw-semibold {% if item.valor_a_pagar %}text-danger{% endif %} text-nowrap" data-sort="{{ item.valor_a_pagar|default:0 }}">
-	                        <span class="{% if item.highlight_valor_a_pagar %}financeiro-highlight-match{% endif %}">R$ {{ item.valor_a_pagar|moeda_br }}</span>
-	                    </td>
-	                    <td class="small text-nowrap" data-sort="{% if item.data_pagamento %}{{ item.data_pagamento|date:'Y-m-d' }}{% endif %}">
-	                        {% if item.data_pagamento %}
-                            {{ item.data_pagamento|date:"d/m/Y" }}
-                        {% else %}
-                            —
-                        {% endif %}
-	                    </td>
-	                </tr>
-	                <tr>
+                <tr class="financeiro-clickable-row" data-detail-id="resultadoDetalhe{{ forloop.counter }}">
+                    <td><input type="checkbox" class="form-check-input fin-export-check fin-export-row" value="{{ item.export_id }}" checked aria-label="Exportar {{ item.entidade }} — {{ item.numero_doc }}"></td>
+                    <td data-sort="{{ item.status_label }}"><span class="badge {{ item.status_badge_class }}">{{ item.status_label }}</span></td>
+                    <td class="text-nowrap" data-sort="{{ item.vencimento_status|date:'Y-m-d' }}">{{ item.vencimento_status|date:"d/m/Y"|default:"—" }}</td>
+                    <td data-sort="{{ item.entidade }}">
+                        <span class="financeiro-result-name">{{ item.entidade }}</span>
+                        <span class="financeiro-result-doc">{{ item.entidade_doc|default:"—" }}</span>
+                    </td>
+                    <td data-sort="{{ item.numero_doc }}">{{ item.numero_doc|default:"—" }}</td>
+                    <td data-sort="{{ item.forma_pagamento }}">
+                        <span>{{ item.forma_pagamento }}</span>
+                        {% if item.forma_detalhe %}<span class="financeiro-result-subline">{{ item.forma_detalhe }}</span>{% endif %}
+                        {% if item.doc_match_label %}<span class="financeiro-result-subline">Boleto: {{ item.doc_match_label }}</span>{% endif %}
+                    </td>
+                    <td class="text-end fin-money" data-sort="{{ item.valor_total_sort }}">R$ {{ item.valor_total|moeda_br }}</td>
+                    <td class="text-end fin-money fin-overdue" data-sort="{{ item.valor_vencido_sort }}">R$ {{ item.valor_vencido|moeda_br }}</td>
+                    <td class="text-end fin-money text-success" data-sort="{{ item.valor_pago_sort }}">R$ {{ item.valor_pago|moeda_br }}</td>
+                    <td class="text-end fin-money text-danger" data-sort="{{ item.valor_a_pagar_sort }}">R$ {{ item.valor_a_pagar|moeda_br }}</td>
+                    <td class="text-nowrap" data-sort="{{ item.data_pagamento|date:'Y-m-d' }}">
+                        {{ item.data_pagamento|date:"d/m/Y"|default:"—" }}
+                        <button type="button" class="fin-detail-toggle ms-1" data-bs-toggle="collapse"
+                                data-bs-target="#resultadoDetalhe{{ forloop.counter }}" aria-controls="resultadoDetalhe{{ forloop.counter }}"
+                                aria-expanded="false" aria-label="Ver detalhes de {{ item.entidade }} — {{ item.numero_doc }}">
+                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                        </button>
+                    </td>
+                </tr>
+	                <tr class="fin-detail-row">
 	                    <td colspan="11" class="p-0 border-0">
 	                        <div class="collapse" id="resultadoDetalhe{{ forloop.counter }}">
 	                            <div class="financeiro-result-detail">
+                                <div class="fin-detail-overview">
+                                    <div><span class="fin-result-label">Documento / identificação</span><strong>{{ item.numero_doc|default:"—" }}</strong><div class="small text-muted">{{ item.entidade_doc|default:"" }}</div></div>
+                                    <div><span class="fin-result-label">Emissão</span><strong>{{ item.data|date:"d/m/Y"|default:"—" }}</strong></div>
+                                    <div><span class="fin-result-label">Último pagamento</span><strong>{{ item.data_pagamento|date:"d/m/Y"|default:"—" }}</strong></div>
+                                </div>
+                                {% if item.descricao_resumo %}<p class="small mb-3"><strong>Descrição e observações:</strong> {{ item.descricao_resumo }}</p>{% endif %}
+                                <p class="small text-muted">Histórico completo do lançamento. As linhas destacadas mostram o documento, valor exato ou data em evidência na busca. Os totais consideram o documento completo.</p>
+
 	                                {% if item.detalhes_avista %}
 	                                <div class="financeiro-result-detail-head">
 	                                    <div class="financeiro-result-detail-title">Pagamentos à vista / crédito</div>
@@ -675,7 +588,7 @@
 	                                        <i class="bi bi-box-arrow-up-right me-1"></i> Abrir Detalhes
 	                                    </a>
 	                                </div>
-	                                <div class="table-responsive rounded-3 overflow-hidden border bg-white mb-3">
+	                                <div class="table-responsive rounded-3 border bg-white mb-3">
 	                                    <table class="table table-sm mb-0 align-middle">
 	                                        <thead class="table-light">
 	                                            <tr>
@@ -690,7 +603,7 @@
 	                                        </thead>
 	                                        <tbody>
 	                                            {% for detalhe in item.detalhes_avista %}
-	                                            <tr>
+	                                            <tr class="{% if detalhe.destaque_contexto %}fin-detail-match{% endif %}">
 	                                                <td class="small"><span class="badge text-bg-success">{{ detalhe.situacao }}</span></td>
 	                                                <td class="small text-nowrap">{{ detalhe.data|date:"d/m/Y" }}</td>
 	                                                <td class="small fw-semibold text-end text-nowrap">
@@ -705,6 +618,7 @@
 	                                            </tr>
 	                                            {% endfor %}
 	                                        </tbody>
+
 	                                    </table>
 	                                </div>
 	                                {% endif %}
@@ -720,7 +634,7 @@
 	                                    </a>
 	                                    {% endif %}
 	                                </div>
-	                                <div class="table-responsive rounded-3 overflow-hidden border bg-white">
+	                                <div class="table-responsive rounded-3 border bg-white">
 	                                    <table class="table table-sm mb-0 align-middle">
 	                                        <thead class="table-light">
 	                                            <tr>
@@ -736,7 +650,7 @@
 	                                        </thead>
 	                                        <tbody>
 	                                            {% for detalhe in item.detalhes_boletos %}
-	                                            <tr>
+	                                            <tr class="{% if detalhe.destaque_contexto %}fin-detail-match{% endif %}">
 	                                                <td class="small"><span class="badge {{ detalhe.situacao_badge_class }}">{{ detalhe.situacao_label }}</span></td>
 	                                                <td class="small fw-semibold">
 	                                                    <span class="{% if detalhe.highlight_doc %}financeiro-highlight-match{% endif %}">{{ detalhe.doc }}</span>
@@ -781,14 +695,36 @@
 	                </tr>
 	                {% endfor %}
             </tbody>
+            <tfoot class="fin-totals-footer">
+                <tr>
+                    <th colspan="6" scope="row">Totais dos resultados ({{ totais_busca.quantidade }})</th>
+                    <td class="text-end fin-money">R$ {{ totais_busca.valor_total|moeda_br }}</td>
+                    <td class="text-end fin-money fin-overdue">R$ {{ totais_busca.valor_vencido|moeda_br }}</td>
+                    <td class="text-end fin-money text-success">R$ {{ totais_busca.valor_pago|moeda_br }}</td>
+                    <td class="text-end fin-money">R$ {{ totais_busca.valor_a_pagar|moeda_br }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
     {% else %}
     <div class="p-4 text-center text-muted">
-        Nenhum pagamento encontrado com os filtros informados.
+        {% if form_busca.errors %}Corrija os filtros para consultar os pagamentos.{% elif filtros_ativos %}Nenhum pagamento encontrado com os filtros informados.{% else %}Digite um termo ou escolha um filtro para começar.{% endif %}
     </div>
     {% endif %}
-    <div class="financeiro-search-totals">
+    {% if filtros_chips %}
+    <div class="p-3 border-top" aria-label="Filtros aplicados">
+        <div class="small fw-semibold mb-2">Filtros aplicados</div>
+        <div class="d-flex flex-wrap gap-2">
+            {% for filtro in filtros_chips %}
+            <a href="{{ filtro.url }}" class="btn btn-sm btn-outline-secondary rounded-pill" aria-label="Remover filtro {{ filtro.label }}">{{ filtro.label }} <span aria-hidden="true">×</span></a>
+            {% endfor %}
+            <a href="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}" class="btn btn-sm btn-link">Limpar tudo</a>
+        </div>
+    </div>
+    {% endif %}
+    <details class="financeiro-search-totals">
+        <summary class="fw-semibold mb-3">Ver distribuição por forma e tipo de pagamento</summary>
         <div class="financeiro-summary-footer mb-3">
             <div class="financeiro-status-legend">
                 <button class="financeiro-status-legend-title"
@@ -865,17 +801,58 @@
                 <div class="financeiro-total-label">Impostos</div>
                 <div class="financeiro-total-value">R$ {{ totais_busca.valor_impostos|moeda_br }}</div>
             </div>
+            <div class="financeiro-total-chip">
+                <div class="financeiro-total-label">Bancários</div>
+                <div class="financeiro-total-value">R$ {{ totais_busca.valor_bancario|moeda_br }}</div>
+            </div>
         </div>
-    </div>
+    </details>
 	</div>
+    <form id="exportarSelecionadosForm" method="post" hidden>
+        {% csrf_token %}
+        <input type="hidden" name="selecionados" id="exportarSelecionadosIds">
+    </form>
 	<script>
-	document.addEventListener('keydown', (event) => {
-	    if (event.key !== 'Enter' && event.key !== ' ') return;
-	    const row = event.target.closest('.financeiro-clickable-row');
-	    if (!row) return;
-	    event.preventDefault();
-	    row.click();
-	});
+    const exportChecks = Array.from(document.querySelectorAll('.fin-export-row'));
+    const allCheck = document.getElementById('selecionarTodos');
+    const exportLinks = document.querySelectorAll('.fin-export-link');
+    function updateSelection() {
+        const count = exportChecks.filter(check => check.checked).length;
+        if (allCheck) {
+            allCheck.checked = count > 0 && count === exportChecks.length;
+            allCheck.indeterminate = count > 0 && count < exportChecks.length;
+        }
+        document.getElementById('selecaoExportStatus').textContent = count + ' de ' + exportChecks.length + ' selecionados';
+        exportLinks.forEach(link => {
+            link.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
+            link.classList.toggle('disabled', count === 0);
+        });
+    }
+    exportChecks.forEach(check => check.addEventListener('change', updateSelection));
+    if (allCheck) allCheck.addEventListener('change', () => {
+        exportChecks.forEach(check => { check.checked = allCheck.checked; });
+        updateSelection();
+    });
+    exportLinks.forEach(link => link.addEventListener('click', event => {
+        event.preventDefault();
+        const ids = exportChecks.filter(check => check.checked).map(check => check.value);
+        if (!ids.length) return;
+        const form = document.getElementById('exportarSelecionadosForm');
+        form.action = link.href;
+        document.getElementById('exportarSelecionadosIds').value = JSON.stringify(ids);
+        form.submit();
+    }));
+    updateSelection();
+    document.querySelectorAll('.financeiro-clickable-row').forEach((row) => {
+        const panel = document.getElementById(row.dataset.detailId);
+        const button = row.querySelector('.fin-detail-toggle');
+        row.addEventListener('click', (event) => {
+            if (event.target.closest('button, a, input, select') || window.getSelection().toString()) return;
+            button.click();
+        });
+        panel.addEventListener('show.bs.collapse', () => row.setAttribute('aria-expanded', 'true'));
+        panel.addEventListener('hide.bs.collapse', () => row.setAttribute('aria-expanded', 'false'));
+    });
 
 	document.querySelectorAll('#financeiroResultadosTable .fin-sort-btn').forEach((button) => {
 	    button.addEventListener('click', () => {
@@ -889,8 +866,11 @@
 	        table.querySelectorAll('.fin-sort-btn').forEach((other) => {
 	            other.classList.remove('is-sorted-asc', 'is-sorted-desc');
 	            delete other.dataset.sortDirection;
+            other.closest('th').removeAttribute('aria-sort');
 	        });
 	        button.dataset.sortDirection = direction;
+        button.closest('th').setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
+        document.getElementById('fin-order-hint').textContent = 'Ordenado por ' + button.textContent.trim() + (direction === 'asc' ? ' (crescente).' : ' (decrescente).');
 	        button.classList.add(direction === 'asc' ? 'is-sorted-asc' : 'is-sorted-desc');
 
 	        const groups = [];
@@ -901,11 +881,10 @@
 
 	        const normalize = (row) => {
 	            const cell = row.children[index];
-	            const raw = (cell && (cell.dataset.sort || cell.textContent) || '').trim();
+	            const raw = (cell ? (cell.dataset.sort ?? cell.textContent) : '').trim();
 	            if (!raw) return type === 'number' ? Number.NEGATIVE_INFINITY : '';
 	            if (type === 'number') {
-	                const normalized = raw.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
-	                return Number.parseFloat(normalized) || 0;
+	                return Number.parseFloat(raw) || 0;
 	            }
 	            if (type === 'date') return raw;
 	            return raw.toLocaleLowerCase('pt-BR');

@@ -47,6 +47,8 @@ from fornecedores.models import Fornecedor
 from obras.models import Obra
 from rh.models import Funcionario
 
+from .busca import BuscaPagamentosForm, corresponde_avancado, termo_corresponde, preparar_resultados
+
 from .forms import (
     BoletoPagamentoForm,
     CaixaEditForm,
@@ -2417,7 +2419,12 @@ def relatorio_fornecedor_pdf(request):
     return response
 
 
-def _buscar_pagamentos_context(request, empresa) -> dict:
+def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
+    form_busca = BuscaPagamentosForm(request.GET, empresa=empresa)
+    busca_valida = form_busca.is_valid()
+    dados_busca = form_busca.cleaned_data
+    chips, advanced_count = form_busca.filtros_ativos(request.GET)
+    busca = str(request.GET.get('busca', '')).strip()
     query = str(request.GET.get('q', '')).strip()
     fornecedor = str(request.GET.get('fornecedor', '')).strip()
     fornecedor_digits = re.sub(r'\D+', '', fornecedor)
@@ -2481,7 +2488,7 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         status_pago = False
     resultados = []
     erro_valor = ''
-    filtros_ativos = tem_filtro_principal or any(
+    filtros_ativos = any(request.GET.get(key) for key in form_busca.fields) or tem_filtro_principal or any(
         [
             status_vencido,
             status_aberto,
@@ -2491,25 +2498,9 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         ]
     )
 
-    if filtros_ativos:
+    if filtros_ativos and busca_valida:
         hoje = timezone.localdate()
-        valor = None
-        if valor_raw:
-            try:
-                valor = parse_valor_moeda_br(valor_raw)
-            except Exception:
-                erro_valor = 'Informe um valor válido no padrão 0,00.'
-        data_inicio_dt = parse_date(data_inicio) if data_inicio else None
-        data_fim_dt = parse_date(data_fim) if data_fim else None
-
-        def data_no_periodo(data_ref) -> bool:
-            if not data_ref:
-                return False
-            if data_inicio_dt and data_ref < data_inicio_dt:
-                return False
-            if data_fim_dt and data_ref > data_fim_dt:
-                return False
-            return True
+        valor = dados_busca.get('valor')
 
         def boleto_corresponde_status(boleto) -> bool:
             if not (
@@ -2633,13 +2624,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 )
             return detalhes
 
-        def datas_nf_para_filtro(nf, pagamentos_lista, boletos_lista):
-            datas = [nf.data_emissao]
-            datas.extend(p.data for p in pagamentos_lista if p.data)
-            datas.extend(b.vencimento for b in boletos_lista if b.vencimento)
-            datas.extend(b.data_pagamento for b in boletos_lista if b.data_pagamento)
-            return datas
-
         for nf in nfs_qs.distinct():
             origens = set()
             pagamentos = list(
@@ -2666,7 +2650,7 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 nf.total_itens_calc,
                 hoje,
             )
-            if (
+            if not dados_busca.get("status_hoje") and (
                 status_vencido
                 or status_aberto
                 or status_pago_parcial
@@ -2732,11 +2716,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 boleto for boleto in boletos_all
                 if boleto.status != BoletoPagamento.Status.CANCELADO
             ]
-            if (data_inicio_dt or data_fim_dt) and not any(
-                data_no_periodo(data_ref)
-                for data_ref in datas_nf_para_filtro(nf, pagamentos_diretos, boletos_validos)
-            ):
-                continue
             tipos_pagamento = []
             forma_total_key = ''
             for pagamento in pagamentos_diretos:
@@ -2768,6 +2747,19 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             resultados.append(
                 {
                     'kind': 'nf',
+                    '_valor_vencido': sum((
+                        max(Decimal('0'), b.valor - (b.valor_pago or Decimal('0')))
+                        for b in boletos_validos
+                        if b.vencimento < hoje and b.status != BoletoPagamento.Status.PAGO
+                    ), Decimal('0')),
+                    'export_id': f'nf:{nf.pk}',
+                    '_caixa': nf.caixa_id,
+                    '_contas': [p.conta_bancaria_id for p in pagamentos_diretos] + [b.conta_bancaria_id for b in boletos_validos if b.data_pagamento],
+                    '_formas': [p.tipo for p in pagamentos_diretos] + (['boletos'] if tem_boletos else []),
+                    '_descricao': ' '.join([nf.descricao or ''] + [i.descricao or '' for i in nf.itens.all()] + [p.observacao or '' for p in pagamentos_diretos] + [b.observacao or '' for b in boletos_validos]),
+                    '_busca': ' '.join([nf.numero_nf, nf.fornecedor.nome, nf.fornecedor.razao_social or '', nf.fornecedor.cpf_cnpj or ''] + [b.numero_doc or '' for b in boletos_validos]),
+                    '_datas': {'emissao': [nf.data_emissao], 'vencimento': [b.vencimento for b in boletos_validos], 'pagamento': [p.data for p in pagamentos_diretos] + [b.data_pagamento for b in boletos_validos if b.data_pagamento]},
+                    '_pendentes': [b.vencimento for b in boletos_validos if b.status != BoletoPagamento.Status.PAGO and (b.valor_pago or Decimal('0')) < b.valor],
                     'tipo_registro': 'Nota Fiscal',
                     'forma_pagamento': forma_pagamento_label,
                     'forma_total_key': forma_total_key,
@@ -2831,10 +2823,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             pessoal_qs = pessoal_qs.filter(filtro_pessoal)
         if categoria_id:
             pessoal_qs = pessoal_qs.filter(itens__categoria_id=categoria_id)
-        if data_inicio:
-            pessoal_qs = pessoal_qs.filter(data_pagamento__gte=data_inicio)
-        if data_fim:
-            pessoal_qs = pessoal_qs.filter(data_pagamento__lte=data_fim)
         if query:
             pessoal_qs = pessoal_qs.filter(
                 Q(funcionario__nome__icontains=query)
@@ -2850,8 +2838,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             total = pagamento.total_itens()
             if valor_raw and not erro_valor and valor is not None and total != valor:
                 continue
-            if not status_pago:
-                continue
+            pago = bool(pagamento.data_pagamento)
+            vencimento_real = getattr(pagamento, 'data_vencimento', None)
+            if not dados_busca.get("status_hoje") and any((status_pago, status_aberto, status_vencido, status_pago_parcial, status_sem_pagamento)):
+                if not ((status_pago and pago) or (status_aberto and not pago)
+                        or (status_sem_pagamento and not pago)
+                        or (status_vencido and not pago and vencimento_real and vencimento_real < hoje)):
+                    continue
             categorias = sorted(
                 {item.categoria.nome for item in pagamento.itens.all() if item.categoria_id}
             )
@@ -2863,6 +2856,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             resultados.append(
                 {
                     'kind': 'pessoal',
+                    'export_id': f'pessoal:{pagamento.pk}',
+                    '_caixa': pagamento.caixa_id,
+                    '_contas': [pagamento.conta_bancaria_id] if pago else [],
+                    '_formas': ['avista'] if pago else [],
+                    '_descricao': ' '.join([getattr(pagamento, 'descricao', '') or '', getattr(pagamento, 'periodo_apuracao', '') or ''] + [i.descricao or '' for i in pagamento.itens.all()]),
+                    '_datas': {'emissao': [pagamento.data_emissao], 'vencimento': [vencimento_real], 'pagamento': [pagamento.data_pagamento]},
+                    '_pendentes': [vencimento_real] if not pago else [],
                     'url': reverse_empresa(
                         request,
                         'financeiro:pagamento_pessoal_detalhe',
@@ -2871,22 +2871,23 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     'entidade': entidade,
                     'entidade_doc': pagamento.funcionario.cpf if pagamento.funcionario_id else '',
                     'documento': pagamento.descricao or 'Pagamento pessoal',
-                    'data': pagamento.data_pagamento,
+                    'data': pagamento.data_emissao,
                     'categoria_label': ', '.join(categorias) or '-',
                     'tipo_registro': 'Pessoal',
                     'forma_pagamento': 'À vista',
-                    'forma_total_key': '',
+                    'forma_total_key': 'avista' if pago else '',
                     'forma_detalhe': '',
                     'numero_doc': pagamento.descricao or 'Pagamento pessoal',
                     'parcela_label': '',
                     'valor_linha': total,
                     'valor_total': total,
-                    'valor_pago': total,
-                    'valor_a_pagar': Decimal('0'),
-                    'vencimento': pagamento.data_pagamento,
+                    'valor_pago': total if pago else Decimal('0'),
+                    'valor_a_pagar': Decimal('0') if pago else total,
+                    'vencimento': vencimento_real,
+                    'vencimento_status': vencimento_real,
                     'data_pagamento': pagamento.data_pagamento,
-                    'status_label': 'Pago Completo',
-                    'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
+                    'status_label': 'Pago Completo' if pago else ('Vencido' if vencimento_real and vencimento_real < hoje else 'Em Aberto'),
+                    'status_badge_class': _badge_status_busca_pagamento('Pago Completo' if pago else ('Vencido' if vencimento_real and vencimento_real < hoje else 'Em Aberto')),
                     'detalhes_avista': [
                         {
                             'situacao': 'Pago',
@@ -2929,10 +2930,6 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             impostos_qs = impostos_qs.filter(filtro_autoridade)
         if categoria_id:
             impostos_qs = impostos_qs.filter(itens__categoria_id=categoria_id)
-        if data_inicio:
-            impostos_qs = impostos_qs.filter(data_pagamento__gte=data_inicio)
-        if data_fim:
-            impostos_qs = impostos_qs.filter(data_pagamento__lte=data_fim)
         if query:
             impostos_qs = impostos_qs.filter(
                 Q(autoridade__nome__icontains=query)
@@ -2947,8 +2944,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             total = pagamento.total_itens()
             if valor_raw and not erro_valor and valor is not None and total != valor:
                 continue
-            if not status_pago:
-                continue
+            pago = bool(pagamento.data_pagamento)
+            vencimento_real = getattr(pagamento, 'data_vencimento', None)
+            if not dados_busca.get("status_hoje") and any((status_pago, status_aberto, status_vencido, status_pago_parcial, status_sem_pagamento)):
+                if not ((status_pago and pago) or (status_aberto and not pago)
+                        or (status_sem_pagamento and not pago)
+                        or (status_vencido and not pago and vencimento_real and vencimento_real < hoje)):
+                    continue
             categorias = sorted(
                 {item.categoria.nome for item in pagamento.itens.all() if item.categoria_id}
             )
@@ -2958,6 +2960,13 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             resultados.append(
                 {
                     'kind': 'imposto',
+                    'export_id': f'imposto:{pagamento.pk}',
+                    '_caixa': pagamento.caixa_id,
+                    '_contas': [pagamento.conta_bancaria_id] if pago else [],
+                    '_formas': ['avista'] if pago else [],
+                    '_descricao': ' '.join([getattr(pagamento, 'descricao', '') or '', getattr(pagamento, 'periodo_apuracao', '') or ''] + [i.descricao or '' for i in pagamento.itens.all()]),
+                    '_datas': {'emissao': [pagamento.data_emissao], 'vencimento': [vencimento_real], 'pagamento': [pagamento.data_pagamento]},
+                    '_pendentes': [vencimento_real] if not pago else [],
                     'url': reverse_empresa(
                         request,
                         'financeiro:pagamento_imposto_detalhe',
@@ -2966,22 +2975,23 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                     'entidade': pagamento.autoridade.nome,
                     'entidade_doc': pagamento.autoridade.cnpj,
                     'documento': 'Pagamento de imposto',
-                    'data': pagamento.data_pagamento,
+                    'data': pagamento.data_emissao,
                     'categoria_label': ', '.join(categorias) or '-',
                     'tipo_registro': 'Imposto',
                     'forma_pagamento': 'À vista',
-                    'forma_total_key': '',
+                    'forma_total_key': 'avista' if pago else '',
                     'forma_detalhe': '',
                     'numero_doc': 'Pagamento de imposto',
                     'parcela_label': '',
                     'valor_linha': total,
                     'valor_total': total,
-                    'valor_pago': total,
-                    'valor_a_pagar': Decimal('0'),
-                    'vencimento': pagamento.data_pagamento,
+                    'valor_pago': total if pago else Decimal('0'),
+                    'valor_a_pagar': Decimal('0') if pago else total,
+                    'vencimento': vencimento_real,
+                    'vencimento_status': vencimento_real,
                     'data_pagamento': pagamento.data_pagamento,
-                    'status_label': 'Pago Completo',
-                    'status_badge_class': _badge_status_busca_pagamento('Pago Completo'),
+                    'status_label': 'Pago Completo' if pago else ('Vencido' if vencimento_real and vencimento_real < hoje else 'Em Aberto'),
+                    'status_badge_class': _badge_status_busca_pagamento('Pago Completo' if pago else ('Vencido' if vencimento_real and vencimento_real < hoje else 'Em Aberto')),
                     'detalhes_avista': [
                         {
                             'situacao': 'Pago',
@@ -3010,6 +3020,20 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
                 }
             )
 
+        for item in resultados:
+            if item['kind'] in ('pessoal', 'imposto'):
+                if not item['data_pagamento']:
+                    item['detalhes_avista'] = []
+                    item['forma_pagamento'] = 'Sem pagamento'
+
+        from .busca import resultados_bancarios
+        resultados.extend(resultados_bancarios(request, empresa, dados_busca))
+        resultados = [
+            item for item in resultados
+            if corresponde_avancado(item, dados_busca)
+            and (not busca or termo_corresponde(busca, item.get('_busca'), item.get('entidade'), item.get('entidade_doc'), item.get('documento')))
+        ]
+
         resultados.sort(
             key=lambda item: (
                 item.get('vencimento') or item.get('data') or hoje,
@@ -3018,7 +3042,12 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
             reverse=True,
         )
 
+    if selecionados is not None:
+        resultados = [item for item in resultados if item['export_id'] in selecionados]
+    apresentacao_busca = preparar_resultados(resultados, dados_busca)
+
     totais_busca = {
+        'valor_vencido': sum((item.get('valor_vencido', Decimal('0')) for item in resultados), Decimal('0')),
         'quantidade': len(resultados),
         'valor_total': sum((item.get('valor_total') or Decimal('0') for item in resultados), Decimal('0')),
         'valor_pago': sum((item.get('valor_pago') or Decimal('0') for item in resultados), Decimal('0')),
@@ -3031,11 +3060,17 @@ def _buscar_pagamentos_context(request, empresa) -> dict:
         'credito_total': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('forma_total_key') == PagamentoNotaFiscalPagamento.TipoPagamento.CREDITO), Decimal('0')),
         'valor_nf': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('tipo_registro') == 'Nota Fiscal'), Decimal('0')),
         'valor_pessoal': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'pessoal'), Decimal('0')),
+        'valor_bancario': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'bancario'), Decimal('0')),
         'valor_impostos': sum((item.get('valor_total') or Decimal('0') for item in resultados if item.get('kind') == 'imposto'), Decimal('0')),
     }
 
     return {
         'page_title': 'Buscar Pagamentos',
+        'apresentacao_busca': apresentacao_busca,
+        'form_busca': form_busca,
+        'filtros_chips': chips,
+        'filtros_avancados_count': advanced_count,
+        'busca': busca,
         'query': query,
         'fornecedor': fornecedor,
         'categoria_id': categoria_id,
@@ -3072,33 +3107,28 @@ def buscar_pagamentos(request):
 
 
 def _linhas_export_busca_pagamentos(context: dict) -> list[list]:
-    linhas = []
-    for item in context['resultados']:
-        linhas.append(
-            [
-                item.get('status_label') or '',
-                item.get('data'),
-                item.get('entidade') or '',
-                item.get('tipo_registro') or '',
-                item.get('categoria_label') or '',
-                item.get('numero_doc') or '',
-                item.get('forma_pagamento') or '',
-                item.get('forma_detalhe') or '',
-                item.get('vencimento_status') or item.get('vencimento'),
-                item.get('valor_linha') or Decimal('0'),
-                item.get('parcela_label') or '',
-                item.get('data_pagamento'),
-            ]
-        )
-    return linhas
+    return [[
+        item.get('status_label') or '',
+        item.get('vencimento_status'),
+        '\n'.join(filter(None, [item.get('entidade'), item.get('entidade_doc')])),
+        item.get('numero_doc') or '',
+        '\n'.join(filter(None, [item.get('forma_pagamento'), item.get('forma_detalhe'), item.get('doc_match_label')])),
+        item.get('valor_total') or Decimal('0'),
+        item.get('valor_vencido') or Decimal('0'),
+        item.get('valor_pago') or Decimal('0'),
+        item.get('valor_a_pagar') or Decimal('0'),
+        item.get('data_pagamento'),
+    ] for item in context['resultados']]
 
 
 def _filtros_export_busca_pagamentos(context: dict) -> str:
+    if context.get('filtros_chips'):
+        return ' | '.join(chip['label'].replace('Pessoa / entidade:', 'Nome:', 1) for chip in context['filtros_chips'])
     filtros = []
     if context.get('query'):
         filtros.append(f'Doc/NF: {context["query"]}')
     if context.get('fornecedor'):
-        filtros.append(f'Pessoa/Entidade: {context["fornecedor"]}')
+        filtros.append(f'Nome: {context["fornecedor"]}')
     if context.get('valor'):
         filtros.append(f'Valor: R$ {context["valor"]}')
     if context.get('data_inicio') or context.get('data_fim'):
@@ -3121,6 +3151,21 @@ def _filtros_export_busca_pagamentos(context: dict) -> str:
     return ' | '.join(filtros) or 'Sem filtros'
 
 
+def _selecao_exportacao(request):
+    if request.method != 'POST':
+        return None
+    import json
+    try:
+        selected = json.loads(request.POST.get('selecionados', '[]'))
+    except (ValueError, TypeError):
+        raise ValidationError('Seleção inválida.')
+    if not isinstance(selected, list) or any(not isinstance(key, str) for key in selected):
+        raise ValidationError('Seleção inválida.')
+    if not selected:
+        raise ValidationError('Selecione ao menos um resultado para exportar.')
+    return set(selected)
+
+
 @login_required
 def buscar_pagamentos_xlsx(request):
     empresa = _empresa(request)
@@ -3130,21 +3175,15 @@ def buscar_pagamentos_xlsx(request):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font
 
-    context = _buscar_pagamentos_context(request, empresa)
-    headers = [
-        'Status',
-        'Data Emissão',
-        'Fornecedor / Funcionário / Entidade',
-        'Tipo de Saída',
-        'Categoria',
-        'Nº Doc',
-        'Tipo Pagamento',
-        'Detalhe Tipo',
-        'Vencimento',
-        'Valor',
-        'Parcela',
-        'Data de Pagamento',
-    ]
+    try:
+        selecionados = _selecao_exportacao(request)
+    except ValidationError as error:
+        return HttpResponseBadRequest('; '.join(error.messages))
+    context = _buscar_pagamentos_context(request, empresa, selecionados=selecionados)
+    if selecionados is not None and not context['resultados']:
+        return HttpResponseBadRequest('Nenhum resultado selecionado corresponde aos filtros atuais.')
+    headers = ['Status', 'Vencimento', 'Nome / CPF ou CNPJ', 'Nº NF',
+               'Forma de Pagamento', 'Total NF', 'Total Vencido', 'Total Pago', 'Total à Pagar', 'Data Pagamento']
     wb = Workbook()
     ws = wb.active
     ws.title = 'Buscar Pagamentos'
@@ -3168,12 +3207,19 @@ def buscar_pagamentos_xlsx(request):
         for col, valor in enumerate(valores, 1):
             cell = ws.cell(row=row, column=col, value=valor)
             cell.alignment = Alignment(vertical='top', wrap_text=True)
-            if col == 10:
+            if col in (6, 7, 8, 9):
                 cell.number_format = 'R$ #,##0.00'
+            elif col in (2, 10):
+                cell.number_format = 'dd/mm/yyyy'
         row += 1
 
     totais = context['totais_busca']
-    row += 1
+    ws.cell(row=row, column=1, value='Totais').font = Font(bold=True)
+    for col, key in enumerate(('valor_total', 'valor_vencido', 'valor_pago', 'valor_a_pagar'), 6):
+        cell = ws.cell(row=row, column=col, value=totais[key])
+        cell.font = Font(bold=True)
+        cell.number_format = 'R$ #,##0.00'
+    row += 2
     ws.cell(row=row, column=1, value='Total geral').font = Font(bold=True)
     ws.cell(row=row, column=2, value=float(totais['valor_total'])).font = Font(bold=True)
     ws.cell(row=row, column=3, value=f'{totais["quantidade"]} resultado(s)')
@@ -3188,10 +3234,15 @@ def buscar_pagamentos_xlsx(request):
         ws.cell(row=row, column=3, value=f'{totais[qtd_key]} resultado(s)')
         row += 1
 
-    widths = [16, 13, 34, 16, 22, 16, 18, 22, 13, 14, 12, 16]
+    widths = [18, 14, 38, 20, 28, 18, 18, 18, 18, 18]
     for idx, width in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + idx)].width = width
 
+    from openpyxl.styles import PatternFill
+    for cells in ws.iter_rows(min_row=4, max_row=row-1, min_col=7, max_col=7):
+        for cell in cells:
+            cell.fill = PatternFill('solid', fgColor='FEE2E2')
+            cell.font = Font(color='B91C1C', bold=cell.font.bold)
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -3211,7 +3262,13 @@ def buscar_pagamentos_pdf(request):
     if not empresa:
         return redirect('selecionar_empresa')
 
-    context = _buscar_pagamentos_context(request, empresa)
+    try:
+        selecionados = _selecao_exportacao(request)
+    except ValidationError as error:
+        return HttpResponseBadRequest('; '.join(error.messages))
+    context = _buscar_pagamentos_context(request, empresa, selecionados=selecionados)
+    if selecionados is not None and not context['resultados']:
+        return HttpResponseBadRequest('Nenhum resultado selecionado corresponde aos filtros atuais.')
     styles = getSampleStyleSheet()
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -3233,7 +3290,11 @@ def buscar_pagamentos_pdf(request):
         alignment=1,
     )
     story.append(Paragraph(xml_escape(_nome_empresa_pdf(empresa)), meta_style))
-    story.append(Paragraph(xml_escape(_filtros_export_busca_pagamentos(context)), meta_style))
+    filtros_style = ParagraphStyle(
+        'bp_filtros_pdf', parent=meta_style, fontSize=10, leading=14,
+        textColor=colors.HexColor('#334155'), spaceBefore=5, spaceAfter=4,
+    )
+    story.append(Paragraph(xml_escape(_filtros_export_busca_pagamentos(context)), filtros_style))
     story.append(Spacer(1, 3 * mm))
 
     cell = ParagraphStyle(
@@ -3244,67 +3305,49 @@ def buscar_pagamentos_pdf(request):
         textColor=colors.HexColor('#0f172a'),
     )
     cell_right = ParagraphStyle('bp_pdf_cell_right', parent=cell, alignment=2)
-    data = [[
-        'Status',
-        'Emissão',
-        'Entidade',
-        'Tipo Saída',
-        'Categoria',
-        'Nº Doc',
-        'Tipo Pgto',
-        'Venc.',
-        'Valor',
-        'Pgto',
-    ]]
-    for item in context['resultados']:
-        tipo_pgto = item.get('forma_pagamento') or ''
-        if item.get('forma_detalhe'):
-            tipo_pgto = f'{tipo_pgto}\n{item["forma_detalhe"]}'
-        if item.get('parcela_label'):
-            tipo_pgto = f'{tipo_pgto}\nParcela {item["parcela_label"]}'
-        data.append(
-            [
-                _pdf_cell(item.get('status_label') or '', cell),
-                _pdf_cell(_format_data_pdf(item.get('data')), cell),
-                _pdf_cell(item.get('entidade') or '', cell),
-                _pdf_cell(item.get('tipo_registro') or '', cell),
-                _pdf_cell(item.get('categoria_label') or '', cell),
-                _pdf_cell(item.get('numero_doc') or '', cell),
-                _pdf_cell(tipo_pgto, cell),
-                _pdf_cell(
-                    _format_data_pdf(item.get('vencimento_status') or item.get('vencimento')),
-                    cell,
-                ),
-                _pdf_cell(_format_moeda_pdf(item.get('valor_linha')), cell_right),
-                _pdf_cell(_format_data_pdf(item.get('data_pagamento')), cell),
-            ]
-        )
-    table = Table(
-        data,
-        repeatRows=1,
-        colWidths=[18 * mm, 16 * mm, 48 * mm, 20 * mm, 27 * mm, 20 * mm, 27 * mm, 16 * mm, 21 * mm, 18 * mm],
+    cell_overdue = ParagraphStyle(
+        'bp_pdf_cell_overdue', parent=cell_right,
+        fontName='Helvetica-Bold', textColor=colors.HexColor('#b91c1c'),
     )
+    data = [['Status', 'Vencimento', 'Nome / CPF ou CNPJ', 'Nº NF',
+             'Forma de Pagamento', 'Total NF', 'Total Vencido', 'Total Pago', 'Total à Pagar', 'Data Pagamento']]
+    for valores in _linhas_export_busca_pagamentos(context):
+        linha = []
+        for index, value in enumerate(valores):
+            if index in (1, 9):
+                value = _format_data_pdf(value)
+            elif index in (5, 6, 7, 8):
+                value = _format_moeda_pdf(value)
+            linha.append(_pdf_cell(value or '', cell_overdue if index == 6 else cell_right if index in (5, 7, 8) else cell))
+        data.append(linha)
+    total_style = ParagraphStyle(
+        'bp_total_pdf', parent=cell_right, fontName='Helvetica-Bold',
+        fontSize=8, leading=11,
+    )
+    total_vencido_style = ParagraphStyle(
+        'bp_total_vencido_pdf', parent=total_style, textColor=colors.HexColor('#b91c1c'),
+    )
+    data.append(['TOTAIS', '', '', '', ''] + [
+        _pdf_cell(_format_moeda_pdf(context['totais_busca'][key]),
+                  total_vencido_style if key == 'valor_vencido' else total_style)
+        for key in ('valor_total', 'valor_vencido', 'valor_pago', 'valor_a_pagar')
+    ] + [''])
+    table = Table(data, repeatRows=1,
+                  colWidths=[19*mm, 19*mm, 45*mm, 20*mm, 28*mm, 25*mm, 25*mm, 25*mm, 25*mm, 23*mm])
     table.setStyle(_pdf_table_style())
+    table.setStyle([
+        ('SPAN', (0, -1), (4, -1)),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#e2e8f0')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 8),
+        ('TOPPADDING', (0, -1), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, -1), (-1, -1), 9),
+        ('BACKGROUND', (6, 0), (6, -1), colors.HexColor('#fee2e2')),
+        ('TEXTCOLOR', (6, 0), (6, -1), colors.HexColor('#b91c1c')),
+        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.HexColor('#94a3b8')),
+    ])
     story.append(table)
 
-    totais = context['totais_busca']
-    story.append(Spacer(1, 3 * mm))
-    totais_table = Table(
-        [[
-            'Boletos',
-            'À Vista',
-            'Crédito',
-            'Total Geral',
-        ], [
-            f'{totais["boletos_qtd"]} | {_format_moeda_pdf(totais["boletos_total"])}',
-            f'{totais["avista_qtd"]} | {_format_moeda_pdf(totais["avista_total"])}',
-            f'{totais["credito_qtd"]} | {_format_moeda_pdf(totais["credito_total"])}',
-            f'{totais["quantidade"]} | {_format_moeda_pdf(totais["valor_total"])}',
-        ]],
-        colWidths=[43 * mm, 43 * mm, 43 * mm, 50 * mm],
-    )
-    totais_table.setStyle(_pdf_table_style())
-    story.append(totais_table)
     story.extend(_flowables_rodape_impressao(request, styles))
     doc.build(story)
     ref = timezone.localdate().strftime('%Y%m%d')
