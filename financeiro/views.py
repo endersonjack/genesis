@@ -162,6 +162,48 @@ def _periodo_caixa_params(request) -> dict:
     }
 
 
+def _periodo_caixa_unificado_params(request) -> dict:
+    periodo = _periodo_caixa_params(request)
+    inicio = periodo['inicio']
+    final = periodo['fim'] - timedelta(days=1)
+    for campo in ('data_inicio', 'data_fim'):
+        raw = str(request.GET.get(campo) or '').strip()
+        if not raw:
+            continue
+        try:
+            valor = date.fromisoformat(raw)
+        except ValueError:
+            raise ValidationError('Informe datas válidas para o período inicial e final.')
+        if campo == 'data_inicio':
+            inicio = valor
+        else:
+            final = valor
+    if inicio > final:
+        raise ValidationError('O período final deve ser igual ou posterior ao inicial.')
+    try:
+        fim_exclusivo = final + timedelta(days=1)
+    except OverflowError:
+        raise ValidationError('A data final informada está fora do intervalo permitido.')
+    periodo.update({
+        'inicio': inicio, 'fim': fim_exclusivo,
+        'data_inicio': inicio.isoformat(), 'data_fim': final.isoformat(),
+        'periodo_label': f'{inicio:%d/%m/%Y} a {final:%d/%m/%Y}',
+    })
+    return periodo
+
+
+def _selecao_linhas_caixa(request, linhas, modo):
+    excluidos = set(filter(None, str(request.GET.get('excluir', '')).split(',')))
+    selecionadas = []
+    for linha in linhas:
+        chave = linha['sort_key']
+        linha['selecao_id'] = f"{modo}:{linha['caixa_id']}:{chave[2]}:{chave[1]}"
+        linha['selecionada'] = linha['selecao_id'] not in excluidos
+        if linha['selecionada']:
+            selecionadas.append(linha)
+    return selecionadas
+
+
 def _filtrar_linhas_periodo(linhas: list[dict], inicio, fim) -> list[dict]:
     return [
         linha
@@ -4421,7 +4463,10 @@ def caixa_unificado(request):
         nome='Caixa Unificado',
         ativo=True,
     )
-    periodo = _periodo_caixa_params(request)
+    try:
+        periodo = _periodo_caixa_unificado_params(request)
+    except ValidationError as error:
+        return HttpResponseBadRequest('; '.join(error.messages))
     modo_extrato = (request.GET.get('modo') or 'detalhado').strip().lower()
     if modo_extrato not in {'detalhado', 'consolidado'}:
         modo_extrato = 'detalhado'
@@ -4437,8 +4482,10 @@ def caixa_unificado(request):
         categoria_id = None
     query_base = {
         'modo': modo_extrato,
-        'mes': periodo['mes'],
-        'ano': periodo['ano'],
+        'excluir': request.GET.get('excluir', ''),
+        'somente_selecionados': request.GET.get('somente_selecionados', ''),
+        'data_inicio': periodo['data_inicio'],
+        'data_fim': periodo['data_fim'],
         'fornecedor': fornecedor_id,
         'categoria': categoria_id,
         'caixa': caixa_id,
@@ -4506,13 +4553,18 @@ def caixa_unificado(request):
     )
 
     linhas_ativas = movimentacoes if modo_extrato == 'consolidado' else movimentacoes_detalhadas
+    linhas_selecionadas = _selecao_linhas_caixa(request, linhas_ativas, modo_extrato)
+    total_encontradas = len(linhas_ativas)
+    somente_selecionados = request.GET.get('somente_selecionados') == '1'
+    if somente_selecionados:
+        linhas_ativas = linhas_selecionadas
     paginator = Paginator(linhas_ativas, 50)
     page_obj = paginator.get_page(request.GET.get('page'))
     campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
     entradas_total = sum(
         (
             (linha.get(campo_total) or Decimal('0'))
-            for linha in linhas_ativas
+            for linha in linhas_selecionadas
             if linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
         ),
         Decimal('0'),
@@ -4520,7 +4572,7 @@ def caixa_unificado(request):
     saidas_total = sum(
         (
             (linha.get(campo_total) or Decimal('0'))
-            for linha in linhas_ativas
+            for linha in linhas_selecionadas
             if not linha['entrada'] and _linha_extrato_movimento_efetivo(linha)
         ),
         Decimal('0'),
@@ -4567,6 +4619,11 @@ def caixa_unificado(request):
             'saidas_total': saidas_total,
             'saldo_atual': entradas_total - saidas_total,
             'unificado': True,
+            'selecao_ativa': True,
+            'excluidos': request.GET.get('excluir', ''),
+            'somente_selecionados': somente_selecionados,
+            'total_selecionadas': len(linhas_selecionadas),
+            'total_encontradas': total_encontradas,
         },
     )
 
@@ -4632,7 +4689,8 @@ def _header_text_html_caixa(empresa, periodo, caixa):
     razao = (getattr(empresa, 'razao_social', '') or '').strip()
     if razao and razao.upper() != (nome or '').upper():
         bits.append(f'<font size="8" color="#64748b">{xml_escape(razao)}</font>')
-    bits.append(xml_escape(f'{modo} · {caixa.nome} · {mes_nome}/{periodo["ano"]}'))
+    periodo_label = periodo.get('periodo_label') or f'{mes_nome}/{periodo["ano"]}'
+    bits.append(xml_escape(f'{modo} · {caixa.nome} · {periodo_label}'))
     extra = _linha_extra_cabecalho_recibo(empresa)
     if extra:
         bits.append(xml_escape(extra))
@@ -4945,7 +5003,10 @@ def caixa_unificado_pdf(request):
         nome='Caixa Unificado',
         ativo=True,
     )
-    periodo = _periodo_caixa_params(request)
+    try:
+        periodo = _periodo_caixa_unificado_params(request)
+    except ValidationError as error:
+        return HttpResponseBadRequest('; '.join(error.messages))
     modo_extrato = (request.GET.get('modo') or 'detalhado').strip().lower()
     if modo_extrato not in {'detalhado', 'consolidado'}:
         modo_extrato = 'detalhado'
@@ -4975,6 +5036,7 @@ def caixa_unificado_pdf(request):
                 )
             )
 
+    linhas = _selecao_linhas_caixa(request, linhas, modo_extrato)
     campo_total = 'valor' if modo_extrato == 'consolidado' else 'valor_liquido'
     linhas = _recalcular_saldo_linhas(
         _aplicar_filtros_extrato(
@@ -5077,7 +5139,7 @@ def caixa_unificado_pdf(request):
     story.extend(_flowables_rodape_impressao(request, styles, space_before_mm=3))
     doc.build(story)
 
-    ref = f'{periodo["ano"]}-{periodo["mes"]:02d}'
+    ref = f'{periodo["data_inicio"]}_a_{periodo["data_fim"]}'
     filename = f'Caixa_Unificado_{modo_extrato}_{ref}.pdf'
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'

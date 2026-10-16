@@ -321,7 +321,7 @@
     <div class="financeiro-board-body">
         <div class="caixa-metrics">
             <div class="mini-card caixa-metric">
-                <div class="caixa-metric-label">Saldo do período</div>
+                <div class="caixa-metric-label">Saldo {% if selecao_ativa %}selecionado{% else %}do período{% endif %}</div>
                 <div class="caixa-metric-value {% if saldo_atual < 0 %}caixa-negative{% else %}caixa-positive{% endif %}">
                     R$ {{ saldo_atual|moeda_br }}
                 </div>
@@ -336,7 +336,7 @@
             </div>
             <div class="mini-card caixa-metric">
                 <div class="caixa-metric-label">Movimentacoes</div>
-                <div class="caixa-metric-value">{{ paginator.count }}</div>
+                <div class="caixa-metric-value">{% if selecao_ativa %}{{ total_selecionadas }}{% else %}{{ paginator.count }}{% endif %}</div>
             </div>
         </div>
     </div>
@@ -356,12 +356,23 @@
                 {% endif %}
             </p>
         </div>
-        <form method="get" class="caixa-filter-form">
+        <form method="get" class="caixa-filter-form" id="caixaFiltroForm">
+            {% if selecao_ativa %}<input type="hidden" name="excluir" id="caixaExcluidos" value="{{ excluidos }}">{% endif %}
             <input type="hidden" name="modo" value="{{ modo_extrato }}">
             {% if modo_extrato == 'detalhado' %}
                 <input type="hidden" name="sort" value="{{ sort_key }}">
                 <input type="hidden" name="dir" value="{{ sort_dir }}">
             {% endif %}
+            {% if unificado %}
+            <div class="caixa-filter-field" style="width: 10.5rem">
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-inicio">Período inicial</label>
+                <input id="caixa-inicio" type="date" name="data_inicio" value="{{ periodo.data_inicio }}" class="form-control form-control-sm rounded-pill" required>
+            </div>
+            <div class="caixa-filter-field" style="width: 10.5rem">
+                <label class="form-label small fw-bold text-muted mb-1" for="caixa-fim">Período final</label>
+                <input id="caixa-fim" type="date" name="data_fim" value="{{ periodo.data_fim }}" class="form-control form-control-sm rounded-pill" required>
+            </div>
+            {% else %}
             <div class="caixa-filter-field caixa-filter-field--mes">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-mes">Mês</label>
                 <select id="caixa-mes" name="mes" class="form-select form-select-sm rounded-pill">
@@ -388,6 +399,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
             <div class="caixa-filter-field caixa-filter-field--fornecedor">
                 <label class="form-label small fw-bold text-muted mb-1" for="caixa-fornecedor">Fornecedor</label>
                 <select id="caixa-fornecedor" name="fornecedor" class="form-select form-select-sm rounded-pill">
@@ -435,6 +447,13 @@
         </form>
     </div>
 
+    {% if selecao_ativa %}
+    <div class="p-3 border-bottom d-flex align-items-center flex-wrap gap-3">
+        <span class="small fw-semibold">{{ total_selecionadas }} de {{ total_encontradas }} selecionadas — totais e PDF consideram apenas a seleção.</span>
+        <label class="small d-flex gap-2 align-items-center"><input type="checkbox" class="form-check-input m-0" name="somente_selecionados" value="1" form="caixaFiltroForm" {% if somente_selecionados %}checked{% endif %} onchange="this.form.requestSubmit()">Exibir somente selecionadas</label>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="caixaRestaurarSelecao">Selecionar todas as páginas</button>
+    </div>
+    {% endif %}
     {% if modo_extrato == 'consolidado' %}
         {% if movimentacoes %}
             <div class="caixa-scroll-top" data-scroll-sync="caixa-extrato"><div class="caixa-scroll-top-inner"></div></div>
@@ -442,6 +461,7 @@
                 <table class="table table-hover align-middle caixa-table">
                     <thead class="table-light">
                         <tr>
+                            {% if selecao_ativa %}<th style="width:36px"><input type="checkbox" class="form-check-input caixa-check-todos" aria-label="Marcar ou desmarcar esta página"></th>{% endif %}
                             <th>#</th>
                             <th>Data</th>
                             {% if unificado %}<th>Caixa</th>{% endif %}
@@ -455,6 +475,7 @@
                     <tbody>
                         {% for m in movimentacoes %}
                             <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
+                                {% if selecao_ativa %}<td><input type="checkbox" class="form-check-input caixa-check-linha" value="{{ m.selecao_id }}" {% if m.selecionada %}checked{% endif %} aria-label="Selecionar movimento {{ m.numero }}"></td>{% endif %}
                                 <td class="caixa-ref">{{ m.numero }}</td>
                                 <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
                                 {% if unificado %}<td class="text-nowrap">{{ m.caixa_nome }}</td>{% endif %}
@@ -490,6 +511,7 @@
                 <table class="table table-hover align-middle caixa-table">
                     <thead class="table-light">
                         <tr>
+                            {% if selecao_ativa %}<th style="width:36px"><input type="checkbox" class="form-check-input caixa-check-todos" aria-label="Marcar ou desmarcar esta página"></th>{% endif %}
                             <th><a class="caixa-sort-link" href="{{ sort_links.numero.url }}"># {% if sort_links.numero.active %}<span class="caixa-sort-indicator">{{ sort_links.numero.indicator }}</span>{% endif %}</a></th>
                             <th><a class="caixa-sort-link" href="{{ sort_links.data.url }}">Data {% if sort_links.data.active %}<span class="caixa-sort-indicator">{{ sort_links.data.indicator }}</span>{% endif %}</a></th>
                             {% if unificado %}<th><a class="caixa-sort-link" href="{{ sort_links.caixa.url }}">Caixa {% if sort_links.caixa.active %}<span class="caixa-sort-indicator">{{ sort_links.caixa.indicator }}</span>{% endif %}</a></th>{% endif %}
@@ -507,6 +529,7 @@
                     <tbody>
                         {% for m in movimentacoes_detalhadas %}
                             <tr{% if m.url %} data-row-href="{{ m.url }}" tabindex="0"{% endif %}>
+                                {% if selecao_ativa %}<td><input type="checkbox" class="form-check-input caixa-check-linha" value="{{ m.selecao_id }}" {% if m.selecionada %}checked{% endif %} aria-label="Selecionar movimento {{ m.numero }}"></td>{% endif %}
                                 <td class="caixa-ref">{{ m.numero }}</td>
                                 <td class="text-nowrap">{{ m.data|date:'d/m/Y' }}</td>
                                 {% if unificado %}<td class="text-nowrap">{{ m.caixa_nome }}</td>{% endif %}
@@ -576,6 +599,40 @@
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const selectionField = document.getElementById('caixaExcluidos');
+    if (selectionField) {
+        const form = document.getElementById('caixaFiltroForm');
+        const rows = Array.from(document.querySelectorAll('.caixa-check-linha'));
+        const all = document.querySelector('.caixa-check-todos');
+        const excluded = new Set(selectionField.value.split(',').filter(Boolean));
+        const count = rows.filter(check => check.checked).length;
+        if (all) {
+            all.checked = rows.length > 0 && count === rows.length;
+            all.indeterminate = count > 0 && count < rows.length;
+        }
+        function applySelection() {
+            rows.forEach(check => {
+                if (check.checked) excluded.delete(check.value);
+                else excluded.add(check.value);
+            });
+            selectionField.value = Array.from(excluded).join(',');
+            const page = document.createElement('input');
+            page.type = 'hidden'; page.name = 'page'; page.value = '{{ page_obj.number }}';
+            form.appendChild(page);
+            form.requestSubmit();
+        }
+        rows.forEach(check => check.addEventListener('change', applySelection));
+        if (all) all.addEventListener('change', () => {
+            rows.forEach(check => { check.checked = all.checked; });
+            applySelection();
+        });
+        document.getElementById('caixaRestaurarSelecao').addEventListener('click', () => {
+            selectionField.value = '';
+            const onlySelected = document.querySelector('[name="somente_selecionados"]');
+            if (onlySelected) onlySelected.checked = false;
+            form.requestSubmit();
+        });
+    }
     const scrollAreas = Array.from(document.querySelectorAll('[data-scroll-sync="caixa-extrato"]'));
     const table = document.querySelector('.caixa-table');
     const topInner = document.querySelector('.caixa-scroll-top-inner');
