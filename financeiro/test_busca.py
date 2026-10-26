@@ -87,7 +87,7 @@ class BuscaAvancadaTests(TestCase):
         html = render_to_string("financeiro/busca_pagamentos.html",
             self.context(busca="Aurora", descricao="Cimento"), request=request)
         self.assertIn("Filtros avançados (2)", html)
-        self.assertIn('id="filtrosAvancados" class="collapse"', html)
+        self.assertIn('id="filtrosAvancados" class="collapse show"', html)
         self.assertIn('name="descricao"', html)
         self.assertIn("Aurora", html)
 
@@ -310,6 +310,15 @@ class BuscaAvancadaTests(TestCase):
             with self.subTest(termo=termo):
                 self.assertEqual(self.context(busca=termo)["resultados"], [])
         self.assertEqual(len(self.context(busca="Aurora")["resultados"]), 1)
+
+    def test_dashboard_preenche_campos_da_busca(self):
+        ctx = self.context(origem="dashboard", busca=" Aurora ; 987 ")
+        self.assertEqual(ctx["form_busca"]["fornecedor"].value(), "Aurora")
+        self.assertEqual(ctx["form_busca"]["q"].value(), "987")
+        self.assertEqual(ctx["busca"], "")
+        self.assertEqual(len(ctx["resultados"]), 1)
+        self.assertEqual(self.context(origem="dashboard", busca="Aurora")["form_busca"]["fornecedor"].value(), "Aurora")
+        self.assertEqual(self.context(origem="dashboard", busca="987")["form_busca"]["q"].value(), "987")
 
 class ApresentacaoResultadosTests(TestCase):
     def item(self, emissao, vencimentos, pagamentos=()):

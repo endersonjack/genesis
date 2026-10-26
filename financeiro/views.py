@@ -2502,6 +2502,20 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
         str(parametros.get(key, '')).strip() for key in ('q', 'fornecedor', 'busca')
     ):
         parametros.clear()
+    termo_dashboard = str(parametros.get('busca', '')).strip()
+    if parametros.get('origem') == 'dashboard' and termo_dashboard:
+        if ';' in termo_dashboard:
+            nome, _, documento = termo_dashboard.partition(';')
+            if ';' not in documento:
+                parametros['fornecedor'] = nome.strip()
+                parametros['q'] = documento.strip()
+                parametros.pop('busca', None)
+        elif not any(c.isdigit() for c in termo_dashboard):
+            parametros['fornecedor'] = termo_dashboard
+            parametros.pop('busca', None)
+        elif termo_dashboard.isdigit() and len(termo_dashboard) < 11:
+            parametros['q'] = termo_dashboard
+            parametros.pop('busca', None)
     form_busca = BuscaPagamentosForm(parametros, empresa=empresa)
     busca_valida = form_busca.is_valid()
     dados_busca = form_busca.cleaned_data

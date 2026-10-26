@@ -471,12 +471,12 @@
                 </a>
                 <button type="button" class="financeiro-top-btn financeiro-top-btn-light"
                         data-bs-toggle="collapse" data-bs-target="#filtrosAvancados"
-                        aria-controls="filtrosAvancados" aria-expanded="{% if form_busca.errors %}true{% else %}false{% endif %}">
+                        aria-controls="filtrosAvancados" aria-expanded="{% if form_busca.errors or busca %}true{% else %}false{% endif %}">
                     <i class="bi bi-sliders" aria-hidden="true"></i>Filtros avançados ({{ filtros_avancados_count }})
                 </button>
             </div>
         </div>
-        <div id="filtrosAvancados" class="collapse{% if form_busca.errors %} show{% endif %}">
+        <div id="filtrosAvancados" class="collapse{% if form_busca.errors or busca %} show{% endif %}">
             <p class="text-muted small mt-3 mb-0">Fechar este painel mantém os critérios aplicados. Os valores se referem aos documentos encontrados. Pagamentos bancários recorrentes aparecem por parcela.</p>
             {% for titulo, campos in form_busca.grupos %}
             <fieldset class="mt-4">
