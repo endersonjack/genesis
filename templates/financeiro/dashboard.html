@@ -379,6 +379,13 @@
             width: 100%;
         }
     }
+    .financeiro-top-actions {
+        flex-wrap: nowrap; width: min(100%, 660px); min-width: 0;
+    }
+    .financeiro-top-actions .financeiro-top-search {
+        flex: 1 1 0; width: 0; min-width: 0; margin: 0;
+    }
+    .financeiro-top-actions .financeiro-top-more-dropdown { flex: 0 0 46px; }
 </style>
 
 <div class="financeiro-page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -387,31 +394,13 @@
         <p class="text-muted mb-0">Caixas, saldos e lançamentos.</p>
     </div>
     <div class="financeiro-top-actions ms-auto">
-        <form method="get"
-              action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
-              class="input-group financeiro-top-search financeiro-top-search--entity">
-            <input type="text"
-                   name="fornecedor"
-                   class="form-control"
-                   placeholder="nome, razão ou CNPJ"
-                   aria-label="Buscar por nome, razão social ou CNPJ">
-            <input type="hidden" name="origem" value="dashboard">
-            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar por pessoa ou empresa">
-                <i class="bi bi-search"></i>
-            </button>
-        </form>
-        <form method="get"
-              action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
+        <form method="get" action="{% url 'financeiro:buscar_pagamentos' empresa_id=request.empresa_ativa.pk %}"
               class="input-group financeiro-top-search">
-            <input type="text"
-                   name="q"
-                   class="form-control"
-                   placeholder="nº doc ou nota fiscal"
-                   aria-label="Buscar por número do documento ou nota fiscal">
+            <input type="search" name="busca" class="form-control"
+                   placeholder="Nome; nº NF ou boleto"
+                   aria-label="Buscar por nome, CPF/CNPJ, NF ou boleto. Combine nome e número com ponto e vírgula.">
             <input type="hidden" name="origem" value="dashboard">
-            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar por documento">
-                <i class="bi bi-search"></i>
-            </button>
+            <button type="submit" class="btn btn-light px-3 fw-semibold" aria-label="Buscar"><i class="bi bi-search"></i></button>
         </form>
         <div class="dropdown financeiro-top-more-dropdown" data-bs-popper="static">
             <button type="button"
@@ -494,6 +483,8 @@
      data-no-global-loading>
     {% include 'financeiro/partials/dashboard_cards_skeleton.html' %}
 </div>
+
+{% include 'financeiro/partials/lembretes_pagamentos.html' %}
 
 <div class="modal fade" id="pagamentoTipoModal" tabindex="-1" aria-labelledby="pagamentoTipoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">

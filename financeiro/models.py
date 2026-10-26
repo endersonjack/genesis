@@ -1402,3 +1402,44 @@ class PagamentoBancarioAvulso(TimeStampedModel):
                 raise ValidationError({'categoria': 'Selecione uma categoria de pagamento bancário.'})
             if self.empresa_id and self.categoria.empresa_id != self.empresa_id:
                 raise ValidationError({'categoria': 'Categoria inválida para esta empresa.'})
+
+
+class LembretePagamento(TimeStampedModel):
+    """Agenda manual; não gera movimentos nem pagamentos financeiros."""
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="lembretes_pagamento")
+    descricao = models.CharField("Descrição", max_length=200)
+    fornecedor = models.ForeignKey("fornecedores.Fornecedor", on_delete=models.PROTECT)
+    data_pagamento = models.DateField("Data de pagamento", db_index=True)
+    valor = models.DecimalField("Valor", max_digits=16, decimal_places=2)
+    tipo = models.CharField("Tipo", max_length=12, choices=[("unico", "Único"), ("recorrente", "Recorrente (mensal)")], default="unico")
+    avisar = models.PositiveSmallIntegerField("Avisar", choices=[(0, "No dia"), (1, "1 dia antes"), (5, "5 dias antes"), (7, "1 semana antes")], default=0)
+    observacao = models.TextField("Observação", blank=True)
+    dia_recorrencia = models.PositiveSmallIntegerField(default=1)
+    ativo = models.BooleanField(default=True)
+    desativado = models.BooleanField(default=False)
+    ultima_data_concluida = models.DateField(null=True, blank=True)
+    ultima_conclusao = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["data_pagamento", "pk"]
+        indexes = [models.Index(fields=["empresa", "ativo", "data_pagamento"], name="fin_lembrete_agenda_idx")]
+
+    def clean(self):
+        super().clean()
+        if self.fornecedor_id and self.empresa_id and self.fornecedor.empresa_id != self.empresa_id:
+            raise ValidationError({"fornecedor": "Selecione um fornecedor desta empresa."})
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({"valor": "Informe um valor maior que zero."})
+
+    def concluir(self):
+        import calendar
+        from datetime import date
+        self.ultima_data_concluida = self.data_pagamento
+        self.ultima_conclusao = timezone.localdate()
+        if self.tipo == "unico":
+            self.ativo = False
+        else:
+            ano = self.data_pagamento.year + (self.data_pagamento.month == 12)
+            mes = 1 if self.data_pagamento.month == 12 else self.data_pagamento.month + 1
+            self.data_pagamento = date(ano, mes, min(self.dia_recorrencia, calendar.monthrange(ano, mes)[1]))
+        self.save(update_fields=["ativo", "data_pagamento", "ultima_conclusao", "ultima_data_concluida", "atualizado_em"])

@@ -1,0 +1,109 @@
+{% load moeda %}
+<style>
+.lembrete-acao-redonda {
+    width: 34px; height: 34px; padding: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.lembrete-acao-redonda:disabled { opacity: 1; }
+</style>
+<section class="financeiro-board-card bg-white border rounded-4 shadow-sm overflow-hidden mb-4 mt-3" aria-labelledby="lembretesTitulo">
+    <div class="p-3 p-lg-4 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h3 id="lembretesTitulo" class="h5 fw-bold mb-1"><i class="bi bi-bell me-2"></i>Lembretes de pagamentos
+                {% if lembretes_avisos %}<span class="badge text-bg-warning">{{ lembretes_avisos }} aviso{{ lembretes_avisos|pluralize:"s" }}</span>{% endif %}
+            </h3>
+            <p class="small text-muted mb-0">Sua agenda de contas únicas e recorrentes. Concluir um lembrete não registra pagamento no caixa.</p>
+        </div>
+        <button type="button" class="financeiro-top-btn financeiro-top-btn-primary" data-bs-toggle="modal" data-bs-target="#novoLembreteModal" id="novoLembreteBtn">
+            <i class="bi bi-plus-lg"></i>Novo lembrete
+        </button>
+    </div>
+    {% if lembretes %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Situação</th><th>Descrição / fornecedor</th><th>Data de pagamento</th><th class="text-end">Valor</th><th>Tipo / aviso</th><th>Obs.</th><th>Ações</th></tr></thead>
+            <tbody>
+            {% for lembrete in lembretes %}
+                <tr>
+                    <td><span class="badge text-bg-{{ lembrete.status_cor }}">{{ lembrete.status_texto }}</span></td>
+                    <td><strong>{{ lembrete.descricao }}</strong><div class="small text-muted">{{ lembrete.fornecedor.nome }}</div></td>
+                    <td class="text-nowrap">{{ lembrete.data_exibicao|date:"d/m/Y" }}</td>
+                    <td class="text-end text-nowrap fw-semibold">R$ {{ lembrete.valor|moeda_br }}</td>
+                    <td class="small">{{ lembrete.get_tipo_display }}<div class="text-muted">{{ lembrete.get_avisar_display }} · {{ lembrete.inicio_aviso|date:"d/m/Y" }}</div></td>
+                    <td class="small text-muted" style="max-width: 280px; overflow-wrap: anywhere;">{% if lembrete.observacao %}{{ lembrete.observacao|linebreaksbr }}{% endif %}</td>
+                    <td>
+                        <div class="d-flex gap-2 flex-wrap">
+                            {% if lembrete.concluido %}
+                            <button type="button" class="btn btn-success lembrete-acao-redonda" disabled aria-label="Lembrete concluído" title="Concluído em {{ lembrete.ultima_conclusao|date:'d/m/Y' }}">
+                                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                            </button>
+                            {% else %}
+                            <form method="post" action="{% url 'financeiro:lembrete_acao' empresa_id=request.empresa_ativa.pk pk=lembrete.pk %}">
+                                {% csrf_token %}<input type="hidden" name="ocorrencia" value="{{ lembrete.data_pagamento|date:'Y-m-d' }}">
+                                <button name="acao" value="concluir" class="btn btn-outline-secondary lembrete-acao-redonda" title="Concluir lembrete" aria-label="Concluir {{ lembrete.descricao }}">
+                                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}?editar_lembrete={{ lembrete.pk }}" class="btn btn-outline-secondary lembrete-acao-redonda" title="Editar lembrete" aria-label="Editar {{ lembrete.descricao }}">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<div class="p-4 text-muted text-center">Nenhum lembrete para exibir agora. Os próximos aparecem a partir da data de aviso.</div>{% endif %}
+</section>
+
+<div class="modal fade" id="novoLembreteModal" tabindex="-1" aria-labelledby="novoLembreteTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4">
+        <form method="post" action="{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}" id="lembreteForm">
+            {% csrf_token %}
+            {% if lembrete_editando %}<input type="hidden" name="lembrete_id" value="{{ lembrete_editando.pk }}">{% endif %}
+            <div class="modal-header">
+                <h4 class="modal-title h5" id="novoLembreteTitulo">{% if lembrete_editando %}Editar lembrete{% else %}Novo lembrete{% endif %}</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                {{ lembrete_form.non_field_errors }}
+                <div class="row g-3">
+                    {% for campo in lembrete_form %}
+                    <div class="{% if campo.name == 'descricao' or campo.name == 'observacao' %}col-12{% else %}col-md-6{% endif %}">
+                        <label for="{{ campo.id_for_label }}" class="form-label fw-semibold">{{ campo.label }}</label>
+                        {{ campo }}
+                        {% for erro in campo.errors %}<div class="small text-danger" role="alert">{{ erro }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="small text-muted mt-3 mb-0">Recorrentes repetem mensalmente. Ao concluir, o mesmo lembrete permanece verde até a antecedência do próximo aviso, quando volta a ficar programado. Em meses mais curtos, usamos o último dia. O aviso aparece neste card a partir da antecedência escolhida.</p>
+            </div>
+            <div class="modal-footer">
+                {% if lembrete_editando %}
+                <button type="submit" form="desativarLembreteForm" class="btn btn-outline-danger me-auto">Desativar</button>
+                {% endif %}
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar lembrete</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+{% if lembrete_editando %}
+<form id="desativarLembreteForm" method="post" action="{% url 'financeiro:lembrete_acao' empresa_id=request.empresa_ativa.pk pk=lembrete_editando.pk %}" hidden>
+    {% csrf_token %}<input type="hidden" name="acao" value="desativar">
+</form>
+{% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('novoLembreteModal');
+    {% if abrir_lembrete_modal %}bootstrap.Modal.getOrCreateInstance(modal).show();{% endif %}
+    document.getElementById('novoLembreteBtn').addEventListener('click', () => {
+        {% if lembrete_editando %}
+        window.location.href = "{% url 'financeiro:dashboard' empresa_id=request.empresa_ativa.pk %}?novo_lembrete=1";
+        {% endif %}
+    });
+    {% if request.GET.novo_lembrete %}bootstrap.Modal.getOrCreateInstance(modal).show();{% endif %}
+});
+</script>

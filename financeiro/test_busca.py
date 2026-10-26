@@ -302,6 +302,15 @@ class BuscaAvancadaTests(TestCase):
     def test_busca_dashboard_com_nome_continua_funcionando(self):
         self.assertEqual(len(self.context(origem="dashboard", fornecedor="Aurora")["resultados"]), 1)
 
+    def test_busca_combinada_nome_e_nf_ou_boleto(self):
+        for termo in ("Aurora; NF-987", " Aurora ; BOL-654 ", "Aurora Materiais;987"):
+            with self.subTest(termo=termo):
+                self.assertEqual(len(self.context(busca=termo)["resultados"]), 1)
+        for termo in ("Outro;987", "Aurora;999", "NF-987;Aurora", ";"):
+            with self.subTest(termo=termo):
+                self.assertEqual(self.context(busca=termo)["resultados"], [])
+        self.assertEqual(len(self.context(busca="Aurora")["resultados"]), 1)
+
 class ApresentacaoResultadosTests(TestCase):
     def item(self, emissao, vencimentos, pagamentos=()):
         return {"kind": "nf", "entidade": "Fornecedor", "numero_doc": "NF-10",

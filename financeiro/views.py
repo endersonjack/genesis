@@ -47,7 +47,7 @@ from fornecedores.models import Fornecedor
 from obras.models import Obra
 from rh.models import Funcionario
 
-from .busca import BuscaPagamentosForm, corresponde_avancado, termo_corresponde, preparar_resultados
+from .busca import BuscaPagamentosForm, corresponde_avancado, termo_corresponde, preparar_resultados, busca_rapida_corresponde
 
 from .forms import (
     BoletoPagamentoForm,
@@ -1943,14 +1943,49 @@ def _sort_links_extrato_detalhado(
 
 @login_required
 def dashboard(request):
+    from .lembretes import LembretePagamentoForm, contexto_lembretes
+    from .models import LembretePagamento
     empresa = _empresa(request)
     if not empresa:
         return redirect('selecionar_empresa')
-    return render(
-        request,
-        'financeiro/dashboard.html',
-        {'page_title': 'Financeiro'},
-    )
+    instance = None
+    edit_id = request.POST.get('lembrete_id') if request.method == 'POST' else request.GET.get('editar_lembrete')
+    if edit_id:
+        instance = get_object_or_404(LembretePagamento, pk=edit_id, empresa=empresa, desativado=False)
+    form = LembretePagamentoForm(request.POST if request.method == 'POST' else None,
+                                empresa=empresa, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Lembrete salvo.')
+        return redirect_empresa(request, 'financeiro:dashboard')
+    context = contexto_lembretes(empresa, form)
+    context.update({'page_title': 'Financeiro', 'lembrete_editando': instance,
+                    'abrir_lembrete_modal': bool(instance) or request.method == 'POST'})
+    return render(request, 'financeiro/dashboard.html', context,
+                  status=400 if request.method == 'POST' else 200)
+
+
+@login_required
+@require_POST
+def lembrete_acao(request, pk):
+    from .models import LembretePagamento
+    empresa = _empresa(request)
+    if not empresa:
+        return redirect('selecionar_empresa')
+    with transaction.atomic():
+        lembrete = get_object_or_404(LembretePagamento.objects.select_for_update(),
+                                    pk=pk, empresa=empresa, desativado=False)
+        if request.POST.get('acao') == 'desativar':
+            lembrete.ativo = False
+            lembrete.desativado = True
+            lembrete.save(update_fields=['ativo', 'desativado', 'atualizado_em'])
+        elif request.POST.get('acao') == 'concluir':
+            # Impede que duplo envio avance duas ocorrências mensais.
+            if lembrete.ativo and request.POST.get('ocorrencia') == lembrete.data_pagamento.isoformat():
+                lembrete.concluir()
+        else:
+            return HttpResponseBadRequest('Ação inválida.')
+    return redirect_empresa(request, 'financeiro:dashboard')
 
 
 RELATORIO_FORNECEDOR_STATUS_CHOICES = (
@@ -2804,6 +2839,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
                     '_contas': [p.conta_bancaria_id for p in pagamentos_diretos] + [b.conta_bancaria_id for b in boletos_validos if b.data_pagamento],
                     '_formas': [p.tipo for p in pagamentos_diretos] + (['boletos'] if tem_boletos else []),
                     '_descricao': ' '.join([nf.descricao or ''] + [i.descricao or '' for i in nf.itens.all()] + [p.observacao or '' for p in pagamentos_diretos] + [b.observacao or '' for b in boletos_validos]),
+                    '_razao_social': nf.fornecedor.razao_social or '',
                     '_busca': ' '.join([nf.numero_nf, nf.fornecedor.nome, nf.fornecedor.razao_social or '', nf.fornecedor.cpf_cnpj or ''] + [b.numero_doc or '' for b in boletos_validos]),
                     '_datas': {'emissao': [nf.data_emissao], 'vencimento': [b.vencimento for b in boletos_validos], 'pagamento': [p.data for p in pagamentos_diretos] + [b.data_pagamento for b in boletos_validos if b.data_pagamento]},
                     '_pendentes': [b.vencimento for b in boletos_validos if b.status != BoletoPagamento.Status.PAGO and (b.valor_pago or Decimal('0')) < b.valor],
@@ -3078,7 +3114,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
         resultados = [
             item for item in resultados
             if corresponde_avancado(item, dados_busca)
-            and (not busca or termo_corresponde(busca, item.get('_busca'), item.get('entidade'), item.get('entidade_doc'), item.get('documento')))
+            and (not busca or busca_rapida_corresponde(busca, item))
         ]
 
         resultados.sort(

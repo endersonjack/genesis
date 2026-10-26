@@ -7,6 +7,7 @@ from . import views
 app_name = 'financeiro'
 
 urlpatterns = [
+    path('lembretes/<int:pk>/acao/', empresa_scoped(views.lembrete_acao), name='lembrete_acao'),
     path('', empresa_scoped(views.dashboard), name='dashboard'),
     path('relatorios/', empresa_scoped(views.relatorios), name='relatorios'),
     path(

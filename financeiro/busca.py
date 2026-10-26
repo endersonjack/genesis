@@ -259,9 +259,11 @@ def preparar_resultados(resultados, filtros):
         item["valor_destaque_label"] = valor_label
         item["valor_destaque_sort"] = str(item["valor_destaque"])
         item["descricao_resumo"] = item.get("_descricao", "").strip()
-        term = filtros.get("busca") or filtros.get("q") or ""
+        busca = filtros.get("busca") or ""
+        pessoa_busca, separador, documento_busca = busca.partition(";")
+        term = documento_busca.strip() if separador else busca or filtros.get("q") or ""
         item["destaque_documento"] = bool(term and termo_corresponde(term, item.get("numero_doc"), item.get("doc_match_label")))
-        person = filtros.get("busca") or filtros.get("fornecedor") or ""
+        person = pessoa_busca.strip() if separador else busca or filtros.get("fornecedor") or ""
         item["destaque_entidade"] = bool(person and termo_corresponde(person, item.get("entidade"), item.get("entidade_doc")))
         reasons = []
         if filtros.get("descricao"):
@@ -306,3 +308,19 @@ def valor_corresponde(termo, valor):
     if not any(c.isdigit() for c in needle):
         return False
     return needle in format(valor or Decimal("0"), ".2f").replace(".", ",")
+
+
+def busca_rapida_corresponde(termo, item):
+    if ";" not in termo:
+        return termo_corresponde(termo, item.get("_busca"), item.get("entidade"),
+                                 item.get("entidade_doc"), item.get("documento"))
+    pessoa, _, documento = termo.partition(";")
+    pessoa, documento = pessoa.strip(), documento.strip()
+    if not pessoa and not documento:
+        return False
+    pessoas = (item.get("entidade"), item.get("entidade_doc"), item.get("_razao_social"))
+    documentos = [item.get("numero_doc"), item.get("documento")]
+    documentos.extend(d.get("doc") for d in item.get("detalhes_boletos", []))
+    return (not pessoa or termo_corresponde(pessoa, *pessoas)) and (
+        not documento or all(termo_corresponde(parte.strip(), *documentos)
+                            for parte in documento.split(";") if parte.strip()))
