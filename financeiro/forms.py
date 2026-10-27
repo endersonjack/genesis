@@ -2154,3 +2154,27 @@ class PagamentoBancarioAvulsoForm(forms.ModelForm):
             obj.full_clean()
             obj.save()
         return obj
+
+
+class FiltroPagamentosImpostosForm(forms.Form):
+    data_inicio = forms.DateField(
+        label='Período inicial', widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'))
+    data_fim = forms.DateField(
+        label='Período final', widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'))
+    categoria = forms.ModelChoiceField(
+        label='Categoria', queryset=CategoriaFinanceira.objects.none(), required=False,
+        empty_label='Todas', widget=forms.Select(attrs={'class': 'form-select'}))
+
+    def __init__(self, *args, empresa, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['categoria'].queryset = CategoriaFinanceira.objects.filter(
+            empresa=empresa,
+            movimentacao_tipo=CategoriaFinanceira.MovimentacaoTipo.PAGAMENTO_IMPOSTOS,
+        ).order_by('nome')
+
+    def clean(self):
+        dados = super().clean()
+        inicio, fim = dados.get('data_inicio'), dados.get('data_fim')
+        if inicio and fim and inicio > fim:
+            self.add_error('data_fim', 'O período final deve ser igual ou posterior ao inicial.')
+        return dados

@@ -57,6 +57,7 @@ from .forms import (
     CategoriaFinanceiraForm,
     BoletoRascunhoFormSet,
     PagamentoImpostoForm,
+    FiltroPagamentosImpostosForm,
     PagamentoImpostoItemFormSet,
     PagamentoImpostoPagarForm,
     PagamentoPessoalForm,
@@ -7557,18 +7558,86 @@ def pagamento_imposto_lista(request):
     impostos_abertos = list(
         base_qs.filter(data_pagamento__isnull=True).order_by('data_emissao', 'pk')
     )
-    ultimos_pagamentos = list(
-        base_qs.filter(data_pagamento__lte=hoje).order_by('-data_pagamento', '-pk')[:20]
-    )
+    parametros = request.GET.copy()
+    parametros.setdefault('data_inicio', hoje.replace(day=1).isoformat())
+    parametros.setdefault('data_fim', hoje.replace(day=calendar.monthrange(hoje.year, hoje.month)[1]).isoformat())
+    filtro_pagamentos = FiltroPagamentosImpostosForm(parametros, empresa=empresa)
+    pagamentos_periodo = []
+    if filtro_pagamentos.is_valid():
+        dados = filtro_pagamentos.cleaned_data
+        pagamentos_qs = base_qs.filter(
+            data_pagamento__range=(dados['data_inicio'], dados['data_fim']),
+            data_pagamento__lte=hoje,
+        )
+        if dados['categoria']:
+            # Subconsulta evita duplicar linhas ou alterar o total dos itens.
+            pagamentos_qs = pagamentos_qs.filter(pk__in=PagamentoImpostoItem.objects.filter(
+                categoria=dados['categoria'], pagamento__empresa=empresa,
+            ).values('pagamento_id'))
+        pagamentos_periodo = list(pagamentos_qs.order_by('-data_pagamento', '-pk'))
+    total_pagamentos = sum((p.total_itens_calc for p in pagamentos_periodo), Decimal('0'))
+    if request.GET.get('export') == 'pdf':
+        if not filtro_pagamentos.is_valid():
+            return HttpResponseBadRequest('Corrija os filtros de período e categoria antes de exportar.')
+        return _pagamentos_impostos_pdf(request, empresa, pagamentos_periodo, filtro_pagamentos.cleaned_data, total_pagamentos)
+    parametros_pdf = parametros.copy()
+    parametros_pdf['export'] = 'pdf'
     return render(
         request,
         'financeiro/pagamento_imposto_lista.html',
         {
             'page_title': 'Pagamento Impostos',
             'impostos_abertos': impostos_abertos,
-            'ultimos_pagamentos': ultimos_pagamentos,
+            'pagamentos_periodo': pagamentos_periodo,
+            'filtro_pagamentos': filtro_pagamentos,
+            'total_pagamentos': total_pagamentos,
+            'url_pdf': '?' + parametros_pdf.urlencode(),
         },
     )
+
+
+def _pagamentos_impostos_pdf(request, empresa, pagamentos, filtros, total):
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
+        leftMargin=12*mm, rightMargin=12*mm, topMargin=10*mm, bottomMargin=10*mm)
+    styles = getSampleStyleSheet()
+    cell = ParagraphStyle('impostos_cell', parent=styles['Normal'], fontSize=7, leading=9)
+    bold = ParagraphStyle('impostos_bold', parent=cell, fontName='Helvetica-Bold')
+    money = ParagraphStyle('impostos_money', parent=cell, alignment=2)
+    total_style = ParagraphStyle('impostos_total', parent=money, fontName='Helvetica-Bold', fontSize=9, leading=11)
+    story = [_pdf_cell(_nome_empresa_pdf(empresa), styles['Heading2'])]
+    story.extend(_flowables_titulo_pdf_centro('Pagamentos de impostos', styles))
+    categoria = filtros['categoria']
+    texto = (
+        f"Período: {filtros['data_inicio']:%d/%m/%Y} a {filtros['data_fim']:%d/%m/%Y}"
+        f" | Categoria: {categoria.nome if categoria else 'Todas'} | Pagamentos: {len(pagamentos)}"
+    )
+    story.extend([_pdf_cell(texto, styles['Normal']), Spacer(1, 4*mm)])
+    data = [[_pdf_cell(t, bold) for t in (
+        'Data pagamento', 'Vencimento', 'Autoridade', 'Período', 'Descrição',
+        'Categoria', 'Caixa', 'Pagamento realizado em', 'Valor')]]
+    for p in pagamentos:
+        conta = f'{p.conta_bancaria.nome} — {p.conta_bancaria.banco}' if p.conta_bancaria_id else 'DINHEIRO'
+        valores = [_format_data_pdf(p.data_pagamento), _format_data_pdf(p.data_vencimento),
+            p.autoridade.nome, p.periodo_apuracao or '—', p.descricao_item or '—',
+            p.categoria_item or '—', p.caixa.nome, conta]
+        data.append([_pdf_cell(v, cell) for v in valores] + [_pdf_cell(_format_moeda_pdf(p.total_itens_calc), money)])
+    data.append([_pdf_cell('TOTAL', bold)] + ['']*7 + [_pdf_cell(_format_moeda_pdf(total), total_style)])
+    table = Table(data, colWidths=[v*mm for v in (23, 22, 48, 20, 43, 28, 25, 34, 30)], repeatRows=1)
+    table.setStyle(_pdf_table_style())
+    table.setStyle(TableStyle([
+        ('SPAN', (0,-1), (7,-1)),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
+        ('LINEABOVE', (0,-1), (-1,-1), 1, colors.HexColor('#64748b')),
+        ('TOPPADDING', (0,-1), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,-1), (-1,-1), 8),
+    ]))
+    story.append(table)
+    story.extend(_flowables_rodape_impressao(request, styles))
+    doc.build(story)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="pagamentos-impostos.pdf"'
+    return response
 
 
 @login_required

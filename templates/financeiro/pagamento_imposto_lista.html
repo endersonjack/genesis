@@ -167,12 +167,35 @@
         <div class="d-flex align-items-center gap-3">
             <span class="financeiro-section-icon"><i class="bi bi-cash-stack"></i></span>
             <div>
-                <h3 class="h6 fw-bold mb-0 text-uppercase">Últimos 20 pagamentos de impostos</h3>
-                <div class="small text-muted">Pagamentos mais recentes lançados no financeiro.</div>
+                <h3 class="h6 fw-bold mb-0 text-uppercase">Pagamentos de impostos</h3>
+                <div class="small text-muted">Pagamentos realizados no período selecionado.</div>
             </div>
         </div>
-        <span class="badge rounded-pill text-bg-secondary">{{ ultimos_pagamentos|length }}</span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge rounded-pill text-bg-secondary">{{ pagamentos_periodo|length }}</span>
+            {% if not filtro_pagamentos.errors %}
+            <a href="{{ url_pdf }}" class="financeiro-top-btn financeiro-top-btn-light">
+                <i class="bi bi-file-earmark-pdf text-danger"></i> PDF
+            </a>
+            {% endif %}
+        </div>
     </div>
+    <form method="get" class="p-3 border-bottom">
+        <div class="row g-3 align-items-end">
+            {% for campo in filtro_pagamentos %}
+            <div class="{% if campo.name == 'categoria' %}col-12 col-md-4{% else %}col-12 col-md-3{% endif %}">
+                <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                {{ campo }}
+                {% for erro in campo.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+            <div class="col-12 col-md-2">
+                <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
     <div class="table-responsive">
         <table class="table table-hover fin-table mb-0 align-middle">
             <thead class="table-light">
@@ -190,7 +213,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for imposto in ultimos_pagamentos %}
+                {% for imposto in pagamentos_periodo %}
                 <tr class="financeiro-clickable-row"
                     data-row-href="{% url 'financeiro:pagamento_imposto_detalhe' empresa_id=request.empresa_ativa.pk pk=imposto.pk %}"
                     tabindex="0"
@@ -210,9 +233,15 @@
                     <td class="text-end pe-4 fw-bold text-nowrap">R$ {{ imposto.total_itens_calc|moeda_br }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="10" class="text-center text-muted py-4">Nenhum pagamento de imposto registrado.</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4">Nenhum pagamento de imposto encontrado para os filtros selecionados.</td></tr>
                 {% endfor %}
             </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold border-top">
+                    <td colspan="9" class="ps-4 py-3">TOTAL</td>
+                    <td class="text-end pe-4 py-3 text-nowrap">R$ {{ total_pagamentos|moeda_br }}</td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
