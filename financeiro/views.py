@@ -397,9 +397,11 @@ def _liquidacao_para_linha(recebimento, tipo: str, liquidacao) -> dict:
 
 def _totais_recebimentos(recebimentos: list[dict]) -> dict:
     return {
-        'valor': sum((r['valor'] for r in recebimentos), Decimal('0')),
+        # Bruto e líquido devem somar as mesmas colunas exibidas nas linhas,
+        # inclusive quando a liquidação registra apenas parte do recebimento.
+        'valor': sum((r.get('valor_total_recebimento', r['valor']) for r in recebimentos), Decimal('0')),
         'impostos': sum((r['impostos'] for r in recebimentos), Decimal('0')),
-        'valor_liquido': sum((r['valor_liquido'] for r in recebimentos), Decimal('0')),
+        'valor_liquido': sum((r.get('valor_total_liquido_recebimento', r['valor_liquido']) for r in recebimentos), Decimal('0')),
         'valor_pago': sum((r.get('valor_pago') or Decimal('0') for r in recebimentos), Decimal('0')),
         'valor_restante': sum((r.get('valor_restante') or Decimal('0') for r in recebimentos), Decimal('0')),
     }

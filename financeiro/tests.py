@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.test import RequestFactory
 
 import json
@@ -32,6 +32,7 @@ from .views import (
     _criar_movimento_recebimento,
     _dashboard_alertas_financeiro_data,
     _recebimentos_movimentar_listas,
+    _totais_recebimentos,
     relatorios,
     relatorio_fornecedor_pdf,
     _status_busca_pagamento_nf,
@@ -514,6 +515,58 @@ class PagamentoNotaFiscalDetalheAcoesTests(TestCase):
         self.assertEqual(boleto_2.status, BoletoPagamento.Status.PAGO)
         self.assertEqual(boleto_1.valor_pago, Decimal('100.00'))
         self.assertEqual(boleto_2.valor_pago, Decimal('100.00'))
+
+
+class TotaisRecebimentosTests(SimpleTestCase):
+    def test_liquidados_somam_bruto_e_liquido_exibidos(self):
+        valores = [
+            ('158917.68', '134603.29'),
+            ('46071.37', '39022.46'),
+            ('135069.23', '114403.65'),
+            ('107972.64', '91452.84'),
+            ('297596.72', '252064.43'),
+            ('286281.21', '242480.20'),
+        ]
+        linhas = [
+            {
+                'valor_total_recebimento': Decimal(bruto),
+                'valor_total_liquido_recebimento': Decimal(liquido),
+                'valor': Decimal(liquido),
+                'impostos': Decimal('0'),
+                'valor_liquido': Decimal(liquido),
+                'valor_pago': Decimal(liquido),
+                'valor_restante': Decimal('0'),
+            }
+            for bruto, liquido in valores
+        ]
+
+        totais = _totais_recebimentos(linhas)
+
+        self.assertEqual(totais['valor'], Decimal('1031908.85'))
+        self.assertEqual(totais['valor_liquido'], Decimal('874026.87'))
+        self.assertEqual(totais['valor_pago'], Decimal('874026.87'))
+        self.assertEqual(totais['valor_restante'], Decimal('0'))
+
+    def test_parciais_somam_colunas_sem_alterar_valor_pago(self):
+        linhas = [
+            {
+                'valor_total_recebimento': Decimal('1000'),
+                'valor_total_liquido_recebimento': Decimal('900'),
+                'valor': Decimal('400'),
+                'impostos': Decimal('0'),
+                'valor_liquido': Decimal('400'),
+                'valor_pago': Decimal('400'),
+                'valor_restante': Decimal('500'),
+            }
+        ]
+        totais = _totais_recebimentos(linhas)
+        self.assertEqual(totais['valor'], Decimal('1000'))
+        self.assertEqual(totais['valor_liquido'], Decimal('900'))
+        self.assertEqual(totais['valor_pago'], Decimal('400'))
+        self.assertEqual(totais['valor_restante'], Decimal('500'))
+
+    def test_lista_vazia(self):
+        self.assertTrue(all(valor == Decimal('0') for valor in _totais_recebimentos([]).values()))
 
 
 class RecebimentosParciaisTests(TestCase):
