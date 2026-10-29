@@ -1,0 +1,25 @@
+{% load moeda %}
+<!doctype html>
+<html lang="pt-br">
+<head><meta charset="utf-8"><title>Itens selecionados</title>
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+body { font: 12px Arial, sans-serif; color: #0f172a; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 8px; border-bottom: 1px solid #cbd5e1; text-align: left; overflow-wrap: anywhere; }
+th, tfoot { background: #eef2f7; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+.money { text-align: right; white-space: nowrap; }
+@media print { button { display: none; } }
+</style></head>
+<body>
+<button type="button" onclick="window.print()">Imprimir</button>
+<h1>Itens selecionados</h1>
+<p>{{ request.empresa_ativa }}</p>
+<table><thead><tr><th>Item</th><th>Fornecedor</th><th>Documento</th><th>Emissão</th><th>Quantidade</th><th>Unidade</th><th>Valor unitário</th><th>Total</th></tr></thead>
+<tbody>{% for item in itens_encontrados %}
+<tr><td>{{ item.descricao }}</td><td>{{ item.fornecedor }}</td><td>{{ item.documento|default:"—" }}</td><td>{{ item.data|date:"d/m/Y"|default:"—" }}</td><td>{{ item.quantidade|default_if_none:"—" }}</td><td>{{ item.unidade|default:"—" }}</td><td class="money">{% if item.valor_unitario != None %}R$ {{ item.valor_unitario|moeda_br }}{% else %}—{% endif %}</td><td class="money">R$ {{ item.valor_total|moeda_br }}</td></tr>
+{% endfor %}</tbody><tfoot><tr><th colspan="7">Total dos itens selecionados ({{ itens_encontrados|length }})</th><td class="money">R$ {{ total_itens_encontrados|moeda_br }}</td></tr></tfoot></table>
+<script>window.addEventListener('load', () => window.print());</script>
+</body></html>

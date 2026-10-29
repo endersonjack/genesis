@@ -3148,7 +3148,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
             reverse=True,
         )
 
-    if selecionados is not None:
+    if selecionados is not None and not form_busca.busca_item_ativa():
         resultados = [item for item in resultados if item['export_id'] in selecionados]
     apresentacao_busca = preparar_resultados(resultados, dados_busca)
 
@@ -3159,7 +3159,12 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
             for registro in documento.get('_itens_dados', []):
                 if dados_busca.get('item_nome') and not termo_corresponde(dados_busca['item_nome'], registro.descricao):
                     continue
+                export_id = f"{documento['export_id']}:item:{registro.pk}"
+                if selecionados is not None and export_id not in selecionados:
+                    continue
                 itens_encontrados.append({
+                    'export_id': export_id,
+                    'url': documento['url'],
                     'descricao': registro.descricao,
                     'fornecedor': documento['entidade'],
                     'documento': documento.get('numero_doc'),
@@ -3384,6 +3389,36 @@ def buscar_pagamentos_xlsx(request):
     return response
 
 
+def _pdf_itens_busca(request, empresa, context):
+    styles = getSampleStyleSheet()
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=10*mm,
+        rightMargin=10*mm, topMargin=10*mm, bottomMargin=10*mm)
+    story = _flowables_titulo_pdf_centro('Itens encontrados', styles)
+    story.append(Paragraph(xml_escape(_nome_empresa_pdf(empresa)), styles['Normal']))
+    story.append(Paragraph(xml_escape(_filtros_export_busca_pagamentos(context)), styles['Normal']))
+    story.append(Spacer(1, 4*mm))
+    cell = ParagraphStyle('item_cell', parent=styles['Normal'], fontSize=8, leading=10)
+    data = [['Item', 'Fornecedor', 'Documento', 'Emissão', 'Qtd.', 'Unidade', 'Valor unitário', 'Total']]
+    for item in context['itens_encontrados']:
+        values = [item['descricao'], item['fornecedor'], item['documento'],
+            _format_data_pdf(item['data']), item['quantidade'] if item['quantidade'] is not None else '-',
+            item['unidade'] or '-', _format_moeda_pdf(item['valor_unitario']) if item['valor_unitario'] is not None else '-',
+            _format_moeda_pdf(item['valor_total'])]
+        data.append([_pdf_cell(str(v or ''), cell) for v in values])
+    data.append(['Total dos itens selecionados', '', '', '', '', '', '',
+        _pdf_cell(_format_moeda_pdf(context['total_itens_encontrados']), cell)])
+    table = Table(data, repeatRows=1, colWidths=[62*mm, 53*mm, 29*mm, 23*mm, 20*mm, 18*mm, 33*mm, 39*mm])
+    table.setStyle(_pdf_table_style())
+    table.setStyle([('SPAN', (0, -1), (6, -1)), ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#e2e8f0'))])
+    story.append(table)
+    story.extend(_flowables_rodape_impressao(request, styles))
+    doc.build(story)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="Itens_Encontrados.pdf"'
+    return response
+
+
 @login_required
 def buscar_pagamentos_pdf(request):
     empresa = _empresa(request)
@@ -3397,6 +3432,12 @@ def buscar_pagamentos_pdf(request):
     context = _buscar_pagamentos_context(request, empresa, selecionados=selecionados)
     if selecionados is not None and not context['resultados']:
         return HttpResponseBadRequest('Nenhum resultado selecionado corresponde aos filtros atuais.')
+    if context['busca_item']:
+        if selecionados is not None and not context['itens_encontrados']:
+            return HttpResponseBadRequest('Nenhum item selecionado corresponde aos filtros atuais.')
+        if request.GET.get('imprimir') == '1':
+            return render(request, 'financeiro/imprimir_itens_busca.html', context)
+        return _pdf_itens_busca(request, empresa, context)
     styles = getSampleStyleSheet()
     buf = BytesIO()
     doc = SimpleDocTemplate(

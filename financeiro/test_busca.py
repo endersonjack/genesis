@@ -96,6 +96,22 @@ class BuscaAvancadaTests(TestCase):
         self.assertEqual(len(ctx["itens_encontrados"]), 2)
         self.assertEqual(ctx["total_itens_encontrados"], Decimal("1700"))
 
+    def test_selecao_item_nao_inclui_outros_itens_da_mesma_nf(self):
+        PagamentoNotaFiscalItem.objects.create(pagamento_nf=self.nf, tipo="produto",
+            descricao="Areia", caixa=self.caixa, valor_total=Decimal("200"))
+        ctx = self.context(item_fornecedor="Aurora")
+        selected = next(i for i in ctx['itens_encontrados'] if i['descricao'] == 'Areia')
+        request = self.factory.get('/', {'item_fornecedor': 'Aurora'})
+        request.empresa_ativa = self.empresa
+        ctx = _buscar_pagamentos_context(request, self.empresa, selecionados={selected['export_id']})
+        self.assertEqual([i['descricao'] for i in ctx['itens_encontrados']], ['Areia'])
+        self.assertEqual(ctx['total_itens_encontrados'], Decimal('200'))
+        self.assertEqual(ctx['itens_encontrados'][0]['url'], ctx['resultados'][0]['url'])
+        from .views import _pdf_itens_busca
+        response = _pdf_itens_busca(request, self.empresa, ctx)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF-'))
+
     def test_chips_removem_apenas_um_filtro_e_exportacao_descreve_filtros(self):
         ctx = self.context(busca="Aurora", descricao="Cimento", vencimento="hoje")
         self.assertEqual(ctx["filtros_avancados_count"], 3)

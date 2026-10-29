@@ -526,6 +526,13 @@
             <div class="small text-muted"><span id="fin-order-hint">{{ apresentacao_busca.ordem_label }}.</span> Clique em um resultado para ver os detalhes.</div>
             {% endif %}
         </div>
+        {% if busca_item %}
+        <div class="d-flex align-items-center flex-wrap gap-2" aria-label="Imprimir itens selecionados">
+            <span class="small text-muted" id="selecaoExportStatus" aria-live="polite"></span>
+            <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}?{{ request.GET.urlencode }}&amp;imprimir=1" class="btn btn-sm btn-outline-secondary fin-export-link" data-print="true"><i class="bi bi-printer me-1" aria-hidden="true"></i>Imprimir</a>
+            <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-secondary fin-export-link"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Gerar PDF</a>
+        </div>
+        {% endif %}
         {% if not busca_item %}
         <div class="d-flex align-items-center flex-wrap gap-2" aria-label="Exportar resultados">
             <span class="small text-muted me-1" id="selecaoExportStatus" aria-live="polite">Todos selecionados</span>
@@ -544,15 +551,15 @@
     {% if busca_item %}
     <div class="table-responsive">
         <table class="table fin-table mb-0 align-middle" id="itensEncontradosTable">
-            <thead class="table-light"><tr><th>Item</th><th>Fornecedor</th><th>Documento</th><th>Emissão</th><th>Quantidade</th><th>Unidade</th><th class="text-end">Valor unitário</th><th class="text-end">Total do item</th></tr></thead>
+            <thead class="table-light"><tr><th><input type="checkbox" id="selecionarTodos" class="form-check-input fin-export-check" checked aria-label="Selecionar todos os itens"></th><th>Item</th><th>Fornecedor</th><th>Documento</th><th>Emissão</th><th>Quantidade</th><th>Unidade</th><th class="text-end">Valor unitário</th><th class="text-end">Total do item</th></tr></thead>
             <tbody>
                 {% for item in itens_encontrados %}
-                <tr><td class="fw-semibold">{{ item.descricao }}</td><td>{{ item.fornecedor }}</td><td>{{ item.documento|default:"—" }}</td><td>{{ item.data|date:"d/m/Y"|default:"—" }}</td><td>{{ item.quantidade|default_if_none:"—" }}</td><td>{{ item.unidade|default:"—" }}</td><td class="text-end fin-money">{% if item.valor_unitario != None %}R$ {{ item.valor_unitario|moeda_br }}{% else %}—{% endif %}</td><td class="text-end fin-money">R$ {{ item.valor_total|moeda_br }}</td></tr>
+                <tr class="fin-item-row" data-url="{{ item.url }}" style="cursor: pointer"><td><input type="checkbox" class="form-check-input fin-export-check fin-export-row" value="{{ item.export_id }}" checked aria-label="Selecionar {{ item.descricao }}"></td><td class="fw-semibold"><a href="{{ item.url }}">{{ item.descricao }}</a></td><td>{{ item.fornecedor }}</td><td>{{ item.documento|default:"—" }}</td><td>{{ item.data|date:"d/m/Y"|default:"—" }}</td><td>{{ item.quantidade|default_if_none:"—" }}</td><td>{{ item.unidade|default:"—" }}</td><td class="text-end fin-money">{% if item.valor_unitario != None %}R$ {{ item.valor_unitario|moeda_br }}{% else %}—{% endif %}</td><td class="text-end fin-money">R$ {{ item.valor_total|moeda_br }}</td></tr>
                 {% empty %}
-                <tr><td colspan="8" class="p-4 text-center text-muted">{% if form_busca.errors %}Corrija os filtros para consultar os itens.{% else %}Nenhum item encontrado com os filtros informados.{% endif %}</td></tr>
+                <tr><td colspan="9" class="p-4 text-center text-muted">{% if form_busca.errors %}Corrija os filtros para consultar os itens.{% else %}Nenhum item encontrado com os filtros informados.{% endif %}</td></tr>
                 {% endfor %}
             </tbody>
-            <tfoot><tr><th colspan="7">Total dos itens encontrados</th><td class="text-end fin-money fw-bold">R$ {{ total_itens_encontrados|moeda_br }}</td></tr></tfoot>
+            <tfoot><tr><th colspan="8">Total dos itens encontrados</th><td class="text-end fin-money fw-bold">R$ {{ total_itens_encontrados|moeda_br }}</td></tr></tfoot>
         </table>
     </div>
     {% elif resultados %}
@@ -859,10 +866,15 @@
         if (!ids.length) return;
         const form = document.getElementById('exportarSelecionadosForm');
         form.action = link.href;
+        form.target = link.dataset.print ? '_blank' : '_self';
         document.getElementById('exportarSelecionadosIds').value = JSON.stringify(ids);
         form.submit();
     }));
     updateSelection();
+    document.querySelectorAll('.fin-item-row').forEach(row => row.addEventListener('click', event => {
+        if (event.target.closest('a, input, button') || window.getSelection().toString()) return;
+        window.location.assign(row.dataset.url);
+    }));
     document.querySelectorAll('.financeiro-clickable-row').forEach((row) => {
         const panel = document.getElementById(row.dataset.detailId);
         const button = row.querySelector('.fin-detail-toggle');
