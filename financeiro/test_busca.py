@@ -71,6 +71,20 @@ class BuscaAvancadaTests(TestCase):
         self.assertEqual(len(self.context(descricao="Cimento", forma="boletos")["resultados"]), 1)
         self.assertEqual(len(self.context(descricao="Cimento", forma="credito")["resultados"]), 0)
 
+    def test_busca_item_combina_nome_fornecedor_e_emissao(self):
+        params = dict(item_nome="cim", item_fornecedor="Aurora",
+            item_inicio=self.nf.data_emissao.isoformat(), item_fim=self.nf.data_emissao.isoformat())
+        self.assertEqual(len(self.context(**params)["resultados"]), 1)
+        self.assertEqual(self.context(**params)["filtros_avancados_count"], 0)
+        for changes in (dict(item_nome="Material para obra"), dict(item_fornecedor="Outro"),
+                        dict(item_inicio=self.today.isoformat(), item_fim=self.today.isoformat())):
+            self.assertEqual(self.context(**(params | changes))["resultados"], [])
+
+    def test_busca_item_rejeita_periodo_invertido(self):
+        ctx = self.context(item_inicio=self.today.isoformat(), item_fim=self.nf.data_emissao.isoformat())
+        self.assertIn("item_fim", ctx["form_busca"].errors)
+        self.assertEqual(ctx["resultados"], [])
+
     def test_chips_removem_apenas_um_filtro_e_exportacao_descreve_filtros(self):
         ctx = self.context(busca="Aurora", descricao="Cimento", vencimento="hoje")
         self.assertEqual(ctx["filtros_avancados_count"], 3)

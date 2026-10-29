@@ -9,6 +9,10 @@ class BuscaPagamentosForm(forms.Form):
     busca = forms.CharField(label="Busca geral", required=False)
     q = forms.CharField(label="Documento / NF", required=False)
     fornecedor = forms.CharField(label="Pessoa / entidade", required=False)
+    item_nome = forms.CharField(label="Nome do item", required=False)
+    item_fornecedor = forms.CharField(label="Fornecedor do item", required=False)
+    item_inicio = forms.DateField(label="Período — início", required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
+    item_fim = forms.DateField(label="Período — fim", required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
     valor_contem = forms.RegexField(label="Valor (contém)", regex=r"^[0-9.,]+$", required=False,
         error_messages={"invalid": "Informe apenas números, ponto ou vírgula."})
     status_hoje = forms.BooleanField(label="Vence hoje", required=False)
@@ -52,11 +56,19 @@ class BuscaPagamentosForm(forms.Form):
 
     def clean(self):
         data = super().clean()
+        if data.get("item_inicio") and data.get("item_fim") and data["item_inicio"] > data["item_fim"]:
+            self.add_error("item_fim", "A data final deve ser igual ou posterior à inicial.")
         if data.get("data_inicio") and data.get("data_fim") and data["data_inicio"] > data["data_fim"]:
             self.add_error("data_fim", "A data final deve ser igual ou posterior à inicial.")
         if data.get("valor_min") is not None and data.get("valor_max") is not None and data["valor_min"] > data["valor_max"]:
             self.add_error("valor_max", "O valor máximo deve ser igual ou maior que o mínimo.")
         return data
+
+    def campos_item(self):
+        return [self[k] for k in ("item_fornecedor", "item_nome", "item_inicio", "item_fim")]
+
+    def busca_item_ativa(self):
+        return any(campo.value() for campo in self.campos_item())
 
     def grupos(self):
         return [
@@ -86,12 +98,26 @@ class BuscaPagamentosForm(forms.Form):
             remaining.pop(name, None)
             remaining.pop("origem", None)
             chips.append({"label": label, "url": "?" + remaining.urlencode()})
-            if name not in ("q", "fornecedor", "valor_contem", "data_inicio", "data_fim", "forma", "status_hoje", "status_vencido", "status_aberto", "status_pago"):
+            if not name.startswith("item_") and name not in ("item_nome", "q", "fornecedor", "valor_contem", "data_inicio", "data_fim", "forma", "status_hoje", "status_vencido", "status_aberto", "status_pago"):
                 advanced += 1
         return chips, advanced
 
 def corresponde_avancado(item, data):
     """As datas são eventos reais; a faixa de valores se refere ao documento."""
+    if any(data.get(k) for k in ("item_nome", "item_fornecedor", "item_inicio", "item_fim")):
+        if not item.get("_itens"):
+            return False
+        if data.get("item_fornecedor") and not termo_corresponde(data["item_fornecedor"], item.get("entidade"), item.get("entidade_doc"), item.get("_razao_social")):
+            return False
+        if data.get("item_inicio") or data.get("item_fim"):
+            if not any(day and (not data.get("item_inicio") or day >= data["item_inicio"])
+                       and (not data.get("item_fim") or day <= data["item_fim"])
+                       for day in item.get("_datas", {}).get("emissao", [])):
+                return False
+    if data.get("item_nome") and not any(
+        termo_corresponde(data["item_nome"], nome) for nome in item.get("_itens", [])
+    ):
+        return False
     if data.get("tipo") and item["kind"] != data["tipo"]:
         return False
     if data.get("caixa") and item.get("_caixa") != data["caixa"].pk:

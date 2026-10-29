@@ -470,13 +470,26 @@
                     <i class="bi bi-x-lg" aria-hidden="true"></i>Limpar
                 </a>
                 <button type="button" class="financeiro-top-btn financeiro-top-btn-light"
+                        data-bs-toggle="collapse" data-bs-target="#buscaItem"
+                        aria-controls="buscaItem" aria-expanded="{% if form_busca.busca_item_ativa %}true{% else %}false{% endif %}">
+                    <i class="bi bi-search" aria-hidden="true"></i>Busca de Item
+                </button>
+                <button type="button" class="financeiro-top-btn financeiro-top-btn-light"
                         data-bs-toggle="collapse" data-bs-target="#filtrosAvancados"
-                        aria-controls="filtrosAvancados" aria-expanded="{% if form_busca.errors or busca %}true{% else %}false{% endif %}">
+                        aria-controls="filtrosAvancados" aria-expanded="{% if not form_busca.busca_item_ativa and form_busca.errors or not form_busca.busca_item_ativa and busca %}true{% else %}false{% endif %}">
                     <i class="bi bi-sliders" aria-hidden="true"></i>Filtros avançados ({{ filtros_avancados_count }})
                 </button>
             </div>
         </div>
-        <div id="filtrosAvancados" class="collapse{% if form_busca.errors or busca %} show{% endif %}">
+        <div id="buscaItem" data-bs-parent="#buscarLancamentosForm" class="collapse{% if form_busca.busca_item_ativa %} show{% endif %}">
+            <fieldset class="mt-4">
+                <legend class="h6 fw-bold">Busca de Item</legend>
+                <p class="text-muted small">Busque por fornecedor, nome do item e período de emissão do documento.</p>
+                <div class="row g-3">{% for campo in form_busca.campos_item %}<div class="col-12 col-md-6 col-xl-3"><label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{{ campo.errors }}</div>{% endfor %}</div>
+                <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary mt-3">Buscar itens</button>
+            </fieldset>
+        </div>
+        <div id="filtrosAvancados" data-bs-parent="#buscarLancamentosForm" class="collapse{% if not form_busca.busca_item_ativa and form_busca.errors or not form_busca.busca_item_ativa and busca %} show{% endif %}">
             <p class="text-muted small mt-3 mb-0">Fechar este painel mantém os critérios aplicados. Os valores se referem aos documentos encontrados. Pagamentos bancários recorrentes aparecem por parcela.</p>
             {% for titulo, campos in form_busca.grupos %}
             <fieldset class="mt-4">
