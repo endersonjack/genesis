@@ -1072,29 +1072,16 @@
         var modalContent = document.getElementById('modal-content');
         var modalPadrao = document.getElementById('modalPadrao');
         if (!modalContent || !modalPadrao) return;
-        fetch(url, {
-            credentials: 'same-origin',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'HX-Request': 'true',
-            },
-        })
-            .then(function (r) {
-                if (!r.ok) throw new Error('Falha ao carregar');
-                return r.text();
-            })
-            .then(function (html) {
-                modalContent.innerHTML = html;
-                if (window.htmx && typeof window.htmx.process === 'function') {
-                    window.htmx.process(modalContent);
-                }
-                if (window.bootstrap) {
-                    bootstrap.Modal.getOrCreateInstance(modalPadrao).show();
-                }
-            })
-            .catch(function () {
-                window.location.reload();
-            });
+        htmx.ajax('GET', url, {
+            target: modalContent,
+            swap: 'innerHTML',
+        }).then(function () {
+            if (window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(modalPadrao).show();
+            }
+        }).catch(function () {
+            window.location.reload();
+        });
     }
 
     if (tbody) {
