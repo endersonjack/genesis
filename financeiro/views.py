@@ -2856,6 +2856,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
                     '_contas': [p.conta_bancaria_id for p in pagamentos_diretos] + [b.conta_bancaria_id for b in boletos_validos if b.data_pagamento],
                     '_formas': [p.tipo for p in pagamentos_diretos] + (['boletos'] if tem_boletos else []),
                     '_itens': [i.descricao or '' for i in nf.itens.all()],
+                    '_itens_dados': list(nf.itens.all()),
                     '_descricao': ' '.join([nf.descricao or ''] + [i.descricao or '' for i in nf.itens.all()] + [p.observacao or '' for p in pagamentos_diretos] + [b.observacao or '' for b in boletos_validos]),
                     '_razao_social': nf.fornecedor.razao_social or '',
                     '_busca': ' '.join([nf.numero_nf, nf.fornecedor.nome, nf.fornecedor.razao_social or '', nf.fornecedor.cpf_cnpj or ''] + [b.numero_doc or '' for b in boletos_validos]),
@@ -2962,6 +2963,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
                     '_contas': [pagamento.conta_bancaria_id] if pago else [],
                     '_formas': ['avista'] if pago else [],
                     '_itens': [i.descricao or '' for i in pagamento.itens.all()],
+                    '_itens_dados': list(pagamento.itens.all()),
                     '_descricao': ' '.join([getattr(pagamento, 'descricao', '') or '', getattr(pagamento, 'periodo_apuracao', '') or ''] + [i.descricao or '' for i in pagamento.itens.all()]),
                     '_datas': {'emissao': [pagamento.data_emissao], 'vencimento': [vencimento_real], 'pagamento': [pagamento.data_pagamento]},
                     '_pendentes': [vencimento_real] if not pago else [],
@@ -3067,6 +3069,7 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
                     '_contas': [pagamento.conta_bancaria_id] if pago else [],
                     '_formas': ['avista'] if pago else [],
                     '_itens': [i.descricao or '' for i in pagamento.itens.all()],
+                    '_itens_dados': list(pagamento.itens.all()),
                     '_descricao': ' '.join([getattr(pagamento, 'descricao', '') or '', getattr(pagamento, 'periodo_apuracao', '') or ''] + [i.descricao or '' for i in pagamento.itens.all()]),
                     '_datas': {'emissao': [pagamento.data_emissao], 'vencimento': [vencimento_real], 'pagamento': [pagamento.data_pagamento]},
                     '_pendentes': [vencimento_real] if not pago else [],
@@ -3149,6 +3152,25 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
         resultados = [item for item in resultados if item['export_id'] in selecionados]
     apresentacao_busca = preparar_resultados(resultados, dados_busca)
 
+    busca_item = form_busca.busca_item_ativa()
+    itens_encontrados = []
+    if busca_item:
+        for documento in resultados:
+            for registro in documento.get('_itens_dados', []):
+                if dados_busca.get('item_nome') and not termo_corresponde(dados_busca['item_nome'], registro.descricao):
+                    continue
+                itens_encontrados.append({
+                    'descricao': registro.descricao,
+                    'fornecedor': documento['entidade'],
+                    'documento': documento.get('numero_doc'),
+                    'data': documento.get('data'),
+                    'quantidade': getattr(registro, 'quantidade', None),
+                    'unidade': getattr(registro, 'unidade', ''),
+                    'valor_unitario': getattr(registro, 'valor_unitario', None),
+                    'valor_total': registro.valor_total,
+                })
+    total_itens_encontrados = sum((item['valor_total'] for item in itens_encontrados), Decimal('0'))
+
     totais_busca = {
         'valor_vencido': sum((item.get('valor_vencido', Decimal('0')) for item in resultados), Decimal('0')),
         'quantidade': len(resultados),
@@ -3169,6 +3191,9 @@ def _buscar_pagamentos_context(request, empresa, *, selecionados=None) -> dict:
 
     return {
         'page_title': 'Buscar Pagamentos',
+        'busca_item': busca_item,
+        'itens_encontrados': itens_encontrados,
+        'total_itens_encontrados': total_itens_encontrados,
         'apresentacao_busca': apresentacao_busca,
         'form_busca': form_busca,
         'filtros_chips': chips,

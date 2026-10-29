@@ -489,7 +489,7 @@
                 <button type="submit" class="financeiro-top-btn financeiro-top-btn-primary mt-3">Buscar itens</button>
             </fieldset>
         </div>
-        <div id="filtrosAvancados" data-bs-parent="#buscarLancamentosForm" class="collapse{% if not form_busca.busca_item_ativa and form_busca.errors or not form_busca.busca_item_ativa and busca %} show{% endif %}">
+        <div id="filtrosAvancados" class="collapse{% if not form_busca.busca_item_ativa and form_busca.errors or not form_busca.busca_item_ativa and busca %} show{% endif %}" data-bs-parent="#buscarLancamentosForm">
             <p class="text-muted small mt-3 mb-0">Fechar este painel mantém os critérios aplicados. Os valores se referem aos documentos encontrados. Pagamentos bancários recorrentes aparecem por parcela.</p>
             {% for titulo, campos in form_busca.grupos %}
             <fieldset class="mt-4">
@@ -518,9 +518,15 @@
 <div class="financeiro-board-card mb-0">
     <div class="financeiro-board-header">
         <div>
+            {% if busca_item %}
+            <h3 class="h6 fw-bold mb-1">{{ itens_encontrados|length }} item(ns) encontrado(s)</h3>
+            <div class="small text-muted">Itens correspondentes aos filtros informados.</div>
+            {% else %}
             <h3 class="h6 fw-bold mb-1">{{ totais_busca.quantidade }} resultado{{ totais_busca.quantidade|pluralize:"s" }}</h3>
             <div class="small text-muted"><span id="fin-order-hint">{{ apresentacao_busca.ordem_label }}.</span> Clique em um resultado para ver os detalhes.</div>
+            {% endif %}
         </div>
+        {% if not busca_item %}
         <div class="d-flex align-items-center flex-wrap gap-2" aria-label="Exportar resultados">
             <span class="small text-muted me-1" id="selecaoExportStatus" aria-live="polite">Todos selecionados</span>
             <a href="{% url 'financeiro:buscar_pagamentos_pdf' empresa_id=request.empresa_ativa.pk %}{% if request.META.QUERY_STRING %}?{{ request.META.QUERY_STRING }}{% endif %}"
@@ -532,9 +538,24 @@
                 <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Excel
             </a>
         </div>
+        {% endif %}
     </div>
 
-    {% if resultados %}
+    {% if busca_item %}
+    <div class="table-responsive">
+        <table class="table fin-table mb-0 align-middle" id="itensEncontradosTable">
+            <thead class="table-light"><tr><th>Item</th><th>Fornecedor</th><th>Documento</th><th>Emissão</th><th>Quantidade</th><th>Unidade</th><th class="text-end">Valor unitário</th><th class="text-end">Total do item</th></tr></thead>
+            <tbody>
+                {% for item in itens_encontrados %}
+                <tr><td class="fw-semibold">{{ item.descricao }}</td><td>{{ item.fornecedor }}</td><td>{{ item.documento|default:"—" }}</td><td>{{ item.data|date:"d/m/Y"|default:"—" }}</td><td>{{ item.quantidade|default_if_none:"—" }}</td><td>{{ item.unidade|default:"—" }}</td><td class="text-end fin-money">{% if item.valor_unitario != None %}R$ {{ item.valor_unitario|moeda_br }}{% else %}—{% endif %}</td><td class="text-end fin-money">R$ {{ item.valor_total|moeda_br }}</td></tr>
+                {% empty %}
+                <tr><td colspan="8" class="p-4 text-center text-muted">{% if form_busca.errors %}Corrija os filtros para consultar os itens.{% else %}Nenhum item encontrado com os filtros informados.{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot><tr><th colspan="7">Total dos itens encontrados</th><td class="text-end fin-money fw-bold">R$ {{ total_itens_encontrados|moeda_br }}</td></tr></tfoot>
+        </table>
+    </div>
+    {% elif resultados %}
     <div class="table-responsive">
         <table class="table table-hover fin-table mb-0 align-middle" id="financeiroResultadosTable">
             <thead class="table-light"><tr>
@@ -719,6 +740,7 @@
         </div>
     </div>
     {% endif %}
+    {% if not busca_item %}
     <details class="financeiro-search-totals">
         <summary class="fw-semibold mb-3">Ver distribuição por forma e tipo de pagamento</summary>
         <div class="financeiro-summary-footer mb-3">
@@ -803,6 +825,7 @@
             </div>
         </div>
     </details>
+    {% endif %}
 	</div>
     <form id="exportarSelecionadosForm" method="post" hidden>
         {% csrf_token %}
@@ -818,7 +841,8 @@
             allCheck.checked = count > 0 && count === exportChecks.length;
             allCheck.indeterminate = count > 0 && count < exportChecks.length;
         }
-        document.getElementById('selecaoExportStatus').textContent = count + ' de ' + exportChecks.length + ' selecionados';
+        const selectionStatus = document.getElementById('selecaoExportStatus');
+        if (selectionStatus) selectionStatus.textContent = count + ' de ' + exportChecks.length + ' selecionados';
         exportLinks.forEach(link => {
             link.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
             link.classList.toggle('disabled', count === 0);

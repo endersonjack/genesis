@@ -85,6 +85,17 @@ class BuscaAvancadaTests(TestCase):
         self.assertIn("item_fim", ctx["form_busca"].errors)
         self.assertEqual(ctx["resultados"], [])
 
+    def test_busca_item_mostra_apenas_itens_correspondentes_e_seus_totais(self):
+        PagamentoNotaFiscalItem.objects.create(pagamento_nf=self.nf, tipo="produto",
+            descricao="Areia", caixa=self.caixa, valor_total=Decimal("200"))
+        ctx = self.context(item_nome="Cimento")
+        self.assertTrue(ctx["busca_item"])
+        self.assertEqual([i["descricao"] for i in ctx["itens_encontrados"]], ["Cimento"])
+        self.assertEqual(ctx["total_itens_encontrados"], Decimal("1500"))
+        ctx = self.context(item_fornecedor="Aurora")
+        self.assertEqual(len(ctx["itens_encontrados"]), 2)
+        self.assertEqual(ctx["total_itens_encontrados"], Decimal("1700"))
+
     def test_chips_removem_apenas_um_filtro_e_exportacao_descreve_filtros(self):
         ctx = self.context(busca="Aurora", descricao="Cimento", vencimento="hoje")
         self.assertEqual(ctx["filtros_avancados_count"], 3)
